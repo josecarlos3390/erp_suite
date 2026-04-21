@@ -1,0 +1,13 @@
+{
+  "name": "erp-suite",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ERP suite monorepo — backend (NestJS) + frontend (Angular)",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0"
+  }
+}

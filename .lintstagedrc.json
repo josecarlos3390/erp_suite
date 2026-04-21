@@ -1,0 +1,9 @@
+{
+  "backend-erp/src/**/*.ts": [
+    "cd backend-erp && npx eslint --fix",
+    "cd backend-erp && npx jest --bail --findRelatedTests --passWithNoTests"
+  ],
+  "erp-frontend/src/**/*.{ts,html,scss}": [
+    "cd erp-frontend && npx ng build --aot --output-path=dist/temp-lint-build"
+  ]
+}

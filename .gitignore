@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+out/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated files
+backend-erp/generated/
+
+# Prisma
+backend-erp/prisma/migrations/*/migration_lock.toml
+
+# Testing
+coverage/
+.nyc_output/
+
+# Playwright
+erp-frontend/test-results/
+erp-frontend/playwright-report/
+erp-frontend/blob-report/
+erp-frontend/playwright/.cache/
