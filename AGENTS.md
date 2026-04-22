@@ -139,6 +139,33 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
 
 ---
 
+## CI/CD (GitHub Actions)
+
+Both repositories have GitHub Actions workflows that run on every `push` to `main` and every `pull_request` targeting `main`.
+
+### Backend (`backend-erp/.github/workflows/ci.yml`)
+
+Runs on `ubuntu-latest` with Node 20:
+1. `npm ci`
+2. `npm run lint` (ESLint v9 flat config)
+3. `npm test` (Jest, 44 tests)
+
+### Frontend (`erp-frontend/.github/workflows/ci.yml`)
+
+Runs on `ubuntu-latest` with Node 20:
+1. `npm ci`
+2. `npm run lint` (ESLint v9 + Angular ESLint + Prettier)
+3. `npx ng test --watch=false --browsers=ChromeHeadless` (Karma + Jasmine, 268 tests)
+4. `npm run build` (production build verification)
+
+### Notes
+
+- CI acts as a **safety net** when developers bypass local hooks (`git commit --no-verify`).
+- If CI fails, the PR cannot be merged safely.
+- Cache is enabled for `npm` to speed up workflow runs.
+
+---
+
 ## Project Architecture
 
 ### Backend
