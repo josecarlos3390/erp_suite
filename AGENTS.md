@@ -112,28 +112,30 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
 
 ### Backend (`backend-erp/`)
 
-- **Hook file:** `.husky/pre-commit`
-- **Config:** `.lintstagedrc.js`
-- **Behavior:** on commit of any `src/**/*.{ts,tsx}` file:
-  1. `npm run lint` (ESLint v9 flat config, auto-fix)
-  2. `npm test` (Jest, 44 tests)
+- **Pre-commit** `.husky/pre-commit` + `.lintstagedrc.js`:
+  - On commit of any `src/**/*.{ts,tsx}`: `npm run lint` (ESLint v9 flat config, auto-fix)
+  - ~5-10 seconds
+- **Pre-push** `.husky/pre-push`:
+  - `npm test` (Jest, 44 tests)
+  - ~30-60 seconds
 - **Install:** already initialized via `npx husky init` after `npm install`
 
 ### Frontend (`erp-frontend/`)
 
-- **Hook file:** `.husky/pre-commit`
-- **Config:** `.lintstagedrc.js`
-- **Behavior:** on commit of any `src/**/*.{ts,html,scss}` file:
-  1. `npm run lint` (ESLint v9 + Angular ESLint + Prettier)
-  2. `npx ng test --watch=false --browsers=ChromeHeadless` (Karma + Jasmine, 268 tests)
-  3. `npm run build` (production build verification)
+- **Pre-commit** `.husky/pre-commit` + `.lintstagedrc.js`:
+  - On commit of any `src/**/*.{ts,html,scss}`: `npm run lint` (ESLint v9 + Angular ESLint + Prettier)
+  - ~10-20 seconds
+- **Pre-push** `.husky/pre-push`:
+  1. `npx ng test --watch=false --browsers=ChromeHeadless` (Karma + Jasmine, 268 tests)
+  2. `npm run build` (production build verification)
+  - ~2-4 minutes
 - **Install:** already initialized via `npx husky init` after `npm install`
 
 ### Notes
 
 - The monorepo root also has Husky installed, but it only acts on the root repo (which contains config files only). It can be ignored or removed if desired.
-- lint-staged uses **function syntax** for test/build commands to prevent passing staged filenames as CLI arguments (which would break Jest/Angular CLI pattern matching).
-- If a hook is too slow for day-to-day commits, consider moving `npm test` or `npm run build` to a **pre-push** hook instead.
+- lint-staged uses **function syntax** for commands to prevent passing staged filenames as CLI arguments (which would break Jest/Angular CLI pattern matching).
+- Pre-commit is intentionally **fast** (lint only); pre-push catches the slower validations (tests + build) before code reaches the remote.
 
 ---
 
