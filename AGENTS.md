@@ -157,6 +157,7 @@ Runs on `ubuntu-latest` with Node 20:
 2. `npm run lint` (ESLint v9 + Angular ESLint + Prettier)
 3. `npx ng test --watch=false --browsers=ChromeHeadless` (Karma + Jasmine, 268 tests)
 4. `npm run build` (production build verification)
+5. `npx playwright install --with-deps` + `npm run e2e` (Playwright, 14 tests en Chromium + Firefox)
 
 ### Notes
 
