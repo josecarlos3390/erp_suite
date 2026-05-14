@@ -80,7 +80,7 @@ npm run watch
 
 # Lint (ESLint v9 flat config + Angular ESLint + Prettier)
 npm run lint
-# Note: 84 warnings remain (unused imports/variables) — non-blocking
+# Note: 126 warnings remain (unused imports/variables) — non-blocking
 
 # Format code (Prettier)
 npm run format
@@ -116,7 +116,7 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
   - On commit of any `src/**/*.{ts,tsx}`: `npm run lint` (ESLint v9 flat config, auto-fix)
   - ~5-10 seconds
 - **Pre-push** `.husky/pre-push`:
-  - `npm test` (Jest, 44 tests)
+  - `npm test` (Jest, 330 tests)
   - ~30-60 seconds
 - **Install:** already initialized via `npx husky init` after `npm install`
 
@@ -139,6 +139,185 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
 
 ---
 
+## Backend Type Design Rules (Post-Refactor)
+
+> **Context:** Apr 2025 — removed 1,629 `as any` casts, fixed implicit-`any` parameters, enforced strict typing across 78 test suites / 330 tests.
+> **Goal:** keep the backend at `0 errors, 0 any-casts`.
+
+### 1. Zero `as any` policy
+
+- **Never** use `as any` to bypass the compiler. If a type mismatch exists, fix the type (DTO, interface, or Prisma payload) rather than casting.
+- The only acceptable exception is test mocks where the shape is intentionally partial, and even then prefer `as unknown as MyType` or `satisfies Partial<MyType>`.
+
+### 2. Prisma query payloads must be typed
+
+- When selecting nested relations with `include`, assign the result to a typed variable or use `Prisma.*GetPayload<typeof include>`:
+  ```typescript
+  const include = {
+    partner: true,
+    items: { include: { item: true } },
+  } as const;
+  type OrderWithItems = Prisma.SalesOrderGetPayload<{
+    include: typeof include;
+  }>;
+  ```
+- Avoid `const order: any = await tx.salesOrder.findUnique(...)`.
+
+### 3. DTOs are interfaces, not `any`
+
+- All controller inputs use `class-validator` DTOs. Never accept `body: any`.
+- If a DTO needs to be reused across modules, place it in `src/common/dto/` or colocate it with the domain DTOs.
+
+### 4. Service return types are explicit
+
+- Every public service method must declare its return type:
+  ```typescript
+  async findOne(id: number): Promise<SaleInvoiceDto> { ... }
+  async confirm(id: number): Promise<void> { ... }
+  ```
+- This prevents accidental leakage of internal Prisma types to controllers.
+
+### 5. Utility helpers must be generic, not `any`
+
+- Traceability utilities (`traceability.util.ts`), code generators (`code-generator.util.ts`), and pricing helpers must use generics instead of `any` parameters:
+  ```typescript
+  // ✅ Correct
+  function mapDocument<T extends { id: number }>(doc: T): T { ... }
+  // ❌ Wrong
+  function mapDocument(doc: any): any { ... }
+  ```
+
+### 6. Test mocks
+
+- Mocked providers in `*.spec.ts` should be fully typed objects:
+  ```typescript
+  { provide: ItemsService, useValue: {
+    findOne: jest.fn().mockResolvedValue(mockItem),
+  } as unknown as ItemsService }
+  ```
+- Avoid `useValue: {}` or `useValue: { findOne: jest.fn() }` without typing.
+
+### 7. Current lint status
+
+- `npm run lint` → `0 errors, ~80 warnings` (unused imports/variables — non-blocking).
+- `npm test` → **57 suites, 175 tests** passing (post-strictNullChecks; some legacy suites were removed or consolidated).
+
+---
+
+## Backend strictNullChecks Migration (Apr 2026)
+
+> **Context:** enabled `strictNullChecks: true` in `tsconfig.json` while keeping `strict: false` and `noImplicitAny: false`.  
+> **Result:** 0 build errors, 0 test regressions, 175 tests passing.  
+> **Goal:** document safe patterns so future agents don't break the build when touching nullable fields.
+
+### 1. Safe patterns we used (copy-paste ready)
+
+| Problem | Pattern | Example |
+|---------|---------|---------|
+| `tenantId?: number` param later passed to Prisma | Assert at call site with `tenantId!` or `tenantId as number` inside data objects (never add runtime throws in hot paths) | `data: { tenantId: tenantId!, ... }` |
+| `.find()` after an existence check | Non-null assertion `)!` when preceded by `if (!x) throw` | `const parent = parents.find(p => p.id === id)!;` |
+| `Map.get()` used in arithmetic | `(map.get(key!) ?? 0)` when the key may be nullable | `const qty = (whItemMap.get(orderItemId!) ?? 0) + line.quantity;` |
+| Accumulator arrays (`lineCalcs`, `invoiceLines`) | Declare as `const arr: any[] = []` (temporary; see improvement §3) | `const lineCalcs: any[] = [];` |
+| `let x = null` later used as object | `let x: any = null` to avoid `TS7006` | `let siTaxInd: any = null;` |
+| Optional relation (`di.order?.items`) | `di.order!.items` after null-check or `di.order?.items ?? []` | `for (const oi of di.order!.items) { ... }` |
+
+### 2. What NOT to do
+
+- ❌ Do **not** add runtime `if (!tenantId) throw new BadRequestException(...)` inside every private helper — it bloats the code and can break existing tests that pass `undefined` to internal methods.
+- ❌ Do **not** widen DTO base classes (`BaseDocumentDto`) unless all subclasses already agree on the type; prefer `string | null` only when the DB schema truly allows `NULL`.
+- ❌ Do **not** use `// @ts-ignore` or `// @ts-expect-error` — the build now has zero suppression comments.
+
+### 3. Tech-debt opportunities — STATUS UPDATE (Apr 2026)
+
+| # | Opportunity | Status | Notes |
+|---|-------------|--------|-------|
+| 1 | **`tenantId` should be mandatory in public methods** | 🔄 Partial | Controllers fixed to pass `tenantId` where missing (`sales-orders.updateItem`, `purchase-orders.close`, `purchase-orders.updateItem`). Private helpers already use `tenantId: number`. ~70 `tenantId!` remain in public methods across 7 services; requires mass controller + test refactor to eliminate safely. |
+| 2 | **Accumulator arrays need real interfaces** | ✅ Done | `purchase-orders`: `LineWithIndicatorResult[]`; `sales-orders`: `SalesOrderLineCalc[]`; `sales-quotations`: `SalesQuotationLineResult[]`; `purchase-quotations`: `PurchaseQuotationLineResult[]`; `sale-reserve-invoices`: `SaleReserveInvoiceLine[]`. |
+| 3 | **Tax-indicator temporaries** | ✅ Done | `purchase-invoices.service.ts`: `let riTaxInd: TaxIndicator | null = null` and `let siTaxInd: TaxIndicator | null = null`. |
+| 4 | **`BaseDocumentDto.dueDate`** | ✅ Done | Subclasses with `dueDate?: string` tightened to `dueDate?: string | null` to match the DB schema (`DateTime?`) and the base DTO. |
+| 5 | **Test mocks still use `as any`** | ✅ Partial | Payment-method enums typed (`PaymentMethod.CASH`, `PaymentMethod.BANK_TRANSFER`). Journal-entry DTOs typed. PrismaService mocks left as `as any` because `jest.fn()` mocks are structurally incompatible with Prisma's generated types; `as unknown as PrismaService` breaks `mockResolvedValue` access. |
+
+---
+
+## Frontend Type Design Rules (Post-Refactor)
+
+> **Context:** Apr 2025 — massive type-cleanup (`as any` removal, TS2339/TS2551 fixes, model deduplication).
+> **Goal:** prevent the ~110 TypeScript errors from recurring.
+
+### 1. Single source of truth for domain models
+
+- `src/app/models/*.model.ts` (barreled via `index.ts`) **must** be the only place where domain interfaces like `PurchaseOrder`, `SalesOrder`, `DeliveryOrder`, `PurchaseReceipt`, etc. are defined.
+- **Do NOT redefine** these interfaces inside services (`*.service.ts`) or inside page-local `*.interface.ts` files.
+- If a service needs a narrower shape (e.g. a draft without `id`), **extend** the global model:
+  ```typescript
+  import { PurchaseOrder } from "@models/purchase-order.model";
+  export interface PurchaseOrderDraft extends Omit<
+    PurchaseOrder,
+    "id" | "code"
+  > {
+    quotationId: number;
+  }
+  ```
+
+### 2. No inline stubs for `PartnerSummary` / `ItemSummary`
+
+- Never write `partner: { id: number; name: string }` inside a service or component.
+- Import `PartnerSummary` from `@models/partner-summary.model` or `ItemSummary` from `@models/item-summary.model`.
+- If you need extra fields (e.g. `defaultTaxIndicatorId`), extend inline:
+  ```typescript
+  partner: PartnerSummary & { defaultTaxIndicatorId?: number | null };
+  ```
+
+### 3. Draft interfaces belong in `models/`, not in pages
+
+- `DeliveryOrderDraft`, `SalesOrderDraft`, `PurchaseOrderDraft`, etc. should live in `src/app/models/delivery-order.model.ts` (or a dedicated `*-draft.model.ts`).
+- Removing local `*-draft.interface.ts` files inside `pages/*/` prevents drift between the backend response and the frontend type.
+
+### 4. Shared payment types
+
+- `PaymentStatus`, `PaymentMethod`, and `AvailableAdvance` live in **`src/app/models/payment-common.model.ts`**.
+- Do NOT redefine them in `incoming-payment.model.ts` or `outgoing-payment.model.ts`.
+
+### 5. If the backend sends it, the model must expose it
+
+- When a form accesses a field (e.g. `draft.isExpired`, `line.pendingInvoiceQty`, `order.warehouseId`) and TypeScript complains with `TS2339`, **add the optional field to the model** rather than casting:
+  ```typescript
+  // ✅ Correct
+  export interface DeliveryOrderDraft {
+    /* ... */
+    isExpired?: boolean;
+    validUntil?: string | Date | null;
+  }
+  // ❌ Wrong
+  (draft as any).isExpired;
+  ```
+
+### 6. POS and polymorphic endpoints
+
+- Endpoints that return either an array or a wrapper object (`{ data: T[] }`) must be typed explicitly:
+  ```typescript
+  getRecentInvoices(limit = 10) {
+    return this.http.get<any[] | { data: any[] }>(`${environment.apiUrl}/sale-invoices`, {
+      params: new HttpParams().set('limit', limit).set('isIns', 'N'),
+    });
+  }
+  ```
+- This avoids `Array.isArray(r)` narrowing `r` to `never` in the `else` branch.
+
+### 7. Form `getRawValue()`
+
+- Prefer giving the raw value an explicit interface over casting individual properties:
+  ```typescript
+  const raw = this.form.getRawValue() as PriceListFormRaw;
+  ```
+
+### 8. Current lint warning count (post-cleanup)
+
+- **Frontend:** `ng lint` → `0 errors, 126 warnings` (mostly unused imports/variables — safe to ignore or clean gradually).
+- **Backend:** `npm run lint` → `0 errors, 78 warnings` (same category).
+
+---
+
 ## CI/CD (GitHub Actions)
 
 Both repositories have GitHub Actions workflows that run on every `push` to `main` and every `pull_request` targeting `main`.
@@ -146,13 +325,15 @@ Both repositories have GitHub Actions workflows that run on every `push` to `mai
 ### Backend (`backend-erp/.github/workflows/ci.yml`)
 
 Runs on `ubuntu-latest` with Node 20:
+
 1. `npm ci`
 2. `npm run lint` (ESLint v9 flat config)
-3. `npm test` (Jest, 44 tests)
+3. `npm test` (Jest, 330 tests)
 
 ### Frontend (`erp-frontend/.github/workflows/ci.yml`)
 
 Runs on `ubuntu-latest` with Node 20:
+
 1. `npm ci`
 2. `npm run lint` (ESLint v9 + Angular ESLint + Prettier)
 3. `npx ng test --watch=false --browsers=ChromeHeadless` (Karma + Jasmine, 268 tests)
@@ -172,14 +353,14 @@ Runs on `ubuntu-latest` with Node 20:
 ### Backend
 
 - `src/<module>/` — one NestJS module per business domain. Each module contains: `*.module.ts`, `*.controller.ts`, `*.service.ts`, `dto/`, and colocated `*.spec.ts`.
-- `src/common/` — shared utilities: pagination, code generation, pricing, stock, traceability, tax indicators, payment utils, progress utils.
+- `src/common/` — shared utilities: pagination, code generation, pricing, stock, traceability, tax indicators, payment utils, progress utils, **accounting engine**.
 - `src/prisma/` — global `PrismaService` extending `PrismaClient`.
 - `src/auth/` — JWT auth: guards (`JwtAuthGuard`, `RolesGuard`), strategies (`JwtStrategy`), decorators (`@Public()`, `@Roles()`, `@CurrentUser()`), DTOs.
 - `prisma/schema.prisma` — single source of truth for DB schema.
 - `test/` — E2E specs (`*.e2e-spec.ts`) with `jest-e2e.json` config.
 
-**Backend modules (25 domains):**
-`auth`, `common`, `delivery-orders`, `document-flow`, `item-groups`, `items`, `partner-groups`, `partners`, `pos`, `price-lists`, `prisma`, `purchase-invoices`, `purchase-orders`, `purchase-quotations`, `purchase-receipts`, `purchase-reserve-invoices`, `sale-invoices`, `sale-reserve-invoices`, `sales-orders`, `sales-quotations`, `settings`, `tax-indicators`, `tenants`, `users`, `warehouses`.
+**Backend modules (27 domains):**
+`account-mappings`, `auth`, `common`, `delivery-orders`, `document-flow`, `item-groups`, `items`, `journal-entries`, `partner-groups`, `partners`, `pos`, `price-lists`, `prisma`, `purchase-invoices`, `purchase-orders`, `purchase-quotations`, `purchase-receipts`, `purchase-reserve-invoices`, `sale-invoices`, `sale-reserve-invoices`, `sales-orders`, `sales-quotations`, `settings`, `tax-indicators`, `tenants`, `users`, `warehouses`.
 
 ### Frontend
 
@@ -223,7 +404,7 @@ Runs on `ubuntu-latest` with Node 20:
 
 ### Backend (NestJS)
 
-- **TypeScript strictness:** `strict: false`, `strictNullChecks: false`, `noImplicitAny: false` — types are annotated by convention but not enforced by the compiler.
+- **TypeScript strictness:** `strict: false`, **`strictNullChecks: true`**, `noImplicitAny: false` — `null`/`undefined` are now enforced by the compiler; `any` and implicit-any remain relaxed.
 - **Return types:** annotate async method return types explicitly (`Promise<string>`, `Promise<void>`, etc.).
 - **Interfaces over classes** for DTOs inputs/outputs, JWT payloads, utility types.
 - **`as const`** for constant objects (e.g., `SAFE_SELECT`, `CODE_SEQUENCES`).
@@ -231,7 +412,7 @@ Runs on `ubuntu-latest` with Node 20:
 - **Vertical alignment** of properties in object literals for readability.
 - **NestJS module pattern:**
   ```typescript
-  @Controller('resource')
+  @Controller("resource")
   export class ResourceController {
     constructor(private readonly resourceService: ResourceService) {}
   }
@@ -282,14 +463,14 @@ Runs on `ubuntu-latest` with Node 20:
 
 Prefer path aliases over deep relative imports (`../../shared/...` → `@shared/...`):
 
-| Alias | Points to |
-|---|---|
-| `@env/*` | `src/environments/*` |
-| `@models/*` | `src/app/models/*` |
-| `@shared/*` | `src/app/shared/*` |
-| `@core/*` | `src/app/core/*` |
-| `@auth/*` | `src/app/auth/*` |
-| `@pages/*` | `src/app/pages/*` |
+| Alias       | Points to            |
+| ----------- | -------------------- |
+| `@env/*`    | `src/environments/*` |
+| `@models/*` | `src/app/models/*`   |
+| `@shared/*` | `src/app/shared/*`   |
+| `@core/*`   | `src/app/core/*`     |
+| `@auth/*`   | `src/app/auth/*`     |
+| `@pages/*`  | `src/app/pages/*`    |
 
 All 10 commercial document forms have been migrated to use aliases.
 
@@ -298,6 +479,7 @@ All 10 commercial document forms have been migrated to use aliases.
 All commercial document forms (`sales-quotations`, `purchase-quotations`, `sales-orders`, `purchase-orders`, `delivery-orders`, `purchase-receipts`, `sale-invoices`, `purchase-invoices`, `sale-reserve-invoices`, `purchase-reserve-invoices`) extend `DocumentFormBase`.
 
 **`DocumentFormBase`** (`src/app/shared/document-form/document-form.base.ts`) provides:
+
 - UI state: `isLoading`, `isSaving`, `hasChanges`, `moreMenuOpen`, `copyMenuOpen`, `activeTab`
 - Dialogs / popups: `openDialog()`, `openSuccessPopup()`, `goToDocument()`, `goToList()`
 - Totals with caching: `calcTotals()`, `invalidateTotals()`, getters `getSubtotal()`, `getTax()`, `getTotal()`, `getTotalDiscount()`
@@ -306,11 +488,13 @@ All commercial document forms (`sales-quotations`, `purchase-quotations`, `sales
 - Default warehouse resolution: `defaultWarehouseId`
 
 **`DocumentLineArrayService`** (`src/app/shared/document-form/document-line-array.service.ts`) provides:
+
 - `buildLineGroup()`, `buildManualLine()` — FormGroup builders for document lines
 - `calculateLine()`, `applyLineTax()` — line-level tax and total calculations
 - `recalculateAllLines()`, `resolveLineTaxId()` — batch operations and tax indicator resolution
 
 **`DocumentFormUtils`** (`src/app/shared/document-form/document-form.utils.ts`) provides pure functions:
+
 - `toDateInput()`, `stockChipClass()`, `stockLabel()`, `docStatusLabel()`, `lineStatusLabel()`, `formatTaxRate()`
 
 #### Document list architecture
@@ -318,6 +502,7 @@ All commercial document forms (`sales-quotations`, `purchase-quotations`, `sales
 All **transactional list components** (`sales-quotations`, `purchase-quotations`, `sales-orders`, `purchase-orders`, `delivery-orders`, `purchase-receipts`, `sale-invoices`, `purchase-invoices`, `sale-reserve-invoices`, `purchase-reserve-invoices`) extend `DocumentListBase`.
 
 **`DocumentListBase`** (`src/app/shared/document-form/document-list.base.ts`) provides:
+
 - Pagination state: `page`, `limit`, `total`, `totalPages`
 - Search with debounce: `search`, `onSearch()`
 - UI state: `loading`, `processingId`, `rowMenuId`
@@ -330,27 +515,26 @@ Components override `load()` to call their specific service. Filter-specific met
 #### Migration patterns
 
 **List components → `DocumentListBase`:**
+
 - Remove: `loading`, `processingId`, `rowMenuId`, `page`, `limit`, `total`, `totalPages`, `search`, `destroyRef`, `searchSubject`
 - Remove: `ngOnInit`, `onSearch`, `onPageChange`, `onLimitChange`
 - Remove: `@ViewChild('flowMap')` and `closeRowMenu()` (unless it has extra logic; then `override` it)
 - Keep: `load()` (add `override`), filters, domain action methods (`close`, `cancel`, `confirm`), selection/consolidation logic, `openFlowMap(id)`
 
 **Form line logic → `DocumentLineArrayService`:**
+
 - Delegate: `buildManualLine()`, `calculateLine()`, `onLineTaxChange()`, `removeItem()`, `recalculateAllLines()`
 - Preserve: custom `buildLine()` (domain-specific validators and computed fields), manual item HTTP handlers (`selectManualItem`, `onManualItemChange`), `addFreeItem()`
 - Purchase forms pass `forceInclusive: true` to `applyLineTax()` because Bolivian purchase tax is always inclusive.
 
 **Current migration status:**
+
 - ✅ **Lists:** all 10 transactional lists migrated to `DocumentListBase`
 - ✅ **Forms:** 4 of 10 forms use `DocumentLineArrayService` fully (`sales-quotations`, `purchase-quotations`, `sales-orders`, `purchase-orders`)
 - ✅ **Forms (partial):** 6 forms use `DocumentLineArrayService` for `removeItem` (`delivery-orders`, `sale-invoices`, `purchase-receipts`, `purchase-invoices`, `sale-reserve-invoices`, `purchase-reserve-invoices`)
   - These retain custom `calculateLine` / `onLineTaxChange` due to domain-specific clamping, simple tax logic, or divergent `priceNet` semantics.
 - ✅ **SSR runtime verified:** `serve:ssr:erp-frontend` works; `localStorage` / `window` / `document` accesses guarded with `typeof window !== 'undefined'`
-- ⚠️ **`priceNet` semantic inconsistency (architectural debt):**
-  - `sale-reserve-invoices`: `priceNet` stores **unit net** (`lc.priceNet`)
-  - `sale-invoices`, `purchase-invoices`, `purchase-reserve-invoices`: `priceNet` stores **line-level net** (`lc.lineNet`)
-  - `delivery-orders`, `purchase-receipts`: custom tax logic, no `calcLineWithIndicator`
-  - **Recommended future fix:** rename fields to `priceNetUnit` vs `priceNetLine` to avoid margin-report bugs.
+- ✅ **`priceNet` semantics unified:** The backend universally stores `priceNet` as **unit net** (`lc.priceNet`). The frontend `DocumentLineArrayService` no longer supports the dead `priceNetSemantics: 'line'` option. All commercial documents consistently treat `priceNet` as unit net price.
 
 #### Responsive table selectors
 
@@ -371,6 +555,7 @@ SCSS attribute selectors with non-ASCII characters (e.g., `td[data-label="Artíc
 - Run tests matching a name: `npx jest --testNamePattern="<description text>"`
 
 **Controller test pattern:**
+
 ```typescript
 const module: TestingModule = await Test.createTestingModule({
   controllers: [ItemsController],
@@ -379,11 +564,25 @@ const module: TestingModule = await Test.createTestingModule({
 ```
 
 **Service test pattern:**
+
 ```typescript
 const module: TestingModule = await Test.createTestingModule({
   providers: [
     ItemsService,
-    { provide: PrismaService, useValue: { item: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), count: jest.fn() }, stock: { findMany: jest.fn(), findUnique: jest.fn() }, $transaction: jest.fn((cb: any) => cb({ item: { create: jest.fn() } })) } },
+    {
+      provide: PrismaService,
+      useValue: {
+        item: {
+          findMany: jest.fn(),
+          findUnique: jest.fn(),
+          create: jest.fn(),
+          update: jest.fn(),
+          count: jest.fn(),
+        },
+        stock: { findMany: jest.fn(), findUnique: jest.fn() },
+        $transaction: jest.fn((cb: any) => cb({ item: { create: jest.fn() } })),
+      },
+    },
   ],
 }).compile();
 ```
@@ -413,11 +612,13 @@ const module: TestingModule = await Test.createTestingModule({
 ### Backend (`backend-erp/.env` — not committed)
 
 Required variables:
+
 - `DATABASE_URL` — PostgreSQL connection string
 - `JWT_SECRET` — secret for signing JWT tokens (validated at bootstrap; app crashes if missing)
 - `PORT` — server port (defaults to `3000` if omitted)
 
 Optional / production variables:
+
 - `NODE_ENV` — set to `production` to enable production CORS mode
 - `FRONTEND_URL` — required when `NODE_ENV=production`; used as the single allowed CORS origin
 - `SHADOW_DATABASE_URL` — optional, used by Prisma for migrations
@@ -452,10 +653,216 @@ Optional / production variables:
 
 - Business logic is implemented in **Spanish** (variable names, comments, UI labels).
 - Document flow: Quotation → Order → Delivery/Receipt → Invoice → Reserve Invoice.
+- **Devoluciones (`SalesReturn`, `PurchaseReturn`)** siguen el flujo estándar: `create()` → `OPEN` → `confirm()` → `CLOSED` → `cancel()`. El asiento contable y los movimientos de stock se generan en `confirm()`, no en `create()`.
 - Tax: Bolivian IVA rules; `TAX_RATE_NOMINAL` constant lives in `src/common/pricing.util.ts` and is re-exported from `src/constants.ts`.
+- **BankAccount balance:** `IncomingPayment` y `OutgoingPayment` actualizan automáticamente `bankAccount.balance` vía `applyPaymentEffects()` / `revertPaymentEffects()` dentro de la misma transacción Prisma.
+- **Entregas sin costo:** `DeliveryOrder.confirm()` lanza `BadRequestException` si ningún artículo tiene costo registrado (`totalCost <= 0`). Esto previene agujeros negros en el reconocimiento de COGS.
 - Stock movements are tracked in `StockMovement` records; never mutate stock directly — use traceability utilities in `src/common/`.
 - Code generation (e.g., `SOQ-000001`) uses PostgreSQL sequences via `src/common/code-generator.util.ts` (internally `code-generator.util.ts`).
 - **Multi-tenancy:** `Tenant` model with `tenantId` on nearly every table; `@@unique([tenantId, code])` and `@@index([tenantId])` are standard patterns.
 - **Soft deletes:** all business records use `status: 'ACTIVE' | 'INACTIVE'` instead of hard deletion.
 - **Document linking:** `DocumentLink` table enables cross-referencing between any document types for traceability.
 - **Price list hierarchy:** partners can have special price lists; if a partner has a special price list active, it takes priority over the partner group's price list. This logic is implemented in `src/common/price-resolver.util.ts`.
+
+---
+
+## Motor Contable Automático (Accounting Engine)
+
+El backend incluye un motor contable centralizado que genera asientos de diario automáticamente al confirmar/cancelar documentos comerciales.
+
+### Arquitectura
+
+- **`src/common/accounting-engine.service.ts`** — servicio central (`AccountingEngineService`) que:
+  - Asegura un **plan de cuentas universal IFRS-based** por tenant (23 cuentas en 6 clases: 1xxx Activo, 2xxx Pasivo, 3xxx Patrimonio, 4xxx Ingreso, 5xxx Costo, 6xxx Gasto).
+  - Crea y mantiene **`AccountMapping`** (mapeos de cuenta por tipo de documento + tipo de asiento).
+  - Genera **`JournalEntry`** + **`JournalEntryLine`** con estado `POSTED`. Al stornar, el asiento original pasa a `REVERSED`.
+  - Soporta **storno** automático (`createStornoEntry`) para cancelaciones.
+  - Valida partida doble (débito = crédito) antes de crear el asiento.
+
+- **`src/account-mappings/`** — módulo REST CRUD para configurar los mapeos contables:
+  - Endpoints: `GET /account-mappings`, `POST /account-mappings`, `PUT /account-mappings/:id`, `DELETE /account-mappings/:id`
+  - `POST /account-mappings/ensure-defaults` — regenera defaults del plan universal.
+  - `GET /account-mappings/lookup/by-type` — resuelve cuentas por tipo de documento.
+
+### Documentos conectados al motor contable
+
+| Documento                  | Evento      | Asiento contable                                          |
+| -------------------------- | ----------- | --------------------------------------------------------- |
+| **SaleInvoice**            | `confirm()` | AR (D) / REVENUE (C) + TAX (C)                            |
+| **SaleInvoice**            | `cancel()`  | Storno del asiento original                               |
+| **PurchaseInvoice**        | `confirm()` | INVENTORY (D) + TAX (D) / AP (C)                          |
+| **PurchaseInvoice**        | `cancel()`  | Storno del asiento original                               |
+| **IncomingPayment**        | `create()`  | BANK (D) / AR (C) o CUSTOMER_ADVANCE (C)                  |
+| **IncomingPayment**        | `cancel()`  | Storno del asiento original                               |
+| **OutgoingPayment**        | `create()`  | AP (D) o SUPPLIER_ADVANCE (D) / BANK (C)                  |
+| **OutgoingPayment**        | `cancel()`  | Storno del asiento original                               |
+| **SalesCreditNote**        | `confirm()` | REVENUE (D) + TAX (D) / AR (C)                            |
+| **SalesCreditNote**        | `cancel()`  | Storno del asiento original                               |
+| **PurchaseCreditNote**     | `confirm()` | AP (D) / INVENTORY (C) + TAX (C)                          |
+| **PurchaseCreditNote**     | `cancel()`  | Storno del asiento original                               |
+| **DeliveryOrder**          | `confirm()` | COGS (D) / INVENTORY (C) = totalCost                      |
+| **DeliveryOrder**          | `cancel()`  | Storno del asiento original                               |
+| **PurchaseReceipt**        | `confirm()` | INVENTORY (D) / GRIR (C) = totalCost                      |
+| **PurchaseReceipt**        | `cancel()`  | Storno del asiento original                               |
+| **SaleReserveInvoice**     | `confirm()` | AR (D) / REVENUE (C) + TAX (C)                            |
+| **SaleReserveInvoice**     | `cancel()`  | Storno del asiento original                               |
+| **PurchaseReserveInvoice** | `confirm()` | INVENTORY (D) + TAX (D) / AP (C)                          |
+| **PurchaseReserveInvoice** | `cancel()`  | Storno del asiento original                               |
+| **SalesReturn**            | `confirm()` | REVENUE (D) + TAX (D) + INVENTORY (D) / AR (C) + COGS (C) |
+| **SalesReturn**            | `cancel()`  | Storno del asiento original                               |
+| **PurchaseReturn**         | `confirm()` | AP (D) / INVENTORY (C) + TAX (C)                          |
+| **PurchaseReturn**         | `cancel()`  | Storno del asiento original                               |
+
+### Patrón de implementación en servicios
+
+Cada servicio conectado:
+
+1. **Inyecta** `AccountingEngineService` en el constructor.
+2. **Importa** `CommonModule` en su módulo NestJS para tener acceso al servicio.
+3. En `confirm()` / `create()` / `_confirmInTx()`:
+   - Llama `await this.accounting.ensureDefaults(tenantId, tx)`.
+   - Resuelve IDs de cuenta con **`await this.accounting.requireAccountId(tenantId, 'DOC_TYPE', 'ENTRY_TYPE', tx)`** para campos críticos (AR, REVENUE, AP, INVENTORY, BANK, COGS, GRIR). Lanza `BadRequestException` si falta el mapeo.
+   - Usa `await this.accounting.getAccountId(...)` solo para campos opcionales (TAX cuando `tax <= 0`).
+   - Construye líneas del asiento y llama `await this.accounting.createJournalEntry(tx, tenantId, { ... })`.
+4. En `cancel()`:
+   - Busca asiento original con `await this.accounting.findEntryBySource(tenantId, 'DOC_TYPE', docId, tx)`.
+   - Si existe, crea storno con `await this.accounting.createStornoEntry(tx, tenantId, originalEntry.id, { ... })`.
+
+### Plan de cuentas universal (22 cuentas)
+
+```
+1xxx — ACTIVOS
+  1100 Efectivo y equivalentes
+  1110 Bancos
+  1120 Cuentas por cobrar (Clientes)
+  1130 Anticipos a proveedores
+  1140 Inventarios
+  1150 Impuestos recuperables (IVA crédito)
+  1160 Propiedad, planta y equipo
+
+2xxx — PASIVOS
+  2100 Cuentas por pagar (Proveedores)
+  2110 Impuestos por pagar (IVA débito)
+  2120 Anticipos de clientes
+  2130 Obligaciones laborales
+  2140 Préstamos bancarios
+  2150 Mercancías recibidas no facturadas
+
+3xxx — PATRIMONIO
+  3100 Capital social
+  3110 Reservas
+  3120 Resultados acumulados
+
+4xxx — INGRESOS
+  4100 Ingresos por ventas
+  4200 Otros ingresos operacionales
+
+5xxx — COSTOS
+  5100 Costo de ventas
+  5200 Costos de producción
+
+6xxx — GASTOS
+  6100 Gastos de ventas
+  6200 Gastos administrativos
+  6300 Gastos financieros
+```
+
+### Configuración frontend
+
+- **Ruta:** `/account-mappings` (bajo Administración en el sidebar).
+- **Página:** `pages/account-mappings/` — tabla con selector inline de cuentas contables por tipo de documento.
+- **Labels amigables:** `SALE_INVOICE` → "Factura de Venta", etc.
+- **Botón "Restaurar Defaults"**: regenera el plan de cuentas y mapeos por defecto.
+- **Guard:** requiere permiso `account-mappings:view`.
+
+### Tests
+
+Todos los `.spec.ts` de servicios conectados incluyen un mock de `AccountingEngineService`:
+
+```typescript
+{ provide: AccountingEngineService, useValue: {
+  ensureDefaults: jest.fn().mockResolvedValue(undefined),
+  getAccountId: jest.fn().mockResolvedValue(99),
+  createJournalEntry: jest.fn().mockResolvedValue({ id: 1, code: 'AST-000001' }),
+  createStornoEntry: jest.fn().mockResolvedValue({ id: 2, code: 'AST-000002' }),
+  findEntryBySource: jest.fn().mockResolvedValue(null),
+}}
+```
+
+---
+
+## Campos Definidos por el Usuario (UDF) — SAP B1 Style
+
+### Arquitectura
+
+El ERP replica el patrón SAP Business One para documentos de marketing:
+
+- Cada tabla de documento conserva su identidad física (no se unificó en una sola tabla).
+- Todas las cabeceras comerciales tienen `objectType DocumentType` (equivalente a `ObjType` de SAP B1).
+- Todas las cabeceras y líneas comerciales tienen `customFields Json? @default("{}")` (PostgreSQL JSONB nativo).
+- Los valores UDF se almacenan directamente en JSONB de cada tabla (rápido, indexable con GIN).
+- Los metadatos de UDFs (qué campos existen, su tipo, validaciones) viven en la tabla `UserDefinedField`.
+
+### Tablas con UDFs habilitados
+
+**Cabeceras comerciales (14):**
+`SalesQuotation`, `SalesOrder`, `DeliveryOrder`, `SaleReserveInvoice`, `SaleInvoice`, `PurchaseQuotation`, `PurchaseOrder`, `PurchaseReceipt`, `PurchaseInvoice`, `PurchaseReserveInvoice`, `SalesReturn`, `SalesCreditNote`, `PurchaseReturn`, `PurchaseCreditNote`
+
+**Líneas comerciales (14):**
+Todos los modelos `*Item` correspondientes a las cabeceras anteriores.
+
+### Modelo `UserDefinedField`
+
+```prisma
+model UserDefinedField {
+  id          Int
+  tenantId    Int
+  tableName   String   // "SaleInvoice", "Item", "Partner"...
+  fieldName   String   // "nroContrato"
+  fieldLabel  String   // "Número de Contrato"
+  fieldType   String   // "TEXT" | "NUMBER" | "DATE" | "BOOLEAN" | "SELECT"
+  fieldConfig Json?    // { maxLength: 50, options: [...] }
+  isRequired  Boolean
+  isActive    Boolean
+  appliesTo   String   // "HEADER" | "LINE"
+  order       Int
+}
+```
+
+### API REST
+
+- `GET /udf?tableName=SaleInvoice` — lista UDFs activos
+- `POST /udf` — crea un UDF
+- `PUT /udf/:id` — actualiza un UDF
+- `DELETE /udf/:id` — soft delete (desactiva)
+
+### Cómo propagar customFields en un servicio nuevo
+
+Cuando crees o actualices un documento comercial, incluye `customFields` en el payload Prisma:
+
+```typescript
+await tx.saleInvoice.create({
+  data: {
+    tenantId,
+    customFields: dto.customFields ?? {},
+    // ... resto de campos
+  },
+});
+```
+
+### Índices GIN recomendados (post-migración)
+
+```sql
+CREATE INDEX idx_sale_invoice_custom ON "SaleInvoice" USING GIN (customFields);
+-- repetir para cada tabla comercial según necesidad de búsqueda por UDF
+```
+
+### Estado de implementación
+
+- ✅ Schema Prisma: `objectType`, `customFields`, `UserDefinedField`, `PurchaseReserveInvoice`
+- ✅ Migración aplicada a PostgreSQL
+- ✅ DTOs actualizados para aceptar `customFields`
+- ✅ Módulo UDF creado (`src/udf/`)
+- ✅ Tests del módulo UDF pasando
+- ⚠️ Servicios: propagación de `customFields` parcial (demostrada en sales-quotations, sales-orders, sale-invoices; pendiente en los demás)
+- ⏳ Frontend: componente `UdfFormSection` y modelos pendientes
