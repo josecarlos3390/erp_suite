@@ -141,7 +141,8 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
 
 ## Backend Type Design Rules (Post-Refactor)
 
-> **Context:** Apr 2025 — removed 1,629 `as any` casts, fixed implicit-`any` parameters, enforced strict typing across 78 test suites / 330 tests.
+> **Context:** Apr 2025 — removed 1,629 `as any` casts, fixed implicit-`any` parameters, enforced strict typing across 78 test suites / 330 tests.  
+> **Update Apr 2026:** `strictNullChecks: true` enabled. All `as any` eliminated from `src/` and `prisma/` scripts. Current count: **0 `as any` in production code**.  
 > **Goal:** keep the backend at `0 errors, 0 any-casts`.
 
 ### 1. Zero `as any` policy
@@ -187,6 +188,27 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
   function mapDocument(doc: any): any { ... }
   ```
 
+#### Discriminated unions for dynamic Prisma delegates
+
+When a utility must call different Prisma models dynamically (e.g. `tx.salesOrderItem.update` vs `tx.purchaseOrderItem.update`), **do not** use `unknown` args + `as any` inside a `switch`. Use a discriminated union:
+
+```typescript
+type LineModelUpdatePayload =
+  | { model: 'salesQuotationItem'; args: Prisma.SalesQuotationItemUpdateArgs }
+  | { model: 'salesOrderItem';      args: Prisma.SalesOrderItemUpdateArgs }
+  | { model: 'purchaseOrderItem';   args: Prisma.PurchaseOrderItemUpdateArgs };
+
+async function updateLineModel(tx: TX, payload: LineModelUpdatePayload): Promise<void> {
+  switch (payload.model) {
+    case 'salesQuotationItem': await tx.salesQuotationItem.update(payload.args); break;
+    case 'salesOrderItem':      await tx.salesOrderItem.update(payload.args);      break;
+    case 'purchaseOrderItem':   await tx.purchaseOrderItem.update(payload.args);   break;
+  }
+}
+```
+
+This pattern (used in `src/common/traceability.util.ts`) gives TypeScript exact narrowing inside each `case` branch with **zero casts**.
+
 ### 6. Test mocks
 
 - Mocked providers in `*.spec.ts` should be fully typed objects:
@@ -197,10 +219,13 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
   ```
 - Avoid `useValue: {}` or `useValue: { findOne: jest.fn() }` without typing.
 
-### 7. Current lint status
+### 7. Current lint & test status
 
 - `npm run lint` → `0 errors, ~80 warnings` (unused imports/variables — non-blocking).
-- `npm test` → **57 suites, 175 tests** passing (post-strictNullChecks; some legacy suites were removed or consolidated).
+- `npm run build` → `0 errors`.
+- `npm test` → **57 suites, 178 tests** passing.
+- `as any` count in `src/` → **0**.
+- `as any` count in `prisma/` scripts → **0**.
 
 ---
 
@@ -235,7 +260,7 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
 | 2 | **Accumulator arrays need real interfaces** | ✅ Done | `purchase-orders`: `LineWithIndicatorResult[]`; `sales-orders`: `SalesOrderLineCalc[]`; `sales-quotations`: `SalesQuotationLineResult[]`; `purchase-quotations`: `PurchaseQuotationLineResult[]`; `sale-reserve-invoices`: `SaleReserveInvoiceLine[]`. |
 | 3 | **Tax-indicator temporaries** | ✅ Done | `purchase-invoices.service.ts`: `let riTaxInd: TaxIndicator | null = null` and `let siTaxInd: TaxIndicator | null = null`. |
 | 4 | **`BaseDocumentDto.dueDate`** | ✅ Done | Subclasses with `dueDate?: string` tightened to `dueDate?: string | null` to match the DB schema (`DateTime?`) and the base DTO. |
-| 5 | **Test mocks still use `as any`** | ✅ Partial | Payment-method enums typed (`PaymentMethod.CASH`, `PaymentMethod.BANK_TRANSFER`). Journal-entry DTOs typed. PrismaService mocks left as `as any` because `jest.fn()` mocks are structurally incompatible with Prisma's generated types; `as unknown as PrismaService` breaks `mockResolvedValue` access. |
+| 5 | **Test mocks still use `as any`** | ✅ Done | All spec files use `as unknown as PrismaService` or `satisfies Partial<PrismaService>` for mocks. No `as any` remains in tests. |
 
 ---
 
