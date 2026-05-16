@@ -338,8 +338,151 @@ This pattern (used in `src/common/traceability.util.ts`) gives TypeScript exact 
 
 ### 8. Current lint warning count (post-cleanup)
 
-- **Frontend:** `ng lint` → `0 errors, 126 warnings` (mostly unused imports/variables — safe to ignore or clean gradually).
-- **Backend:** `npm run lint` → `0 errors, 78 warnings` (same category).
+- **Frontend:** `ng lint` → `0 errors, ~0 warnings` (`: any` cleanup reduced most noise; remaining are unused imports/variables — safe to ignore or clean gradually).
+- **Backend:** `npm run lint` → `0 errors, ~80 warnings` (same category).
+
+---
+
+## Frontend Zero `: any` Migration (Apr 2026)
+
+> **Context:** `strict: true` en Angular 19. Se eliminaron ~318 ocurrencias de `: any` en el frontend, quedando solo 2 intencionales en `luna-data-table.types.ts`. `ng build` y `ng lint` limpios.  
+> **Goal:** mantener `ng build` en verde sin usar `: any` como atajo.
+
+### 1. Política de `any`
+
+| Situación | Qué hacer |
+|-----------|-----------|
+| Modelo de dominio le falta un campo que el backend envía | **Agregar el campo opcional al interface** (`baseDocType?: string \| null`) en vez de `(line as any).baseDocType` |
+| Builder de líneas recibe objetos heterogéneos (modelo + campos extra del draft) | Usar `unknown` + `Record<string, unknown>` + bracket access (ver §2) |
+| Callback genérico de tabla (`format`, `badgeVariant`) | **Excepción aceptada:** `any` está permitido solo en `LunaColumn.format` y `LunaColumn.badgeVariant` porque `value` puede ser cualquier celda de cualquier modelo |
+| Errores HTTP (`err?.error?.message`) | Tipar `error` como `unknown`, castear a `{ error?: { message?: string } }` antes de acceder |
+| Catálogo de items (`Item[]`) vs resultados de búsqueda (`ItemSearchResult[]`) | Tipar el array del componente como `ItemSearchResult[]` en vez de `Item[]`; si necesitas `createdAt`, extiende `ItemSearchResult` o usa `Item` directamente en el servicio |
+| Campos dinámicos JSON (`customFields`) | Usar `Record<string, any>` en el interface del modelo (es la única excepción de modelo) porque el formulario construye un `FormGroup` dinámico |
+
+### 2. Patrón `buildLineGroup` — objetos heterogéneos sin `any`
+
+Cuando un builder de líneas debe aceptar tanto un modelo canónico (ej. `PurchaseInvoiceItem`) como un objeto enriquecido por el backend (ej. `PurchaseInvoiceDraftItem` con `description`, `quotationCode`, etc.), **nunca** uses `l: any`.
+
+```typescript
+// ✅ Correcto
+private buildLineGroup(l: unknown) {
+  const li = l as Record<string, unknown>;
+  const price = Number(li['price']);
+  const qty   = Number(li['quantity']);
+
+  return this.fb.group({
+    itemId:   [li['itemId'], Validators.required],
+    quantity: [qty, [Validators.required, Validators.min(0.001)]],
+    price:    [price],
+    // ...
+    baseDocType: [(li['baseDocType'] as string | null | undefined) ?? null],
+    baseDocId:   [(li['baseDocId']   as number | null | undefined) ?? null],
+    customFields: this.fb.group((li['customFields'] as Record<string, unknown> | undefined) ?? {}),
+  });
+}
+
+// ❌ Prohibido
+private buildLineGroup(l: any) { ... }
+```
+
+**Ventajas:**
+- Evita `TS4111` (index signature access) porque `Record<string, unknown>` sí tiene índice string.
+- Evita `TS2339` (missing property) porque no declaras que `l` sea `PurchaseInvoiceItem`.
+- El cast es explícito y localizado; no contamina el resto del método.
+
+### 3. Extender modelos canónicos en vez de `any`
+
+Si un formulario o servicio necesita un campo que no existe en el interface, **agrégalo como opcional**:
+
+```typescript
+// ✅ Correcto
+export interface PurchaseInvoiceItem {
+  // ... campos existentes ...
+  lineNum?:     number | null;
+  baseDocType?: string | null;
+  baseDocId?:   number | null;
+  baseLineId?:  number | null;
+  baseLineNum?: number | null;
+  lineStatus?:  string;
+}
+
+// ❌ Prohibido
+(draft as any).baseDocType = 'PURCHASE_ORDER';
+```
+
+### 4. Draft interfaces explícitas
+
+Los servicios que generan borradores multi-fuente deben declarar su propia interfaz de draft:
+
+```typescript
+export interface PurchaseInvoiceDraft {
+  warehouseId?: number | null;
+  supplierId?:  number;
+  hasExpired?:  boolean;
+  expiredCodes?: string[];
+  partner?:     { id: number; name: string };
+  items?:       PurchaseInvoiceDraftItem[];
+}
+
+export interface PurchaseInvoiceDraftItem {
+  itemId:          number;
+  itemName?:       string;
+  description?:    string;
+  itemCode?:       string;
+  price?:          number | null;
+  // ... campos de traceabilidad opcionales ...
+  quotationItemId?: number;
+  quotationId?:     number;
+  orderItemId?:     number;
+  orderId?:         number;
+  receiptItemId?:   number;
+  receiptId?:       number;
+}
+```
+
+Esto permite que `buildLineGroup` reciba `PurchaseInvoiceDraftItem | PurchaseInvoiceItem` sin caer en `any`.
+
+### 5. Type guards para fechas
+
+Cuando `date` puede ser `string`, `Date` o `unknown`:
+
+```typescript
+// ✅ Correcto
+const d = typeof value === 'string' || value instanceof Date
+  ? new Date(value)
+  : null;
+
+// ❌ Prohibido
+const d = new Date(value as any);
+```
+
+### 6. Errores HTTP tipados
+
+```typescript
+// ✅ Correcto
+.subscribe({
+  next: () => { ... },
+  error: (err: unknown) => {
+    const msg = (err as { error?: { message?: string } }).error?.message ?? 'Error desconocido';
+    this.toast.error(msg);
+  },
+})
+
+// ❌ Prohibido
+error: (err: any) => { this.toast.error(err?.error?.message); }
+```
+
+### 7. Excepción arquitectónica: `LunaDataTable`
+
+`LunaColumn.format` y `LunaColumn.badgeVariant` retienen `any` porque la tabla es genérica y forzar `unknown` obligaría a castear en ~40 listas de documentos. Esta excepción está **documentada y aceptada**; no requiere acción.
+
+```typescript
+export interface LunaColumn<T = unknown> {
+  // ...
+  format?:      (value: any, row: T) => string;
+  badgeVariant?: (value: any, row: T) => LunaBadgeVariant;
+}
+```
 
 ---
 
@@ -891,3 +1034,66 @@ CREATE INDEX idx_sale_invoice_custom ON "SaleInvoice" USING GIN (customFields);
 - ✅ Tests del módulo UDF pasando
 - ⚠️ Servicios: propagación de `customFields` parcial (demostrada en sales-quotations, sales-orders, sale-invoices; pendiente en los demás)
 - ⏳ Frontend: componente `UdfFormSection` y modelos pendientes
+
+---
+
+## Frontend Tech-Debt & Improvement Opportunities (Apr 2026)
+
+> Oportunidades descubiertas durante la eliminación de `: any` en el frontend. No son bloqueantes (build limpio), pero mejorarían la mantenibilidad.
+
+| # | Oportunidad | Status | Notas |
+|---|-------------|--------|-------|
+| 1 | **Tipar servicios de draft incompletos** | ✅ Done | 11 métodos en 4 servicios tipados |
+| 2 | **Unificar `ItemSearchResult` vs `Item`** | ✅ Done | `ItemSearchResult` movido a `models/item.model.ts`; `getAll()` retorna `ItemSearchResult[]`; `uomCodeForItem` es genérico |
+| 3 | **Completar migración a `DocumentLineArrayService`** | 🔄 Deuda técnica | Requiere reconciliar `priceNet` line-net vs unit-net en 5 formularios — cambio arquitectónico grande |
+| 4 | **Tipar `LunaColumn` sin `any`** | ⚠️ Excepción permanente | Intentado: cambiar a `unknown` rompe ~28 listas con errores mecánicos. Revertido; documentado como excepción arquitectónica aceptada |
+| 5 | **`Record<string, any>` → `Record<string, unknown>` en modelos** | ✅ Done | 22 modelos actualizados; build limpio |
+| 6 | **Limpiar warnings de lint** | ✅ Done | `ng lint` pasa con 0 errores, 0 warnings |
+
+### 1. Tipar servicios de draft incompletos ✅
+
+**Servicios afectados y cambios:**
+- `purchase-quotations.service.ts`: `getDraft()` → `Observable<PurchaseOrderDraft>`
+- `sales-quotations.service.ts`: `getDraftMultiQuotation()` → `Observable<SalesOrderDraft>`
+- `delivery-orders.service.ts`: 5 métodos tipados (`SaleInvoiceDraft`, `SaleReserveInvoiceDraft`, `DeliveryOrderDraft`)
+- `purchase-receipts.service.ts`: 4 métodos tipados (`PurchaseReceiptDraft`, `PurchaseInvoiceDraft`)
+
+**Campos agregados a drafts existentes:**
+- `DeliveryOrderDraft`: `hasExpired`, `expiredCodes`, `partner`
+
+### 2. Unificar `ItemSearchResult` vs `Item` ✅
+
+- `ItemSearchResult` ahora vive en `src/app/models/item.model.ts` y se exporta desde allí.
+- `ItemsService.getAll()` retorna honestamente `ItemSearchResult[]` en vez de `Item[]` con cast falso.
+- `item-search-modal.component.ts` importa `ItemSearchResult` desde `@models/item.model`.
+- `uomCodeForItem()` en `document-form.utils.ts` ahora acepta un tipo genérico que no requiere `createdAt` ni campos completos de `Item`.
+- Todos los formularios que usan `catalogItems` ya estaban migrados a `ItemSearchResult[]` del trabajo previo.
+
+### 3. Completar migración a `DocumentLineArrayService` 🔄
+
+**Por qué no se ejecutó:**
+- 5 de 6 formularios usan `priceNet` como *line net* (deuda `ARCH-DEBT-001`), mientras que `sale-reserve-invoices` usa *unit net* (el estándar unificado).
+- Migrar requiere cambiar la semántica de `priceNet` en `sale-invoices`, `purchase-invoices`, `purchase-receipts`, `delivery-orders` y `purchase-reserve-invoices`.
+- Eso es una refactorización arquitectónica con alto riesgo de regresión en cálculos de totales, impuestos y descuentos.
+
+**Recomendación:** atacar solo cuando se decida unificar `priceNet` a unit-net en todo el frontend.
+
+### 4. Tipar `LunaColumn` sin `any` ⚠️ Excepción permanente
+
+**Intento realizado (Apr 2026):**
+- Se cambió `any` → `unknown` en `format` y `badgeVariant`.
+- La build generó ~40 errores en 28 listas.
+- Los errores son mecánicos (`v ?? '—'`, `v?.name`, `new Date(v)`, `this.label(v)`) pero requieren tocar casi todas las listas del sistema.
+- **Decisión:** revertir a `any` y documentar como la **única excepción intencional** en el frontend. El valor de `unknown` aquí es nulo porque `getCellValue()` resuelve paths dinámicos (`partner.name`) y TypeScript no puede inferir el tipo leaf.
+
+### 5. `Record<string, any>` → `Record<string, unknown>` en modelos ✅
+
+- 22 ocurrencias cambiadas en `src/app/models/*.model.ts`.
+- Build pasa limpio porque los consumidores (formularios con `fb.group()`) aceptan `unknown` sin problemas.
+
+### 6. Estado actual post-refactor
+
+- `ng build` → ✅ 0 errores.
+- `ng lint` → ✅ 0 errores, 0 warnings.
+- `: any` en `src/app/` → **2 intencionales** en `luna-data-table.types.ts` (excepción documentada).
+- Tests de frontend → ✅ 268 tests pasando (Karma + Jasmine).
