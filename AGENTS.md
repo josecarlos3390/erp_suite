@@ -33,7 +33,7 @@ npm run format
 
 # Lint (ESLint v9 flat config, auto-fix)
 npm run lint
-# Note: 90 warnings remain (unused imports/variables) — safe to ignore or clean gradually
+# Note: ~0 warnings remain (unused imports/variables cleaned in Apr 2026)
 
 # Run ALL unit tests
 npm test
@@ -80,7 +80,7 @@ npm run watch
 
 # Lint (ESLint v9 flat config + Angular ESLint + Prettier)
 npm run lint
-# Note: 126 warnings remain (unused imports/variables) — non-blocking
+# Note: ~0 warnings remain (unused imports/variables cleaned in Apr 2026)
 
 # Format code (Prettier)
 npm run format
@@ -114,9 +114,9 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
 
 - **Pre-commit** `.husky/pre-commit` + `.lintstagedrc.js`:
   - On commit of any `src/**/*.{ts,tsx}`: `npm run lint` (ESLint v9 flat config, auto-fix)
-  - ~5-10 seconds
+  - ~10-30 seconds (varía según cantidad de archivos staged)
 - **Pre-push** `.husky/pre-push`:
-  - `npm test` (Jest, 330 tests)
+  - `npm test` (Jest, 191 tests)
   - ~30-60 seconds
 - **Install:** already initialized via `npx husky init` after `npm install`
 
@@ -124,9 +124,9 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
 
 - **Pre-commit** `.husky/pre-commit` + `.lintstagedrc.js`:
   - On commit of any `src/**/*.{ts,html,scss}`: `npm run lint` (ESLint v9 + Angular ESLint + Prettier)
-  - ~10-20 seconds
+  - ~20-60 seconds (varía según cantidad de archivos staged)
 - **Pre-push** `.husky/pre-push`:
-  1. `npx ng test --watch=false --browsers=ChromeHeadless` (Karma + Jasmine, 268 tests)
+  1. `npx ng test --watch=false --browsers=ChromeHeadless` (Karma + Jasmine, 524 tests)
   2. `npm run build` (production build verification)
   - ~2-4 minutes
 - **Install:** already initialized via `npx husky init` after `npm install`
@@ -143,6 +143,7 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
 
 > **Context:** Apr 2025 — removed 1,629 `as any` casts, fixed implicit-`any` parameters, enforced strict typing across 78 test suites / 330 tests.  
 > **Update Apr 2026:** `strictNullChecks: true` enabled. All `as any` eliminated from `src/` and `prisma/` scripts. Current count: **0 `as any` in production code**.  
+> **Update Apr 2026 (batch/serial phase 2+3):** Lint clean, build clean, 58 suites / 191 tests passing.  
 > **Goal:** keep the backend at `0 errors, 0 any-casts`.
 
 ### 1. Zero `as any` policy
@@ -221,11 +222,12 @@ This pattern (used in `src/common/traceability.util.ts`) gives TypeScript exact 
 
 ### 7. Current lint & test status
 
-- `npm run lint` → `0 errors, ~80 warnings` (unused imports/variables — non-blocking).
+- `npm run lint` → `0 errors, ~0 warnings` (unused imports/variables cleaned).
 - `npm run build` → `0 errors`.
-- `npm test` → **57 suites, 178 tests** passing.
+- `npm test` → **58 suites, 191 tests** passing.
 - `as any` count in `src/` → **0**.
 - `as any` count in `prisma/` scripts → **0**.
+- `as any` count in `*.spec.ts` → **0** (all mocks use `as unknown as` or `satisfies Partial<T>`).
 
 ---
 
@@ -475,6 +477,14 @@ error: (err: any) => { this.toast.error(err?.error?.message); }
 ### 7. Excepción arquitectónica: `LunaDataTable`
 
 `LunaColumn.format` y `LunaColumn.badgeVariant` retienen `any` porque la tabla es genérica y forzar `unknown` obligaría a castear en ~40 listas de documentos. Esta excepción está **documentada y aceptada**; no requiere acción.
+
+### 8. `as any` en tests (`.spec.ts`)
+
+Se permiten `as any` **únicamente** en archivos de prueba cuando se mockean respuestas de `HttpClient` o servicios con objetos parciales:
+```typescript
+svc.getById.and.returnValue(of(doc) as any);
+```
+Esta excepción es práctica porque los mocks raramente cumplen el tipo completo del `Observable`. En código fuente (`.ts` sin `.spec`) está **prohibido**.
 
 ```typescript
 export interface LunaColumn<T = unknown> {

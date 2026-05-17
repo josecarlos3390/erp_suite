@@ -44,8 +44,8 @@
 
 | # | Módulo | Descripción | Estado |
 |---|--------|-------------|--------|
-| ☐ 3.1 | **Lotes** | Campo `batchNumber` + `expiryDate` en `StockMovement` y líneas de documento; tracking en kardex. | Pendiente |
-| ☐ 3.2 | **Números de serie** | Campo `serialNumber` (1 unidad = 1 serie); validación de unicidad por almacén. | Pendiente |
+| ✅ 3.1 | **Lotes** | Campo `batchId` + `expiryDate` en `StockMovement` y líneas de documento; tracking en kardex. | ✅ Modelo `Batch` con `expiryDate`. `batchId` en todas las líneas de documento y en `StockMovement`. |
+| ✅ 3.2 | **Números de serie** | Campo `serialNumberId` (1 unidad = 1 serie); validación de unicidad por almacén. | ✅ Modelo `SerialNumber` con `warehouseId` y `status`. `serialNumberId` en líneas de documento y `StockMovement`. Validación `validateSerialNumber()` verifica disponibilidad y almacén. |
 | ✅ 3.3 | **Kardex formal** | Reporte independiente: movimientos de un artículo con saldo acumulado por fecha. | ✅ Endpoint `GET /items/:id/kardex`. Frontend `/kardex/:itemId` con tabla de movimientos y saldo acumulado. |
 | ☐ 3.4 | **Importación masiva** | Upload CSV/Excel para artículos, partners y stock inicial; con validación de errores. | Pendiente |
 
