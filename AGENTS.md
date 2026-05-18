@@ -1316,4 +1316,26 @@ El seed incluye una sección de reconciliación que:
 
 **Tests:** backend 60 suites / 321 tests pasando. Frontend `ng build` sin errores; specs de lista y form de delivery orders pasan.
 
+### 7. Fix: PurchaseReceipts y PurchaseInvoices con totales incompletos
+
+**Archivos:** `src/purchase-receipts/purchase-receipts.service.ts`, `src/purchase-invoices/purchase-invoices.service.ts`  
+**Problema:** las rutas multi-origen y desde factura reserva solo actualizaban `totalCost`/`totalWeight`, dejando `subtotal`, `tax`, `total` y `totalDiscount` en `0`/`null`.
+
+**PurchaseReceipts — 3 rutas afectadas:**
+- `createFromMultiOrder`: update solo con `totalCost` + `totalWeight`.
+- `createFromReserveInvoice`: update solo con `totalCost` + `totalWeight`.
+- `createFromMultiQuotation`: update solo con `totalCost` + `totalWeight`.
+
+**PurchaseInvoices — 3 rutas afectadas:**
+- `createFromReceipt`: faltaba `totalDiscount` en el `create`.
+- `createFromReserveInvoice`: faltaba `totalDiscount` en el `create`.
+- `createFromMultiReceipt`: faltaban `totalDiscount`, `totalCost`, `totalWeight` en el `create`.
+
+**Solución:**
+- Nuevo helper `recalculatePurchaseReceiptTotals(tx, receiptId)` que lee líneas de BD, recalcula todos los totales de cabecera (incluyendo `subtotalInBaseCurrency`, etc.) y actualiza el header.
+- Reemplazados los 3 bloques manuales incompletos de PurchaseReceipts con el helper.
+- Agregados los campos faltantes directamente en los `create` de PurchaseInvoices.
+
+**Tests:** backend 60 suites / 321 tests pasando.
+
 ---
