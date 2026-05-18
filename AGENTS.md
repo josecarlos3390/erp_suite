@@ -116,7 +116,7 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
   - On commit of any `src/**/*.{ts,tsx}`: `npm run lint` (ESLint v9 flat config, auto-fix)
   - ~10-30 seconds (varía según cantidad de archivos staged)
 - **Pre-push** `.husky/pre-push`:
-  - `npm test` (Jest, 191 tests)
+  - `npm test` (Jest, 321 tests)
   - ~30-60 seconds
 - **Install:** already initialized via `npx husky init` after `npm install`
 
@@ -224,7 +224,7 @@ This pattern (used in `src/common/traceability.util.ts`) gives TypeScript exact 
 
 - `npm run lint` → `0 errors, ~0 warnings` (unused imports/variables cleaned).
 - `npm run build` → `0 errors`.
-- `npm test` → **58 suites, 191 tests** passing.
+- `npm test` → **60 suites, 321 tests** passing.
 - `as any` count in `src/` → **0**.
 - `as any` count in `prisma/` scripts → **0**.
 - `as any` count in `*.spec.ts` → **0** (all mocks use `as unknown as` or `satisfies Partial<T>`).
@@ -506,7 +506,7 @@ Runs on `ubuntu-latest` with Node 20:
 
 1. `npm ci`
 2. `npm run lint` (ESLint v9 flat config)
-3. `npm test` (Jest, 330 tests)
+3. `npm test` (Jest, 321 tests)
 
 ### Frontend (`erp-frontend/.github/workflows/ci.yml`)
 
@@ -1107,3 +1107,194 @@ CREATE INDEX idx_sale_invoice_custom ON "SaleInvoice" USING GIN (customFields);
 - `ng lint` → ✅ 0 errores, 0 warnings.
 - `: any` en `src/app/` → **2 intencionales** en `luna-data-table.types.ts` (excepción documentada).
 - Tests de frontend → ✅ 268 tests pasando (Karma + Jasmine).
+
+---
+
+## Flujo de Documentos y Lógica de Stock (Document Flow & Stock Logic)
+
+> **Contexto:** Abr 2026 — tras enriquecer `prisma/seed.ts` con datos transaccionales y corregir inconsistencias en servicios.  
+> Esta sección documenta el comportamiento exacto de cada documento comercial al confirmarse/cerrarse, crítico para mantener consistencia entre seed, tests y lógica de negocio.
+
+### Estados de documentos comerciales
+
+| Documento | Estados posibles | Estado final tras confirmar |
+|-----------|------------------|----------------------------|
+| `SalesQuotation` | `DRAFT`, `SENT`, `PARTIAL`, `ORDERED`, `OPEN`, `CLOSED`, `CANCELLED` | `CLOSED` (cuando se convierte en pedido) |
+| `SalesOrder` | `OPEN`, `CONFIRMED`, `CLOSED`, `CANCELLED` | `CLOSED` (cuando se entrega completamente) |
+| `DeliveryOrder` | `OPEN`, `CLOSED`, `CANCELLED` | `CLOSED` |
+| `SaleInvoice` | `OPEN`, `CLOSED`, `CANCELLED` | `CLOSED` |
+| `PurchaseQuotation` | `OPEN`, `CLOSED`, `CANCELLED` | `CLOSED` |
+| `PurchaseOrder` | `OPEN`, `CONFIRMED`, `CLOSED`, `CANCELLED` | `CLOSED` |
+| `PurchaseReceipt` | `OPEN`, `CLOSED`, `CANCELLED` | `CLOSED` |
+| `PurchaseInvoice` | `OPEN`, `CLOSED`, `CANCELLED` | `CLOSED` |
+| `IncomingPayment` | `DRAFT`, `POSTED`, `CANCELLED` | `POSTED` |
+| `OutgoingPayment` | `DRAFT`, `POSTED`, `CANCELLED` | `POSTED` |
+
+**Regla de oro:** un documento en estado `CLOSED` o `POSTED` ya no admite modificaciones estructurales; solo se puede cancelar (`cancel()`).
+
+### Flujo completo de ventas
+
+```
+SalesQuotation (SOQ) → SalesOrder (SO) → DeliveryOrder (DO) → SaleInvoice (SI)
+```
+
+1. **Crear SOQ** → status `OPEN`. Las líneas tienen `openQty = qty`, `orderedQty = 0`.
+2. **Crear SO desde SOQ** → SOQ pasa a `CLOSED` (si se ordena todo). Líneas de SOQ: `orderedQty = qty`, `openQty = 0`. Líneas de SO: `openQty = qty`, `deliveredQty = 0`.
+3. **Crear DO desde SO** → SO: `deliveredQty` incrementa, `openQty` decrementa. DO: `openQty = qty`. Se crea `StockMovement` tipo `SALE_DELIVERY` y se reduce `Stock.stockPhysical`.
+4. **Confirmar DO** → DO pasa a `CLOSED`. Si todas las líneas del SO tienen `openQty <= 0`, el SO también pasa a `CLOSED`.
+5. **Crear SI desde DO** → SI: `paidAmount = 0`, `balanceDue = total`, status `OPEN`. Líneas de DO: `invoicedQty = qty`. Líneas de SI: `openQty = qty`.
+6. **Confirmar SI** → SI pasa a `CLOSED`.
+   - ✅ **Si SI tiene `deliveryOrderItemId` (viene de entrega previa): NO reduce stock físico de nuevo.** El stock ya salió en el DO.
+   - ✅ **Si SI NO tiene entrega previa (venta directa): SÍ reduce stock físico** (`StockMovement` tipo `SALE_INVOICE` + `upsertStock` con `deltaPhysical`).
+   - En ambos casos, si la línea viene de un pedido (`orderItemId`), libera `deltaCommitted`.
+7. **Crear IncomingPayment contra SI** → status `POSTED`. Actualiza `SaleInvoice.paidAmount` y `balanceDue`. Actualiza `Partner.incomingBalance`. Actualiza `BankAccount.balance`.
+
+### Flujo completo de compras
+
+```
+PurchaseQuotation (POQ) → PurchaseOrder (PO) → PurchaseReceipt (PR) → PurchaseInvoice (PI)
+```
+
+1. **Crear POQ** → status `OPEN`.
+2. **Crear PO desde POQ** → POQ pasa a `CLOSED`.
+3. **Crear PR desde PO** → PO: `receivedQty` incrementa, `openQty` decrementa. PR: `openQty = qty`.
+4. **Confirmar PR** → PR pasa a `CLOSED`. Se crea `StockMovement` tipo `PURCHASE_RECEIPT` y se incrementa `Stock.stockPhysical`. Si el artículo requiere lote/serie y no se especificó, se crea un `Batch` automáticamente.
+5. **Crear PI desde PR** → PI: `paidAmount = 0`, `balanceDue = total`. Líneas de PR: `invoicedQty = qty`.
+6. **Confirmar PI** → PI pasa a `CLOSED`.
+   - ✅ **Si PI tiene `purchaseReceiptItemId` (viene de recepción previa): NO mueve stock de nuevo.** El stock ya entró en el PR.
+   - ✅ **Si PI NO tiene recepción previa: SÍ incrementa stock físico** y decrementa `stockOrdered`.
+7. **Crear OutgoingPayment contra PI** → status `POSTED`. Actualiza `PurchaseInvoice.paidAmount` y `balanceDue`. Actualiza `Partner.outgoingBalance`. Actualiza `BankAccount.balance`.
+
+### Movimientos de stock por tipo de documento
+
+| Documento | Evento | `StockMovement.type` | Efecto en `Stock` |
+|-----------|--------|----------------------|-------------------|
+| `DeliveryOrder` | `confirm()` | `SALE_DELIVERY` | `deltaPhysical` −qty |
+| `SaleInvoice` | `confirm()` (sin DO previa) | `SALE_INVOICE` | `deltaPhysical` −qty |
+| `SaleInvoice` | `cancel()` | `SALE_INVOICE_CANCEL` | `deltaPhysical` +qty |
+| `PurchaseReceipt` | `confirm()` | `PURCHASE_RECEIPT` | `deltaPhysical` +qty |
+| `PurchaseInvoice` | `confirm()` (sin PR previa) | `PURCHASE_INVOICE` | `deltaPhysical` +qty, `deltaOrdered` −qty |
+| `StockTransfer` | `confirm()` | `STOCK_TRANSFER_OUT` + `STOCK_TRANSFER_IN` | Origen −qty, Destino +qty |
+| `StockAdjustment` | `confirm()` (INCREASE) | `MANUAL_IN` | `deltaPhysical` +qty |
+| `StockAdjustment` | `confirm()` (DECREASE) | `MANUAL_OUT` | `deltaPhysical` −qty |
+| `StockEntry` | `confirm()` | `MANUAL_IN` | `deltaPhysical` +qty |
+| `StockExit` | `confirm()` | `MANUAL_OUT` | `deltaPhysical` −qty |
+| `SalesReturn` | `confirm()` | `SALES_RETURN` | `deltaPhysical` +qty |
+| `PurchaseReturn` | `confirm()` | `PURCHASE_RETURN` | `deltaPhysical` −qty |
+| `SalesCreditNote` | `confirm()` | `SALES_CREDIT_NOTE` | `deltaPhysical` +qty |
+| `PurchaseCreditNote` | `confirm()` | `PURCHASE_CREDIT_NOTE` | `deltaPhysical` −qty |
+
+### Trazabilidad por lote (LOT) y serie (SERIAL)
+
+- **`Batch`** — lote físico vinculado a un `itemId`. Tiene `manufactureDate` y `expiryDate`.
+- **`StockBatch`** — stock por lote y almacén. Unique: `[tenantId, batchId, warehouseId]`.
+- **`SerialNumber`** — número de serie único por `itemId`. Tiene `status` (`AVAILABLE`, `SOLD`) y `warehouseId` directo.
+
+**Comportamiento por documento:**
+
+| Documento | LOT tracking | SERIAL tracking |
+|-----------|-------------|-----------------|
+| `PurchaseReceipt` | Si no existe `batchId` en la línea, crea un `Batch` nuevo automáticamente. Luego `upsertStockBatch`. | Requiere `serialNumberId` en la línea. Falla si falta. Marca serie como `AVAILABLE`. |
+| `DeliveryOrder` | Propaga `batchId` al `StockMovement` y a `upsertStockBatch` (−qty). | Propaga `serialNumberId` al `StockMovement`. Marca serie como `SOLD`. |
+| `SaleInvoice` (sin DO previa) | Igual que DO. | Igual que DO. |
+| `StockTransfer` | Propaga `batchId`. Ajusta `StockBatch` en origen y destino. | Propaga `serialNumberId`. Actualiza `warehouseId` de la serie. |
+
+---
+
+## Seed Transaccional (`prisma/seed.ts`)
+
+El seed genera un dataset completo de desarrollo con datos maestros **y** transaccionales, garantizando consistencia entre stock, lotes, series, saldos contables y bancarios.
+
+### Datos maestros creados
+
+- 1 tenant, 3 usuarios (admin + 2 vendedores), 3 tax indicators, 3 warehouses
+- 5 item groups, 6 UoMs, 26 items (incluyendo 4 con tracking LOT/SERIAL)
+- 3 price lists, 3 payment terms, 4 partner groups, 14 partners (8 clientes + 5 proveedores + 1 both)
+- 1 banco + 1 cuenta bancaria (balance inicial 50,000 BOB)
+- 12 cuentas contables (plan básico), 1 tipo de cambio, 9 system settings
+
+### Documentos transaccionales creados
+
+**Flujo de ventas:**
+- `SOQ-00001` → `SO-00001` → `DO-00001` → `SI-00001` (total 17,317.25 BOB, saldo 12,317.25)
+- `IP-00001` pago parcial de 5,000 BOB contra SI-00001
+
+**Flujo de compras:**
+- `POQ-00001` → `PO-00001` → `PR-00001` → `PI-00001` (total 27,120 BOB, saldo 17,120)
+- `OP-00001` pago parcial de 10,000 BOB contra PI-00001
+
+**Asientos contables (balanceados):**
+- `JE-00001` — Venta: Clientes (D) 17,317.25 / Ventas (C) 15,325 + IVA Débito (C) 1,992.25
+- `JE-00002` — Pago recibido: Bancos (D) 5,000 / Clientes (C) 5,000
+- `JE-00003` — Compra: Inventarios (D) 24,000 + IVA Crédito (D) 3,120 / Proveedores (C) 27,120
+- `JE-00004` — Pago efectuado: Proveedores (D) 10,000 / Bancos (C) 10,000
+
+**Movimientos de stock adicionales:**
+- `ST-00001` — Transferencia 5 laptops Principal → Secundario
+- `SA-00001` — Ajuste +10 detergente Principal
+- `SE-00001` — Entrada +20 laptops Principal (producción)
+- `SX-00001` — Salida −3 laptops Principal (muestra)
+
+### Reconciliación post-documentos
+
+El seed incluye una sección de reconciliación que:
+1. Ajusta `Stock` y `StockBatch` para reflejar DO, PR, ST, SA, SE, SX.
+2. Crea los `StockMovement` faltantes (`SALE_DELIVERY`, `PURCHASE_RECEIPT`, `STOCK_TRANSFER_OUT/IN`, `MANUAL_IN/OUT`).
+3. Actualiza `Partner.incomingBalance` (+5,000) y `Partner.outgoingBalance` (+10,000).
+4. Actualiza `BankAccount.balance` (50,000 + 5,000 − 10,000 = 45,000).
+
+**Stock final esperado tras seed:**
+
+| Artículo | Almacén Principal | Almacén Secundario |
+|----------|-------------------|--------------------|
+| Laptop (ART-00006) | 27 | 5 |
+| Detergente (ART-00019) | 45 | 0 |
+| TV (ART-00001) | 15 | 0 |
+
+---
+
+## Mejoras y Correcciones Recientes (Abr 2026)
+
+### 1. Fix: doble descuento de stock en `SaleInvoice.confirm()`
+
+**Archivo:** `src/sale-invoices/sale-invoices.service.ts`  
+**Problema:** `_executeConfirmLogic()` siempre reducía `stockPhysical` al confirmar una factura, incluso cuando la factura venía de una entrega previa (`deliveryOrderItemId`). Esto causaba un doble descuento de stock (uno en DO, otro en SI).  
+**Solución:** envolver la lógica de stock físico, `StockMovement` de tipo `SALE_INVOICE`, `upsertStockBatch` y `updateSerialNumberStatus` dentro de `if (!line.deliveryOrderItemId)`. Si hay entrega previa, la factura solo libera `deltaCommitted` (si viene de pedido) pero no toca stock físico.  
+**Impacto:** consistente con `PurchaseInvoice`, que ya tenía la misma protección (`if (!line.purchaseReceiptItemId)`).
+
+### 2. Fix: `BankAccount.balance` no se actualizaba en pagos
+
+**Archivos:** `src/incoming-payments/incoming-payments.service.ts`, `src/outgoing-payments/outgoing-payments.service.ts`  
+**Problema:** `applyPaymentEffects()` y `revertPaymentEffects()` actualizaban `Partner.incomingBalance` / `outgoingBalance` y los saldos de facturas, pero ignoraban `BankAccount.balance`.  
+**Solución:** agregar bloques explícitos dentro de ambos métodos:
+- `applyPaymentEffects`: `BankAccount.balance += payment.total`
+- `revertPaymentEffects`: `BankAccount.balance -= payment.total` (con `Math.max(0, ...)` como salvaguarda)
+
+### 3. Fix: `findOrFail*` privados sin tenant scoping
+
+**Archivos afectados:** 8 módulos (`sales-orders`, `sales-quotations`, `purchase-orders`, `purchase-quotations`, `delivery-orders`, `purchase-receipts`, `sale-invoices`, `purchase-invoices`)  
+**Problema:** los helpers privados `findOrFailOpen()`, `findOneInternal()`, etc. usaban `findUnique({ where: { id } })` sin filtrar por `tenantId`, permitiendo lectura cruzada entre tenants.  
+**Solución:** migrar a `findFirst({ where: { id, tenantId } })`.  
+**Tests:** se agregaron 11 tests de aislamiento de tenant en módulos transaccionales (`stock-transfers`, `stock-entries`, `stock-exits`, `stock-adjustments`, `incoming-payments`, `outgoing-payments`, `purchase-credit-notes`, `sales-credit-notes`, `purchase-orders`, `purchase-returns`, `sales-returns`).
+
+### 4. Enriquecimiento del seed
+
+**Archivo:** `prisma/seed.ts`  
+**Cambios:**
+- Items con `trackingType` (`LOT` / `SERIAL` / `NONE`).
+- Stock inicial con lotes (`Batch` + `StockBatch`) y números de serie (`SerialNumber`).
+- Documentos transaccionales completos (flujo ventas, flujo compras, pagos, asientos, movimientos de stock).
+- Sección de reconciliación para mantener consistencia de stock y saldos.
+- Fix de compilación: `trackingType` casteado a `TrackingType` para satisfacer Prisma Client en `ts-node`.
+
+### 5. Fix: relaciones faltantes en seed transaccional
+
+**Archivo:** `prisma/seed.ts`  
+**Problema:** el seed usa inserciones directas de Prisma Client en lugar de llamar a las APIs de NestJS. Esto significa que los side-effects automáticos (creación de `DocumentLink`, `PaymentReconciliation`, `StockMovement` completo) no ocurrían. El mapa de trazabilidad de documentos (`document-flow`) mostraba nodos aislados sin aristas entre ellos.  
+**Solución:** agregar explícitamente después de cada documento transaccional:
+- `DocumentLink` para cada paso del flujo: SOQ→SO, SO→DO, DO→SI, POQ→PO, PO→PR, PR→PI.
+- `DocumentLink` entre factura y pago: SI→IP, PI→OP.
+- `PaymentReconciliation` para vincular pagos con facturas: IP→SI (5,000 BOB), OP→PI (10,000 BOB).
+**Verificación:** ejecutado `prisma migrate reset --force` → seed completo sin errores. Consulta post-seed confirma 8 `DocumentLink` y 2 `PaymentReconciliation`. Todos los `StockMovement` y `SerialNumber` tienen `warehouseId` asignado.
+
+---
