@@ -1297,4 +1297,23 @@ El seed incluye una sección de reconciliación que:
 - `PaymentReconciliation` para vincular pagos con facturas: IP→SI (5,000 BOB), OP→PI (10,000 BOB).
 **Verificación:** ejecutado `prisma migrate reset --force` → seed completo sin errores. Consulta post-seed confirma 8 `DocumentLink` y 2 `PaymentReconciliation`. Todos los `StockMovement` y `SerialNumber` tienen `warehouseId` asignado.
 
+### 6. Fix: DeliveryOrders no calculaban ni mostraban total/subtotal/tax
+
+**Backend:** `src/delivery-orders/delivery-orders.service.ts`  
+**Problema:** 4 de 7 rutas de creación (`createFromReserveInvoice`, `createFromMultiReserveInvoice`, `createFromMultiOrder`, `createFromMultiQuotation`) y el `confirm()` solo actualizaban `totalCost`/`totalWeight`, dejando `subtotal`, `tax`, `total` y `totalDiscount` en `0`/`null`. El método `update()` tampoco recalculaba `totalDiscount`.
+
+**Solución backend:**
+- Nuevo helper privado `recalculateDeliveryOrderTotals(tx, deliveryOrderId)` que lee las líneas de la BD y recalcula todos los totales de cabecera (`subtotal`, `tax`, `total`, `totalDiscount`, `totalCost`, `totalWeight`).
+- Reemplazados todos los bloques manuales incompletos con una llamada a este helper.
+- `createManual`: agregado `totalDiscount: 0`.
+- `confirm`: separado el cambio de `status` del recálculo de totales.
+
+**Frontend:** `src/app/pages/delivery-orders/*`  
+**Cambios:**
+- Interface `DeliveryOrder`: agregados `total`, `subtotal`, `tax`, `totalDiscount`.
+- Lista (`delivery-orders.component`): nueva columna **Total** con formato numérico.
+- Formulario (`delivery-orders-form.component`): nuevos getters `subtotal`, `tax`, `total`; sección de totales reestructurada para mostrar siempre el desglose (descuento, subtotal, IVA, total) al estilo de SalesOrders.
+
+**Tests:** backend 60 suites / 321 tests pasando. Frontend `ng build` sin errores; specs de lista y form de delivery orders pasan.
+
 ---
