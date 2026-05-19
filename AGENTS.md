@@ -1063,8 +1063,8 @@ CREATE INDEX idx_sale_invoice_custom ON "SaleInvoice" USING GIN (customFields);
 - ✅ DTOs actualizados para aceptar `customFields`
 - ✅ Módulo UDF creado (`src/udf/`)
 - ✅ Tests del módulo UDF pasando
-- ⚠️ Servicios: propagación de `customFields` parcial (demostrada en sales-quotations, sales-orders, sale-invoices; pendiente en los demás)
-- ⏳ Frontend: componente `UdfFormSection` y modelos pendientes
+- ✅ Servicios: propagación de `customFields` completa en todos los documentos comerciales, stock (transfers, entries, exits, adjustments) e items
+- ✅ Frontend: `UdfFormSection` y `UdfValuesCell` implementados y activos en 16+ formularios y listados
 
 ---
 
