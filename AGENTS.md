@@ -1166,10 +1166,9 @@ Diagnóstico completo de navegación y rendimiento del frontend Angular. Se iden
 
 | Fase | Descripción | Razón para posponer |
 |------|-------------|---------------------|
-| **Fase 2** | `ChangeDetectionStrategy.OnPush` en ~142 componentes | Alto riesgo de regresión visual; requiere testing manual exhaustivo de cada lista y formulario |
-| **Fase 3** | Convertir métodos de template a propiedades/pipes | Cambio arquitectónico grande en `luna-data-table`, `permissions`, y formularios; impacto menos inmediato que las fases 1+4 |
+| **Fase 2** | `ChangeDetectionStrategy.OnPush` + Signals en ~142 componentes | Alto riesgo de regresión visual; requiere testing manual exhaustivo de cada lista y formulario |
 
-**Recomendación:** atacar Fase 2 y 3 en sprints dedicados con QA manual, no en el mismo batch que cambios funcionales.
+**Recomendación:** atacar Fase 2 en sprints dedicados con QA manual, no en el mismo batch que cambios funcionales.
 
 ---
 
