@@ -1131,6 +1131,48 @@ CREATE INDEX idx_sale_invoice_custom ON "SaleInvoice" USING GIN (customFields);
 
 ---
 
+## Frontend Performance & Navigation Diagnosis (May 2026)
+
+Diagnóstico completo de navegación y rendimiento del frontend Angular. Se identificaron 5 categorías de problemas y se aplicaron fixes en 3 de ellas.
+
+### Problemas identificados
+
+| Categoría | Cantidad | Severidad |
+|-----------|----------|-----------|
+| Memory leaks (`subscribe` sin protección) | **113 archivos** | 🔴 Crítico |
+| Componentes sin `OnPush` | **~142** | 🔴 Crítico |
+| `*ngFor` sin `trackBy` | **~170 usos** | 🟡 Alto |
+| Métodos en templates | **~250+ llamadas** | 🔴 Crítico |
+| Sin loading states en catálogos | **10+ formularios** | 🟡 Medio |
+
+### Fixes aplicados
+
+#### ✅ Fase 1: Memory Leaks — `takeUntilDestroyed()` (82 archivos)
+- Todas las suscripciones `.subscribe()` en componentes ahora usan `.pipe(takeUntilDestroyed(this.destroyRef))`.
+- `DocumentListBase` ahora provee `protected destroyRef` para todas las clases hijas (~20 listados).
+- `DocumentFormBase` ahora obtiene `DestroyRef` vía `this._injector.get(DestroyRef)` en sus métodos.
+
+#### ✅ Fase 4: `trackBy` en `*ngFor` (31 archivos)
+- `document-lines-table`: `trackByIndex` en líneas de documentos comerciales.
+- `pos`: `trackByProductId`, `trackByCartId`, `trackByInvoiceId` en productos, carrito e invoices.
+- `sidebar`: `trackByGroupKey`, `trackByItemLabel` en resultados de búsqueda.
+- Todos los formularios comerciales: `trackByIndex` en arrays de líneas.
+
+#### ✅ Fase 5: UX/UI — Loading states (4 formularios)
+- `partner-form`, `price-list-form`, `account-form`, `user-form`: ahora muestran `catalogsLoading` y toast de error si falla la carga de catálogos.
+- Las cargas de catálogos ahora usan `forkJoin` para loading state unificado.
+
+### Tech debt pendiente (no bloqueante)
+
+| Fase | Descripción | Razón para posponer |
+|------|-------------|---------------------|
+| **Fase 2** | `ChangeDetectionStrategy.OnPush` en ~142 componentes | Alto riesgo de regresión visual; requiere testing manual exhaustivo de cada lista y formulario |
+| **Fase 3** | Convertir métodos de template a propiedades/pipes | Cambio arquitectónico grande en `luna-data-table`, `permissions`, y formularios; impacto menos inmediato que las fases 1+4 |
+
+**Recomendación:** atacar Fase 2 y 3 en sprints dedicados con QA manual, no en el mismo batch que cambios funcionales.
+
+---
+
 ## Flujo de Documentos y Lógica de Stock (Document Flow & Stock Logic)
 
 > **Contexto:** Abr 2026 — tras enriquecer `prisma/seed.ts` con datos transaccionales y corregir inconsistencias en servicios.  
