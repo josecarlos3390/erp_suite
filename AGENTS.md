@@ -225,6 +225,7 @@ This pattern (used in `src/common/traceability.util.ts`) gives TypeScript exact 
 - `npm run lint` → `0 errors, ~0 warnings` (unused imports/variables cleaned).
 - `npm run build` → `0 errors`.
 - `npm test` → **60 suites, 321 tests** passing.
+- `npm run test:e2e` → **7 suites, 35 tests** passing.
 - `as any` count in `src/` → **0**.
 - `as any` count in `prisma/` scripts → **0**.
 - `as any` count in `*.spec.ts` → **0** (all mocks use `as unknown as` or `satisfies Partial<T>`).
@@ -732,6 +733,24 @@ SCSS attribute selectors with non-ASCII characters (e.g., `td[data-label="Artíc
 - Run a single spec file: `npx jest src/path/to/file.spec.ts`
 - Run tests matching a name: `npx jest --testNamePattern="<description text>"`
 
+**E2E test suites (7 files, 35 scenarios):**
+
+| Suite | Scenarios |
+|-------|-----------|
+| `sales-flow.e2e-spec.ts` | 7 (SQ → SO → DO → SI, reservas, parciales, cancelaciones) |
+| `purchase-flow.e2e-spec.ts` | 7 (PC → PO → PR → PI, reservas, cancelaciones) |
+| `incoming-payments.e2e-spec.ts` | 5 (anticipos, pagos a factura, reconciliación, cancelación, filtros) |
+| `stock-flow.e2e-spec.ts` | 7 (entradas, salidas, transferencias, ajustes, cancelaciones) |
+| `returns-and-credit-notes.e2e-spec.ts` | 4 (devoluciones venta/compra, notas de crédito, cancelación) |
+| `batch-serial-flow.e2e-spec.ts` | 4 (batchCostingEnabled false/true, recálculo de costo por lote, venta con lote) |
+| `app.e2e-spec.ts` | 1 (health check) |
+
+**E2E helpers (`test/test-utils.ts`):**
+- `cleanupDocuments(prisma, tenantId?)` — borra documentos transaccionales y resetea stock. Si se pasa `tenantId`, filtra todas las operaciones por tenant.
+- `createTestData(prisma)` — crea tenant, warehouse, user, item, partner, supplier, price list, stock inicial (100 unidades).
+- `createBatchItem()`, `createBatch()`, `assertStock()`, `getStock()` — helpers para tests de lotes/series.
+- **Nota:** `cleanupDocuments` resetea stock a 100. Si un test usa almacenes secundarios con stock diferente, debe recrear el stock en `beforeEach`.
+
 **Controller test pattern:**
 
 ```typescript
@@ -831,11 +850,13 @@ Optional / production variables:
 
 - Business logic is implemented in **Spanish** (variable names, comments, UI labels).
 - Document flow: Quotation → Order → Delivery/Receipt → Invoice → Reserve Invoice.
+- **Auto-confirmación de facturas manuales:** `sale-invoices` y `purchase-invoices` auto-confirman al crear (`createManual`, `createFromOrder`, `createFromDelivery`). El status inicial es `CLOSED` y no requiere llamada a `confirm()` posterior.
 - **Devoluciones (`SalesReturn`, `PurchaseReturn`)** siguen el flujo estándar: `create()` → `OPEN` → `confirm()` → `CLOSED` → `cancel()`. El asiento contable y los movimientos de stock se generan en `confirm()`, no en `create()`.
 - Tax: Bolivian IVA rules; `TAX_RATE_NOMINAL` constant lives in `src/common/pricing.util.ts` and is re-exported from `src/constants.ts`.
 - **BankAccount balance:** `IncomingPayment` y `OutgoingPayment` actualizan automáticamente `bankAccount.balance` vía `applyPaymentEffects()` / `revertPaymentEffects()` dentro de la misma transacción Prisma.
 - **Entregas sin costo:** `DeliveryOrder.confirm()` lanza `BadRequestException` si ningún artículo tiene costo registrado (`totalCost <= 0`). Esto previene agujeros negros en el reconocimiento de COGS.
 - Stock movements are tracked in `StockMovement` records; never mutate stock directly — use traceability utilities in `src/common/`.
+- **batchCostingEnabled:** campo `Item.batchCostingEnabled` (default `false`). Cuando es `true`, los servicios de stock (`purchase-invoices`, `purchase-receipts`, `stock-entries`, `stock-transfers`, `stock-adjustments`) pasan `incomingUnitCost` a `upsertStockBatch`, permitiendo valoración individual por lote. Cuando es `false`, el costo se mantiene solo a nivel artículo (`Stock.avgCost`).
 - Code generation (e.g., `SOQ-000001`) uses PostgreSQL sequences via `src/common/code-generator.util.ts` (internally `code-generator.util.ts`).
 - **Multi-tenancy:** `Tenant` model with `tenantId` on nearly every table; `@@unique([tenantId, code])` and `@@index([tenantId])` are standard patterns.
 - **Soft deletes:** all business records use `status: 'ACTIVE' | 'INACTIVE'` instead of hard deletion.
