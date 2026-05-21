@@ -3,6 +3,8 @@
 > Documento vivo para trackear hallazgos de auditoría y su estado.  
 > Actualizado: 19/04/2026
 
+**Estado general:** Todas las fases de auditoría (1-4) están completas. Backend y frontend builds verdes.
+
 ---
 
 ## 🔴 FASE 1 — Seguridad & Estabilidad (En Progreso)
