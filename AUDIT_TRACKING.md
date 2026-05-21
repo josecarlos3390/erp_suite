@@ -1,7 +1,7 @@
 # 📋 AUDITORÍA ERP SUITE — Tracking de Acciones
 
 > Documento vivo para trackear hallazgos de auditoría y su estado.  
-> Actualizado: 21/05/2026
+> Actualizado: 19/04/2026
 
 ---
 
@@ -174,22 +174,59 @@
 **Nota:** 7 componentes adicionales usaban cleanup manual (`Subscription` + `unsubscribe()` o `Subject` + `takeUntil`), por lo que no presentan memory leaks. Los servicios singleton no requieren `takeUntilDestroyed`.
 
 ### 3.3 Reducir CSS global (110 KB)
-**Status:** `🔲 Pendiente`  
-**Archivo:** `styles-VGXYYBKV.css`
+**Status:** `✅ DONE (parcial — modularización)`  
+**Fecha:** 19/04/2026
+
+**Resumen:**
+- `styles.scss` tenía 2,250 líneas con todo inline además de `@use 'styles/index'`.
+- Creados `_reset.scss` y `_layout.scss` en `src/styles/` con ~260 líneas extraídas.
+- `_index.scss` actualizado para importar los nuevos partials.
+- `styles.scss` reducido eliminando las secciones duplicadas/migradas.
+- Build de producción pasa exitosamente.
+
+**Nota:** El bundle CSS global (112 KB minificado) proviene de ~6,500 líneas de SCSS fuente (legacy + Luna design system). Una reducción significativa requiere un proyecto dedicado de eliminación de reglas muertas (PurgeCSS) y migración de estilos globales a componentes standalone. Se deja para fase futura.
 
 ---
 
 ## 🟢 FASE 4 — Estandarización Frontend (Pendiente)
 
 ### 4.1 Migrar `*ngIf` → `@if`
-**Status:** `🔲 Pendiente`
+**Status:** `✅ DONE`  
+**Fecha:** 19/04/2026
 
-### 4.2 Unificar `calculateLine` en 10 formularios comerciales
-**Status:** `🔲 Pendiente`  
-**Deuda documentada en AGENTS.md**
+**Resumen:**
+- Ejecutado schematic `@angular/core:control-flow` en todo el proyecto.
+- Resueltos 25 templates con nombres duplicados (`#cell`, `#actions`) renombrando a `#cell2`, `#actions2`, etc.
+- Modificado `luna-data-table.component.ts` para soportar aliases (`cell2`, `cell3`, `actions2`, `actions3`).
+- Corregidos 4 archivos con `trackBy` mal migrado por el schematic (firma de función reducida a 1 argumento):
+  - `pos.component.ts`, `price-list-form.component.ts`, `document-lines-table.component.ts`
+- Build de producción pasa exitosamente.
+- Quedan 5 `*ngIf` y 2 `*ngFor` en código comentado (`journal-entries-form.component.html`), sin impacto.
+
+### 4.2 Unificar `calculateLine` en formularios comerciales
+**Status:** `✅ DONE (parcial)`  
+**Fecha:** 19/04/2026
+
+**Resumen:**
+- Creada clase base `CommercialDocumentFormBase` que extiende `DocumentFormBase`.
+- `calculateLine` y `recalculateAllLines` centralizados en `CommercialDocumentFormBase` con `lineCalcConfig` configurable (getter).
+- Eliminado método vacío `invalidateTotals()` de `DocumentFormBase` y ~55 llamadas en 14 componentes.
+- 5 componentes migrados a la base eliminando duplicados:
+  - `sales-quotations`, `sales-orders`, `purchase-quotations`, `purchase-credit-notes`, `sales-credit-notes`.
+- 9 componentes mantienen `override calculateLine` por lógica especial (clamping, recálculo de costo/peso, etc.):
+  - `delivery-orders`, `purchase-receipts`, `sale-invoices`, `purchase-invoices`, `sale-reserve-invoices`, `purchase-reserve-invoices`, `purchase-orders`, `purchase-returns`, `sales-returns`.
+- Build de producción pasa exitosamente.
 
 ### 4.3 Estandarizar carga de catálogos (`forkJoin` + loading state)
-**Status:** `🔲 Pendiente`
+**Status:** `✅ DONE (patrón establecido)`  
+**Fecha:** 19/04/2026
+
+**Resumen:**
+- Agregado `safeObservable<T>(obs, fallback)` a `DocumentFormBase` para evitar que `forkJoin` falle cuando un catálogo individual falla.
+- Aplicado a `sales-quotations-form.component.ts` como referencia.
+- Build de producción pasa exitosamente.
+
+**Nota:** La migración masiva a `safeObservable` en todos los formularios (~23 ocurrencias) puede hacerse incrementalmente. El patrón está documentado y disponible.
 
 ---
 
@@ -205,6 +242,7 @@
 | Backend services | 56 | 21/05/2026 |
 | Largest service (lines) | delivery-orders.service.ts (4,421) | 21/05/2026 |
 | Frontend `.subscribe()` count | 680 en 139 archivos | 21/05/2026 |
+| Frontend `*ngIf` → `@if` migrated | ~1,847 en ~118 archivos | 19/04/2026 |
 | Frontend `takeUntilDestroyed` | 333 en 108 archivos | 21/05/2026 |
 | `findUnique` sin tenantId | 0 migradas (21 done) | 21/05/2026 |
 | `$queryRawUnsafe` count | 0 (en código fuente) | 21/05/2026 |
