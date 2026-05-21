@@ -9,6 +9,67 @@ Both sub-projects use **npm** as the package manager.
 
 ---
 
+## Arquitectura de despliegue multitenant
+
+### Decisiones de infraestructura por perfil de cliente
+
+Antes de onboarding de un nuevo tenant, analizar su volumen esperado:
+
+| Perfil | Transacciones/día | Volumen de import | Despliegue recomendado | `BULK_IMPORT_SAFE_MODE` |
+|--------|-------------------|-------------------|------------------------|-------------------------|
+| **Micro** | < 100 | Ninguno | Instancia compartida | `false` |
+| **Pequeño** | 100-1,000 | Ocasional (<1k/mes) | Instancia compartida | `false` |
+| **Medio** | 1,000-10,000 | Frecuente (>10k/mes) | Instancia compartida | `false` |
+| **Grande** | > 10,000 | Masivo (>50k/mes) | **Instancia DEDICADA** | **`true`** |
+| **Enterprise** | > 50,000 | Masivo diario | **Instancia DEDICADA** + read replica | **`true`** |
+
+### Modos de import masivo
+
+La variable de entorno `BULK_IMPORT_SAFE_MODE` controla el comportamiento a nivel de **instancia**:
+
+- **`BULK_IMPORT_SAFE_MODE=true` (default)**:
+  - Nunca desactiva los triggers PostgreSQL.
+  - Los imports masivos tardan ~40-50 segundos para 10k items.
+  - 100% seguro para multitenant: no hay ventana de vulnerabilidad.
+  - Recomendado para **instancias dedicadas** donde la consistencia es crítica.
+
+- **`BULK_IMPORT_SAFE_MODE=false`**:
+  - Desactiva triggers temporalmente para imports grandes.
+  - Usa lock global (`_BulkImportLock`) para evitar imports paralelos.
+  - Al finalizar hace `rebuild_all_custom_field_values()` para corregir documentos huérfanos.
+  - Ventana de vulnerabilidad: ~10-20 segundos.
+  - Recomendado para **instancias compartidas** con bajo/medio volumen.
+
+### Estrategia de escalado cuando un tenant crece
+
+```
+Tenant en instancia COMPARTIDA
+        ↓
+   Supera 10k transacciones/día
+   o requiere imports masivos frecuentes
+        ↓
+   Migrar a instancia DEDICADA
+   (misma base de datos o DB separada)
+        ↓
+   Si supera 50k transacciones/día
+        ↓
+   Agregar read replica para reporting
+```
+
+### Variables de entorno críticas para despliegue
+
+```bash
+# Base de datos
+DATABASE_URL=postgresql://...
+
+# Seguridad
+JWT_SECRET=...
+
+# Import masivo
+BULK_IMPORT_SAFE_MODE=true   # Instancia dedicada
+# BULK_IMPORT_SAFE_MODE=false  # Instancia compartida
+```
+
 ## Build / Lint / Test Commands
 
 All commands must be run from the relevant sub-project directory.
@@ -638,6 +699,62 @@ Runs on `ubuntu-latest` with Node 20:
 - **SSR:** `@angular/platform-server` and `@angular/ssr` are installed. `angular.json` uses `@angular-devkit/build-angular:application` builder with `"ssr": { "entry": "src/server.ts" }`. Production builds generate server bundles (`server.mjs`). The `serve:ssr:erp-frontend` script points to `dist/erp-frontend/server/server.mjs`.
 - **SSR safety rule:** never access `window`, `document`, or `localStorage` at module top-level (e.g., `const x = window.location.hostname`). Always guard with `typeof window !== 'undefined'` or inject `PLATFORM_ID` / `isPlatformBrowser()`. `environment.ts` is already guarded.
 
+#### SSR Hydration Mismatch Fix (Apr 2026)
+
+> **Context:** Angular SSR with `withFetch()` + `OnPush` change detection causes lists to get stuck on skeleton loading when refreshing (F5) or navigating directly to a route. Client-side routing works fine. Root cause: `*ngIf` inside `<ng-template #actions>` projected into `luna-data-table` creates a DOM mismatch between server-rendered skeletons and client hydration.
+
+**The rule:**
+
+| Location | Use | Do NOT use |
+|----------|-----|------------|
+| Inside `<ng-template #actions>` of `luna-data-table` | `[style.display]="condition ? '' : 'none'"` | `*ngIf` |
+| Outside `luna-data-table` (panels, modals, dialogs) | `@if (condition) { ... }` | `*ngIf` (prefer `@if` for new code) |
+
+**Why `[style.display]` works inside projected templates:**
+- It keeps the DOM element stable between SSR and client hydration.
+- The element is always in the DOM; only its CSS visibility changes.
+- No hydration mismatch because the server and client produce identical DOM trees.
+
+**Example — correct action buttons inside `luna-data-table`:**
+
+```html
+<ng-template #actions let-row>
+  <luna-button
+    action="stock"
+    variant="secondary"
+    (lunaClick)="openStock(row)"
+    [style.display]="row._count && row._count.stock > 0 ? '' : 'none'"
+  ></luna-button>
+  <luna-button
+    action="delete"
+    variant="destructive"
+    (lunaClick)="remove(row)"
+    [style.display]="row.status === 'ACTIVE' && !row.isDefault ? '' : 'none'"
+  ></luna-button>
+</ng-template>
+```
+
+**Example — correct panel/modal outside `luna-data-table`:**
+
+```html
+@if (selectedWarehouse) {
+  <div class="stock-panel-backdrop" (click)="closeStock()"></div>
+  <div class="stock-panel">
+    <h3>{{ selectedWarehouse.name }}</h3>
+  </div>
+}
+```
+
+**Files fixed (9 components):**
+- `warehouses`, `batches` (actions + panels/modals)
+- `stock-transfers`, `stock-exits`, `stock-entries`, `stock-adjustments`
+- `sales-quotations`, `sales-orders`
+- `purchase-quotations`, `purchase-orders`
+- `account-mappings`
+
+**Files already compliant (do not use `*ngIf` inside `#actions`):**
+- `items`, `users`, `uoms`, `tax-indicators`, `partners`, `partner-groups`, `banks`, `accounts`, `price-lists`, `payment-terms`, `exchange-rates`, `item-groups`, `serial-numbers`, `journal-entries`, `udf-list`, `low-stock`, and all document list pages that only use static action buttons.
+
 #### Path aliases (tsconfig.json)
 
 Prefer path aliases over deep relative imports (`../../shared/...` → `@shared/...`):
@@ -1166,9 +1283,61 @@ Diagnóstico completo de navegación y rendimiento del frontend Angular. Se iden
 
 | Fase | Descripción | Razón para posponer |
 |------|-------------|---------------------|
-| **Fase 2** | `ChangeDetectionStrategy.OnPush` + Signals en ~142 componentes | Alto riesgo de regresión visual; requiere testing manual exhaustivo de cada lista y formulario |
+| **Fase 2** | `ChangeDetectionStrategy.OnPush` en ~140 componentes | ✅ Done — Todos los componentes `.component.ts` ahora usan `OnPush`. Build limpio. Recomendado testing manual de flujos críticos (creación/edición de documentos comerciales) para detectar posibles mutaciones de estado sin nueva referencia. |
 
-**Recomendación:** atacar Fase 2 en sprints dedicados con QA manual, no en el mismo batch que cambios funcionales.
+---
+
+## OnPush Change Detection Rules
+
+> **Contexto:** Abr 2026 — migración completa a `OnPush` en 155 componentes. Se detectó que asignaciones de estado dentro de callbacks `subscribe()` no disparan change detection automáticamente, causando pantallas congeladas en "Cargando..." o botones de guardado bloqueados.
+> **Regla de oro:** siempre que modifiques una propiedad enlazada al template dentro de un `subscribe()`, llama `this.cdr.markForCheck()` inmediatamente después.
+
+### 1. Patrón obligatorio en todos los componentes
+
+```typescript
+this.service.getOne(id).subscribe({
+  next: (data) => {
+    this.form.patchValue(data);
+    this.isLoading = false;
+    this.cdr.markForCheck(); // ✅ REQUERIDO
+  },
+  error: () => {
+    this.isLoading = false;
+    this.cdr.markForCheck(); // ✅ REQUERIDO
+  },
+});
+```
+
+### 2. Propiedades que requieren `markForCheck()`
+
+| Propiedad | Contexto típico |
+|-----------|-----------------|
+| `isLoading` / `loading` | Final de `load()`, `loadIntoForm()`, carga de catálogos |
+| `isSaving` / `saving` | Final de `save()`, `create()`, `update()` |
+| `hasChanges` | Solo si se modifica dentro de un `subscribe()` (no en eventos DOM) |
+| Arrays/objetos reasignados | `this.items = result` dentro de HTTP callbacks |
+
+### 3. Dónde obtener `cdr`
+
+- **Clases base:** `DocumentFormBase` y `DocumentListBase` ya proveen `protected cdr = inject(ChangeDetectorRef)`.
+- **Componentes hijos:** NO redeclares `cdr`. Usa `this.cdr.markForCheck()` directamente.
+- **Otros componentes:** inyecta `protected cdr = inject(ChangeDetectorRef);` e importa `ChangeDetectorRef` desde `@angular/core`.
+
+### 4. Qué NO requiere `markForCheck()`
+
+- Eventos DOM nativos (`(click)`, `(input)`, `(change)`) — Angular detecta automáticamente.
+- `@Input()` cambios desde el padre — OnPush los detecta.
+- `async` pipe en templates — el pipe maneja la detección internamente.
+
+### 5. Validación automatizada
+
+Antes de considerar completo cualquier fix de OnPush, ejecutar:
+
+```bash
+npx ng build --configuration production
+```
+
+Si un componente con `OnPush` se queda en "Cargando..." o no refresca tras guardar, la causa más probable es un `subscribe()` sin `markForCheck()`.
 
 ---
 
@@ -1399,5 +1568,60 @@ El seed incluye una sección de reconciliación que:
 - Agregados los campos faltantes directamente en los `create` de PurchaseInvoices.
 
 **Tests:** backend 60 suites / 321 tests pasando.
+
+---
+
+## Tenant Metrics & Migration Detection (May 2026)
+
+> Sistema automático para detectar cuando un tenant en instancia compartida ha crecido lo suficiente como para justificar una migración a instancia dedicada.
+
+### Modelo `TenantMetrics`
+
+```prisma
+model TenantMetrics {
+  id                    Int      @id @default(autoincrement())
+  tenantId              Int
+  date                  DateTime @default(now()) @db.Date
+  salesDocCount         Int      @default(0)
+  purchaseDocCount      Int      @default(0)
+  inventoryDocCount     Int      @default(0)
+  totalDocCount         Int      @default(0)      // docs creados HOY
+  bulkImportCount       Int      @default(0)
+  bulkImportTotalItems  Int      @default(0)      // últimos 30 días
+  customFieldValueCount Int      @default(0)
+  totalDocumentCount    Int      @default(0)      // docs totales del tenant
+  recommendation        String   @default("HEALTHY") // HEALTHY | WARNING | MIGRATE
+  @@unique([tenantId, date])
+  @@index([tenantId, date])
+}
+```
+
+### Umbrales de recomendación
+
+| Nivel | Transacciones/día | Items importados/mes | Documentos totales |
+|-------|-------------------|----------------------|-------------------|
+| **HEALTHY** | ≤ 5,000 | ≤ 10,000 | ≤ 500,000 |
+| **WARNING** | 5,000 – 10,000 | 10,000 – 50,000 | 500,000 – 1,000,000 |
+| **MIGRATE** | > 10,000 | > 50,000 | > 1,000,000 |
+
+### Servicios y endpoints
+
+- **`TenantMetricsService`** (`src/admin/tenant-metrics.service.ts`):
+  - `collectMetrics(tenantId)` — calcula y persiste métricas de un tenant para el día actual.
+  - `getHealthReport()` — devuelve reporte de salud de TODOS los tenants activos, ordenado por prioridad (MIGRATE primero).
+  - `recordBulkImport(tenantId, itemCount)` — incrementa contadores de import masivo (llamado desde `ItemsService.bulkImport`).
+  - `@Cron('5 0 * * *')` — recolecta métricas diariamente a las 00:05 para todos los tenants.
+
+- **`AdminController`** (`src/admin/admin.controller.ts`):
+  - `GET /admin/tenant-health` — requiere permiso `admin:view`. Devuelve array de `TenantHealthReport`.
+
+### Integración con imports masivos
+
+`ItemsService.bulkImport()` llama `tenantMetricsService.recordBulkImport()` tras completar la inserción, garantizando que la métrica de volumen de import refleje la actividad real del tenant.
+
+### Módulo
+
+- **`AdminModule`** (`src/admin/admin.module.ts`) — importado en `AppModule` y `ItemsModule`.
+- Tests: `tenant-metrics.service.spec.ts` (4 tests) + `admin.controller.spec.ts` (1 test).
 
 ---
