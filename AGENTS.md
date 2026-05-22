@@ -1329,7 +1329,75 @@ this.service.getOne(id).subscribe({
 - `@Input()` cambios desde el padre — OnPush los detecta.
 - `async` pipe en templates — el pipe maneja la detección internamente.
 
-### 5. Validación automatizada
+### 5. Patrones críticos frecuentemente olvidados
+
+#### 5.1 Modo manual con `forkJoin` en `ngOnInit`
+
+Cuando un formulario entra en modo manual (`?manual=1`) y carga catálogos vía `forkJoin`, el callback `.subscribe()` **no** dispara change detection. Si no se llama `markForCheck()`, el selector de partner/cliente/proveedor permanece invisible hasta que el usuario interactúa con la página.
+
+```typescript
+} else if (manualParam === '1') {
+  this.isManualMode = true;
+  this.isDraft = true;
+  forkJoin({
+    partners: this.partnersService.getAllClients().pipe(catchError(() => of([]))),
+    items: this.itemsService.getAll({ canBeSold: true }).pipe(catchError(() => of([]))),
+  }).subscribe(({ partners, items }) => {
+    this.partners = partners as Partner[];
+    this.catalogItems = items as Item[];
+    this._addEmptyManualRow();
+    this.cdr.markForCheck(); // ✅ REQUERIDO — sin esto el selector no aparece
+  });
+}
+```
+
+**Regla:** todo `forkJoin` dentro de `ngOnInit` que alimente propiedades del template debe terminar con `this.cdr.markForCheck()`.
+
+#### 5.2 Apertura de modales desde métodos del componente
+
+Si un componente `OnPush` abre un modal asignando `boolean = true` (ej. `showAssignmentModal = true`) y el modal es proyectado via `<ng-content>` o vive dentro de un `@if` anidado, puede no renderizarse sin `markForCheck()`:
+
+```typescript
+openAssignmentModal() {
+  this.assignmentLines = this.itemsArray.controls.map(...);
+  this.showAssignmentModal = true;
+  this.cdr.markForCheck(); // ✅ REQUERIDO — fuerza render del modal hijo
+}
+```
+
+#### 5.3 `ControlValueAccessor` con `OnPush` (`writeValue` / `setDisabledState`)
+
+> **Bug detectado:** `WarehouseSelectorComponent` usaba `OnPush` pero no inyectaba `ChangeDetectorRef`. Cuando el formulario reactivo asignaba `warehouseId` vía `writeValue()`, el template no se re-renderizaba porque Angular llama estos métodos fuera del ciclo normal de detección de cambios.
+>
+> **Escenario problemático:** el `warehouseId` se asigna *antes* de que `warehouses[]` llegue del backend (`forkJoin`). El componente recibe `selectedId`, pero `get selectedWarehouse()` retorna `undefined` porque el array aún está vacío. Cuando `warehouses` finalmente se llena, `OnPush` no detecta la recomputación del getter.
+
+**Solución:** todo componente que implemente `ControlValueAccessor` y use `OnPush` **debe** inyectar `ChangeDetectorRef` y llamar `markForCheck()` en `writeValue()` y `setDisabledState()`:
+
+```typescript
+export class WarehouseSelectorComponent implements ControlValueAccessor, OnChanges {
+  private cdr = inject(ChangeDetectorRef); // ✅ REQUERIDO
+
+  @Input() warehouses: Warehouse[] = [];
+  selectedId: number | null = null;
+  isDisabled = false;
+
+  writeValue(id: number | null): void {
+    this.selectedId = id ?? null;
+    this.cdr.markForCheck(); // ✅ REQUERIDO
+  }
+
+  setDisabledState(d: boolean): void {
+    this.isDisabled = d;
+    this.cdr.markForCheck(); // ✅ REQUERIDO
+  }
+
+  // registerOnChange / registerOnTouched — no requieren markForCheck
+}
+```
+
+**Regla:** si un selector custom (`partner-selector`, `warehouse-selector`, `item-combobox`, etc.) implementa `ControlValueAccessor` y usa `OnPush`, verificar que tenga `cdr.markForCheck()` en `writeValue()` y `setDisabledState()`.
+
+### 6. Validación automatizada
 
 Antes de considerar completo cualquier fix de OnPush, ejecutar:
 
