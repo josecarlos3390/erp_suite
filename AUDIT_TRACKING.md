@@ -232,20 +232,77 @@
 
 ---
 
+---
+
+## 🔴 FASE 5 — Auditoría Flujos Documentales & Trazabilidad (En Progreso)
+
+**Fecha:** 21/05/2026
+**Trigger:** Suite E2E `erp-flows.spec.ts` alcanzó 91/91 tests pasando; se solicitó auditoría exhaustiva de flujos y trazabilidad.
+
+### 5.1 Hallazgos críticos de backend (ventas vs compras)
+
+| # | Bug | Severidad | Archivo | Status |
+|---|-----|-----------|---------|--------|
+| 1 | **SaleInvoices.createFromOrder** no resta cantidad de facturas reserva abiertas (`isIns='Y', status='OPEN'`) al calcular `pending`. Permite facturar más de lo disponible. | 🔴 Alta | `sale-invoices.service.ts` | ✅ Done |
+| 2 | **DeliveryOrders.createFromOrder** no resta cantidad de otras entregas `OPEN` al calcular `pending`. Permite entregas que exceden el pendiente. | 🔴 Alta | `delivery-orders.service.ts` | ✅ Verificado — ya implementado (l.1816-1825) |
+| 3 | **PurchaseInvoices.createManual** ignora `taxIndicatorId` por línea; usa el default del proveedor para todas las líneas. | 🔴 Alta | `purchase-invoices.service.ts` | ✅ Done |
+| 4 | **PurchaseInvoices.createFromQuotation** tiene bloque copy-paste de `purchaseReceiptItem` (código muerto de `createFromReceipt`). | 🟡 Media | `purchase-invoices.service.ts` | 🔲 |
+| 5 | **SalesOrders.createManual** no setea `date`/`postingDate` (asimetría con `purchase-orders`). | 🟡 Media | `sales-orders.service.ts` | ✅ Done (ya propagaba vía `buildBaseDocumentData`) |
+| 6 | **PurchaseOrders.createFromDraft** no re-resuelve precios si cotización vencida (pone 0). Ventas sí re-resuelve desde lista de precios. | 🟡 Media | `purchase-orders.service.ts` | ✅ Done |
+| 7 | **PurchaseInvoices.createFromOrder** no expone `discountPct`/`discountAmt` en payload de líneas. | 🟡 Media | `purchase-invoices.service.ts` | ✅ Done |
+| 8 | **DeliveryOrders.createManual** auto-confirma; `purchase-receipts.createManual` no. Asimetría UX. | 🟡 Media | `delivery-orders.service.ts`, `purchase-receipts.service.ts` | 🔲 |
+
+### 5.2 Hallazgos críticos de document-flow (trazabilidad)
+
+| # | Bug | Severidad | Archivo | Status |
+|---|-----|-----------|---------|--------|
+| 9 | **`JOURNAL_ENTRY`** existe en `findRawDocument` pero **NO** en `resolveNode`. Si se habilitan links contables, el nodo se pierde y sus aristas no se exploran. | 🔴 Alta | `document-flow.service.ts` | ✅ Done |
+| 10 | **Sub-grafos perdidos** si nodo intermedio retorna `null` en `resolveNode`. El BFS hace `continue` antes de buscar `documentLink`, perdiendo documentos conectados a través del nodo no resuelto. | 🔴 Alta | `document-flow.service.ts` | ✅ Done |
+| 11 | **`tenantId` filtrado inconsistente** entre `getFlow` (spread condicional) y `getGraph` (siempre filtra). Riesgo de seguridad/mantenimiento. | 🟡 Media | `document-flow.service.ts` | ✅ Done |
+| 12 | **Non-null assertions** (`doc.partner!.name`) en `resolveNode`. Si FK corrupta, lanza 500 no controlado. | 🟡 Media | `document-flow.service.ts` | ✅ Done (11 reemplazos) |
+| 13 | **`findRawDocument` retorna `Promise<any>`**. Violación política de tipos `zero any`. | 🟡 Media | `document-flow.service.ts` | ✅ Done |
+| 14 | **N+1 queries** en BFS de `getGraph`. ~3 queries por nodo; sin batching ni precarga. | 🟡 Media | `document-flow.service.ts` | 🔲 |
+| 15 | **Tests de document-flow** extremadamente pobres (solo 1 test: "debería estar definido"). | 🟡 Media | `document-flow.service.spec.ts` | 🔲 |
+
+### 5.3 Hallazgos de frontend (trazabilidad)
+
+| # | Bug | Severidad | Archivo | Status |
+|---|-----|-----------|---------|--------|
+| 16 | **`@for` track por identidad de objeto** en nodos/edges del mapa. Causa parpadeo y pérdida de estado visual. | 🔴 Alta | `document-flow-map.component.ts` | ✅ Done |
+| 17 | **`@for` track por identidad** en chips upstream/downstream. | 🔴 Alta | `document-flow.component.ts`, `document-flow-panel.component.ts` | ✅ Done |
+| 18 | **Estado `POSTED` no traducido** en el mapa (muestra literal "POSTED"). | 🟡 Media | `document-flow-map.component.ts` | ✅ Done |
+| 19 | **Doble `ChangeDetectorRef`** (`cdr` + `cd`). | 🟡 Media | `document-flow-panel.component.ts` | ✅ Done |
+| 20 | **`openMap()` sin validación** de `type`/`id`. | 🟡 Media | `document-flow-panel.component.ts` | ✅ Done |
+| 21 | **Memory leaks** por timers no limpiados en `ngOnDestroy`. | 🟢 Baja | `document-flow-map.component.ts` | ✅ Done |
+| 22 | **Sin focus trap** en modal del mapa. | 🟢 Baja | `document-flow-map.component.ts` | ✅ Done |
+
+### 5.4 Gaps de cobertura E2E
+
+| Dominio | Tests actuales | Faltantes |
+|---------|---------------|-----------|
+| Stock | 5 | Verificación de saldo post-operación, items con lotes/series |
+| Ventas | 5 | Delivery orders, factura desde orden, devoluciones, reservas |
+| Compras | 5 | Purchase receipts, factura desde orden/recepción, devoluciones, reservas |
+| Pagos | 2 | Pago parcial, conciliación, avances, trazabilidad en grafo |
+| Negativo | 0 | Stock insuficiente, partner inválido, pago excesivo, cantidad cero |
+| Estado | 0 | Confirmar, cerrar, cancelar documentos |
+
+---
+
 ## 📈 Métricas Base
 
 | Métrica | Valor | Fecha |
 |---------|-------|-------|
-| Backend suites passing | 62/62 (100%) | 21/05/2026 |
-| Backend tests passing | 326/326 (100%) | 21/05/2026 |
-| Frontend build size | 3.19 MB | 21/05/2026 |
-| Frontend lint errors | 0 (23 warnings) | 21/05/2026 |
-| E2E tests passing | 11/11 ✅ | 21/05/2026 |
+| Backend suites passing | 64/64 (100%) | 23/05/2026 |
+| Backend tests passing | 341/341 (100%) | 23/05/2026 |
+| Frontend build size | 3.19 MB | 23/05/2026 |
+| Frontend lint errors | 0 (16 warnings) | 23/05/2026 |
+| E2E tests passing | 91/91 ✅ | 23/05/2026 |
 | Backend services | 56 | 21/05/2026 |
 | Largest service (lines) | delivery-orders.service.ts (4,421) | 21/05/2026 |
-| Frontend `.subscribe()` count | 680 en 139 archivos | 21/05/2026 |
+| Frontend `.subscribe()` count | 680 en 139 archivos | 23/05/2026 |
 | Frontend `*ngIf` → `@if` migrated | ~1,847 en ~118 archivos | 19/04/2026 |
-| Frontend `takeUntilDestroyed` | 333 en 108 archivos | 21/05/2026 |
+| Frontend `takeUntilDestroyed` | 333 en 108 archivos | 23/05/2026 |
 | `findUnique` sin tenantId | 0 migradas (21 done) | 21/05/2026 |
 | `$queryRawUnsafe` count | 0 (en código fuente) | 21/05/2026 |
 | Prisma indexes | 109 | 21/05/2026 |
