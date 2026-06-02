@@ -1693,3 +1693,171 @@ model TenantMetrics {
 - Tests: `tenant-metrics.service.spec.ts` (4 tests) + `admin.controller.spec.ts` (1 test).
 
 ---
+
+## Multi-Tenant & Branch Isolation Design Rules (MANDATORY)
+
+> **Context:** Jun 2026 — completed full audit of `tenantId` isolation and `branchId` propagation across all 27+ backend domains and 21+ frontend pages. All transactional services now enforce branch validation. Future modules MUST follow these rules.
+
+### Backend Rules
+
+#### 1. Every Prisma `.create()` in a transactional service MUST include `tenantId`
+
+```typescript
+// ✅ Correct
+await tx.salesQuotation.create({
+  data: {
+    tenantId,
+    branchId: branchId ?? null,
+    partnerId: dto.partnerId,
+    // ...
+  },
+});
+
+// ✅ Also correct (variable passed)
+const data: Prisma.SalesQuotationUncheckedCreateInput = {
+  tenantId,
+  branchId: branchId ?? null,
+  // ...
+};
+await tx.salesQuotation.create({ data });
+
+// ❌ Wrong
+await tx.salesQuotation.create({
+  data: { partnerId: dto.partnerId }, // missing tenantId!
+});
+```
+
+#### 2. Every transactional document service MUST call `assertBranchRequired` and persist `branchId`
+
+```typescript
+async create(dto: CreateXDto, tenantId: number, branchId?: number | null) {
+  const settings = await this.settings.getAll(tenantId);
+  assertBranchRequired(settings, branchId); // ✅ validate
+
+  return this.prisma.$transaction(async (tx) => {
+    const doc = await tx.someDocument.create({
+      data: {
+        tenantId,
+        branchId: branchId ?? null, // ✅ persist
+        // ...
+      },
+    });
+    // ...
+  });
+}
+```
+
+**Transactional domains** (must follow this rule): `sales-quotations`, `sales-orders`, `delivery-orders`, `sale-invoices`, `sale-reserve-invoices`, `sales-returns`, `sales-credit-notes`, `sales-debit-notes`, `purchase-quotations`, `purchase-orders`, `purchase-receipts`, `purchase-invoices`, `purchase-reserve-invoices`, `purchase-returns`, `purchase-credit-notes`, `purchase-debit-notes`, `incoming-payments`, `outgoing-payments`, `journal-entries`, `pos`, `assembly-orders`, `stock-transfers`, `stock-counts`, `stock-entries`, `stock-exits`, `stock-adjustments`, `transport-guides`, `purchase-requests`, `document-drafts`.
+
+#### 3. `findUnique` / `findFirst` MUST scope by `tenantId`
+
+```typescript
+// ✅ Correct (composite key)
+const doc = await tx.salesQuotation.findUnique({
+  where: { tenantId_id: { tenantId, id } },
+});
+
+// ✅ Correct (findFirst with tenantId)
+const doc = await tx.salesQuotation.findFirst({
+  where: { tenantId, id },
+});
+
+// ❌ Wrong (missing tenant scope)
+const doc = await tx.salesQuotation.findUnique({ where: { id } });
+```
+
+#### 4. Controllers MUST pass `user.tenantId` to services
+
+```typescript
+@Post()
+create(@Body() dto: CreateXDto, @CurrentUser() user: JwtPayload) {
+  return this.service.create(dto, user.tenantId, user.defaultBranchId);
+}
+```
+
+#### 5. BranchRequiredGuard blocks mutations for branch-less users
+
+When `enableBranches=true`, any user without `defaultBranchId` is blocked from POST/PUT/PATCH/DELETE by the global `BranchRequiredGuard`. Read operations (GET) are always allowed.
+
+#### 6. Document draft converters MUST propagate `branchId`
+
+When adding a new converter in `document-drafts/converters/index.ts`, always pass `draft.branchId` to the target service:
+
+```typescript
+// ✅ Correct
+return service.createManual(payload, ctx.userId ?? 0, draft.branchId ?? null);
+
+// ❌ Wrong (loses branch)
+return service.createManual(payload, ctx.userId ?? 0);
+```
+
+### Frontend Rules
+
+#### 1. List components MUST filter by `branchId`
+
+- **If extending `DocumentListBase`**: inherit `branchId` automatically. Just pass `branchId` in `getAll()` / `findAll()` and add `<app-branch-filter-select>` to the template.
+- **If NOT extending `DocumentListBase`** (rare): manually add `branchId` state, `onBranchChange()`, and pass it to the service.
+
+```typescript
+// In load()
+this.service.getAll({ ...this.filters, branchId: this.branchId })
+```
+
+```html
+<!-- In template -->
+<app-branch-filter-select
+  [value]="branchId"
+  (branchIdChange)="onBranchChange($event)"
+></app-branch-filter-select>
+```
+
+#### 2. Transactional forms MUST include `<app-branch-selector>`
+
+Every form that creates or updates a transactional document must:
+- Have a `branchId` FormControl.
+- Render `<app-branch-selector formControlName="branchId">`.
+- Send `branchId` in the payload to the backend.
+
+```typescript
+this.form = this.fb.group({
+  partnerId: [null, Validators.required],
+  branchId: [this.auth.defaultBranchId], // ✅
+  // ...
+});
+```
+
+### Automated Enforcement
+
+Run the audit script locally or in CI:
+
+```bash
+# Backend
+npm run audit:tenant-branch
+
+# It checks:
+# - assertBranchRequired → branchId in .create()
+# - tenantId present in .create()
+# - findUnique/findFirst include tenantId
+# - controllers pass user.tenantId
+# - no hardcoded tenantId
+```
+
+The script runs automatically in GitHub Actions (`.github/workflows/ci.yml`) after lint and before tests.
+
+### Checklist for New Modules
+
+When scaffolding a new transactional domain, verify:
+
+- [ ] Prisma model has `tenantId Int` and `@@unique([tenantId, id])`
+- [ ] Prisma model has `branchId Int?` if it represents a business document
+- [ ] DTO extends `BaseDocumentDto` (inherits `branchId`)
+- [ ] Service calls `assertBranchRequired(settings, branchId)` before mutation
+- [ ] Service persists `tenantId` and `branchId` in Prisma `.create()`
+- [ ] Service uses `tenantId_id` or `{ tenantId, id }` in `findOne`/`findUnique`
+- [ ] Controller passes `user.tenantId` and `user.defaultBranchId` to service
+- [ ] Frontend list passes `branchId` in queries
+- [ ] Frontend form includes `branchId` FormControl and `<app-branch-selector>`
+- [ ] `DraftQueryDto` (if applicable) includes `branchId` for draft listing
+- [ ] Converter (if applicable) passes `draft.branchId` to target service
+
+---
