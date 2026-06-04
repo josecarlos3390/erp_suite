@@ -204,7 +204,7 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
 
 > **Context:** Apr 2025 — removed 1,629 `as any` casts, fixed implicit-`any` parameters, enforced strict typing across 78 test suites / 330 tests.  
 > **Update Apr 2026:** `strictNullChecks: true` enabled. All `as any` eliminated from `src/` and `prisma/` scripts. Current count: **0 `as any` in production code**.  
-> **Update Apr 2026 (batch/serial phase 2+3):** Lint clean, build clean, 58 suites / 191 tests passing.  
+> **Update Apr 2026 (batch/serial phase 2+3):** Lint clean, build clean, 93 suites / 565 tests passing.  
 > **Goal:** keep the backend at `0 errors, 0 any-casts`.
 
 ### 1. Zero `as any` policy
@@ -285,7 +285,7 @@ This pattern (used in `src/common/traceability.util.ts`) gives TypeScript exact 
 
 - `npm run lint` → `0 errors, ~0 warnings` (unused imports/variables cleaned).
 - `npm run build` → `0 errors`.
-- `npm test` → **60 suites, 321 tests** passing.
+- `npm test` → **93 suites, 565 tests** passing.
 - `npm run test:e2e` → **7 suites, 35 tests** passing.
 - `as any` count in `src/` → **0**.
 - `as any` count in `prisma/` scripts → **0**.
@@ -599,8 +599,14 @@ Runs on `ubuntu-latest` with Node 20:
 - `prisma/schema.prisma` — single source of truth for DB schema.
 - `test/` — E2E specs (`*.e2e-spec.ts`) with `jest-e2e.json` config.
 
-**Backend modules (27 domains):**
-`account-mappings`, `auth`, `common`, `delivery-orders`, `document-flow`, `item-groups`, `items`, `journal-entries`, `partner-groups`, `partners`, `pos`, `price-lists`, `prisma`, `purchase-invoices`, `purchase-orders`, `purchase-quotations`, `purchase-receipts`, `purchase-reserve-invoices`, `sale-invoices`, `sale-reserve-invoices`, `sales-orders`, `sales-quotations`, `settings`, `tax-indicators`, `tenants`, `users`, `warehouses`.
+**Backend modules (~75 domains):**
+
+- **Commercial documents:** `sales-quotations`, `sales-orders`, `delivery-orders`, `sale-invoices`, `sale-reserve-invoices`, `sales-returns`, `sales-credit-notes`, `sales-debit-notes`, `purchase-quotations`, `purchase-orders`, `purchase-receipts`, `purchase-invoices`, `purchase-reserve-invoices`, `purchase-returns`, `purchase-credit-notes`, `purchase-debit-notes`, `purchase-requests`, `stock-transfers`, `stock-entries`, `stock-exits`, `stock-adjustments`, `stock-counts`, `assembly-orders`, `document-drafts`
+- **POS:** `pos`, `pos-sessions`, `pos-terminals`
+- **Masters:** `items`, `item-groups`, `item-boms`, `item-barcodes`, `item-price-histories`, `price-lists`, `special-prices`, `discount-groups`, `partners`, `partner-groups`, `partner-addresses`, `partner-bank-accounts`, `warehouses`, `branches`, `tax-indicators`, `payment-terms`, `uoms`, `uom-conversions`, `currencies`, `exchange-rates`, `banks`
+- **Accounting:** `journal-entries`, `account-mappings`, `accounts`, `incoming-payments`, `outgoing-payments`
+- **Auth & Security:** `auth`, `users`, `tenants`, `security`, `permissions`, `audit-logs`
+- **Utilities:** `common`, `prisma`, `settings`, `search`, `reports`, `dashboard`, `bulk-upload`, `table-preferences`, `document-flow`, `document-line-tracking`, `sap-integration`, `udf`, `alerts`, `approvals`, `employees`, `transport-guides`, `batches`, `serial-numbers`
 
 ### Frontend
 
@@ -616,10 +622,16 @@ Runs on `ubuntu-latest` with Node 20:
 - `src/environments/` — `environment.ts` (dev, dynamic host detection) and `environment.prod.ts` (production/Render API URL).
 - `src/login/` — standalone `LoginComponent` outside the main layout.
 
-**Frontend pages (21 domains):**
-`dashboard`, `delivery-orders`, `item-groups`, `items`, `partner-groups`, `partners`, `pos`, `price-lists`, `profile`, `purchase-invoices`, `purchase-orders`, `purchase-quotations`, `purchase-receipts`, `purchase-reserve-invoices`, `sale-invoices`, `sale-reserve-invoices`, `sales-orders`, `sales-quotations`, `settings`, `tax-indicators`, `users`, `warehouses`.
+**Frontend pages (~65 domains):**
 
-**Models present (17 files):** `item.model.ts`, `partner.model.ts`, `pagination.model.ts`, `warehouse.model.ts`, `tax-indicator.model.ts`, `price-list.model.ts`, `document-flow.model.ts`, `document-line.model.ts`, `sales-quotation.model.ts`, `purchase-quotation.model.ts`, `sales-order.model.ts`, `purchase-order.model.ts`, `delivery-order.model.ts`, `purchase-receipt.model.ts`, `sale-invoice.model.ts`, `purchase-invoice.model.ts`, `sale-reserve-invoice.model.ts`, `purchase-reserve-invoice.model.ts`.
+- **Commercial documents:** `sales-quotations`, `sales-orders`, `delivery-orders`, `sale-invoices`, `sale-reserve-invoices`, `sales-returns`, `sales-credit-notes`, `sales-debit-notes`, `purchase-quotations`, `purchase-orders`, `purchase-receipts`, `purchase-invoices`, `purchase-reserve-invoices`, `purchase-returns`, `purchase-credit-notes`, `purchase-debit-notes`, `purchase-requests`, `stock-transfers`, `stock-entries`, `stock-exits`, `stock-adjustments`, `stock-counts`, `assembly-orders`, `document-drafts`
+- **POS:** `pos`, `pos-sessions`, `pos-terminals`
+- **Masters:** `items`, `item-groups`, `item-boms`, `item-barcodes`, `item-price-histories`, `price-lists`, `special-prices`, `discount-groups`, `partners`, `partner-groups`, `partner-addresses`, `partner-bank-accounts`, `warehouses`, `branches`, `tax-indicators`, `payment-terms`, `uoms`, `uom-conversions`, `currencies`, `exchange-rates`, `banks`
+- **Accounting:** `journal-entries`, `account-mappings`, `accounts`, `incoming-payments`, `outgoing-payments`
+- **Auth & Admin:** `users`, `profile`, `permissions`, `settings`, `alerts`, `approvals`, `employees`
+- **Utilities:** `dashboard`, `search`, `reports`, `kardex`, `low-stock`, `bulk-upload`, `sap-integration`, `udf`, `transport-guides`, `batches`, `serial-numbers`
+
+**Models present (~30 files):** `item.model.ts`, `partner.model.ts`, `partner-summary.model.ts`, `item-summary.model.ts`, `pagination.model.ts`, `warehouse.model.ts`, `tax-indicator.model.ts`, `price-list.model.ts`, `document-flow.model.ts`, `document-line.model.ts`, `sales-quotation.model.ts`, `purchase-quotation.model.ts`, `sales-order.model.ts`, `purchase-order.model.ts`, `delivery-order.model.ts`, `purchase-receipt.model.ts`, `sale-invoice.model.ts`, `purchase-invoice.model.ts`, `sale-reserve-invoice.model.ts`, `purchase-reserve-invoice.model.ts`, `sales-return.model.ts`, `sales-credit-note.model.ts`, `purchase-return.model.ts`, `purchase-credit-note.model.ts`, `stock-transfer.model.ts`, `stock-entry.model.ts`, `stock-exit.model.ts`, `stock-adjustment.model.ts`, `batch.model.ts`, `serial-number.model.ts`, `payment-common.model.ts`.
 
 ---
 
@@ -739,6 +751,71 @@ Runs on `ubuntu-latest` with Node 20:
 ```html
 @if (selectedWarehouse) {
   <div class="stock-panel-backdrop" (click)="closeStock()"></div>
+```
+
+---
+
+#### LunaDataTable Race Condition Fix (Jun 2026)
+
+> **Context:** `LunaDataTableComponent` con `tableKey` (persistencia de columnas) carga preferencias del backend en `ngOnInit()` vía `_loadPreferences()`. El padre (ej. `AccountsComponent`) también carga datos en su `ngOnInit()`. Ambas peticiones corren en paralelo. Cuando los datos del padre llegan primero, el padre pone `loading = false` y llama `markForCheck()`. Si la petición de preferencias llega *después*, el `markForCheck()` interno de la tabla no fuerza un re-render inmediato — el skeleton ya desapareció pero `_effectiveColumns` aún no estaba listo, quedando la tabla en blanco hasta la siguiente interacción.
+
+**La regla:**
+
+| Problema | Fix |
+|----------|-----|
+| `_loadPreferences()` usa `markForCheck()` | Usar **`detectChanges()`** para forzar ciclo inmediato |
+| Skeleton desaparece antes de que prefs lleguen | Agregar flag `_prefsLoaded` y bloquear render hasta que prefs estén resueltas |
+| Tabla sin `tableKey` no necesita esperar | `_prefsLoaded = true` por defecto; solo se bloquea cuando hay `tableKey` |
+
+**Implementación:**
+
+```typescript
+// luna-data-table.component.ts
+_prefsLoaded = true;
+
+ngOnInit(): void {
+  if (this.tableKey) {
+    this._prefsLoaded = false;
+    this._loadPreferences();
+  }
+}
+
+private _loadPreferences(): void {
+  if (!this.tableKey || !this.tablePrefService) {
+    this._prefsLoaded = true;
+    return;
+  }
+  this.tablePrefService
+    .getOne(this.tableKey)
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe({
+      next: (pref) => {
+        if (pref) {
+          this._prefs = { columnOrder: pref.columnOrder, hiddenColumns: pref.hiddenColumns };
+          this._clearCaches();
+        }
+        this._prefsLoaded = true;
+        this.cdr.detectChanges(); // ← fuerza render inmediato, no marca para "próximo ciclo"
+      },
+      error: () => {
+        this._prefsLoaded = true;
+        this.cdr.detectChanges();
+      },
+    });
+}
+```
+
+```html
+<!-- luna-data-table.component.html — condición del skeleton -->
+@if (loading || !_prefsLoaded) {
+  <!-- skeleton rows -->
+}
+```
+
+**Por qué `detectChanges()` y no `markForCheck()`:**
+- `markForCheck()` marca el componente como "dirty" pero espera al próximo ciclo de detección de Angular (disparado por Zone.js).
+- En SSR hydration, si el ciclo ya ocurrió antes de que las preferencias lleguen, el flag "dirty" se procesa vacío.
+- `detectChanges()` ejecuta la detección **ahora**, sincrónicamente, garantizando que el template se re-renderiza con `_prefsLoaded = true`.
   <div class="stock-panel">
     <h3>{{ selectedWarehouse.name }}</h3>
   </div>
@@ -960,6 +1037,45 @@ Optional / production variables:
 - **Env validation:** `main.ts` validates `JWT_SECRET` at startup and aborts if missing.
 - **Password hashing:** `bcryptjs` is used for user passwords.
 - **Input sanitization:** global `ValidationPipe` with `whitelist: true` and `forbidNonWhitelisted: true` strips unexpected properties.
+
+---
+
+## Date & Timezone Handling (Backend)
+
+> **Context:** Jun 2026 — bug detectado en login donde `exchangeRateRequired` era `true` aunque el usuario tuviera tasas cargadas hasta fin de mes.
+
+### El problema
+
+PostgreSQL almacena `DateTime` en UTC. Cuando el backend compara fechas usando `new Date().toISOString().split('T')[0]`, el resultado depende de la zona horaria del servidor:
+
+| Servidor | Hora local | `toISOString()` | Fecha extraída |
+|----------|-----------|-----------------|----------------|
+| UTC | 23:00 | `T+00:00` | Hoy |
+| UTC-4 | 23:00 | `T+04:00` → día siguiente | **Mañana** ❌ |
+
+Además, `getLatest()` ordena por `date: 'desc'` y devuelve la tasa *más reciente cargada* (puede ser futura si se hizo bulk), no la tasa de *hoy*.
+
+### La solución
+
+Siempre buscar la fecha exacta usando componentes locales (año, mes, día) y el índice único de Prisma:
+
+```typescript
+const now = new Date();
+const todayYMD = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+const todayRate = await this.prisma.exchangeRate.findUnique({
+  where: {
+    tenantId_date_fromCurrency_toCurrency: {
+      tenantId: user.tenantId,
+      date: new Date(todayYMD), // Prisma lo convierte a UTC 00:00:00
+      fromCurrency: settings.foreignCurrency,
+      toCurrency: settings.baseCurrency,
+    },
+  },
+});
+```
+
+**Regla:** nunca comparar fechas de negocio con `toISOString().split('T')[0]` cuando el servidor puede estar en una zona horaria diferente a la del usuario.
 
 ---
 
@@ -1406,6 +1522,132 @@ npx ng build --configuration production
 ```
 
 Si un componente con `OnPush` se queda en "Cargando..." o no refresca tras guardar, la causa más probable es un `subscribe()` sin `markForCheck()`.
+
+---
+
+## Standard Selector Component Pattern (Modal-Based)
+
+> **Contexto:** Jun 2026 — se identificó falta de estandarización entre los ~20 selectores del sistema. Algunos usaban `<select>` nativo, otros modal con `luna-modal`, cada uno con estilos propios. Se estandarizó el patrón modal basado en `warehouse-selector`.
+
+### Cuándo usar el patrón modal
+
+| Caso | ¿Modal? | Ejemplo |
+|------|---------|---------|
+| Catálogo maestro con >5 elementos | ✅ Sí | `warehouse-selector`, `partner-selector`, `item-group-selector` |
+| Lista dinámica del backend con búsqueda | ✅ Sí | `account-selector`, `price-list-selector` |
+| Enum fijo con ≤5 opciones | ⚠️ Opcional | `enum-selector` puede seguir modal para consistencia |
+| Creación inline + selección (lote/serie) | ❌ No | `batch-selector`, `serial-selector` usan `<select>` + input de creación |
+| Relación dependiente (item → lote → serie) | ❌ No | `batch-selector` carga por `itemId`/`warehouseId`; no aplica patrón puro |
+
+### Estructura del componente
+
+Todo selector modal **debe** seguir esta estructura exacta (adaptando solo el dominio):
+
+#### 1. TypeScript
+
+```typescript
+@Component({
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-{domain}-selector',
+  imports: [FormsModule, LunaButtonComponent, LunaModalComponent],
+  templateUrl: './{domain}-selector.component.html',
+  styleUrls: ['./{domain}-selector.component.scss'],
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => DomainSelectorComponent),
+      multi: true,
+    },
+  ],
+})
+export class DomainSelectorComponent
+  implements ControlValueAccessor, OnChanges
+{
+  private cdr = inject(ChangeDetectorRef);
+
+  @Input() items: DomainItem[] = [];           // lista del catálogo
+  @Input() placeholder = 'Seleccionar…';       // placeholder del trigger
+  @Input() title = 'Seleccionar';              // título del modal
+  @Input() compact = false;                    // modo reducido (tablas)
+  @Input() readonly = false;                   // solo lectura
+  @Output() itemSelected = new EventEmitter<DomainItem | null>();
+
+  @ViewChild('modalSearchInput')
+  modalSearchInputRef?: ElementRef<HTMLInputElement>;
+
+  modalOpen = false;
+  searchTerm = '';
+  selectedId: number | null = null;
+
+  // ControlValueAccessor con markForCheck() obligatorio
+  private onChange: (v: number | null) => void = () => {};
+  private onTouched: () => void = () => {};
+  isDisabled = false;
+
+  writeValue(id: number | null): void {
+    this.selectedId = id ?? null;
+    this.cdr.markForCheck();
+  }
+  setDisabledState(d: boolean): void {
+    this.isDisabled = d;
+    this.cdr.markForCheck();
+  }
+
+  get selectedItem(): DomainItem | null { … }
+  get filtered(): DomainItem[] { … }     // filtra por ACTIVE + searchTerm
+
+  openModal() { … }
+  closeModal() { … }
+  select(item: DomainItem) { … }
+  clearSelection(emit = true) { … }
+  onSearchChange(term: string) { … }
+
+  @HostListener('document:keydown.escape')
+  onEscape() { if (this.modalOpen) this.closeModal(); }
+}
+```
+
+#### 2. HTML — tres regiones obligatorias
+
+1. **Trigger con selección** (`.{prefix}-selected`): pill con código, nombre, botón ×, botón chevron.
+2. **Trigger vacío** (`.{prefix}-open-btn`): botón dashed con icono FontAwesome, placeholder, flecha.
+3. **Readonly** (`.{prefix}-readonly`): código + nombre plano, o `"—"`.
+4. **Modal** (`luna-modal`):
+   - Header con icono FontAwesome + título (`lunaModalHeader`).
+   - Barra de búsqueda con icono lupa, input, botón clear.
+   - Contador de resultados (`{n} resultado(s)` / `{n} X disponible(s)`).
+   - Lista `<ul>` con items clickables. Cada item: icono tipo, código (badge mono), nombre, badge "✔ seleccionado", flecha derecha.
+   - Empty state con icono lupa.
+   - Footer (`lunaModalFooter`): hint `<kbd>Esc</kbd> para cerrar` + `luna-button variant="ghost" text="Cancelar"`.
+
+#### 3. SCSS — prefijos y variables CSS
+
+- **Trigger**: prefijo corto del dominio (ej. `ws-` para warehouse, `igs-` para item-group).
+- **Modal**: prefijo largo del dominio + `m-` (ej. `wsm-` para warehouse modal, `igsm-` para item-group modal).
+- **Colores**: usar únicamente variables CSS del design system (`var(--bg-subtle)`, `var(--color-primary-text)`, etc.).
+- **Nunca** usar `@use 'styles/variables'` ni colores hex hardcodeados.
+
+### Selectores que ya siguen el patrón (✅)
+
+`warehouse-selector`, `branch-selector`, `partner-selector`, `partner-group-selector`, `item-group-selector`, `account-selector`, `bank-selector`, `currency-selector`, `employee-selector`, `invoice-selector`, `item-selector`, `payment-term-selector`, `price-list-selector`, `sales-person-selector`, `tax-indicator-selector`, `uom-selector`, `user-selector`.
+
+### Selectores que usan `<select>` nativo por diseño (⚠️)
+
+- `advance-selector` — anticipos; podría migrarse al patrón modal.
+- `enum-selector` — opciones fijas; puede mantenerse como `<select>` o migrarse por consistencia.
+- `batch-selector` — requiere creación inline (`allowCreate`) + carga dependiente de `itemId`/`warehouseId`.
+- `serial-selector` — idem `batch-selector`.
+
+### Checklist para crear un selector nuevo
+
+- [ ] ¿El catálogo viene del backend y tiene >5 elementos? → Usar patrón modal.
+- [ ] ¿Necesita búsqueda por nombre/código? → Usar patrón modal.
+- [ ] ¿Implementa `ControlValueAccessor` con `OnPush`? → `cdr.markForCheck()` en `writeValue` y `setDisabledState`.
+- [ ] ¿Usa `luna-modal` con `[open]` / `(closed)` y slots `lunaModalHeader/Body/Footer`?
+- [ ] ¿El SCSS usa variables CSS (`var(--*)`) y prefijos consistentes?
+- [ ] ¿El trigger tiene estado vacío (dashed), estado seleccionado (pill), y estado readonly?
+- [ ] ¿El modal tiene empty state, contador de resultados, y hint `Esc` en el footer?
 
 ---
 
@@ -1859,5 +2101,259 @@ When scaffolding a new transactional domain, verify:
 - [ ] Frontend form includes `branchId` FormControl and `<app-branch-selector>`
 - [ ] `DraftQueryDto` (if applicable) includes `branchId` for draft listing
 - [ ] Converter (if applicable) passes `draft.branchId` to target service
+
+---
+
+## Document Stock & Tracking Pattern (Unified)
+
+> **Context:** Apr 2026 — standardized `trackingAssignments[]` as the single input for batch/serial tracking across all commercial documents. Legacy `batchId`/`serialNumberId` fields are still stored for backward compatibility but are now derived fields.
+
+### Backend Pattern
+
+All commercial document services must use the helper:
+
+```typescript
+import { resolveTrackingFields } from '../common/document-stock.helper';
+
+const { batchId, serialNumberId, batchCode, serialNumberCode } =
+  await resolveTrackingFields(tx, tenantId, line);
+```
+
+This derives all 4 fields from `line.trackingAssignments[0]` with automatic DB lookups if codes are missing.
+
+### Prisma Schema Fields (per line-item table)
+
+Every commercial document line table must have:
+
+```prisma
+model ExampleItem {
+  // ... existing fields ...
+  batchId             Int?
+  batchCode           String?
+  serialNumberId      Int?
+  serialNumberCode    String?
+  trackingAssignments Json?
+  @@index([batchCode])
+  @@index([serialNumberCode])
+}
+```
+
+### DTO Pattern
+
+Use `TrackingAssignmentDto` instead of anonymous types:
+
+```typescript
+import { TrackingAssignmentDto } from '../../common/dto/tracking-assignment.dto';
+
+export class CreateExampleItemDto {
+  // ... other fields ...
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TrackingAssignmentDto)
+  trackingAssignments?: TrackingAssignmentDto[];
+}
+```
+
+### Lookup Endpoints
+
+For auto-populating tracking from typed codes:
+
+```
+GET /batches/lookup?code=LOT-2025-A&itemId=101
+GET /serial-numbers/lookup?code=SER-A001
+```
+
+Both return the full record (including `id`, `code`, `itemId`, `warehouseId`, `status`).
+
+---
+
+## Commercial Form Patterns (Frontend)
+
+### Inline Batch/Serial Comboboxes
+
+Forms with inline `batch-combobox` / `serial-combobox` must write into `trackingAssignments[0]` instead of direct `batchId`/`serialNumberId` controls.
+
+```typescript
+onInlineBatchSelected(index: number, batch: Batch) {
+  const row = this.itemsArray.at(index) as FormGroup;
+  const qty = Number(row.get('quantity')?.value) || 1;
+  row.get('batchId')?.setValue(batch.id, { emitEvent: false });
+  row.get('trackingAssignments')?.setValue(
+    [{ batchId: batch.id, batchCode: batch.code, serialNumberId: null, serialNumberCode: null, quantity: qty }],
+    { emitEvent: false },
+  );
+}
+
+onInlineSerialSelected(index: number, serial: SerialNumber) {
+  const row = this.itemsArray.at(index) as FormGroup;
+  row.get('serialNumberId')?.setValue(serial.id, { emitEvent: false });
+  row.get('trackingAssignments')?.setValue(
+    [{ batchId: null, batchCode: null, serialNumberId: serial.id, serialNumberCode: serial.code, quantity: 1 }],
+    { emitEvent: false },
+  );
+}
+```
+
+### `allowCreate` Restriction by Document Type
+
+| Document Type | `allowCreate` on Batch/Serial | Reason |
+|---------------|-------------------------------|--------|
+| `purchase-receipts`, `stock-entries`, `stock-adjustments` (INCREASE) | `true` | Entry documents create stock |
+| `delivery-orders`, `sale-invoices`, `stock-exits`, `stock-transfers`, returns, credit notes | `false` | Exit/transfer documents only select existing |
+
+### Modal Assignment Pattern
+
+`onBatchSerialAssigned()` must:
+1. Set `batchId`/`serialNumberId` on the FormGroup (backward compatibility)
+2. Set `trackingAssignments` with the full array from the modal
+3. Call `this.closeAssignmentModal()`
+4. Call `this.cdr.markForCheck()` (OnPush detection)
+
+```typescript
+onBatchSerialAssigned(results: AssignmentResult[]) {
+  for (const r of results) {
+    const line = this.itemsArray.at(r.lineIndex) as FormGroup;
+    if (!line) continue;
+    const first = r.assignments[0];
+    line.get('batchId')?.setValue(first?.batchId ?? null, { emitEvent: false });
+    line.get('serialNumberId')?.setValue(first?.serialNumberId ?? null, { emitEvent: false });
+    line.get('trackingAssignments')?.setValue(r.assignments, { emitEvent: false });
+  }
+  this.closeAssignmentModal();
+  this.cdr.markForCheck();
+}
+```
+
+### FormGroup Initialization
+
+Every line FormGroup builder must include `trackingAssignments`:
+
+```typescript
+return this.fb.group({
+  // ... other controls ...
+  batchId: [line.batchId ?? null],
+  serialNumberId: [line.serialNumberId ?? null],
+  trackingAssignments: [line.trackingAssignments ?? []],
+});
+```
+
+And `_addEmptyRow()` must initialize it:
+
+```typescript
+return this.fb.group({
+  // ... other controls ...
+  batchId: [null],
+  serialNumberId: [null],
+  trackingAssignments: [[]],
+});
+```
+
+---
+
+## SAP Business One Compatibility Guidelines
+
+> **Context:** The ERP is inspired by SAP B1 and must remain structurally compatible for a future bidirectional integration (SAP Service Layer ↔ our backend). All future design decisions affecting document structure, field naming, or master data should be evaluated against these guidelines.
+
+### Design Principle
+
+> **Prefer SAP-aligned patterns even when our internal IDs are numeric.** Integration will be handled by an adapter layer (`sap-connector`) that maps our numeric IDs to SAP alphanumeric codes (`CardCode`, `ItemCode`, `WarehouseCode`). The closer our document shapes are to SAP, the thinner that adapter layer remains.
+
+### Document Mapping (Our Domain → SAP Entity)
+
+| Our Document | SAP Service Layer Entity | Notes |
+|--------------|--------------------------|-------|
+| `SalesQuotation` | `Quotations` | Base document for orders |
+| `SalesOrder` | `Orders` | `DocumentLines[].BaseType` / `BaseEntry` for traceability |
+| `DeliveryOrder` | `Deliveries` | `DocumentLines[].BaseType = 17` (Order) |
+| `SaleInvoice` | `Invoices` | `DocumentLines[].BaseType` tracks origin |
+| `SaleReserveInvoice` | `Invoices` with reserve logic | SAP uses DownPaymentInvoices for reserves |
+| `PurchaseQuotation` | `PurchaseQuotations` | |
+| `PurchaseOrder` | `PurchaseOrders` | |
+| `PurchaseReceipt` | `PurchaseDeliveryNotes` | |
+| `PurchaseInvoice` | `PurchaseInvoices` | |
+| `StockTransfer` | `StockTransfers` | Direct mapping |
+| `StockEntry` / `StockExit` | `InventoryGenEntries` / `InventoryGenExits` | |
+| `JournalEntry` | `JournalEntries` | Direct mapping |
+| `BusinessPartner` | `BusinessPartners` | `CardType: 'cCustomer'`, `'cSupplier'`, `'cLid'` |
+
+### ✅ DO — SAP-Compatible Patterns
+
+1. **Keep header + lines structure**
+   - Every commercial document must have `items: DocumentLine[]` (or `DocumentLines` in SAP terms).
+   - Line-level fields: `itemId`, `quantity`, `price`, `priceNet`, `discountPct`, `discountAmt`, `taxIndicatorId`, `warehouseId`, `projectCode`, `dimension1`, `dimension2`.
+
+2. **Preserve traceability fields (`baseDocType` / `baseDocId` / `baseLineId`)**
+   - These map directly to SAP's `BaseType`, `BaseEntry`, `BaseLine`.
+   - Never remove these fields from line-item tables.
+
+3. **Use `projectCode`, `dimension1`, `dimension2` on lines**
+   - SAP equivalent: `ProjectCode`, `CostingCode`, `CostingCode2`.
+   - Keep them as optional strings on line items, not just headers.
+
+4. **Track batch/serial via `trackingAssignments` array**
+   - SAP expects `BatchNumbers` or `SerialNumbers` collections per line.
+   - Our `trackingAssignments` array is the compatible abstraction:
+     ```typescript
+     // LOT → maps to SAP BatchNumbers
+     { batchId, batchCode, serialNumberId: null, serialNumberCode: null, quantity }
+     // SERIAL → maps to SAP SerialNumbers
+     { batchId: null, batchCode: null, serialNumberId, serialNumberCode, quantity: 1 }
+     ```
+
+5. **Maintain `DocumentType` enum aligned with SAP `ObjType` values**
+   - `SALES_ORDER` → SAP `17`
+   - `DELIVERY_ORDER` → SAP `15`
+   - `SALE_INVOICE` → SAP `13`
+   - `PURCHASE_ORDER` → SAP `22`
+   - etc.
+   - The `objectType` field on headers should follow this mapping.
+
+6. **Support `customFields` / UDFs**
+   - SAP B1 uses `U_` prefixed fields. Our `customFields: Record<string, any>` on headers and lines is the compatible pattern.
+
+### ❌ DON'T — Anti-Patterns That Break SAP Integration
+
+1. **Don't replace `baseDocType` / `baseDocId` with custom relation names**
+   - Avoid names like `parentOrderId`, `sourceInvoiceId` at the line level. Use `baseDocType` + `baseDocId` + `baseLineId` consistently.
+
+2. **Don't put batch/serial IDs directly on the line without `trackingAssignments`**
+   - Legacy `batchId` / `serialNumberId` fields are kept for backward compatibility, but the canonical input must be `trackingAssignments[]`.
+
+3. **Don't invent new tax structures per document**
+   - Use `taxIndicatorId` → `TaxIndicator` table → `code` field. This `code` will map to SAP `TaxCode`.
+
+4. **Don't omit `warehouseId` at the line level**
+   - SAP supports line-level warehouses (`WarehouseCode`). Always include `warehouseId` on lines, even if it duplicates the header warehouse.
+
+5. **Don't use internal numeric IDs in external-facing DTOs without a code field**
+   - When creating public API payloads (for future SAP adapter consumption), always expose a human-readable code alongside the numeric ID:
+     ```typescript
+     // ✅ Good
+     { partnerId: 42, partnerCode: 'C0001', partnerName: 'Cliente Ejemplo' }
+     // ❌ Bad
+     { partnerId: 42 }
+     ```
+
+### Master Data Compatibility Checklist
+
+When adding new fields to master data entities, prefer fields that exist in SAP B1:
+
+| Our Entity | Preferred Fields (SAP-aligned) |
+|------------|-------------------------------|
+| **Partner** | `code` (CardCode), `name` (CardName), `cardType` (`'CUSTOMER'` / `'SUPPLIER'` / `'LEAD'`), `federalTaxId` (LicTradNum), `phone`, `email`, `address`, `defaultWarehouseId`, `priceListId`, `paymentTermsId`, `defaultTaxIndicatorId`, `salesPersonId` |
+| **Item** | `code` (ItemCode), `name` (ItemName), `description`, `groupId` (ItemsGroupCode), `trackingType` (`'NONE'` / `'LOT'` / `'SERIAL'`), `inventoryUomId`, `salesUomId`, `purchaseUomId`, `weight`, `manageStockByWarehouse`, `defaultWarehouseId`, `defaultTaxIndicatorId` |
+| **Warehouse** | `code` (WarehouseCode), `name` (WarehouseName), `location`, `branchId` |
+| **TaxIndicator** | `code` (TaxCode), `name`, `rate` |
+
+### Reminder for Future Agents
+
+> Before modifying any commercial document DTO, service, or Prisma schema related to orders, deliveries, invoices, stock movements, or partners, ask yourself: *"Will this change make the SAP adapter harder to write?"*
+>
+> If the answer is yes, prefer the SAP-aligned alternative or document the divergence explicitly in the code with a comment like:
+> ```typescript
+> // ✅ SAP-NOTE: This field diverges from SAP B1 because <reason>.
+> //    The adapter will handle mapping via <strategy>.
+> ```
 
 ---
