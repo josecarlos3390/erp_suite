@@ -137,7 +137,7 @@ Semantic tokens map primitives to meaning. They are mode-aware (automatically sw
 
 | Token | Light | Dark |
 |-------|-------|------|
-| `border-default` | `neutral-200` | `neutral-50` |
+| `border-default` | `neutral-200` | `neutral-200` |
 | `border-subtle` | `neutral-100` | `neutral-100` |
 | `border-strong` | `neutral-300` | `neutral-100` |
 | `border-accent` | `accent-300` | `accent-700` |
@@ -147,17 +147,17 @@ Semantic tokens map primitives to meaning. They are mode-aware (automatically sw
 ### 2.3 Surface Treatments
 
 - **Shadows (Light Mode):**
-  - `shadow-sm`: `0 1px 2px rgba(16, 24, 40, 0.05)`
-  - `shadow-md`: `0 4px 12px rgba(16, 24, 40, 0.08)`
-  - `shadow-lg`: `0 12px 32px rgba(16, 24, 40, 0.12)`
-  - `shadow-xl`: `0 24px 48px rgba(16, 24, 40, 0.16)`
-  - `shadow-inner`: `inset 0 2px 4px rgba(16, 24, 40, 0.04)`
+  - `shadow-sm`: `0 1px 4px rgba(0, 0, 0, 0.07)`
+  - `shadow-md`: `0 4px 14px rgba(0, 0, 0, 0.08)`
+  - `shadow-lg`: `0 12px 32px rgba(0, 0, 0, 0.12)`
+  - `shadow-xl`: `0 24px 48px rgba(0, 0, 0, 0.16)`
+  - `shadow-inner`: `inset 0 2px 4px rgba(0, 0, 0, 0.04)`
 
 - **Shadows (Dark Mode):**
-  - `shadow-sm`: `0 1px 2px rgba(0, 0, 0, 0.25)`
-  - `shadow-md`: `0 4px 12px rgba(0, 0, 0, 0.35)`
-  - `shadow-lg`: `0 12px 32px rgba(0, 0, 0, 0.45)`
-  - `shadow-xl`: `0 24px 48px rgba(0, 0, 0, 0.55)`
+  - `shadow-sm`: `0 1px 4px rgba(0, 0, 0, 0.30)`
+  - `shadow-md`: `0 4px 14px rgba(0, 0, 0, 0.40)`
+  - `shadow-lg`: `0 12px 32px rgba(0, 0, 0, 0.50)`
+  - `shadow-xl`: `0 24px 48px rgba(0, 0, 0, 0.60)`
 
 - **Backdrops:** `backdrop-blur-md` + `bg-overlay` for modals and dropdowns.
 
@@ -246,7 +246,7 @@ Semantic tokens map primitives to meaning. They are mode-aware (automatically sw
 | Content | 10 | Cards, sections |
 | Sticky | 20 | Sticky headers, columns |
 | Floating | 30 | FABs, floating actions |
-| Dropdown | 40 | Menus, selects, tooltips |
+| Dropdown | 200 | Menus, selects, tooltips |
 | Overlay | 50 | Backdrop, drawers |
 | Modal | 60 | Dialogs, popovers |
 | Toast | 70 | Notifications |
@@ -305,10 +305,10 @@ Semantic tokens map primitives to meaning. They are mode-aware (automatically sw
 | Token | Value | Usage |
 |-------|-------|-------|
 | `radius-none` | 0px | Hard corners (rare) |
-| `radius-sm` | 4px | Small tags, inputs |
-| `radius-md` | 6px | Buttons, inputs, small cards |
-| `radius-lg` | 8px | Dropdowns, menus |
-| `radius-xl` | 12px | Cards, modals, panels |
+| `radius-sm` | 6px | Small tags, inputs |
+| `radius-md` | 8px | Buttons, inputs, small cards |
+| `radius-lg` | 12px | Dropdowns, menus |
+| `radius-xl` | 14px | Cards, modals, panels |
 | `radius-2xl` | 16px | Large surfaces, drawers |
 | `radius-full` | 9999px | Pills, avatars, badges |
 
@@ -323,7 +323,8 @@ Semantic tokens map primitives to meaning. They are mode-aware (automatically sw
 | Variant | Background | Text | Border | Hover | Active |
 |---------|------------|------|--------|-------|--------|
 | **Primary** | `accent-600` | `neutral-0` | none | `accent-700` | `accent-800` |
-| **Secondary** | `bg-surface` | `text-primary` | `border-default` | `bg-hover` | `bg-active` |
+| **Secondary** | `neutral-100` | `neutral-700` | `neutral-200` | `neutral-200` / `neutral-800` | `neutral-300` |
+| **Warning** | `warning-50` | `warning-800` | `warning-300` | `warning-100` / `warning-400` | `warning-200` |
 | **Tertiary / Ghost** | transparent | `text-secondary` | none | `bg-hover` | `bg-active` |
 | **Destructive** | `error-500` | `neutral-0` | none | `error-600` | `error-700` |
 | **Link** | transparent | `text-accent` | none | underline + `accent-700` | `accent-800` |
@@ -1684,13 +1685,16 @@ The most data-dense ERP pattern:
 
 ### 13.1 Technology Recommendations
 
-This design system is framework-agnostic but optimized for modern web stacks:
+This design system is implemented with **Angular 19 standalone + SCSS** in this project. The canonical spec below is framework-agnostic, but the actual codebase uses:
 
-- **CSS Framework:** Tailwind CSS (tokens map directly to custom config).
-- **Component Library:** Build custom on top of Radix UI primitives (accessible, unstyled, fits token system).
-- **Animation:** Framer Motion for React, or CSS transitions for simple cases. `auto-animate` for lists.
-- **Icons:** Lucide React (consistent, lightweight, stroke-based).
-- **Charts:** Tremor or Recharts with custom theming to match tokens.
+- **Framework:** Angular 19 (standalone components, no NgModules, bootstrap via `bootstrapApplication`).
+- **Styling:** SCSS with CSS custom properties (design tokens). No Tailwind CSS.
+- **Component Primitives:** Custom Angular components in `src/app/shared/luna/` — not Radix UI.
+- **Animation:** CSS transitions and keyframes. No Framer Motion.
+- **Icons:** FontAwesome (`fas` classes). No Lucide.
+- **Charts:** To be determined (must use semantic tokens for theming).
+
+> **Component Inventory Note:** `DESIGN.md` specifies ~50 components. Only the following are **currently implemented** in `src/app/shared/luna/`: `luna-button`, `luna-card`, `luna-badge`, `luna-data-table`, `luna-modal`, `luna-empty-state`, `luna-action-icon`. All other components in §6 are **aspirational** — do not build them unless explicitly requested. Reuse existing shared components or native HTML patterns instead.
 
 ### 13.2 Token Architecture
 
@@ -1847,12 +1851,12 @@ src/
 - **Tight gap:** `8px`
 
 ### Border Radius
-- **Buttons/Inputs:** `6px`
-- **Cards/Modals:** `12px`
-- **Pills/Badges:** `9999px`
+- **Buttons/Inputs:** `6px` (`radius-sm` legacy) / `8px` (`radius-md`)
+- **Cards/Modals:** `14px` (`radius-xl`)
+- **Pills/Badges:** `20px` (`radius-pill`) / `9999px` (`radius-full`)
 
 ### Shadows
-- **Card:** `shadow-sm`
+- **Card:** `shadow-sm` (`0 1px 4px rgba(0,0,0,0.07)`)
 - **Dropdown:** `shadow-lg`
 - **Modal:** `shadow-xl`
 

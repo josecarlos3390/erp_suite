@@ -29,7 +29,6 @@ import { Module } from '@nestjs/common';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { PurchaseOrdersController } from './purchase-orders.controller';
 import { SettingsModule } from '../settings/settings.module';
-
 @Module({
   imports: [SettingsModule],
   providers: [PurchaseOrdersService],
@@ -39,10 +38,11 @@ export class PurchaseOrdersModule {}
 ```
 
 Import other modules only when their **services** are needed (e.g. `SettingsModule`, `PriceListsModule`).
+`PrismaService` is provided by the global `PrismaModule`; you do **not** need to import `PrismaModule` explicitly.
 
 ---
 
-## 2. Controller
+## 2. Controller (with SAP B1 aliases)
 
 ```typescript
 import {
@@ -55,63 +55,93 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { PrismaService } from '../prisma/prisma.service';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/jwt.strategy';
+import { resolveSapAliases } from '../common/sap-alias.util';
+import {
+  addSapAliasesToDocument,
+  addSapAliasesToPaginated,
+} from '../common/sap-alias-response.util';
 
 @ApiTags('PurchaseOrders')
 @ApiBearerAuth()
 @Controller('purchase-orders')
 export class PurchaseOrdersController {
-  constructor(private readonly service: PurchaseOrdersService) {}
+  constructor(
+    private readonly service: PurchaseOrdersService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Post()
-  create(
+  async create(
     @Body() dto: CreatePurchaseOrderDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.service.create(dto, user.sub, user.tenantId);
+    await resolveSapAliases(dto, dto.items ?? [], this.prisma, user.tenantId);
+    const doc = await this.service.create(dto, user.sub, user.tenantId);
+    return addSapAliasesToDocument(doc);
   }
 
   @Get()
-  findAll(
+  async findAll(
     @Query('page')   page?: string,
     @Query('limit')  limit?: string,
     @Query('search') search?: string,
     @Query('status') status?: string,
+    @CurrentUser() user: JwtPayload,
   ) {
-    return this.service.findAll({
-      page:   page   ? +page   : undefined,
-      limit:  limit  ? +limit  : undefined,
-      search: search || undefined,
-      status: status || undefined,
-    });
+    const result = await this.service.findAll(
+      {
+        page:   page   ? +page   : undefined,
+        limit:  limit  ? +limit  : undefined,
+        search: search || undefined,
+        status: status || undefined,
+      },
+      user.tenantId,
+    );
+    return addSapAliasesToPaginated(result);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(+id);
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const doc = await this.service.findOne(+id, user.tenantId);
+    return addSapAliasesToDocument(doc);
   }
 
   @Patch(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Body() dto: UpdatePurchaseOrderDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.service.update(+id, dto, user.sub, user.tenantId);
+    await resolveSapAliases(dto, dto.items ?? [], this.prisma, user.tenantId);
+    const doc = await this.service.update(+id, dto, user.sub, user.tenantId);
+    return addSapAliasesToDocument(doc);
   }
 
   @Post(':id/close')
-  close(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.service.close(+id, user.sub, user.tenantId);
+  async close(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const doc = await this.service.close(+id, user.sub, user.tenantId);
+    return addSapAliasesToDocument(doc);
   }
 
   @Post(':id/cancel')
-  cancel(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.service.cancel(+id, user.sub, user.tenantId);
+  async cancel(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const doc = await this.service.cancel(+id, user.sub, user.tenantId);
+    return addSapAliasesToDocument(doc);
   }
 }
 ```
@@ -121,14 +151,22 @@ export class PurchaseOrdersController {
 ## 3. Service (skeleton)
 
 ```typescript
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { generateCode, CODE_SEQUENCES } from '../common/code-generator';
 import { SettingsService } from '../settings/settings.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
-import { PaginatedResult, PaginationParams, parsePagination } from '../common/paginated-result';
+import {
+  PaginatedResult,
+  PaginationParams,
+  parsePagination,
+} from '../common/paginated-result';
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -137,7 +175,10 @@ export class PurchaseOrdersService {
     private settings: SettingsService,
   ) {}
 
-  private async generateCode(tx: Prisma.TransactionClient, tenantId: number): Promise<string> {
+  private async generateCode(
+    tx: Prisma.TransactionClient,
+    tenantId: number,
+  ): Promise<string> {
     const { seq, prefix, pad } = CODE_SEQUENCES.purchaseOrders;
     return generateCode(tx, tenantId, seq, prefix, pad);
   }
@@ -145,8 +186,12 @@ export class PurchaseOrdersService {
   // ────────────────
   // Crear
   // ────────────────
-  async create(dto: CreatePurchaseOrderDto, createdById: number, tenantId: number) {
-    return this.prisma.$transaction(async tx => {
+  async create(
+    dto: CreatePurchaseOrderDto,
+    createdById: number,
+    tenantId: number,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
       const code = await this.generateCode(tx, tenantId);
       // TODO: validate catalog entities, calculate lines, create header + lines
       const doc = await tx.purchaseOrder.create({
@@ -165,32 +210,75 @@ export class PurchaseOrdersService {
   // ────────────────
   // Listar
   // ────────────────
-  async findAll(params: PaginationParams & { search?: string; status?: string }): Promise<PaginatedResult<any>> {
+  async findAll(
+    params: PaginationParams & { search?: string; status?: string },
+    tenantId: number,
+  ): Promise<PaginatedResult<unknown>> {
     const { skip, take } = parsePagination(params);
     const where: Prisma.PurchaseOrderWhereInput = {
       status: { not: 'INACTIVE' },
-      ...(params.search ? { OR: [
-        { code: { contains: params.search, mode: 'insensitive' } },
-        { partner: { name: { contains: params.search, mode: 'insensitive' } } },
-      ]} : {}),
+      tenantId,
+      ...(params.search
+        ? {
+            OR: [
+              {
+                code: {
+                  contains: params.search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                partner: {
+                  name: {
+                    contains: params.search,
+                    mode: 'insensitive',
+                  },
+                },
+              },
+              {
+                partner: {
+                  code: {
+                    contains: params.search,
+                    mode: 'insensitive',
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
       ...(params.status ? { status: params.status } : {}),
     };
 
     const [data, total] = await Promise.all([
-      this.prisma.purchaseOrder.findMany({ where, skip, take, include: { partner: true, items: true }, orderBy: { createdAt: 'desc' } }),
+      this.prisma.purchaseOrder.findMany({
+        where,
+        skip,
+        take,
+        include: { partner: true, items: true },
+        orderBy: { createdAt: 'desc' },
+      }),
       this.prisma.purchaseOrder.count({ where }),
     ]);
 
-    return { data, total, page: params.page || 1, limit: take, totalPages: Math.ceil(total / take) };
+    return {
+      data,
+      total,
+      page: params.page || 1,
+      limit: take,
+      totalPages: Math.ceil(total / take),
+    };
   }
 
   // ────────────────
   // Obtener uno
   // ────────────────
-  async findOne(id: number) {
+  async findOne(id: number, tenantId: number) {
     const doc = await this.prisma.purchaseOrder.findUnique({
-      where: { id },
-      include: { partner: true, items: { include: { item: true } } },
+      where: { id, tenantId },
+      include: {
+        partner: true,
+        items: { include: { item: true } },
+      },
     });
     if (!doc) throw new NotFoundException('Documento no encontrado');
     return doc;
@@ -199,12 +287,19 @@ export class PurchaseOrdersService {
   // ────────────────
   // Actualizar
   // ────────────────
-  async update(id: number, dto: UpdatePurchaseOrderDto, updatedById: number, tenantId: number) {
-    return this.prisma.$transaction(async tx => {
+  async update(
+    id: number,
+    dto: UpdatePurchaseOrderDto,
+    updatedById: number,
+    tenantId: number,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
       // TODO: validate existing doc, update lines, recalc stock, etc.
       return tx.purchaseOrder.update({
-        where: { id },
-        data: { /* ... */ },
+        where: { id, tenantId },
+        data: {
+          /* ... */
+        },
         include: { items: true },
       });
     });
@@ -225,7 +320,7 @@ export class PurchaseOrdersService {
 
 ---
 
-## 4. Create DTO
+## 4. Create DTO (with SAP B1 aliases)
 
 ```typescript
 import {
@@ -243,12 +338,18 @@ import {
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-const toNumber = ({ value }: { value: any }) => (value != null ? Number(value) : value);
+const toNumber = ({ value }: { value: unknown }) =>
+  value != null ? Number(value) : value;
 
 class CreatePurchaseOrderItemDto {
   @ApiProperty({ description: 'ID del articulo' })
   @IsInt()
   itemId!: number;
+
+  @ApiPropertyOptional({ description: 'Código SAP del artículo (ItemCode)' })
+  @IsOptional()
+  @IsString()
+  itemCode?: string;
 
   @ApiProperty({ description: 'Cantidad' })
   @Transform(toNumber)
@@ -274,12 +375,22 @@ class CreatePurchaseOrderItemDto {
   @IsOptional()
   @IsInt()
   warehouseId?: number | null;
+
+  @ApiPropertyOptional({ description: 'Código SAP del almacén de línea (WhsCode)' })
+  @IsOptional()
+  @IsString()
+  whsCode?: string;
 }
 
 export class CreatePurchaseOrderDto {
   @ApiProperty({ description: 'ID del proveedor' })
   @IsInt()
   partnerId!: number;
+
+  @ApiPropertyOptional({ description: 'Código SAP del socio (CardCode)' })
+  @IsOptional()
+  @IsString()
+  cardCode?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -295,6 +406,11 @@ export class CreatePurchaseOrderDto {
   @IsOptional()
   @IsInt()
   warehouseId?: number | null;
+
+  @ApiPropertyOptional({ description: 'Código SAP del almacén de cabecera (WhsCode)' })
+  @IsOptional()
+  @IsString()
+  whsCode?: string;
 
   @ApiProperty({ type: [CreatePurchaseOrderItemDto] })
   @IsArray()

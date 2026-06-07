@@ -200,7 +200,6 @@ const result = calcLineWithIndicator({
   discountAmt: 0,
   taxRate: 0.13,
   isInclusive: false,
-  useSinTaxCalculation: false,
 });
 // result.subtotal, result.tax, result.total
 ```

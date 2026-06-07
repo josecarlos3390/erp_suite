@@ -832,6 +832,62 @@ private _loadPreferences(): void {
 **Files already compliant (do not use `*ngIf` inside `#actions`):**
 - `items`, `users`, `uoms`, `tax-indicators`, `partners`, `partner-groups`, `banks`, `accounts`, `price-lists`, `payment-terms`, `exchange-rates`, `item-groups`, `serial-numbers`, `journal-entries`, `udf-list`, `low-stock`, and all document list pages that only use static action buttons.
 
+---
+
+#### OnPush + manual subscriptions (Jun 2026)
+
+> **Context:** `JournalEntryPreviewButtonComponent` usa `ChangeDetectionStrategy.OnPush`. Al hacer `.subscribe()` manualmente y mutar propiedades dentro del callback (`next` / `error`), Angular no re-renderiza porque el cambio ocurre fuera de la zona de detección activa del componente. El modal y el estado de carga quedan "congelados" hasta que otra interacción dispare change detection.
+
+**La regla:**
+
+| Situación | Fix obligatorio |
+|-----------|-----------------|
+| Componente con `OnPush` + `.subscribe()` manual | Llamar `this.cdr.markForCheck()` **al final** de cada callback que mute estado visual |
+| Uso de `async` pipe en el template | No aplica — el pipe ya dispara detección |
+| `@Input()` setters o event handlers de la vista | No aplica — Angular ya dispara detección |
+
+**Ejemplo — correcto:**
+
+```typescript
+import { ChangeDetectorRef, inject } from '@angular/core';
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  // ...
+})
+export class MyComponent {
+  private cdr = inject(ChangeDetectorRef);
+
+  loadData() {
+    this.loading = true;
+    this.svc.getData()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          this.data = data;
+          this.loading = false;
+          this.cdr.markForCheck(); // ← obligatorio
+        },
+        error: (err) => {
+          this.loading = false;
+          this.error = err;
+          this.cdr.markForCheck(); // ← obligatorio
+        },
+      });
+  }
+}
+```
+
+**Por qué `markForCheck()` y no `detectChanges()`:**
+- `markForCheck()` marca el componente y sus ancestros como "dirty" para el **próximo** ciclo de detección, que Angular ejecutará de forma sincrónica cuando la microtask queue se vacíe (justo después del callback).
+- `detectChanges()` forzaría la detección **inmediatamente** dentro del callback, lo cual puede causar `ExpressionChangedAfterItHasBeenCheckedError` si el padre también está en medio de un ciclo.
+- Para suscripciones HTTP/RxJS normales, `markForCheck()` es suficiente y más seguro.
+
+**Files fixed:**
+- `journal-entry-preview-button.component.ts`
+
+---
+
 #### Path aliases (tsconfig.json)
 
 Prefer path aliases over deep relative imports (`../../shared/...` → `@shared/...`):
@@ -1159,6 +1215,21 @@ Cada servicio conectado:
 4. En `cancel()`:
    - Busca asiento original con `await this.accounting.findEntryBySource(tenantId, 'DOC_TYPE', docId, tx)`.
    - Si existe, crea storno con `await this.accounting.createStornoEntry(tx, tenantId, originalEntry.id, { ... })`.
+
+### Vista previa del asiento contable (sin persistir)
+
+El motor contable expone una **vista previa** del asiento que se generaría al confirmar un documento, sin crear registros en la base de datos.
+
+- **Backend:**
+  - `POST /journal-entries/preview` — recibe `{ documentType, documentId }` y devuelve `JournalEntryPreview` con líneas enriquecidas (cuenta, socio, artículo, almacén) y flag `isBalanced`.
+  - Implementado en `src/journal-entries/journal-entries.controller.ts` → `JournalEntriesService.preview()` → `AccountingEngineService.previewJournalEntry()`.
+  - `AccountingEngineService` separa construcción (`_build*JournalEntryLines`) de persistencia (`_persist`). Los métodos `_build*` son puros y reutilizables para preview.
+  - Documentos soportados: `SALE_INVOICE`, `PURCHASE_INVOICE`, `DELIVERY_ORDER`, `PURCHASE_RECEIPT`, `STOCK_ENTRY`, `STOCK_EXIT`, `STOCK_TRANSFER`, `STOCK_ADJUSTMENT`, `SALES_CREDIT_NOTE`, `PURCHASE_CREDIT_NOTE`, `SALES_RETURN`, `PURCHASE_RETURN`, `INCOMING_PAYMENT`, `OUTGOING_PAYMENT`.
+
+- **Frontend:**
+  - `JournalEntryPreviewButtonComponent` + `JournalEntryPreviewModalComponent` + `JournalEntryPreviewService` en `src/app/shared/journal-entry-preview/`.
+  - `DocumentActionBarComponent` acepta `[documentType]` y `[documentId]`; cuando ambos están presentes muestra automáticamente el botón **"Vista previa asiento"**.
+  - Integrado en los 14 formularios de documentos comerciales que generan asientos contables.
 
 ### Plan de cuentas universal (22 cuentas)
 
