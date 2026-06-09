@@ -914,7 +914,11 @@ All commercial document forms (`sales-quotations`, `purchase-quotations`, `sales
 - Totals with caching: `calcTotals()`, `invalidateTotals()`, getters `getSubtotal()`, `getTax()`, `getTotal()`, `getTotalDiscount()`
 - Permissions: `canViewCosts`, `canViewDiscounts`, `canViewTaxes`
 - Utilities: `toDateInput`, `warehouseName`, `getTaxRateLabel`, `getTaxCodeLabel`
-- Default warehouse resolution: `defaultWarehouseId`
+- Default warehouse resolution: `defaultWarehouseId` (branch-aware)
+  - Hierarchy: `auth.defaultWarehouseId` → `warehouse.isDefault` → single warehouse → `null`.
+  - When `form.branchId` is set, the pool is filtered to warehouses belonging to that branch (or global warehouses with `branchId == null`) before applying the hierarchy.
+  - `WarehouseSelectorComponent` receives `[branchId]` and filters its list accordingly.
+  - Auto-sync: changing `branchId` clears `warehouseId` if the selected warehouse no longer belongs to the new branch, and resets it to the new default.
 
 **`DocumentLineArrayService`** (`src/app/shared/document-form/document-line-array.service.ts`) provides:
 
@@ -2138,6 +2142,32 @@ this.form = this.fb.group({
   // ...
 });
 ```
+
+**Hybrid branch model (Option C):** The branch selector is kept in forms for flexibility (managers/admins may override), but rendered in **compact mode** to reduce visual prominence. Pass `[compact]="true"` for all commercial documents. Configuration forms (warehouses, users, employees) leave it expanded because branch assignment is the primary purpose of the form.
+
+```html
+<!-- Commercial document — compact ✅ -->
+<app-branch-selector
+  formControlName="branchId"
+  [compact]="true"
+></app-branch-selector>
+
+<!-- Configuration form — expanded (default) ✅ -->
+<app-branch-selector
+  formControlName="branchId"
+  placeholder="— Sin sucursal asignada —"
+></app-branch-selector>
+```
+
+#### 3. Branch context indicator (sidebar)
+
+The sidebar (`SidebarComponent`) displays the user's current active branch below the ERP Suite logo. This provides constant visual context without requiring the user to open a form. The indicator:
+- Shows branch code (pill) + name when expanded.
+- Shows only the building icon when collapsed.
+- Is driven by `auth.defaultBranchId` + `BranchesService.getAll()`.
+- Is hidden if the user has no default branch assigned.
+
+This complements (not replaces) the form-level branch selector.
 
 ### Automated Enforcement
 
