@@ -1703,6 +1703,32 @@ export class DomainSelectorComponent
 - **Colores**: usar únicamente variables CSS del design system (`var(--bg-subtle)`, `var(--color-primary-text)`, etc.).
 - **Nunca** usar `@use 'styles/variables'` ni colores hex hardcodeados.
 
+### ⚠️ Regla crítica: `ChangeDetectorRef` en selectores que extienden `ModalSelectorBase`
+
+> **Contexto:** Jun 2026 — `BranchSelectorComponent` (y otros 7 selectores) extendían `ModalSelectorBase`, una `@Directive()` abstracta que inyectaba `ChangeDetectorRef` vía `inject()`. Con `OnPush`, el CDR heredado de una directiva abstracta no se vincula correctamente a la vista del componente hijo standalone, causando que `detectChanges()` / `markForCheck()` fallen silenciosamente y el template nunca se re-renderice tras carga HTTP.
+>
+> **Síntoma:** El selector no aparece en el DOM o se queda en estado "Cargando…" para siempre. Comparado con `WarehouseSelectorComponent` (que NO extiende `ModalSelectorBase` e inyecta su propio `cdr`), el selector que extiende la base falla.
+
+**Solución:** `ModalSelectorBase` declara `cdr` como `protected abstract`, forzando a cada componente hijo a inyectar su propio `ChangeDetectorRef`:
+
+```typescript
+// modal-selector.base.ts
+@Directive()
+export abstract class ModalSelectorBase<T> implements ControlValueAccessor {
+  protected abstract cdr: ChangeDetectorRef; // ✅ Cada hijo inyecta el suyo
+  // ... resto de la lógica compartida
+}
+
+// branch-selector.component.ts
+export class BranchSelectorComponent extends ModalSelectorBase<Branch> {
+  protected cdr = inject(ChangeDetectorRef); // ✅ Propio, vinculado a esta vista
+  private svc = inject(BranchesService);
+  // ...
+}
+```
+
+**Regla:** Nunca uses `inject(ChangeDetectorRef)` en una `@Directive()` abstracta que será extendida por componentes standalone con `OnPush`. Cada componente concreto debe inyectar su propio `cdr`.
+
 ### Selectores que ya siguen el patrón (✅)
 
 `warehouse-selector`, `branch-selector`, `partner-selector`, `partner-group-selector`, `item-group-selector`, `account-selector`, `bank-selector`, `currency-selector`, `employee-selector`, `invoice-selector`, `item-selector`, `payment-term-selector`, `price-list-selector`, `sales-person-selector`, `tax-indicator-selector`, `uom-selector`, `user-selector`.
