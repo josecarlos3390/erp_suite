@@ -2473,6 +2473,60 @@ When adding new fields to master data entities, prefer fields that exist in SAP 
 | **Warehouse** | `code` (WarehouseCode), `name` (WarehouseName), `location`, `branchId` |
 | **TaxIndicator** | `code` (TaxCode), `name`, `rate` |
 
+## Timezone Handling Rules (Fase 7.1)
+
+> **Context:** tenant-configurable `timeZone` (default `America/La_Paz`). All business-date logic must use the tenant's timezone, never server/browser local time.
+
+### Backend (NestJS)
+
+| Situation | Pattern | Example |
+|-----------|---------|---------|
+| Receive a date-only string from the frontend | `fromTenantDate(value, timeZone)` | `const date = fromTenantDate(dto.date, settings.timeZone)!;` |
+| Default document date to "today" | `resolveDocumentDate(undefined, timeZone)` | `date: resolveDocumentDate(dto.date, settings.timeZone)` |
+| Start/end of a tenant day for DB filters | `startOfTenantDay` / `endOfTenantDay` | `startOfTenantDay(new Date(), settings.timeZone)` |
+| "Now" for business logic (expirations, alerts) | `nowInTenantTimeZone` | `const now = nowInTenantTimeZone(settings.timeZone);` |
+| Format a UTC Date for display | `formatTenantDate` / `formatTenantDateOnly` | `formatTenantDateOnly(invoice.date, settings.timeZone)` |
+| Date range from frontend filters | `tenantDateRange(dateFrom, dateTo, timeZone)` | `tenantDateRange(query.from, query.to, settings.timeZone)` |
+
+### Frontend (Angular)
+
+| Situation | Pattern | Example |
+|-----------|---------|---------|
+| Convert UTC → `<input type="date">` | `tenantDate.toDateInput(value)` | `date: [this.tenantDate.toDateInput(doc.date) ?? this.tenantDate.todayInput()]` |
+| Today as `YYYY-MM-DD` | `tenantDate.todayInput()` | `date: [this.tenantDate.todayInput()]` |
+| Convert `YYYY-MM-DD` to UTC start-of-day | `tenantDate.toStartOfDayISO(value)` | `const d = this.tenantDate.toStartOfDayISO(this.form.value.date);` |
+| Add days to a date-only string | `tenantDate.addDays(dateOnly, days)` | `const due = this.tenantDate.addDays(baseDate, term.days);` |
+| Format for display | `tenantDate.formatDateOnly(value)` | `<td>{{ row.date | tenantDate }}</td>` |
+
+### ❌ Forbidden patterns
+
+- `new Date()` + `setHours(0,0,0,0)` for business dates.
+- `date.getFullYear()` / `getMonth()` / `getDate()` from browser `Date` for input values.
+- `setDate(date.getDate() + n)` for due-date/installment calculations.
+- SQL `TO_CHAR(date, 'YYYY-MM')` without timezone conversion.
+
+### Testing timezone-aware logic
+
+Use the shared helper `src/testing/test-timezones.util.ts` to run date-sensitive specs against the canonical set of timezones:
+
+```typescript
+import { forEachTimeZone } from '../testing/test-timezones.util';
+
+forEachTimeZone((timeZone) => {
+  describe(`zona horaria: ${timeZone}`, () => {
+    it('calcula dueDate en la zona del tenant', async () => {
+      // ...
+    });
+  });
+});
+```
+
+Default test zones: `America/La_Paz`, `UTC`, `America/New_York`, `Pacific/Auckland`.
+
+> **Build note:** `src/testing` is excluded from the production build via `tsconfig.build.json` because the helper uses Jest globals (`describe`).
+
+---
+
 ### Reminder for Future Agents
 
 > Before modifying any commercial document DTO, service, or Prisma schema related to orders, deliveries, invoices, stock movements, or partners, ask yourself: *"Will this change make the SAP adapter harder to write?"*

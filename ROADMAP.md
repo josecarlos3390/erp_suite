@@ -95,7 +95,7 @@
 
 | # | Módulo | Descripción | Estado |
 |---|--------|-------------|--------|
-| ☐ 7.1 | **Zona horaria parametrizable por tenant** | Campo `timeZone` en modelo `Tenant` (default `"America/La_Paz"`). Toda fecha de documento, contabilización y reporting debe respetar la zona horaria del tenant. Hoy el ERP asume implícitamente UTC-4 en múltiples lugares (`new Date()`, `_normalizeDate`, filtros de fecha en reporting). Requiere: (1) agregar `timeZone` al schema Prisma, (2) helpers `toTenantDate()` / `fromTenantDate()` con `date-fns-tz`, (3) migrar todos los `new Date()` de lógica de negocio, (4) frontend: convertir UTC → zona horaria del tenant para display y enviar fechas con offset, (5) reporting: aplicar zona horaria del tenant en filtros y exports. | ☐ Pendiente |
+| ✅ 7.1 | **Zona horaria parametrizable por tenant** | Campo `timeZone` en `Tenant`; helpers `toTenantDate`/`fromTenantDate`; `isQuotationExpired`, `resolvePaymentTerm`, `resolveDeliveryItemPrice`, reporting/PDFs y formularios de pagos migrados a usar zona tenant; tests parametrizados. | ✅ Completado |
 | ☐ 7.2 | **Moneda multi-divisa** | Soporte para operar en USD, EUR además de BOB. Campo `currency` en documentos y tasa de cambio diaria. | ☐ Pendiente (sin iniciar) |
 | ☐ 7.3 | **Localización de reportes fiscales** | Plantillas de libro de compras/ventas adaptables a otros países (Chile, Perú, Argentina). | ☐ Pendiente |
 
