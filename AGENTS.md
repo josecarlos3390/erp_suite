@@ -177,7 +177,7 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
   - On commit of any `src/**/*.{ts,tsx}`: `npm run lint` (ESLint v9 flat config, auto-fix)
   - ~10-30 seconds (varía según cantidad de archivos staged)
 - **Pre-push** `.husky/pre-push`:
-  - `npm test` (Jest, 321 tests)
+  - `npm test` (Jest, 815 tests)
   - ~30-60 seconds
 - **Install:** already initialized via `npx husky init` after `npm install`
 
@@ -187,7 +187,7 @@ Both sub-projects are **independent Git repositories** (each has its own `.git` 
   - On commit of any `src/**/*.{ts,html,scss}`: `npm run lint` (ESLint v9 + Angular ESLint + Prettier)
   - ~20-60 seconds (varía según cantidad de archivos staged)
 - **Pre-push** `.husky/pre-push`:
-  1. `npx ng test --watch=false --browsers=ChromeHeadless` (Karma + Jasmine, 524 tests)
+  1. `npx ng test --watch=false --browsers=ChromeHeadless` (Karma + Jasmine, 586 tests)
   2. `npm run build` (production build verification)
   - ~2-4 minutes
 - **Install:** already initialized via `npx husky init` after `npm install`
@@ -285,7 +285,7 @@ This pattern (used in `src/common/traceability.util.ts`) gives TypeScript exact 
 
 - `npm run lint` → `0 errors, ~0 warnings` (unused imports/variables cleaned).
 - `npm run build` → `0 errors`.
-- `npm test` → **93 suites, 565 tests** passing.
+- `npm test` → **103 suites, 815 tests** passing.
 - `npm run test:e2e` → **7 suites, 35 tests** passing.
 - `as any` count in `src/` → **0**.
 - `as any` count in `prisma/` scripts → **0**.
@@ -402,8 +402,8 @@ This pattern (used in `src/common/traceability.util.ts`) gives TypeScript exact 
 
 ### 8. Current lint warning count (post-cleanup)
 
-- **Frontend:** `ng lint` → `0 errors, ~0 warnings` (`: any` cleanup reduced most noise; remaining are unused imports/variables — safe to ignore or clean gradually).
-- **Backend:** `npm run lint` → `0 errors, ~80 warnings` (same category).
+- **Frontend:** `ng lint` → `0 errors, ~45 warnings` (preexistentes, mayoría imports no usados).
+- **Backend:** `npm run lint` → `0 errors, 0 warnings`.
 
 ---
 
@@ -558,6 +558,76 @@ export interface LunaColumn<T = unknown> {
 
 ---
 
+## Frontend LUNA Form Layout System (Jun 2026)
+
+> **Context:** se creó un sistema declarativo de layout para formularios (`src/app/shared/luna-form/`) con el objetivo de unificar retícula, espaciado y jerarquía visual de los 51 formularios del frontend. Fase piloto completada con 31 formularios migrados.
+
+### 1. Componentes de layout
+
+Importar desde `@shared/luna-form`:
+
+| Componente | Selector | Uso |
+|------------|----------|-----|
+| `LunaFormPageComponent` | `<luna-form-page>` | Contenedor raíz de página. Aplica padding compensado por header/action-bar sticky. Expone `density` para toda la página. |
+| `LunaFormSectionComponent` | `<luna-form-section>` | Tarjeta de sección con `title`, `hint` y `status` semántico. |
+| `LunaFormRowComponent` | `<luna-form-row>` | Fila grid configurable (`columns` 1-4, `gap` sm/md/lg), responsiva por defecto. |
+| `LunaFormFieldComponent` | `<luna-form-field>` | Envoltorio `label + hint + error` para controles custom que no exponen label propio. |
+| `LunaFormTabsComponent` | `<luna-form-tabs>` | Pestañas accesibles unificadas (reemplaza `.tab-bar` / `.tab-switcher` custom). |
+
+### 2. Densidad
+
+`density` en `<luna-form-page>` acepta `compact | comfortable | spacious` (default `comfortable`). Los tokens viven en `src/styles/_form-density.scss` y afectan padding, gaps y altura de controles.
+
+### 3. Patrón de uso
+
+```html
+<luna-form-page>
+  <app-document-form-header lunaFormHeader (back)="goBack()">...</app-document-form-header>
+
+  <form [formGroup]="form" (ngSubmit)="save()" class="luna-form-page__body" novalidate>
+    <luna-form-section title="Información general">
+      <luna-form-row [columns]="3">
+        <luna-input ...></luna-input>
+        <luna-input ...></luna-input>
+      </luna-form-row>
+      <luna-form-row [columns]="3">
+        <luna-form-field label="Cuenta" hint="..." [required]="true">
+          <app-account-selector ...></app-account-selector>
+        </luna-form-field>
+      </luna-form-row>
+    </luna-form-section>
+  </form>
+
+  <app-document-action-bar lunaFormActions (back)="goBack()">...</app-document-action-bar>
+</luna-form-page>
+```
+
+### 4. Reglas
+
+- Todo formulario nuevo o refactorizado debe usar `<luna-form-page>` como contenedor raíz.
+- Agrupar campos relacionados en `<luna-form-section>`.
+- Usar `<luna-form-row [columns]="N">` para alinear controles; no escribir grids custom en SCSS de página.
+- Para tabs, usar `<luna-form-tabs>` en lugar de `.tab-bar` / `.tab-switcher`.
+- No usar `::ng-deep` para perforar primitivos LUNA. Las variantes necesarias deben solicitarse al equipo de design system.
+- Los slots `lunaFormHeader` y `lunaFormActions` deben aplicarse **directamente** sobre el componente proyectable (`app-document-form-header`, `app-document-action-bar`). No envolverlos en `<div>` ni `<ng-container>`, porque `<luna-form-page>` proyecta esos selectores exactos como `ng-content select="[lunaFormHeader]"`.
+- Todo formulario refactorizado debe incluir un spec de Playwright que capture un screenshot (`e2e/screenshots/<nombre>-form-after.png`) y verifique renderizado real de la UI.
+
+### 5. Estado de la migración
+
+- **Formularios migrados (51):** `account-form`, `assembly-order-form`, `bank-account-form`, `bank-form`, `branch-form`, `currency-form`, `delivery-orders-form`, `discount-groups-form`, `employee-form`, `exchange-rate-form`, `incoming-payments-form`, `item-boms-form`, `item-form`, `item-barcode-form`, `item-group-form`, `journal-entries-form`, `outgoing-payments-form`, `partner-form`, `partner-group-form`, `payment-term-form`, `price-list-form`, `projects-form`, `purchase-credit-notes-form`, `purchase-debit-notes-form`, `purchase-invoices-form`, `purchase-orders-form`, `purchase-quotations-form`, `purchase-receipts-form`, `purchase-requests-form`, `purchase-reserve-invoices-form`, `purchase-returns-form`, `sales-credit-notes-form`, `sales-debit-notes-form`, `sales-orders-form`, `sales-quotations-form`, `sales-returns-form`, `sale-invoices-form`, `sale-reserve-invoices-form`, `special-price-form`, `stock-adjustments-form`, `stock-counts-form`, `stock-entries-form`, `stock-exits-form`, `stock-transfers-form`, `tax-indicator-form`, `transport-guides-form`, `udf-form`, `uom-conversion-form`, `uom-form`, `user-form`, `warehouse-form`.
+- **Formularios restantes:** 0.
+- **Build:** ✅ éxito (warning de bundle budget: +18.53 kB, no bloqueante).
+- **Lint:** ✅ 0 errores, 44 warnings preexistentes (sin nuevos warnings introducidos).
+- **Tests:** ✅ 586/586 SUCCESS.
+
+### 6. Próximos pasos
+
+1. ✅ Migrar documentos comerciales de compras (`purchase-quotations`, `purchase-orders`, `purchase-receipts`, `purchase-invoices`, `purchase-reserve-invoices`, `purchase-credit-notes`, `purchase-returns`).
+2. ✅ Migrar documentos comerciales de ventas (`sales-quotations`, `sales-orders`, `delivery-orders`, `sale-invoices`, `sale-reserve-invoices`, `sales-credit-notes`, `sales-returns`).
+3. Generar baseline visual consolidado con Playwright (`e2e/forms-reference-screenshots.spec.ts`).
+
+---
+
 ## CI/CD (GitHub Actions)
 
 Both repositories have GitHub Actions workflows that run on every `push` to `main` and every `pull_request` targeting `main`.
@@ -568,7 +638,7 @@ Runs on `ubuntu-latest` with Node 20:
 
 1. `npm ci`
 2. `npm run lint` (ESLint v9 flat config)
-3. `npm test` (Jest, 321 tests)
+3. `npm test` (Jest, 815 tests)
 
 ### Frontend (`erp-frontend/.github/workflows/ci.yml`)
 
@@ -576,7 +646,7 @@ Runs on `ubuntu-latest` with Node 20:
 
 1. `npm ci`
 2. `npm run lint` (ESLint v9 + Angular ESLint + Prettier)
-3. `npx ng test --watch=false --browsers=ChromeHeadless` (Karma + Jasmine, 268 tests)
+3. `npx ng test --watch=false --browsers=ChromeHeadless` (Karma + Jasmine, 586 tests)
 4. `npm run build` (production build verification)
 5. `npx playwright install --with-deps` + `npm run e2e` (Playwright, 14 tests en Chromium + Firefox)
 
@@ -1435,7 +1505,7 @@ CREATE INDEX idx_sale_invoice_custom ON "SaleInvoice" USING GIN (customFields);
 - `ng build` → ✅ 0 errores.
 - `ng lint` → ✅ 0 errores, 0 warnings.
 - `: any` en `src/app/` → **2 intencionales** en `luna-data-table.types.ts` (excepción documentada).
-- Tests de frontend → ✅ 268 tests pasando (Karma + Jasmine).
+- Tests de frontend → ✅ 526 tests pasando (Karma + Jasmine).
 
 ---
 
@@ -2538,3 +2608,52 @@ Default test zones: `America/La_Paz`, `UTC`, `America/New_York`, `Pacific/Auckla
 > ```
 
 ---
+
+
+---
+
+## LUNA-first Design System Policy (new code and migrations)
+
+All UI in `erp-frontend` **must** be built with LUNA v2 primitives. Native HTML/CSS substitutes are not allowed for any new feature.
+
+### Currently available LUNA v2 components
+
+- `luna-button` — primary/secondary/ghost/destructive/link/icon-only actions
+- `luna-card` — surface, stat, list, glass variants
+- `luna-badge` — status and label indicators
+- `luna-empty-state` — empty/initial/error content blocks
+- `luna-modal` — centered dialog with header/body/footer slots
+- `luna-data-table` — sortable, selectable, paginated, configurable table
+- `luna-action-icon` — SVG action icons used inside buttons
+
+### Primitives planned / missing (build before using custom replacements)
+
+High priority (forms dominate the UI surface):
+- `luna-input` (text, number, date, password)
+- `luna-select` / `luna-combobox`
+- `luna-textarea`
+- `luna-checkbox` / `luna-radio` / `luna-switch`
+- `luna-label` / `luna-form-field` / `luna-error-message`
+
+Medium priority (navigation & feedback):
+- `luna-tabs` (default, pill, vertical)
+- `luna-breadcrumb`
+- `luna-toast` / `luna-alert`
+- `luna-spinner` / `luna-skeleton`
+- `luna-pagination` (standalone)
+- `luna-drawer` / `luna-slide-over`
+- `luna-confirm-dialog`
+
+Lower priority / specialized:
+- `luna-command-palette`, `luna-date-picker`, `luna-file-upload`, `luna-wizard`, etc.
+
+### Migration rule
+
+- If a LUNA component exists for a pattern, **use it**. Do not introduce new native `<button>`, `<span class="badge">`, `<table>`, modal backdrops, empty-state blocks, or card wrappers.
+- When modifying a file that still contains native equivalents, migrate them to LUNA as part of the same change.
+- If a needed primitive does not exist yet, extend LUNA (`src/app/shared/luna/`) instead of creating a one-off local component.
+- Keep the public API minimal and additive; do not break existing inputs/outputs/events.
+
+### Tokens
+
+All LUNA components and consuming pages must use tokens from `src/styles/tokens/`. No hardcoded colors, shadows, spacing, or animations outside tokens, except for one-off layout math (e.g. `calc()`).
