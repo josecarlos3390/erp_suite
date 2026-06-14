@@ -616,9 +616,10 @@ Importar desde `@shared/luna-form`:
 
 - **Formularios migrados (51):** `account-form`, `assembly-order-form`, `bank-account-form`, `bank-form`, `branch-form`, `currency-form`, `delivery-orders-form`, `discount-groups-form`, `employee-form`, `exchange-rate-form`, `incoming-payments-form`, `item-boms-form`, `item-form`, `item-barcode-form`, `item-group-form`, `journal-entries-form`, `outgoing-payments-form`, `partner-form`, `partner-group-form`, `payment-term-form`, `price-list-form`, `projects-form`, `purchase-credit-notes-form`, `purchase-debit-notes-form`, `purchase-invoices-form`, `purchase-orders-form`, `purchase-quotations-form`, `purchase-receipts-form`, `purchase-requests-form`, `purchase-reserve-invoices-form`, `purchase-returns-form`, `sales-credit-notes-form`, `sales-debit-notes-form`, `sales-orders-form`, `sales-quotations-form`, `sales-returns-form`, `sale-invoices-form`, `sale-reserve-invoices-form`, `special-price-form`, `stock-adjustments-form`, `stock-counts-form`, `stock-entries-form`, `stock-exits-form`, `stock-transfers-form`, `tax-indicator-form`, `transport-guides-form`, `udf-form`, `uom-conversion-form`, `uom-form`, `user-form`, `warehouse-form`.
 - **Formularios restantes:** 0.
-- **Build:** ✅ éxito (warning de bundle budget: +18.53 kB, no bloqueante).
+- **Build:** ✅ éxito (warning de bundle budget: +18.25 kB, no bloqueante).
 - **Lint:** ✅ 0 errores, 44 warnings preexistentes (sin nuevos warnings introducidos).
 - **Tests:** ✅ 586/586 SUCCESS.
+- **Cobertura general de componentes LUNA:** 182/185 templates HTML (98.4%) usan al menos un componente LUNA. Restantes: `app.component.html` (layout raíz), `pages/sap-integration/sap-integration.component.html` (contenedor de rutas) y `shared/document-flow/document-flow.component.html` (mantenido intacto por decisión de arquitectura).
 
 ### 6. Próximos pasos
 
