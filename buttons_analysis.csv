@@ -1,0 +1,1228 @@
+﻿"File","Tag","Class","Type"
+"src/app/core/alerts/alert-badge.component.ts","<button class=""alert-badge-btn"" (click)=""toggle.emit()"" title=""Alertas"">","alert-badge-btn",""
+"src/app/core/alerts/alert-panel.component.ts","<button class=""close-btn"" (click)=""close.emit()"" title=""Cerrar"">","close-btn",""
+"src/app/core/alerts/alert-panel.component.ts","<button
+          class=""action-link""
+          (click)=""markAllRead()""
+          [disabled]=""!hasUnread""
+        >","action-link",""
+"src/app/core/alerts/alert-panel.component.ts","<button class=""action-link"" (click)=""refresh()"">","action-link",""
+"src/app/core/alerts/alert-panel.component.ts","<button class=""meta-link"" (click)=""goToEntity(alert)"">","meta-link",""
+"src/app/core/alerts/alert-panel.component.ts","<button
+                    class=""icon-btn""
+                    (click)=""markRead(alert.id, $event)""
+               ","icon-btn",""
+"src/app/core/alerts/alert-panel.component.ts","<button
+                  class=""icon-btn""
+                  (click)=""dismiss(alert.id, $event)""
+                  ti","icon-btn",""
+"src/app/core/confirm-dialog/confirm-dialog.component.ts","<button
+              type=""button""
+              class=""btn""
+              [class.btn-primary]=""(config.type ?? 'primar","btn","button"
+"src/app/core/help/help-hint.component.ts","<button
+      class=""help-hint""
+      [attr.aria-label]=""'Ayuda: ' + label""
+      [title]=""label""
+      (click)=""ope","help-hint","button"
+"src/app/core/help/help-panel.component.ts","<button
+              class=""help-tab""
+              [class.active]=""activeTabId() === tab.id""
+              [attr.aria-","help-tab",""
+"src/app/core/help/help-panel.component.ts","<button class=""empty-action"" (click)=""clearSearch()"">","empty-action",""
+"src/app/core/help/help-panel.component.ts","<button
+              class=""category-toggle""
+              [class.expanded]=""isExpanded(cat.id)""
+              (click)=","category-toggle",""
+"src/app/core/help/help-panel.component.ts","<button
+                      class=""section-toggle""
+                      [class.expanded]=""isSectionExpanded(section.i","section-toggle",""
+"src/app/core/help/help-panel.component.ts","<button
+                          class=""icon-action share-action""
+                          title=""Copiar enlace a esta","icon-action share-action",""
+"src/app/core/help/help-panel.component.ts","<button
+                          class=""icon-action favorite-action""
+                          [class.is-favorite]=""hel","icon-action favorite-action",""
+"src/app/core/help/help-panel.component.ts","<button class=""feedback-btn"" (click)=""sendFeedback()"">","feedback-btn",""
+"src/app/core/keyboard-shortcuts/shortcuts-help.component.ts","<button class=""shortcuts-close"" (click)=""close()"" aria-label=""Cerrar"">","shortcuts-close",""
+"src/app/core/layout/layout.component.html","<button
+    class=""sidebar-toggle-btn""
+    [class.collapsed]=""sidebarCollapsed""
+    (click)=""toggleSidebar()""
+    [t","sidebar-toggle-btn",""
+"src/app/core/toast/toast.component.ts","<button
+            class=""toast__close""
+            (click)=""toastService.dismiss(toast.id)""
+            aria-label=","toast__close",""
+"src/app/pages/account-mappings/account-mappings.component.html","<button
+            class=""tab-btn""
+            [class.active]=""activeTab === category.key""
+            (click)=""setT","tab-btn",""
+"src/app/pages/accounts/accounts.component.html","<button
+                class=""tree-expand-btn""
+                (click)=""toggleExpand(acc.code); $event.stopPropagatio","tree-expand-btn",""
+"src/app/pages/assembly-orders/assembly-order-detail.component.html","<button
+          class=""tab-btn""
+          [class.active]=""activeTab === 'info'""
+          (click)=""activeTab = 'inf","tab-btn",""
+"src/app/pages/assembly-orders/assembly-order-detail.component.html","<button
+          class=""tab-btn""
+          [class.active]=""activeTab === 'components'""
+          (click)=""activeTab ","tab-btn",""
+"src/app/pages/assembly-orders/assembly-order-detail.component.html","<button
+          class=""tab-btn""
+          [class.active]=""activeTab === 'movements'""
+          (click)=""activeTab =","tab-btn",""
+"src/app/pages/delivery-orders/delivery-orders-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'detail'""
+  ","tab-btn","button"
+"src/app/pages/delivery-orders/delivery-orders-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'discounts'""","tab-btn","button"
+"src/app/pages/delivery-orders/delivery-orders-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'costs'""
+   ","tab-btn","button"
+"src/app/pages/delivery-orders/delivery-orders-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'taxes'""
+   ","tab-btn","button"
+"src/app/pages/delivery-orders/delivery-orders-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'udfs'""
+    ","tab-btn","button"
+"src/app/pages/delivery-orders/delivery-orders-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/delivery-orders/delivery-orders-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/delivery-orders/delivery-orders-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-danger""
+                (click)=""canc","dropdown-item item-danger","button"
+"src/app/pages/delivery-orders/delivery-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/delivery-orders/delivery-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/delivery-orders/delivery-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/delivery-orders/delivery-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/employees/employees.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === null""
+      (click)=""setStatusFilter(null)""
+","status-tab",""
+"src/app/pages/employees/employees.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ACTIVE'""
+      (click)=""setStatusFilter('ACT","status-tab",""
+"src/app/pages/employees/employees.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'INACTIVE'""
+      (click)=""setStatusFilter('I","status-tab",""
+"src/app/pages/incoming-payments/incoming-payments-form.component.html","<button
+                    type=""button""
+                    class=""tab-btn""
+                    [class.active]=""act","tab-btn","button"
+"src/app/pages/incoming-payments/incoming-payments-form.component.html","<button
+                    type=""button""
+                    class=""tab-btn""
+                    [class.active]=""act","tab-btn","button"
+"src/app/pages/incoming-payments/incoming-payments.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/incoming-payments/incoming-payments.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'DRAFT'""
+      (click)=""setStatusFilter('DRAF","status-tab",""
+"src/app/pages/incoming-payments/incoming-payments.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'POSTED'""
+      (click)=""setStatusFilter('POS","status-tab",""
+"src/app/pages/incoming-payments/incoming-payments.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/items/item-detail.component.html","<button
+          class=""tab-btn""
+          [class.active]=""activeTab === 'general'""
+          (click)=""setTab('gener","tab-btn",""
+"src/app/pages/items/item-detail.component.html","<button
+          class=""tab-btn""
+          [class.active]=""activeTab === 'inventory'""
+          (click)=""setTab('inv","tab-btn",""
+"src/app/pages/items/item-detail.component.html","<button
+          class=""tab-btn""
+          [class.active]=""activeTab === 'kardex'""
+          (click)=""setTab('kardex","tab-btn",""
+"src/app/pages/items/item-detail.component.html","<button
+          class=""tab-btn""
+          [class.active]=""activeTab === 'assembly-orders'""
+          (click)=""setTa","tab-btn",""
+"src/app/pages/items/item-form.component.html","<button
+        type=""button""
+        class=""form-tab""
+        [class.active]=""activeTab === 'general'""
+        (cli","form-tab","button"
+"src/app/pages/items/item-form.component.html","<button
+        type=""button""
+        class=""form-tab""
+        [class.active]=""activeTab === 'stock'""
+        (click","form-tab","button"
+"src/app/pages/items/item-form.component.html","<button
+        type=""button""
+        class=""form-tab""
+        [class.active]=""activeTab === 'production'""
+        (","form-tab","button"
+"src/app/pages/items/item-form.component.html","<button
+        type=""button""
+        class=""form-tab""
+        [class.active]=""activeTab === 'warehouses'""
+        (","form-tab","button"
+"src/app/pages/items/item-form.component.html","<button
+                        type=""button""
+                        class=""warehouse-card-main""
+                   ","warehouse-card-main","button"
+"src/app/pages/outgoing-payments/outgoing-payments-form.component.html","<button
+                    type=""button""
+                    class=""tab-btn""
+                    [class.active]=""act","tab-btn","button"
+"src/app/pages/outgoing-payments/outgoing-payments-form.component.html","<button
+                    type=""button""
+                    class=""tab-btn""
+                    [class.active]=""act","tab-btn","button"
+"src/app/pages/outgoing-payments/outgoing-payments.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/outgoing-payments/outgoing-payments.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'DRAFT'""
+      (click)=""setStatusFilter('DRAF","status-tab",""
+"src/app/pages/outgoing-payments/outgoing-payments.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'POSTED'""
+      (click)=""setStatusFilter('POS","status-tab",""
+"src/app/pages/outgoing-payments/outgoing-payments.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/partner-addresses/partner-addresses.component.ts","<button
+          type=""button""
+          class=""btn-icon""
+          (click)=""edit(row)""
+          title=""Editar""
+      ","btn-icon","button"
+"src/app/pages/partner-addresses/partner-addresses.component.ts","<button
+          type=""button""
+          class=""btn-icon""
+          (click)=""remove(row.id)""
+          title=""Eliminar""","btn-icon","button"
+"src/app/pages/partner-bank-accounts/partner-bank-accounts.component.ts","<button
+          type=""button""
+          class=""btn-icon""
+          (click)=""edit(row)""
+          title=""Editar""
+      ","btn-icon","button"
+"src/app/pages/partner-bank-accounts/partner-bank-accounts.component.ts","<button
+          type=""button""
+          class=""btn-icon""
+          (click)=""remove(row.id)""
+          title=""Eliminar""","btn-icon","button"
+"src/app/pages/partners/partner-detail.component.html","<button
+          class=""tab-btn""
+          [class.active]=""activeTab === 'general'""
+          (click)=""setTab('gener","tab-btn",""
+"src/app/pages/partners/partner-detail.component.html","<button
+          class=""tab-btn""
+          [class.active]=""activeTab === 'transactions'""
+          (click)=""setTab('","tab-btn",""
+"src/app/pages/partners/partner-detail.component.html","<button
+          class=""tab-btn""
+          [class.active]=""activeTab === 'open-documents'""
+          (click)=""setTab","tab-btn",""
+"src/app/pages/pos/pos.component.html","<button
+      class=""cart-fab""
+      [class.fab-has-items]=""cart.length >","cart-fab",""
+"src/app/pages/pos/components/pos-cart-drawer.component.ts","<button class=""drawer-close"" (click)=""closeDrawer.emit()"">","drawer-close",""
+"src/app/pages/pos/components/pos-cart-drawer.component.ts","<button class=""qty-btn"" (click)=""decrementQty.emit(item)"">","qty-btn",""
+"src/app/pages/pos/components/pos-cart-drawer.component.ts","<button class=""qty-btn"" (click)=""incrementQty.emit(item)"">","qty-btn",""
+"src/app/pages/pos/components/pos-cart-drawer.component.ts","<button
+              class=""ci-edit""
+              (click)=""editItem.emit(item)""
+              title=""Editar""
+     ","ci-edit",""
+"src/app/pages/pos/components/pos-cart-drawer.component.ts","<button
+              class=""ci-remove""
+              (click)=""removeItem.emit(item)""
+              title=""Eliminar""","ci-remove",""
+"src/app/pages/pos/components/pos-checkout-modal.component.ts","<button
+                        class=""btn-remove-payment""
+                        (click)=""removePayment.emit(i)""
+     ","btn-remove-payment",""
+"src/app/pages/pos/components/pos-checkout-modal.component.ts","<button class=""add-payment-btn"" (click)=""addPayment.emit('cash')"">","add-payment-btn",""
+"src/app/pages/pos/components/pos-checkout-modal.component.ts","<button class=""add-payment-btn"" (click)=""addPayment.emit('card')"">","add-payment-btn",""
+"src/app/pages/pos/components/pos-checkout-modal.component.ts","<button
+                class=""add-payment-btn""
+                (click)=""addPayment.emit('transfer')""
+              >","add-payment-btn",""
+"src/app/pages/pos/components/pos-invoice-list.component.ts","<button class=""chip-clear"" (click)=""clearPartner.emit()"">","chip-clear",""
+"src/app/pages/pos/components/pos-product-grid.component.ts","<button
+                  class=""btn-add-quick""
+                  (click)=""quickAdd.emit(p); $event.stopPropagation()""","btn-add-quick",""
+"src/app/pages/pos/components/pos-product-modal.component.ts","<button class=""pm-close"" (click)=""closed.emit()"">","pm-close",""
+"src/app/pages/pos/components/pos-product-modal.component.ts","<button (click)=""qty = qty >","",""
+"src/app/pages/pos/components/pos-product-modal.component.ts","<button (click)=""qty = qty + 1"">","",""
+"src/app/pages/pos/components/pos-product-modal.component.ts","<button
+                      class=""disc-type-btn""
+                      [class.active]=""discountType === 'percent'""
+  ","disc-type-btn",""
+"src/app/pages/pos/components/pos-product-modal.component.ts","<button
+                      class=""disc-type-btn""
+                      [class.active]=""discountType === 'amount'""
+   ","disc-type-btn",""
+"src/app/pages/pos-sessions/pos-sessions.component.ts","<button
+            class=""btn-icon""
+            *ngIf=""row.status === 'OPEN'""
+            (click)=""closeSession(row)""
+ ","btn-icon",""
+"src/app/pages/pos-terminals/pos-terminals.component.ts","<button class=""btn-icon"" (click)=""openEdit(row)"" title=""Editar"">","btn-icon",""
+"src/app/pages/pos-terminals/pos-terminals.component.ts","<button class=""btn-icon"" (click)=""remove(row)"" title=""Eliminar"">","btn-icon",""
+"src/app/pages/purchase-credit-notes/purchase-credit-notes-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'detail'""
+        ","tab-btn","button"
+"src/app/pages/purchase-credit-notes/purchase-credit-notes-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'discounts'""
+     ","tab-btn","button"
+"src/app/pages/purchase-credit-notes/purchase-credit-notes-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'costs'""
+         ","tab-btn","button"
+"src/app/pages/purchase-credit-notes/purchase-credit-notes-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'taxes'""
+         ","tab-btn","button"
+"src/app/pages/purchase-credit-notes/purchase-credit-notes-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'udfs'""
+          ","tab-btn","button"
+"src/app/pages/purchase-credit-notes/purchase-credit-notes-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-danger""
+                (click)=""canc","dropdown-item item-danger","button"
+"src/app/pages/purchase-credit-notes/purchase-credit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/purchase-credit-notes/purchase-credit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/purchase-credit-notes/purchase-credit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/purchase-credit-notes/purchase-credit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/purchase-debit-notes/purchase-debit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/purchase-debit-notes/purchase-debit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/purchase-debit-notes/purchase-debit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/purchase-debit-notes/purchase-debit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/purchase-invoices/purchase-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'detail'""
+  ","tab-btn","button"
+"src/app/pages/purchase-invoices/purchase-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'discounts'""","tab-btn","button"
+"src/app/pages/purchase-invoices/purchase-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'costs'""
+   ","tab-btn","button"
+"src/app/pages/purchase-invoices/purchase-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'taxes'""
+   ","tab-btn","button"
+"src/app/pages/purchase-invoices/purchase-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'udfs'""
+    ","tab-btn","button"
+"src/app/pages/purchase-invoices/purchase-invoices-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/purchase-invoices/purchase-invoices-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/purchase-invoices/purchase-invoices-form.component.html","<button
+                  type=""button""
+                  class=""dropdown-item item-danger""
+                  (click)","dropdown-item item-danger","button"
+"src/app/pages/purchase-invoices/purchase-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/purchase-invoices/purchase-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/purchase-invoices/purchase-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/purchase-invoices/purchase-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/purchase-orders/purchase-orders-form.component.html","<button
+          type=""button""
+          class=""btn-tab""
+          [class.active]=""activeTab === 'detail'""
+        ","btn-tab","button"
+"src/app/pages/purchase-orders/purchase-orders-form.component.html","<button
+          type=""button""
+          class=""btn-tab""
+          [class.active]=""activeTab === 'discounts'""
+     ","btn-tab","button"
+"src/app/pages/purchase-orders/purchase-orders-form.component.html","<button
+          type=""button""
+          class=""btn-tab""
+          [class.active]=""activeTab === 'costs'""
+         ","btn-tab","button"
+"src/app/pages/purchase-orders/purchase-orders-form.component.html","<button
+          type=""button""
+          class=""btn-tab""
+          [class.active]=""activeTab === 'taxes'""
+         ","btn-tab","button"
+"src/app/pages/purchase-orders/purchase-orders-form.component.html","<button
+          type=""button""
+          class=""btn-tab""
+          [class.active]=""activeTab === 'udfs'""
+          ","btn-tab","button"
+"src/app/pages/purchase-orders/purchase-orders-form.component.html","<button
+              type=""button""
+              class=""dropdown-item""
+              [class.item-disabled]=""!canCopy","dropdown-item","button"
+"src/app/pages/purchase-orders/purchase-orders-form.component.html","<button
+              type=""button""
+              class=""dropdown-item""
+              [class.item-disabled]=""!canCopy","dropdown-item","button"
+"src/app/pages/purchase-orders/purchase-orders-form.component.html","<button
+              type=""button""
+              class=""dropdown-item""
+              (click)=""
+                rout","dropdown-item","button"
+"src/app/pages/purchase-orders/purchase-orders-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-warning""
+                (click)=""clo","dropdown-item item-warning","button"
+"src/app/pages/purchase-orders/purchase-orders-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-danger""
+                (click)=""canc","dropdown-item item-danger","button"
+"src/app/pages/purchase-orders/purchase-orders.component.html","<button class=""dropdown-item"" (click)=""goConsolidarRecibo()"">","dropdown-item",""
+"src/app/pages/purchase-orders/purchase-orders.component.html","<button class=""dropdown-item"" (click)=""goConsolidarFRC()"">","dropdown-item",""
+"src/app/pages/purchase-orders/purchase-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/purchase-orders/purchase-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/purchase-orders/purchase-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CONFIRMED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/purchase-orders/purchase-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/purchase-orders/purchase-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/purchase-orders/purchase-quotation-items-picker.component.ts","<button type=""button"" class=""modal-close"" (click)=""close.emit()"">","modal-close","button"
+"src/app/pages/purchase-quotations/purchase-quotations.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/purchase-quotations/purchase-quotations.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/purchase-quotations/purchase-quotations.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/purchase-quotations/purchase-quotations.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/purchase-quotations/purchase-quotations.component.html","<button class=""dropdown-item"" (click)=""goConsolidarOrden()"">","dropdown-item",""
+"src/app/pages/purchase-quotations/purchase-quotations.component.html","<button class=""dropdown-item"" (click)=""goConsolidarRecibo()"">","dropdown-item",""
+"src/app/pages/purchase-quotations/purchase-quotations.component.html","<button class=""dropdown-item"" (click)=""goConsolidarFRC()"">","dropdown-item",""
+"src/app/pages/purchase-receipts/purchase-receipts-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'detail'""
+  ","tab-btn","button"
+"src/app/pages/purchase-receipts/purchase-receipts-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'discounts'""","tab-btn","button"
+"src/app/pages/purchase-receipts/purchase-receipts-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'costs'""
+   ","tab-btn","button"
+"src/app/pages/purchase-receipts/purchase-receipts-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'taxes'""
+   ","tab-btn","button"
+"src/app/pages/purchase-receipts/purchase-receipts-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'udfs'""
+    ","tab-btn","button"
+"src/app/pages/purchase-receipts/purchase-receipts-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/purchase-receipts/purchase-receipts-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/purchase-receipts/purchase-receipts-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-danger""
+                (click)=""canc","dropdown-item item-danger","button"
+"src/app/pages/purchase-receipts/purchase-receipts.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/purchase-receipts/purchase-receipts.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/purchase-receipts/purchase-receipts.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/purchase-receipts/purchase-receipts.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/purchase-requests/purchase-requests-form.component.html","<button type=""button"" class=""tab-btn active"">","tab-btn active","button"
+"src/app/pages/purchase-requests/purchase-requests-form.component.html","<button
+              type=""button""
+              class=""dropdown-item""
+              (click)=""openConvertModal(); to","dropdown-item","button"
+"src/app/pages/purchase-requests/purchase-requests-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-warning""
+                (click)=""clo","dropdown-item item-warning","button"
+"src/app/pages/purchase-requests/purchase-requests-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-danger""
+                (click)=""canc","dropdown-item item-danger","button"
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices-form.component.html","<button
+                    type=""button""
+                    class=""toggle-btn""
+                    [class.active]=""","toggle-btn","button"
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices-form.component.html","<button
+                    type=""button""
+                    class=""toggle-btn""
+                    [class.active]=""","toggle-btn","button"
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'detail'""
+  ","tab-btn","button"
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'discounts'""","tab-btn","button"
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'costs'""
+   ","tab-btn","button"
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'taxes'""
+   ","tab-btn","button"
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'udfs'""
+    ","tab-btn","button"
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-danger""
+                (click)=""canc","dropdown-item item-danger","button"
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/purchase-returns/purchase-returns-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'detail'""
+        ","tab-btn","button"
+"src/app/pages/purchase-returns/purchase-returns-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'discounts'""
+     ","tab-btn","button"
+"src/app/pages/purchase-returns/purchase-returns-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'costs'""
+         ","tab-btn","button"
+"src/app/pages/purchase-returns/purchase-returns-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'taxes'""
+         ","tab-btn","button"
+"src/app/pages/purchase-returns/purchase-returns-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'udfs'""
+          ","tab-btn","button"
+"src/app/pages/purchase-returns/purchase-returns.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/purchase-returns/purchase-returns.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/purchase-returns/purchase-returns.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/purchase-returns/purchase-returns.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/reports/aging-report/aging-report.component.html","<button
+        class=""tab-btn""
+        [class.active]=""type === 'CUSTOMER'""
+        (click)=""setType('CUSTOMER')""
+ ","tab-btn",""
+"src/app/pages/reports/aging-report/aging-report.component.html","<button
+        class=""tab-btn""
+        [class.active]=""type === 'SUPPLIER'""
+        (click)=""setType('SUPPLIER')""
+ ","tab-btn",""
+"src/app/pages/reports/ledger-report/ledger-report.component.ts","<button
+          class=""tab""
+          [class.active]=""activeTab === 'sales'""
+          (click)=""setTab('sales')""
+     ","tab",""
+"src/app/pages/reports/ledger-report/ledger-report.component.ts","<button
+          class=""tab""
+          [class.active]=""activeTab === 'purchases'""
+          (click)=""setTab('purchases'","tab",""
+"src/app/pages/sale-invoices/sale-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'detail'""
+  ","tab-btn","button"
+"src/app/pages/sale-invoices/sale-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'discounts'""","tab-btn","button"
+"src/app/pages/sale-invoices/sale-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'costs'""
+   ","tab-btn","button"
+"src/app/pages/sale-invoices/sale-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'taxes'""
+   ","tab-btn","button"
+"src/app/pages/sale-invoices/sale-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'udfs'""
+    ","tab-btn","button"
+"src/app/pages/sale-invoices/sale-invoices-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/sale-invoices/sale-invoices-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/sale-invoices/sale-invoices-form.component.html","<button
+                  type=""button""
+                  class=""dropdown-item item-danger""
+                  (click)","dropdown-item item-danger","button"
+"src/app/pages/sale-invoices/sale-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/sale-invoices/sale-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/sale-invoices/sale-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/sale-invoices/sale-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'detail'""
+  ","tab-btn","button"
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'discounts'""","tab-btn","button"
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'costs'""
+   ","tab-btn","button"
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'taxes'""
+   ","tab-btn","button"
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices-form.component.html","<button
+            type=""button""
+            class=""tab-btn""
+            [class.active]=""activeTab === 'udfs'""
+    ","tab-btn","button"
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices-form.component.html","<button
+                type=""button""
+                class=""dropdown-item""
+                [class.item-disabled]=""!c","dropdown-item","button"
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices-form.component.html","<button
+                  type=""button""
+                  class=""dropdown-item item-danger""
+                  (click)","dropdown-item item-danger","button"
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/sale-reserve-invoices/sale-reserve-invoices.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/sales-credit-notes/sales-credit-notes-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'detail'""
+        ","tab-btn","button"
+"src/app/pages/sales-credit-notes/sales-credit-notes-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'discounts'""
+     ","tab-btn","button"
+"src/app/pages/sales-credit-notes/sales-credit-notes-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'costs'""
+         ","tab-btn","button"
+"src/app/pages/sales-credit-notes/sales-credit-notes-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'taxes'""
+         ","tab-btn","button"
+"src/app/pages/sales-credit-notes/sales-credit-notes-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'udfs'""
+          ","tab-btn","button"
+"src/app/pages/sales-credit-notes/sales-credit-notes-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-danger""
+                (click)=""canc","dropdown-item item-danger","button"
+"src/app/pages/sales-credit-notes/sales-credit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/sales-credit-notes/sales-credit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/sales-credit-notes/sales-credit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/sales-credit-notes/sales-credit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/sales-debit-notes/sales-debit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/sales-debit-notes/sales-debit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/sales-debit-notes/sales-debit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/sales-debit-notes/sales-debit-notes.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/sales-orders/sales-orders-form.component.html","<button
+          type=""button""
+          class=""btn-tab""
+          [class.active]=""activeTab === 'detail'""
+        ","btn-tab","button"
+"src/app/pages/sales-orders/sales-orders-form.component.html","<button
+          type=""button""
+          class=""btn-tab""
+          [class.active]=""activeTab === 'discounts'""
+     ","btn-tab","button"
+"src/app/pages/sales-orders/sales-orders-form.component.html","<button
+          type=""button""
+          class=""btn-tab""
+          [class.active]=""activeTab === 'costs'""
+         ","btn-tab","button"
+"src/app/pages/sales-orders/sales-orders-form.component.html","<button
+          type=""button""
+          class=""btn-tab""
+          [class.active]=""activeTab === 'taxes'""
+         ","btn-tab","button"
+"src/app/pages/sales-orders/sales-orders-form.component.html","<button
+          type=""button""
+          class=""btn-tab""
+          [class.active]=""activeTab === 'udfs'""
+          ","btn-tab","button"
+"src/app/pages/sales-orders/sales-orders-form.component.html","<button
+              type=""button""
+              class=""dropdown-item""
+              [class.item-disabled]=""!canCopy","dropdown-item","button"
+"src/app/pages/sales-orders/sales-orders-form.component.html","<button
+              type=""button""
+              class=""dropdown-item""
+              [class.item-disabled]=""!canCopy","dropdown-item","button"
+"src/app/pages/sales-orders/sales-orders-form.component.html","<button
+              type=""button""
+              class=""dropdown-item""
+              [class.item-disabled]=""!canCopy","dropdown-item","button"
+"src/app/pages/sales-orders/sales-orders-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-primary""
+                (click)=""cre","dropdown-item item-primary","button"
+"src/app/pages/sales-orders/sales-orders-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-warning""
+                (click)=""clo","dropdown-item item-warning","button"
+"src/app/pages/sales-orders/sales-orders-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-danger""
+                (click)=""canc","dropdown-item item-danger","button"
+"src/app/pages/sales-orders/sales-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/sales-orders/sales-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/sales-orders/sales-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/sales-orders/sales-orders.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/sales-quotations/sales-quotations-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'detail'""
+        ","tab-btn","button"
+"src/app/pages/sales-quotations/sales-quotations-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'discounts'""
+     ","tab-btn","button"
+"src/app/pages/sales-quotations/sales-quotations-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'costs'""
+         ","tab-btn","button"
+"src/app/pages/sales-quotations/sales-quotations-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'taxes'""
+         ","tab-btn","button"
+"src/app/pages/sales-quotations/sales-quotations-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'udfs'""
+          ","tab-btn","button"
+"src/app/pages/sales-quotations/sales-quotations-form.component.html","<button
+              type=""button""
+              class=""dropdown-item""
+              [class.item-disabled]=""!canCopy","dropdown-item","button"
+"src/app/pages/sales-quotations/sales-quotations-form.component.html","<button
+              type=""button""
+              class=""dropdown-item""
+              (click)=""copyToDelivery(); togg","dropdown-item","button"
+"src/app/pages/sales-quotations/sales-quotations-form.component.html","<button
+              type=""button""
+              class=""dropdown-item""
+              (click)=""copyToReserveInvoice()","dropdown-item","button"
+"src/app/pages/sales-quotations/sales-quotations-form.component.html","<button
+              type=""button""
+              class=""dropdown-item""
+              (click)=""copyToSaleInvoice(); t","dropdown-item","button"
+"src/app/pages/sales-quotations/sales-quotations-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-warning""
+                (click)=""clo","dropdown-item item-warning","button"
+"src/app/pages/sales-quotations/sales-quotations-form.component.html","<button
+                type=""button""
+                class=""dropdown-item item-danger""
+                (click)=""canc","dropdown-item item-danger","button"
+"src/app/pages/sales-quotations/sales-quotations.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/sales-quotations/sales-quotations.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/sales-quotations/sales-quotations.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/sales-quotations/sales-quotations.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/sales-returns/sales-returns-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'detail'""
+        ","tab-btn","button"
+"src/app/pages/sales-returns/sales-returns-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'discounts'""
+     ","tab-btn","button"
+"src/app/pages/sales-returns/sales-returns-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'costs'""
+         ","tab-btn","button"
+"src/app/pages/sales-returns/sales-returns-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'taxes'""
+         ","tab-btn","button"
+"src/app/pages/sales-returns/sales-returns-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'udfs'""
+          ","tab-btn","button"
+"src/app/pages/sales-returns/sales-returns.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/sales-returns/sales-returns.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/sales-returns/sales-returns.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/sales-returns/sales-returns.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/stock-adjustments/stock-adjustments-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'detail'""
+        ","tab-btn","button"
+"src/app/pages/stock-adjustments/stock-adjustments-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'costs'""
+         ","tab-btn","button"
+"src/app/pages/stock-adjustments/stock-adjustments-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'udfs'""
+          ","tab-btn","button"
+"src/app/pages/stock-adjustments/stock-adjustments.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/stock-adjustments/stock-adjustments.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/stock-adjustments/stock-adjustments.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CONFIRMED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/stock-adjustments/stock-adjustments.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/stock-entries/stock-entries-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'detail'""
+        ","tab-btn","button"
+"src/app/pages/stock-entries/stock-entries-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'costs'""
+         ","tab-btn","button"
+"src/app/pages/stock-entries/stock-entries-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'udfs'""
+          ","tab-btn","button"
+"src/app/pages/stock-entries/stock-entries.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/stock-entries/stock-entries.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/stock-entries/stock-entries.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CONFIRMED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/stock-entries/stock-entries.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/stock-exits/stock-exits-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'detail'""
+        ","tab-btn","button"
+"src/app/pages/stock-exits/stock-exits-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'costs'""
+         ","tab-btn","button"
+"src/app/pages/stock-exits/stock-exits-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'udfs'""
+          ","tab-btn","button"
+"src/app/pages/stock-exits/stock-exits.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/stock-exits/stock-exits.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/stock-exits/stock-exits.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CONFIRMED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/stock-exits/stock-exits.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/stock-transfers/stock-transfers-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'detail'""
+        ","tab-btn","button"
+"src/app/pages/stock-transfers/stock-transfers-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'costs'""
+         ","tab-btn","button"
+"src/app/pages/stock-transfers/stock-transfers-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'udfs'""
+          ","tab-btn","button"
+"src/app/pages/stock-transfers/stock-transfers.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'ALL'""
+      (click)=""setStatusFilter('ALL')""","status-tab",""
+"src/app/pages/stock-transfers/stock-transfers.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'OPEN'""
+      (click)=""setStatusFilter('OPEN'","status-tab",""
+"src/app/pages/stock-transfers/stock-transfers.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CLOSED'""
+      (click)=""setStatusFilter('CLO","status-tab",""
+"src/app/pages/stock-transfers/stock-transfers.component.html","<button
+      class=""status-tab""
+      [class.active]=""statusFilter === 'CANCELLED'""
+      (click)=""setStatusFilter('","status-tab",""
+"src/app/pages/warehouses/warehouse-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'general'""
+       ","tab-btn","button"
+"src/app/pages/warehouses/warehouse-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'inventory'""
+     ","tab-btn","button"
+"src/app/pages/warehouses/warehouse-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'production'""
+    ","tab-btn","button"
+"src/app/pages/warehouses/warehouse-form.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""activeTab === 'finance'""
+       ","tab-btn","button"
+"src/app/shared/document-approval-widget/document-approval-widget.component.ts","<button
+              class=""btn btn-sm btn-success""
+              (click)=""onApprove()""
+              [disabled]=""proce","btn btn-sm btn-success",""
+"src/app/shared/document-flow/document-flow-map.component.ts","<button
+                  class=""dfm-zoom-btn""
+                  type=""button""
+                  (click)=""zoomOut()""","dfm-zoom-btn","button"
+"src/app/shared/document-flow/document-flow-map.component.ts","<button
+                  class=""dfm-zoom-btn""
+                  type=""button""
+                  (click)=""zoomIn()""
+","dfm-zoom-btn","button"
+"src/app/shared/document-flow/document-flow-map.component.ts","<button
+                  class=""dfm-zoom-btn dfm-zoom-reset""
+                  type=""button""
+                  (clic","dfm-zoom-btn dfm-zoom-reset","button"
+"src/app/shared/document-flow/document-flow-map.component.ts","<button
+              class=""dfm-close-btn""
+              type=""button""
+              (click)=""close()""
+            ","dfm-close-btn","button"
+"src/app/shared/document-flow/document-flow-map.component.ts","<button class=""dfm-retry-btn"" type=""button"" (click)=""retry()"">","dfm-retry-btn","button"
+"src/app/shared/document-flow/document-flow-map.component.ts","<button class=""dfm-close-footer-btn"" type=""button"" (click)=""close()"">","dfm-close-footer-btn","button"
+"src/app/shared/document-flow/document-flow-panel.component.ts","<button
+        type=""button""
+        class=""flow-toggle-btn""
+        (click)=""toggle()""
+        [class.active]=""ope","flow-toggle-btn","button"
+"src/app/shared/document-flow/document-flow-panel.component.ts","<button
+        type=""button""
+        class=""flow-map-btn""
+        (click)=""openMap()""
+        title=""Ver mapa visua","flow-map-btn","button"
+"src/app/shared/document-flow/document-flow-panel.component.ts","<button class=""flow-retry-btn"" type=""button"" (click)=""retry()"">","flow-retry-btn","button"
+"src/app/shared/document-header-tabs/document-header-tabs.component.html","<button
+          type=""button""
+          class=""tab-btn""
+          [class.active]=""currentTab === tab.key""
+        ","tab-btn","button"
+"src/app/shared/document-lines-table/document-lines-table.component.html","<button
+        type=""button""
+        class=""tab-btn""
+        [class.active]=""currentTab === tab.key""
+        (click","tab-btn","button"

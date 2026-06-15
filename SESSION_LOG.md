@@ -707,3 +707,292 @@ this.router.navigate([...]);
 ### Validación
 - **Frontend build**: ✅ 0 errores.
 - **Frontend lint**: ✅ 0 errores, 44 warnings preexistentes.
+
+
+---
+
+## Sesión 2026-06-14 — LUNA Form Layout System: piloto y validación
+
+### Objetivo
+Crear y validar el sistema de layout declarativo `luna-form-*` para unificar la retícula, espaciado y jerarquía visual de los 51 formularios del frontend.
+
+### Componentes creados (`src/app/shared/luna-form/`)
+
+| Componente | Archivo | Responsabilidad |
+|------------|---------|-----------------|
+| `LunaFormPageComponent` | `luna-form-page.component.ts` | Contenedor raíz de página; expone `density` y slots `lunaFormHeader` / `lunaFormActions`. |
+| `LunaFormSectionComponent` | `luna-form-section.component.ts` | Tarjeta de sección con `title`, `hint` y `status`. |
+| `LunaFormRowComponent` | `luna-form-row.component.ts` | Fila grid responsiva (`columns` 1-4, `gap` sm/md/lg). |
+| `LunaFormFieldComponent` | `luna-form-field.component.ts` | Envoltorio `label + hint + error` para controles sin label propio. |
+| `LunaFormTabsComponent` | `luna-form-tabs.component.ts` | Pestañas accesibles unificadas. |
+
+### Tokens y configuración
+- Creado `src/styles/_form-density.scss` con 3 escalas: `compact`, `comfortable`, `spacious`.
+- Añadido `stylePreprocessorOptions.includePaths: ["src/styles"]` en `angular.json` para importar `breakpoints` desde cualquier componente.
+
+### Formularios migrados (piloto)
+1. `tax-indicators/tax-indicator-form.component.html`
+2. `warehouses/warehouse-form.component.html` (incluye `<luna-form-tabs>`)
+3. `users/user-form.component.html`
+
+### Reglas documentadas en `AGENTS.md`
+- Todo formulario nuevo/refactorizado debe usar `<luna-form-page>` como raíz.
+- Agrupar campos en `<luna-form-section>`.
+- Alinear controles con `<luna-form-row>`; evitar grids custom en SCSS de página.
+- Usar `<luna-form-tabs>` en lugar de `.tab-bar` / `.tab-switcher`.
+- Prohibido `::ng-deep` sobre primitivos LUNA.
+
+### Validación
+- **Frontend build**: ✅ 0 errores (warning bundle budget: +15.56 kB, no bloqueante).
+- **Frontend lint**: ✅ 0 errores, ~45 warnings preexistentes.
+- **Frontend tests**: ✅ 564/564 SUCCESS.
+
+### Próximos pasos
+1. Migrar 48 formularios restantes, priorizando masters simples y luego documentos comerciales.
+2. Reemplazar `app-document-header-tabs` y tabs de documentos comerciales por `<luna-form-tabs>`.
+3. Generar baseline visual con Playwright.
+
+
+---
+
+## Sesión 2026-06-14 — LUNA Form: migración de 9 masters simples (lote 1)
+
+### Objetivo
+Avanzar la migración masiva de formularios al patrón LUNA Form, comenzando por masters simples sin tabs para validar el proceso manual y preservar funcionalidades.
+
+### Formularios migrados
+1. `banks/bank-form`
+2. `banks/bank-account-form`
+3. `branches/branch-form`
+4. `currencies/currency-form`
+5. `uoms/uom-form`
+6. `uom-conversions/uom-conversion-form`
+7. `partner-groups/partner-group-form`
+8. `payment-terms/payment-term-form`
+9. `projects/projects-form`
+
+### Cambios realizados
+- Reemplazo de `<div class="form-page">` por `<luna-form-page>`.
+- Uso de `<luna-form-section>` para agrupar campos, incluyendo títulos, hints y acciones (`lunaSectionActions`).
+- Reemplazo de `<div class="form-row-*">` por `<luna-form-row [columns]="N">`.
+- Envoltura de selectores custom (`app-enum-selector`, `app-warehouse-selector`, etc.) en `<luna-form-field>`.
+- Aplicación de slots `lunaFormHeader` y `lunaFormActions` en `app-document-form-header` y `app-document-action-bar`.
+- Actualización de imports TypeScript en cada componente para incluir los componentes LUNA Form necesarios.
+- Reemplazo de íconos nativos `<i class="fas fa-spinner">` por `<luna-action-icon action="spinner">` en los formularios tocados.
+
+### Lección aprendida
+Un script de migración automática masiva fue descartado: generó etiquetas desbalanceadas e imports rotos en varios archivos. Se optó por migración manual por lotes, revisando build/lint/tests tras cada grupo.
+
+### Validación
+- **Frontend build**: ✅ 0 errores (warning bundle budget +15.56 kB, no bloqueante).
+- **Frontend lint**: ✅ 0 errores, ~45 warnings preexistentes.
+- **Frontend tests**: ✅ 564/564 SUCCESS.
+
+### Estado acumulado
+- **Migrados**: 12 formularios.
+- **Restantes**: 39 formularios (masters simples, documentos comerciales, tabs, baseline visual).
+
+
+## Sesión 2026-06-14 — LUNA Form: lote 2 (formularios complejos sin tabs)
+
+### Objetivo
+Continuar la migración masiva al patrón LUNA Form, atacando formularios de dominio más complejos que no usan `app-document-header-tabs` (maestros con líneas, inventario, UDFs y guías).
+
+### Formularios migrados
+1. `item-groups/item-group-form`
+2. `udf/udf-form`
+3. `stock-counts/stock-counts-form`
+4. `transport-guides/transport-guides-form`
+5. `item-boms/item-boms-form`
+
+### Cambios realizados
+- Reemplazo de `<div class="form-page">` / `<div class="document-form">` por `<luna-form-page>` con slots `lunaFormHeader` y `lunaFormActions`.
+- Uso de `<luna-form-section>` y `<luna-form-row [columns]="N">` para datos generales, filtros y secciones de líneas.
+- Envoltura de selectores custom (`app-partner-selector`, `app-warehouse-selector`, `app-branch-selector`, `app-project-selector`, `app-item-selector`, `app-uom-selector`) en `<luna-form-field>`.
+- Reemplazo de íconos nativos `<i class="fas fa-spinner">` / `<i class="fas fa-edit">` por `<luna-action-icon action="spinner">` / `<luna-action-icon action="edit">`.
+- Corrección en `LunaFormFieldComponent`: el input `error` ahora acepta `string | undefined` para compatibilidad con bindings condicionales.
+- Actualización de imports TypeScript en cada componente para incluir `LunaFormPageComponent`, `LunaFormSectionComponent`, `LunaFormRowComponent` y `LunaFormFieldComponent`.
+
+### Validación
+- **Frontend build**: ✅ 0 errores (warning bundle budget +15.56 kB, no bloqueante).
+- **Frontend lint**: ✅ 0 errores, ~45 warnings preexistentes.
+- **Frontend tests**: ✅ 564/564 SUCCESS.
+
+### Estado acumulado
+- **Migrados**: 21 formularios.
+- **Restantes**: 30 formularios (masters con tabs, documentos comerciales con `app-document-header-tabs`, y baseline visual con Playwright).
+
+
+---
+
+## Sesión 2026-05-27 — LUNA Form: lote 3 (tabs + ajustes)
+
+### Objetivo
+Continuar la migración masiva al patrón LUNA Form, implementando el componente de pestañas faltante, migrando el primer formulario con tabs (`employee-form`) y limpiando la proyección del slot de acciones en `journal-entries-form`.
+
+### Formularios migrados
+1. `employees/employee-form` (reemplaza `app-document-header-tabs` por `<luna-form-tabs>`).
+
+### Componentes creados / ajustados
+- `src/app/shared/luna-form/luna-form-tabs.component.ts` + `.scss`: pestañas accesibles con `role="tablist"`, `role="tab"`, `aria-selected`, y soporte de iconos opcionales.
+- `src/app/shared/luna-form/index.ts`: exporta `LunaFormTabsComponent` y el tipo `LunaFormTab`.
+- `src/app/pages/journal-entries/journal-entries-form.component.html`: atributo `lunaFormActions` aplicado directamente sobre `<app-document-action-bar>` para evitar nodos proyectables múltiples.
+
+### Cambios realizados
+- Reemplazo de `<div class="form-page">` por `<luna-form-page>` con slots `lunaFormHeader` y `lunaFormActions`.
+- Uso de `<luna-form-tabs>` + `@switch (activeTab)` para navegación entre pestañas.
+- Agrupación de campos en `<luna-form-section>` y alineación con `<luna-form-row [columns]="N">`.
+- Envoltura de selectores custom (`app-branch-selector`, `app-user-selector`) en `<luna-form-field>`.
+- Eliminación de imports obsoletos (`DocumentHeaderTabsComponent`, `DocumentHeaderTabsConfig`, `DocumentHeaderTabDirective`, `Employee`).
+
+### Validación
+- **Frontend build**: ✅ 0 errores (warning bundle budget +17.83 kB, no bloqueante).
+- **Frontend lint**: ✅ 0 errores, 45 warnings preexistentes.
+- **Frontend tests**: ✅ 564/564 SUCCESS.
+
+### Estado acumulado
+- **Migrados**: 26 formularios.
+- **Restantes**: 25 formularios (`items`, `partners`, `price-lists`, `special-prices`, documentos comerciales con líneas, y baseline visual con Playwright).
+
+
+---
+
+## Sesión 2026-05-27 — LUNA Form: lote 4 (masters con listas de precios)
+
+### Objetivo
+Continuar la migración masiva al patrón LUNA Form migrando los formularios de listas de precios y precios especiales, que usan maquetados custom de listado interno.
+
+### Formularios migrados
+1. `price-lists/price-list-form`
+2. `special-prices/special-price-form`
+
+### Cambios realizados
+- Reemplazo de `<div class="form-page">` por `<luna-form-page>` con slots `lunaFormHeader` y `lunaFormActions`.
+- Uso de `<luna-form-section>` para agrupar datos generales, configuración y sección de artículos.
+- Uso de `<luna-form-row [columns]="N">` para alinear código/descripción/moneda y otros campos.
+- Envoltura de selectores custom (`app-currency-selector`, `app-partner-selector`, `app-price-list-selector`) en `<luna-form-field>`.
+- Reemplazo de íconos nativos `<i class="fas fa-spinner">` por `<luna-action-icon action="spinner">`.
+- Reemplazo de flechas font-awesome en paginador por `action="arrowLeft"` / `action="arrowRight"` de `luna-button`.
+- Actualización de imports TypeScript para incluir los componentes LUNA Form.
+
+### Validación
+- **Frontend build**: ✅ 0 errores (warning bundle budget +17.83 kB, no bloqueante).
+- **Frontend lint**: ✅ 0 errores, 44 warnings preexistentes.
+- **Frontend tests**: ✅ 564/564 SUCCESS.
+
+### Estado acumulado
+- **Migrados**: 28 formularios.
+- **Restantes**: 23 formularios (`items`, `partners`, documentos comerciales con líneas, movimientos de inventario, pagos, y baseline visual con Playwright).
+
+
+---
+
+## Sesión 2026-05-27 — Rediseño premium de `user-form` + verificación con Playwright
+
+### Objetivo
+Responder a la observación de UX/UI en el formulario de usuarios. Revisar visualmente con Playwright, corregir la proyección de slots LUNA y aplicar un layout premium con secciones claras, grids y tarjetas de opciones.
+
+### Cambios realizados
+- `src/app/pages/users/user-form.component.html`:
+  - Se quitaron los `<div>` envolventes incorrectos de `lunaFormHeader` y `lunaFormActions`; los atributos ahora viven directamente en `app-document-form-header` y `app-document-action-bar`.
+  - Se añadió `class="luna-form-page__body"` al `<form>` para que herede el padding y gap del contenedor LUNA.
+  - Sección "Información general" con `<luna-form-row [columns]="3">` (datos de acceso + asignación).
+  - Nueva sección "Estado" con tarjeta toggle (`luna-switch`) para activar/inactivar usuario.
+  - Sección "Permisos de facturación" con lista de tarjetas: título + descripción a la izquierda, checkbox a la derecha.
+  - Sección "Visibilidad de pestañas" con grid de 3 tarjetas iguales.
+- `src/app/pages/users/user-form.component.scss`:
+  - Estilos premium para `.user-status-card` y `.user-option-card`.
+  - Grid responsivo para visibilidad (3 → 2 → 1 columnas).
+- `src/app/pages/users/user-form.component.ts`:
+  - Se añadió `LunaSwitchComponent` a los imports.
+- `e2e/auth.setup.ts`:
+  - Se corrigieron los selectores de login de `#email` / `#password` a `input#email` / `input#password` porque `luna-input` expone el mismo `id` en su host.
+- `e2e/screenshot-user-form.spec.ts`:
+  - Nuevo spec E2E que hace login real, navega a `/users/1/edit`, ajusta el viewport y guarda `playwright-report/user-form-after.png`.
+
+### Validación visual
+- Screenshot generado con Playwright: `playwright-report/user-form-after.png`.
+- El formulario ahora muestra secciones diferenciadas, grid de 3 columnas, tarjetas de opciones con título/descripción alineadas y un interruptor de estado estilo toggle.
+
+### Validación técnica
+- **Frontend build**: ✅ 0 errores (warning bundle budget +17.83 kB, no bloqueante).
+- **Frontend lint**: ✅ 0 errores, 44 warnings preexistentes.
+- **Frontend tests**: ✅ 564/564 SUCCESS.
+- **Playwright**: ✅ spec de screenshot pasa en chromium.
+
+### Lección aprendida
+- Los slots `lunaFormHeader` y `lunaFormActions` deben ir directamente sobre el componente proyectable (`app-document-form-header`, `app-document-action-bar`); envolverlos en `<div>` rompe la proyección y el layout.
+- Para verificar diseño real se debe usar Playwright con login fresco (el storage state puede expirar por desfase de reloj) y un viewport suficientemente alto para evitar artefactos de la action-bar fija en screenshots full-page.
+
+## Migración masiva a LUNA Form — Lote 3 (partner-form, item-form, purchase-requests-form)
+
+### Acciones realizadas
+1. **Corregir posición de hints en `luna-form-field`:**
+   - El hint se movió debajo del control (label → control → hint → error), alineado con `luna-input`.
+
+2. **Migrar `partners/partner-form`:**
+   - Template LUNA con `<luna-form-page>`, `<luna-form-tabs>` (8 pestañas) y secciones/filas/campos.
+   - Se conservaron listas custom de direcciones y cuentas bancarias editadas en modales.
+   - Nuevo spec: `src/app/pages/partners/partner-form.component.spec.ts` (8 tests).
+   - Nuevo screenshot spec: `e2e/partner-form-screenshot.spec.ts` → `e2e/screenshots/partner-form-after.png`.
+
+3. **Migrar `items/item-form`:**
+   - Mismo patrón LUNA; tabs: General, Stock y logística, Producción, Almacenes y cuentas.
+   - Se mantuvieron tarjetas expandibles de cuentas por almacén (`warehouseAccounts`).
+   - Nuevo spec: `src/app/pages/items/item-form.component.spec.ts` (6 tests).
+   - Nuevo screenshot spec: `e2e/item-form-screenshot.spec.ts` → `e2e/screenshots/item-form-after.png`.
+
+4. **Migrar `purchase-requests/purchase-requests-form`:**
+   - Template LUNA con tabs General / Líneas.
+   - Se mantuvo `luna-data-table` para el `FormArray` de líneas y el workflow de aprobación.
+   - Botón "Agregar línea" ubicado en el slot `lunaFormSectionActions` de la sección de líneas.
+   - Nuevo spec: `src/app/pages/purchase-requests/purchase-requests-form.component.spec.ts` (6 tests).
+   - Nuevo screenshot spec: `e2e/purchase-requests-form-screenshot.spec.ts` → `e2e/screenshots/purchase-requests-form-after.png`.
+
+5. **Actualizar documentación:**
+   - `AGENTS.md`: sección *Frontend LUNA Form Layout System* actualizada a 31 formularios migrados, 20 restantes, 576 tests, ruta de screenshots `e2e/screenshots/` y conteos de hooks/CI.
+
+### Validación técnica
+- **Frontend lint**: ✅ 0 errores, 44 warnings preexistentes.
+- **Frontend build**: ✅ 0 errores (warning bundle budget +17.83 kB, no bloqueante).
+- **Frontend tests**: ✅ 576/576 SUCCESS.
+- **Playwright screenshots**: ✅ `partner-form-after.png`, `item-form-after.png`, `purchase-requests-form-after.png` generados.
+
+### Lección aprendida
+- Los specs de screenshot deben inyectar `auth_user` en `sessionStorage` (`page.addInitScript`) además de reutilizar `storageState`, porque `AuthService` lee el usuario de `sessionStorage` y los guards de permisos/tipo de cambio lo requieren.
+- Para formularios comerciales con líneas, conviene mantener `luna-data-table` y usar `lunaFormSectionActions` para la acción "Agregar línea", evitando que flote fuera de la sección.
+
+## Migración masiva a LUNA Form — Lote 4 (stock + pagos)
+
+### Acciones realizadas
+1. **Migrar 4 formularios de stock:**
+   - `src/app/pages/stock-adjustments/stock-adjustments-form.component.{ts,html,scss}`
+   - `src/app/pages/stock-entries/stock-entries-form.component.{ts,html,scss}`
+   - `src/app/pages/stock-exits/stock-exits-form.component.{ts,html,scss}`
+   - `src/app/pages/stock-transfers/stock-transfers-form.component.{ts,html,scss}`
+   - Todos con patrón LUNA: `<luna-form-page>`, `<luna-form-tabs>`, secciones/filas/campos.
+   - Se mantuvieron tablas de líneas con `luna-data-table` y acciones en `lunaFormSectionActions`.
+   - Se actualizaron imports en TypeScript y se redujeron estilos locales.
+
+2. **Migrar 2 formularios de pagos:**
+   - `src/app/pages/incoming-payments/incoming-payments-form.component.{ts,html,scss}`
+   - `src/app/pages/outgoing-payments/outgoing-payments-form.component.{ts,html,scss}`
+   - Mismo patrón LUNA; se conservaron tablas de aplicación a documentos y lógica de asignación.
+
+3. **Specs y screenshots:**
+   - Nuevos specs de componente para los 6 formularios.
+   - Nuevos specs de Playwright: `e2e/stock-*-form-screenshot.spec.ts`, `e2e/incoming-payments-form-screenshot.spec.ts`, `e2e/outgoing-payments-form-screenshot.spec.ts`.
+   - Screenshots generados en `e2e/screenshots/`.
+
+4. **Actualizar documentación:**
+   - `AGENTS.md`: conteo actualizado a 37 formularios migrados, 14 restantes, 586 tests.
+
+### Validación técnica
+- **Frontend lint**: ✅ 0 errores, 44 warnings preexistentes.
+- **Frontend build**: ✅ 0 errores (warning bundle budget +17.83 kB, no bloqueante).
+- **Frontend tests**: ✅ 586/586 SUCCESS.
+- **Playwright screenshots**: ✅ 6 screenshots generados.
+
+### Notas
+- Los subagentes alcanzaron el límite de pasos al intentar migrar todo el lote; se completaron mediante validación global y ajustes finales.
+- `stock-counts-form` ya estaba migrado previamente; no se contó en este lote.

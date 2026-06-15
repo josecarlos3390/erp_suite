@@ -30,7 +30,7 @@ mkdir -p erp-frontend/src/app/pages/purchase-orders
 
 ## Design System Tokens
 
-The project uses a **unified token system** that converges legacy app tokens with Luna component tokens. Both are defined in `src/styles/_tokens.scss` (canonical) and aliased in `src/styles.scss` (legacy compatibility).
+The project uses a **unified token system** that converges legacy app tokens with Luna component tokens. Canonical tokens live in modular partials under `src/styles/tokens/` (primitives, semantic, effects, motion, layout, typography) and are aliased in `src/styles.scss` for legacy compatibility. Premium tokens (glass, glow, gradients, layered shadows, keyframes) are available but applied only opt-in per component.
 
 ### Legacy tokens (use in `pages/` and non-Luna `shared/`)
 
@@ -1663,7 +1663,7 @@ npm start -- --host 0.0.0.0
 @media (prefers-color-scheme: dark) { … }
 ```
 
-All tokens (legacy and Luna) have `[data-theme='dark']` overrides in `src/styles.scss` and `src/styles/_tokens.scss`. If you introduce a new hardcoded color, always add a dark variant.
+All tokens (legacy and Luna) have `[data-theme='dark']` overrides in `src/styles.scss` and `src/styles/tokens/_01-primitives.scss` / `_02-semantic.scss`. If you introduce a new hardcoded color, always add a dark variant.
 
 ### OnPush change detection
 

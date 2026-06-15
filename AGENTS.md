@@ -616,6 +616,8 @@ Importar desde `@shared/luna-form`:
 
 - **Formularios migrados (51):** `account-form`, `assembly-order-form`, `bank-account-form`, `bank-form`, `branch-form`, `currency-form`, `delivery-orders-form`, `discount-groups-form`, `employee-form`, `exchange-rate-form`, `incoming-payments-form`, `item-boms-form`, `item-form`, `item-barcode-form`, `item-group-form`, `journal-entries-form`, `outgoing-payments-form`, `partner-form`, `partner-group-form`, `payment-term-form`, `price-list-form`, `projects-form`, `purchase-credit-notes-form`, `purchase-debit-notes-form`, `purchase-invoices-form`, `purchase-orders-form`, `purchase-quotations-form`, `purchase-receipts-form`, `purchase-requests-form`, `purchase-reserve-invoices-form`, `purchase-returns-form`, `sales-credit-notes-form`, `sales-debit-notes-form`, `sales-orders-form`, `sales-quotations-form`, `sales-returns-form`, `sale-invoices-form`, `sale-reserve-invoices-form`, `special-price-form`, `stock-adjustments-form`, `stock-counts-form`, `stock-entries-form`, `stock-exits-form`, `stock-transfers-form`, `tax-indicator-form`, `transport-guides-form`, `udf-form`, `uom-conversion-form`, `uom-form`, `user-form`, `warehouse-form`.
 - **Formularios restantes:** 0.
+- **Páginas de detalle y configuración migradas (7):** `assembly-order-detail`, `item-detail`, `partner-detail`, `permissions`, `settings`, `dimensions-config`, `bulk-upload`.
+- **Deuda de layout antiguo:** 0 archivos restantes con `form-page` / `form-header` / `form-section` / `form-row`.
 - **Build:** ✅ éxito (warning de bundle budget: +18.25 kB, no bloqueante).
 - **Lint:** ✅ 0 errores, 44 warnings preexistentes (sin nuevos warnings introducidos).
 - **Tests:** ✅ 586/586 SUCCESS.
@@ -628,6 +630,184 @@ Importar desde `@shared/luna-form`:
 3. Generar baseline visual consolidado con Playwright (`e2e/forms-reference-screenshots.spec.ts`).
 
 ---
+
+## Frontend LUNA Modal Selector Trigger Standard (Jun 2026)
+
+> **Context:** los selectores modales compartidos (`src/app/shared/*-selector`) tenían triggers vacíos inconsistentes: algunos usaban `<luna-button>`, otros `<button>` nativo, con bordes dashed, alturas distintas y sin modo `compact`. Se estandarizó un único patrón visual para que cualquier selector modal se vea idéntico en todos los formularios.
+
+### 1. Ámbito
+
+Aplica a **todos los selectores modales** (abren un `<luna-modal>` para elegir una entidad):
+
+- `account-selector`, `bank-selector`, `branch-selector`, `cost-center-selector`, `currency-selector`, `employee-selector`, `invoice-selector`, `item-group-selector`, `item-selector`, `partner-group-selector`, `partner-selector`, `payment-term-selector`, `price-list-selector`, `project-selector`, `sales-person-selector`, `tax-indicator-selector`, `uom-selector`, `user-selector`, `warehouse-selector`.
+
+**No aplica** a selectores nativos/dropdown (`advance-selector`, `batch-selector`, `enum-selector`, `serial-selector`) salvo que se migren a modal en el futuro.
+
+### 2. Contrato del componente
+
+Cada selector modal debe exponer:
+
+```typescript
+/** Modo compacto: para celdas de tabla / líneas de documento. */
+@Input() compact = false;
+```
+
+### 3. HTML del trigger vacío
+
+```html
+<button
+  type="button"
+  class="<prefix>-open-btn"
+  [class.<prefix>-compact]="compact"
+  [disabled]="isDisabled"
+  (click)="openModal()"
+>
+  <span class="<prefix>-open-icon">
+    <luna-action-icon action="<icon>"></luna-action-icon>
+  </span>
+  <span class="<prefix>-open-label">{{ placeholder }}</span>
+  <span class="<prefix>-open-arrow">
+    <luna-action-icon action="chevronDown"></luna-action-icon>
+  </span>
+</button>
+```
+
+Reglas:
+- Usar siempre `<button type="button">` nativo. **No** `<luna-button>`.
+- `<prefix>` debe ser único por selector (ej. `ws-` warehouse, `bs-` bank, `acc-` account).
+- El icono identifica el dominio; la flecha siempre es `chevronDown`.
+- La clase compacta se bindea como `[class.<prefix>-compact]="compact"`.
+
+### 4. SCSS del trigger vacío
+
+```scss
+.<prefix>-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 14px;
+  width: 100%;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--fs-base);
+  font-weight: 500;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.12s,
+    color 0.12s,
+    background 0.12s;
+
+  &:hover:not(:disabled) {
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.<prefix>-compact {
+    height: 28px;
+    padding: 0 8px;
+    gap: 6px;
+    font-size: var(--fs-sm);
+    border-radius: var(--radius-sm);
+  }
+}
+
+.<prefix>-open-icon,
+.<prefix>-open-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-base);
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.<prefix>-open-arrow {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.<prefix>-open-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+```
+
+### 5. Pill de selección
+
+La pill mostrada cuando ya hay valor debe mantener la misma altura y compacto:
+
+```scss
+.<prefix>-selected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 14px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  // ...
+
+  &.<prefix>-selected-compact {
+    height: 28px;
+    padding: 0 8px;
+    gap: 6px;
+    font-size: var(--fs-sm);
+    border-radius: var(--radius-sm);
+  }
+}
+```
+
+### 6. Prefijos por selector
+
+| Selector | Prefijo | Icono |
+|----------|---------|-------|
+| account-selector | `acc-` | `book` |
+| bank-selector | `bs-` | `bank` |
+| branch-selector | `brs-` | `building` |
+| cost-center-selector | `ccs-` | `crosshair` |
+| currency-selector | `cur-` | `coins` |
+| employee-selector | `emp-` | `user` |
+| invoice-selector | `inv-` | `invoice` |
+| item-group-selector | `igs-` | `folder` |
+| item-selector | `its-` | `box` |
+| partner-group-selector | `pgs-` | `users` |
+| partner-selector | `ps-` | `user` |
+| payment-term-selector | `ptm-` | `creditCard` |
+| price-list-selector | `pls-` | `tags` |
+| project-selector | `prj-` | `projectDiagram` |
+| sales-person-selector | `spm-` | `user` |
+| tax-indicator-selector | `tis-` | `receipt` |
+| uom-selector | `usm-` | `scale` |
+| user-selector | `usr-` | `user` |
+| warehouse-selector | `ws-` | `warehouse` |
+
+> **Nota:** `currency-selector` migró de `pls-` a `cur-` y `project-selector` de `ps-` a `prj-` para evitar colisiones con `price-list-selector` y `partner-selector`.
+
+### 7. Checklist para nuevos selectores modales
+
+- [ ] Crear carpeta bajo `src/app/shared/<name>-selector`.
+- [ ] Componente standalone con `ControlValueAccessor`.
+- [ ] `@Input() compact = false;`.
+- [ ] Empty trigger con `<button>` nativo, icono + flecha, clase compacta.
+- [ ] Altura 36px / compact 28px, borde sólido `var(--border-default)`.
+- [ ] Pill de selección con misma altura y variante compacta.
+- [ ] Usar un prefijo único que no colisione con selectores existentes.
 
 ## CI/CD (GitHub Actions)
 
@@ -1757,7 +1937,7 @@ export class DomainSelectorComponent
 #### 2. HTML — tres regiones obligatorias
 
 1. **Trigger con selección** (`.{prefix}-selected`): pill con código, nombre, botón ×, botón chevron.
-2. **Trigger vacío** (`.{prefix}-open-btn`): botón dashed con icono FontAwesome, placeholder, flecha.
+2. **Trigger vacío** (`.{prefix}-open-btn`): botón `<button>` nativo con borde sutil, icono `luna-action-icon`, placeholder y flecha. **No** usar `<luna-button>` para evitar la caja anidada.
 3. **Readonly** (`.{prefix}-readonly`): código + nombre plano, o `"—"`.
 4. **Modal** (`luna-modal`):
    - Header con icono FontAwesome + título (`lunaModalHeader`).
@@ -1773,6 +1953,62 @@ export class DomainSelectorComponent
 - **Modal**: prefijo largo del dominio + `m-` (ej. `wsm-` para warehouse modal, `igsm-` para item-group modal).
 - **Colores**: usar únicamente variables CSS del design system (`var(--bg-subtle)`, `var(--color-primary-text)`, etc.).
 - **Nunca** usar `@use 'styles/variables'` ni colores hex hardcodeados.
+
+### Trigger vacío: usar `<button>` nativo, no `<luna-button>`
+
+El trigger vacío debe ser un `<button type="button" class="{prefix}-open-btn">` nativo, estilado directamente por el SCSS del selector.
+
+**No uses `<luna-button>` para el trigger vacío.** `<luna-button>` es un componente host que envuelve su propio `<button>` interno; aplicarle borde/fondo al host genera una caja dentro de otra caja y produce el efecto de “dentro de un input”.
+
+```html
+<!-- ✅ Correcto -->
+<button type="button" class="ws-open-btn" (click)="openModal()">
+  <span class="ws-open-icon"><luna-action-icon action="warehouse"></luna-action-icon></span>
+  <span class="ws-open-label">{{ placeholder }}</span>
+  <span class="ws-open-arrow"><luna-action-icon action="chevronDown"></luna-action-icon></span>
+</button>
+
+<!-- ❌ Incorrecto -->
+<luna-button class="ws-open-btn" variant="secondary" (lunaClick)="openModal()">…</luna-button>
+```
+
+**Espaciado estándar:**
+- Estado normal: `padding: 10px 14px; gap: 10px;`
+- Modo compacto: `padding: 4px 8px; gap: 6px;`
+
+Los botones `<luna-button>` siguen permitidos **dentro de la píldora seleccionada** (limpiar/cambiar) porque ahí se necesita la variante ghost/secondary compacta.
+
+### Trigger con selección (pill)
+
+La píldora de selección debe tener la **misma altura** que un input `luna-input` estándar (36 px) para no desfasarse visualmente con el resto del formulario.
+
+```scss
+.{prefix}-selected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;        // ✅ altura fija, igual a inputs
+  padding: 0 14px;     // ✅ solo padding horizontal
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  // ...
+}
+```
+
+**Compacto (tablas / líneas):**
+
+```scss
+.{prefix}-selected-compact {
+  height: 28px;
+  padding: 0 8px;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  border-radius: var(--radius-sm);
+}
+```
+
+> **Por qué `height` en vez de padding vertical:** los botones de acción dentro de la pill pueden ser `<luna-button size="sm">` (28 px) o botones custom más pequeños. Forzar la altura del contenedor asegura que todos los selectores se alineen con los inputs sin depender del alto interno de cada botón.
 
 ### ⚠️ Regla crítica: `ChangeDetectorRef` en selectores que extienden `ModalSelectorBase`
 
@@ -1818,7 +2054,7 @@ export class BranchSelectorComponent extends ModalSelectorBase<Branch> {
 - [ ] ¿Implementa `ControlValueAccessor` con `OnPush`? → `cdr.markForCheck()` en `writeValue` y `setDisabledState`.
 - [ ] ¿Usa `luna-modal` con `[open]` / `(closed)` y slots `lunaModalHeader/Body/Footer`?
 - [ ] ¿El SCSS usa variables CSS (`var(--*)`) y prefijos consistentes?
-- [ ] ¿El trigger tiene estado vacío (dashed), estado seleccionado (pill), y estado readonly?
+- [ ] ¿El trigger tiene estado vacío (`<button>` nativo, no `<luna-button>`), estado seleccionado (pill), y estado readonly?
 - [ ] ¿El modal tiene empty state, contador de resultados, y hint `Esc` en el footer?
 
 ---
