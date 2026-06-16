@@ -809,6 +809,61 @@ La pill mostrada cuando ya hay valor debe mantener la misma altura y compacto:
 - [ ] Pill de selección con misma altura y variante compacta.
 - [ ] Usar un prefijo único que no colisione con selectores existentes.
 
+---
+
+## Frontend LUNA Field Alignment & Search Guidelines (Jun 2026)
+
+> **Context:** ajustes en `price-list-form` revelaron problemas recurrentes de alineación visual entre `luna-input`, selectores modales, tablas con selectores y campos de búsqueda custom. Esta guía resume los patrones para evitar repetirlos.
+
+### 1. Altura de controles en una misma fila
+
+- `luna-input size="md"` tiene un contenedor de `height: 36px` + `border: 1px`, es decir **38 px totales** (content-box).
+- Los triggers vacíos de selectores modales deben mantener la misma altura total:
+  - `.xxx-open-btn { height: 36px; border: 1px solid ...; }` sin `box-sizing: border-box`.
+  - Si se añade `box-sizing: border-box`, la altura real será 36 px y quedará más bajo que el input.
+- La **pill de selección** de un selector modal debe tener **la misma altura total** que el input:
+  - `height: 36px;` o contenido controlado.
+  - `padding: 3px 6px;` cuando contenga botones `luna-button size="sm"` (30 px totales incl. borde).
+  - Nunca dejar que la pill crezca con padding grande (antes causaba 42-44 px).
+
+### 2. Alineación de ancho
+
+- El `:host` de un selector modal debe ser `display: block; width: 100%;` para ocupar el mismo ancho que `luna-input` dentro de `luna-form-field` o grid.
+- No envolver el selector en un `<div>` con padding extra; usa `luna-form-field` si necesitas label.
+
+### 3. Selectores dentro de tablas
+
+- Dar suficiente ancho a la columna. Ejemplo: moneda con pill que muestra `Código + Nombre + botones` necesita ~180 px en desktop.
+- La descripción dentro de la pill debe poder encogerse: `min-width: 0` + `text-overflow: ellipsis`.
+- No duplicar bordes: quitar clases locales con `border` cuando el componente LUNA ya los aporte.
+
+### 4. Campos de búsqueda
+
+- **Nunca** implementar un buscador con icono/botón clear posicionados de forma absoluta sobre un `<luna-input>`.
+- Usar las capacidades nativas de `luna-input`:
+
+  ```html
+  <luna-input
+    type="text"
+    [value]="searchTerm"
+    placeholder="Buscar..."
+    leadingAction="search"
+    [clearable]="true"
+    (input)="onSearchInput($event)"
+    (cleared)="searchTerm = ''; cdr.markForCheck()"
+  ></luna-input>
+  ```
+
+- Ancho mínimo recomendado: `280px` en desktop; `flex: 1` en mobile.
+
+### 5. Checklist visual rápido
+
+- [ ] Todos los controles de una fila tienen la misma altura total (incluyendo borde).
+- [ ] No hay doble borde (clases locales + componente LUNA).
+- [ ] Iconos leading de `luna-input` no tocan el borde (`margin-left` / `padding-left` del design system).
+- [ ] Los selectores en celdas no se cortan; la columna es lo suficientemente ancha.
+- [ ] Los buscadores usan `leadingAction` + `clearable`, no overlays absolutos.
+
 ## CI/CD (GitHub Actions)
 
 Both repositories have GitHub Actions workflows that run on every `push` to `main` and every `pull_request` targeting `main`.
