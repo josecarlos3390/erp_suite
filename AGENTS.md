@@ -3087,3 +3087,95 @@ Lower priority / specialized:
 ### Tokens
 
 All LUNA components and consuming pages must use tokens from `src/styles/tokens/`. No hardcoded colors, shadows, spacing, or animations outside tokens, except for one-off layout math (e.g. `calc()`).
+
+---
+
+## Backend Price Resolution Hierarchy (Jul 2026)
+
+> **Context:** unified price resolution across all sales documents to prevent
+> inconsistent pricing when a quotation expires and a downstream document is
+> generated.
+
+### The 6-level hierarchy (from highest to lowest priority)
+
+| Level | Source | Resolves | Note |
+|-------|--------|----------|------|
+| **1** | **SpecialPrice with `partnerId`** (acuerdo directo) | `priceBruto` (fixed) or `discountPct` / `discountAmt` | Quantity breaks apply inside this level |
+| **2** | **Partner special discount** applied on `item.price` | discounted price | Only if level 1 has no fixed price |
+| **3** | **ItemGroupDiscount** (discount by item group) | discounted price | Applied on `item.price` (or on already discounted price from level 2) |
+| **4** | **SpecialPrice with `priceListId` and `partnerId = null`** | `priceBruto` (fixed) or `discountPct` / `discountAmt` | Quantity breaks apply inside this level |
+| **5** | **Partner price list** (`partner.priceListId` or `partner.specialPriceListId` if `useSpecialPrice = true`) | `priceBruto` from `priceListItem` | Uses `_resolvePartnerListPrice` which respects `useSpecialPrice` |
+| **6** | **Item base price** (`item.price`) | fallback price | Last resort |
+
+### How quantity breaks work inside SpecialPrice
+
+Quantity breaks are **not a separate level**. They are evaluated **inside**
+SpecialPrice resolution (levels 1 and 4) via `_extractSpecialPriceResult`:
+
+1. Find the applicable `quantityBreak` for the ordered quantity
+2. If a break exists → use **only** the break's discount (`discountPct` or `discountAmt`)
+3. If no break matches → use the base `discountPct` / `discountAmt` of the `specialPriceItem`
+4. If the `specialPriceItem` has a fixed `priceBruto` → use that price **and ignore all discounts** (including breaks)
+
+### Implementation functions
+
+All sales documents must use **one of these** functions when resolving prices
+without a document base (i.e. expired quotation, manual entry, draft check):
+
+```typescript
+// Single item — used in create/update line-by-line
+resolveItemPriceForPartner(
+  tx, tenantId, partnerId, itemId, basePrice, quantity, today, priceListId?
+)
+
+// Batch — used when pre-resolving many items (e.g. from expired quotation)
+resolveItemPriceBulkForPartner(
+  tx, tenantId, partnerId, items: { itemId, basePrice, quantity }[], today, priceListId?
+)
+```
+
+**Both functions live in** `backend-erp/src/common/price-resolver.util.ts`.
+
+### What NOT to use
+
+❌ `PriceListsService.resolvePrice()` — only resolves the partner's assigned price list (level 5), ignoring SpecialPrice and ItemGroupDiscount.
+
+❌ `PriceListsService.resolvePriceBulk()` — same limitation as above.
+
+### When a document base exists (quotation, order)
+
+Documents with a base document (delivery, invoice) use `resolveDeliveryItemPrice`
+instead. Its hierarchy is:
+
+```
+1. Valid quotation price (if baseDocType = SALES_QUOTATION and not expired)
+2. Order price (if baseDocType = SALES_ORDER)
+3. Expired quotation → linked order price (if any)
+4. Then same 6 levels as above (3-8 in that function)
+```
+
+### Discount accumulation warning
+
+As of Jul 2026, the system **accumulates discounts** across levels:
+- Level 2 partner discount → applied on `item.price`
+- Level 3 item group discount → applied on the **already discounted** price from level 2
+- Level 4 list special discount → applied on the **already twice discounted** price
+
+This means discounts are **multiplicative**, not additive.
+Example: 10% partner + 5% group = 14.5% total (not 15%).
+
+**This behavior may be changed to "winner takes all" (SAP-style) in a future
+refactor. Document it if you change it.**
+
+### Files that must be updated when adding new price levels
+
+If a new price source is added (e.g. "promotional campaign", "loyalty discount"):
+
+1. `price-resolver.util.ts` — add the new level to both:
+   - `resolveDeliveryItemPrice` (levels 3-8)
+   - `resolveItemPriceForPartner` (levels 1-6)
+2. `sales-quotations.service.ts` — already uses `resolveItemPriceForPartner` (bulk in vencida)
+3. `sales-orders.service.ts` — uses `resolveItemPriceForPartner` (bulk in expired quotation)
+4. `sale-invoices.service.ts` — uses `resolveItemPriceForPartner` / `resolveItemPriceBulkForPartner`
+5. `sale-reserve-invoices.service.ts` — same as above
+6. `document-drafts.service.ts` — uses `resolveItemPriceBulkForPartner` for price checks
