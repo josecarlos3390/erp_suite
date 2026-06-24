@@ -3101,9 +3101,9 @@ All LUNA components and consuming pages must use tokens from `src/styles/tokens/
 | Level | Source | Resolves | Note |
 |-------|--------|----------|------|
 | **1** | **SpecialPrice with `partnerId`** (acuerdo directo) | `priceBruto` (fixed) or `discountPct` / `discountAmt` | Quantity breaks apply inside this level |
-| **2** | **Partner special discount** applied on `item.price` | discounted price | Only if level 1 has no fixed price |
-| **3** | **ItemGroupDiscount** (discount by item group) | discounted price | Applied on `item.price` (or on already discounted price from level 2) |
-| **4** | **SpecialPrice with `priceListId` and `partnerId = null`** | `priceBruto` (fixed) or `discountPct` / `discountAmt` | Quantity breaks apply inside this level |
+| **2** | **Partner special discount** applied on `item.price` | discounted price | Only if level 1 has no fixed price; applies on original base price |
+| **3** | **ItemGroupDiscount** (discount by item group) | discounted price | Applies on original `item.price`, not on an already discounted price |
+| **4** | **SpecialPrice with `priceListId` and `partnerId = null`** | `priceBruto` (fixed) or `discountPct` / `discountAmt` | Quantity breaks apply inside this level; applies on original base price |
 | **5** | **Partner price list** (`partner.priceListId` or `partner.specialPriceListId` if `useSpecialPrice = true`) | `priceBruto` from `priceListItem` | Uses `_resolvePartnerListPrice` which respects `useSpecialPrice` |
 | **6** | **Item base price** (`item.price`) | fallback price | Last resort |
 
@@ -3154,18 +3154,29 @@ instead. Its hierarchy is:
 4. Then same 6 levels as above (3-8 in that function)
 ```
 
-### Discount accumulation warning
+### Discount accumulation (now "winner takes all")
 
-As of Jul 2026, the system **accumulates discounts** across levels:
-- Level 2 partner discount → applied on `item.price`
-- Level 3 item group discount → applied on the **already discounted** price from level 2
-- Level 4 list special discount → applied on the **already twice discounted** price
+**As of Jul 2026 refactor, discounts are NO LONGER accumulated.**
+Each level resolves a price based on the **original** `item.price` (or base price),
+and the first level that produces a non-zero price wins. Subsequent levels are
+ignored.
 
-This means discounts are **multiplicative**, not additive.
-Example: 10% partner + 5% group = 14.5% total (not 15%).
+**Example with $1,000 base price:**
+- Level 1: SpecialPrice partner fixed → **$920** (winner, stop here)
+- Level 2: SpecialPrice partner 10% discount → $900 (ignored, level 1 won)
+- Level 3: ItemGroupDiscount 5% → $950 (ignored)
+- Level 4: List special 3% → $970 (ignored)
+- Level 5: Partner list $980 (ignored)
+- Level 6: Base price $1,000 (ignored)
 
-**This behavior may be changed to "winner takes all" (SAP-style) in a future
-refactor. Document it if you change it.**
+**Before the refactor (accumulation):** 10% partner + 5% group = $855 (multiplicative)
+**After the refactor (winner takes all):** 10% partner = $900 (first winner)
+
+This matches SAP-style pricing: the most specific agreement wins, and discounts
+are not stacked across different types of agreements.
+
+**If you need stacked discounts, configure them inside a single SpecialPrice**
+(e.g. a single agreement with a quantity break that includes the combined discount).
 
 ### Files that must be updated when adding new price levels
 
