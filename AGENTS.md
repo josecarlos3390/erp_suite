@@ -2904,6 +2904,144 @@ Default test zones: `America/La_Paz`, `UTC`, `America/New_York`, `Pacific/Auckla
 
 ---
 
+### Frontend OnPush + markForCheck() in async HTTP callbacks
+
+> **Context:** All commercial document forms use `ChangeDetectionStrategy.OnPush`. When `provideHttpClient(withFetch())` is enabled (default in Angular 19+), HTTP responses do **not** trigger Zone.js ticks. Therefore, any `FormGroup.setValue()` or `itemsArray.push()` inside a `.subscribe()` callback will update the model but **not** repaint the view until the user interacts with the page (click, blur, etc.).
+>
+> **Symptom:** The value "is there" (console shows correct data) but the UI looks frozen or blank until a click elsewhere.
+
+#### ✅ Correct pattern — always call `markForCheck()` after mutating form state in async callbacks
+
+```typescript
+// Inside onManualItemChange, _resolveAutoDiscount, _resolvePriceFromList, etc.
+this.http.get<...>(...).subscribe({
+  next: (res) => {
+    this.itemsArray.at(index).get('price')?.setValue(res.price, { emitEvent: false });
+    this.calculateLine(index);
+    this.cdr.markForCheck();  // ← REQUIRED
+  },
+  error: () => {
+    this.itemsArray.at(index).get('price')?.setValue(basePrice, { emitEvent: false });
+    this.calculateLine(index);
+    this.cdr.markForCheck();  // ← REQUIRED
+  },
+});
+```
+
+#### ❌ Forbidden pattern — `setValue` without `markForCheck()` in OnPush + async
+
+```typescript
+// ❌ Wrong — view stays frozen until next user interaction
+this.http.get<...>(...).subscribe((res) => {
+  this.itemsArray.at(index).get('price')?.setValue(res.price);
+  // missing markForCheck()
+});
+```
+
+#### Where this applies
+
+All commercial document forms (sales quotations, sales orders, delivery orders, sale invoices, sale reserve invoices, purchase orders, purchase receipts, etc.) that resolve prices via HTTP inside `OnPush` components.
+
+#### Special case: `PartnerSelectorComponent.writeValue()`
+
+When the selector loads a pre-selected partner via `getOne(id)`, it also runs outside a Zone.js tick:
+
+```typescript
+this.svc.getOne(id).subscribe((p) => {
+  this.selectedPartner = p;
+  this.cdr.detectChanges();  // ← use detectChanges() here, not markForCheck()
+});
+```
+
+Use `detectChanges()` (not `markForCheck()`) when the update is **synchronous** inside the callback and no other child components need to be checked in the same tick.
+
+### ⚠️ Checklist for new commercial document forms
+
+When adding a new form component that uses `OnPush` + `HttpClient`, verify each HTTP callback that mutates form state:
+
+- [ ] `onManualItemChange` / `selectManualItem` — after `setValue('price')` or `setValue('cost')` in both `next` and `error` branches
+- [ ] `_resolveAutoDiscount` — after `applyResolvedSpecialPrice` or fallback to `_resolvePriceFromList` in both `next` and `error` branches
+- [ ] `_resolvePriceFromList` — after `setValue('price')` in both `next` and `error` branches
+- [ ] `writeValue` in `PartnerSelectorComponent` — use `detectChanges()` after `selectedPartner = p`
+- [ ] `forkJoin` batch price resolution — call `markForCheck()` inside the final `forEach` or at the end of the `subscribe` block
+- [ ] `loadOne` / `loadOrder` / `loadInvoice` — after all `itemsArray.push()` and `form.patchValue()` calls complete
+
+#### Files that MUST follow this pattern (verified)
+
+| Component | File |
+|-----------|------|
+| Sales Quotation | `src/app/pages/sales-quotations/sales-quotations-form.component.ts` |
+| Sales Order | `src/app/pages/sales-orders/sales-orders-form.component.ts` |
+| Delivery Order | `src/app/pages/delivery-orders/delivery-orders-form.component.ts` |
+| Sale Invoice | `src/app/pages/sale-invoices/sale-invoices-form.component.ts` |
+| Sale Reserve Invoice | `src/app/pages/sale-reserve-invoices/sale-reserve-invoices-form.component.ts` |
+| Purchase Quotation | `src/app/pages/purchase-quotations/purchase-quotations-form.component.ts` |
+| Purchase Order | `src/app/pages/purchase-orders/purchase-orders-form.component.ts` |
+| Purchase Receipt | `src/app/pages/purchase-receipts/purchase-receipts-form.component.ts` |
+| Purchase Invoice | `src/app/pages/purchase-invoices/purchase-invoices-form.component.ts` |
+| Purchase Reserve Invoice | `src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices-form.component.ts` |
+| Partner Selector | `src/app/shared/partner-selector/partner-selector.component.ts` |
+
+#### Smell — how to detect missing `markForCheck()`
+
+Search for `.subscribe({` followed by `setValue` or `patchValue` without `markForCheck()`:
+
+```bash
+cd erp-frontend/src/app/pages
+grep -B2 -A5 "\.setValue\|\.patchValue" *.ts | grep -B5 -A5 "subscribe"
+```
+
+Or use this regex in your IDE:
+```regex
+\.subscribe\(\{[\s\S]*?(setValue|patchValue)[\s\S]*?\}\);(?![\s\S]*?markForCheck|detectChanges)
+```
+
+Any match inside an `OnPush` component is a bug.
+
+#### Template for new price-resolution methods
+
+Copy-paste this template when adding a new `_resolvePriceFromList` or similar method:
+
+```typescript
+private _resolvePriceFromList(index: number, itemId: number, basePrice: number) {
+  this.http
+    .get<{ price: number }>(
+      `${environment.apiUrl}/price-lists/resolve?itemId=${itemId}&partnerId=${this.partnerId}&basePrice=${basePrice}`,
+    )
+    .subscribe({
+      next: (res) => {
+        this.itemsArray.at(index).get('price')?.setValue(res.price, { emitEvent: false });
+        this.calculateLine(index);
+        this.cdr.markForCheck();  // ← REQUIRED: OnPush + withFetch()
+      },
+      error: () => {
+        this.itemsArray.at(index).get('price')?.setValue(basePrice, { emitEvent: false });
+        this.calculateLine(index);
+        this.cdr.markForCheck();  // ← REQUIRED: OnPush + withFetch()
+      },
+    });
+}
+```
+
+#### `forkJoin` vs individual `subscribe`
+
+When resolving prices in batch (e.g., `loadOrder` + `price-lists/resolve` for multiple lines), use `forkJoin` to fire all requests in parallel, then call `markForCheck()` **once** at the end of the `subscribe` block, not inside each inner callback:
+
+```typescript
+forkJoin(requests).subscribe((results) => {
+  results.forEach((res, index) => {
+    if (!res) return;
+    const line = this.itemsArray.at(index);
+    line.get('price')?.setValue(res.price, { emitEvent: false });
+    line.get('priceNet')?.setValue(res.price, { emitEvent: false });
+    this.calculateLine(index);
+  });
+  this.cdr.markForCheck();  // ← single call after all mutations
+});
+```
+
+---
+
 ## LUNA-first Design System Policy (new code and migrations)
 
 All UI in `erp-frontend` **must** be built with LUNA v2 primitives. Native HTML/CSS substitutes are not allowed for any new feature.
