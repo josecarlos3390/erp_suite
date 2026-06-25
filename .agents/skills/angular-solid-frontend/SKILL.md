@@ -410,6 +410,8 @@ export class MyListComponent implements OnInit {
 
 All form pages MUST use `<luna-form-page>` as the root container. It provides density tokens, sticky header/action-bar compensation, and named content slots.
 
+> **Migration status (Jun 2026):** All 51 document and master-data forms have been migrated to `<luna-form-page>`. The legacy `.form-page`, `.form-section`, `.form-row`, `.form-header` and `.form-body` classes are deprecated and no remaining files use them. New forms must start from this pattern; do not copy legacy templates.
+
 **Primitives:**
 - `<luna-form-page>` — root wrapper; exposes `density` (`compact` | `comfortable` | `spacious`).
 - `<luna-form-section>` — card with `title`, `hint`, and `lunaFormSectionActions` slot.
@@ -1479,6 +1481,8 @@ Use modals for **bulk actions**, **confirmations**, or **sub-forms** that don't 
 
 All selectors are `standalone: true`, implement `ControlValueAccessor`, and emit the full selected object via `@Output`.
 
+**Modal selectors** (entity lookup that opens a `<luna-modal>`) must follow the **LUNA Modal Selector Trigger Standard** in §9.1 so every selector looks identical across forms.
+
 When a selector is used inside `<luna-form-field>`, bind `[id]` on the selector to `inputId` on the field so the label's `for` attribute points to the selector trigger. The selector must forward that `id` to its trigger element with `[attr.id]="id"`.
 
 ```html
@@ -1490,6 +1494,168 @@ When a selector is used inside `<luna-form-field>`, bind `[id]` on the selector 
   ></app-warehouse-selector>
 </luna-form-field>
 ```
+
+### 9.1 LUNA Modal Selector Trigger Standard
+
+> **Context:** the empty-state triggers of modal selectors (`src/app/shared/*-selector`) used to be inconsistent: some used `<luna-button>`, some native `<button>`, with dashed borders, different heights and no `compact` mode. The standard below makes every modal selector look identical in every form.
+
+**Scope:** applies to all modal entity selectors that open a `<luna-modal>`:
+
+`account-selector`, `bank-selector`, `branch-selector`, `cost-center-selector`, `currency-selector`, `employee-selector`, `invoice-selector`, `item-group-selector`, `item-selector`, `partner-group-selector`, `partner-selector`, `payment-term-selector`, `price-list-selector`, `project-selector`, `sales-person-selector`, `tax-indicator-selector`, `uom-selector`, `user-selector`, `warehouse-selector`.
+
+It does **not** apply to native dropdown selectors (`advance-selector`, `batch-selector`, `enum-selector`, `serial-selector`) unless they are migrated to modal in the future.
+
+**Component contract:**
+
+```typescript
+/** Compact mode: for table cells / document lines. */
+@Input() compact = false;
+```
+
+**Empty trigger HTML:**
+
+```html
+<button
+  type="button"
+  class="<prefix>-open-btn"
+  [class.<prefix>-compact]="compact"
+  [disabled]="isDisabled"
+  (click)="openModal()"
+>
+  <span class="<prefix>-open-icon">
+    <luna-action-icon action="<icon>"></luna-action-icon>
+  </span>
+  <span class="<prefix>-open-label">{{ placeholder }}</span>
+  <span class="<prefix>-open-arrow">
+    <luna-action-icon action="chevronDown"></luna-action-icon>
+  </span>
+</button>
+```
+
+Rules:
+- Always use a native `<button type="button">`. **Do not** use `<luna-button>`.
+- `<prefix>` must be unique per selector (e.g. `ws-` warehouse, `bs-` bank, `acc-` account).
+- The icon identifies the domain; the arrow is always `chevronDown`.
+- Bind the compact class with `[class.<prefix>-compact]="compact"`.
+
+**Empty trigger SCSS:**
+
+```scss
+.<prefix>-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 14px;
+  width: 100%;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--fs-base);
+  font-weight: 500;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.12s,
+    color 0.12s,
+    background 0.12s;
+
+  &:hover:not(:disabled) {
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.<prefix>-compact {
+    height: 28px;
+    padding: 0 8px;
+    gap: 6px;
+    font-size: var(--fs-sm);
+    border-radius: var(--radius-sm);
+  }
+}
+
+.<prefix>-open-icon,
+.<prefix>-open-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-base);
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.<prefix>-open-arrow {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.<prefix>-open-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+```
+
+**Selected pill:**
+
+When a value is selected, render a pill that keeps the same height and compact variant:
+
+```scss
+.<prefix>-selected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 14px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  // ...clear/remove action...
+
+  &.<prefix>-selected-compact {
+    height: 28px;
+    padding: 0 8px;
+    gap: 6px;
+    font-size: var(--fs-sm);
+    border-radius: var(--radius-sm);
+  }
+}
+```
+
+**Prefixes per selector:**
+
+| Selector | Prefix | Icon |
+|----------|--------|------|
+| account-selector | `acc-` | `book` |
+| bank-selector | `bs-` | `bank` |
+| branch-selector | `brs-` | `building` |
+| cost-center-selector | `ccs-` | `crosshair` |
+| currency-selector | `cur-` | `coins` |
+| employee-selector | `emp-` | `user` |
+| invoice-selector | `inv-` | `invoice` |
+| item-group-selector | `igs-` | `folder` |
+| item-selector | `its-` | `box` |
+| partner-group-selector | `pgs-` | `users` |
+| partner-selector | `ps-` | `user` |
+| payment-term-selector | `ptm-` | `creditCard` |
+| price-list-selector | `pls-` | `tags` |
+| project-selector | `prj-` | `projectDiagram` |
+| sales-person-selector | `spm-` | `user` |
+| tax-indicator-selector | `tis-` | `receipt` |
+| uom-selector | `usm-` | `scale` |
+| user-selector | `usr-` | `userShield` |
+| warehouse-selector | `ws-` | `warehouse` |
 
 ### `app-item-selector`
 
@@ -1993,6 +2159,48 @@ A form page is **legacy** if ANY of the following is true:
 ```
 
 ---
+
+## 20. Lint & Type Hygiene
+
+> **Current status (Jun 2026):** Frontend lint is clean (`ng lint` → `0 errors, 0 warnings`) and all unit tests pass (`579/579 SUCCESS`). The codebase went through a `strict: true` cleanup that removed ~318 `: any` annotations and a later pass that cleaned the remaining 45 lint warnings (mostly unused imports/variables).
+
+### Keep the lint clean
+
+- **Never leave unused imports or variables.** The most common source of warnings is stale imports after a refactor. Run `npm run lint` before committing and remove everything reported.
+- **Do not introduce `: any` in source files.** The only intentional `any` left in production code is in `LunaColumn.format` and `LunaColumn.badgeVariant` (see §8 `luna-data-table`).
+- **For heterogeneous line builders, use `unknown` + `Record<string, unknown>`:**
+  ```typescript
+  private buildLineGroup(l: unknown) {
+    const li = l as Record<string, unknown>;
+    return this.fb.group({
+      itemId: [li['itemId'], Validators.required],
+      baseDocType: [(li['baseDocType'] as string | null | undefined) ?? null],
+    });
+  }
+  ```
+- **Add missing optional fields to domain models** instead of casting with `as any`.
+- **Type HTTP errors as `unknown`** and cast to a narrow shape before reading `.error.message`:
+  ```typescript
+  .subscribe({
+    next: () => { /* … */ },
+    error: (err: unknown) => {
+      const msg = (err as { error?: { message?: string } }).error?.message ?? 'Error desconocido';
+      this.toast.error(msg);
+    },
+  })
+  ```
+- **In `*.spec.ts` mocks, `as any` is allowed** only for stubbed `Observable` returns (e.g. `svc.getById.and.returnValue(of(doc) as any)`). Do not use it in implementation code.
+
+### Pre-commit checklist
+
+- [ ] `npm run lint` passes with zero warnings.
+- [ ] `npm run build` succeeds (watch the bundle budget warning; it is pre-existing).
+- [ ] `npm test -- --watch=false --browsers=ChromeHeadless` reports all tests passing.
+- [ ] No new `: any` annotations introduced.
+
+For the full backend + frontend type design rules, see `AGENTS.md` at the project root.
+
+----
 
 ## References
 

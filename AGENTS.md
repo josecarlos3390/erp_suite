@@ -402,7 +402,7 @@ This pattern (used in `src/common/traceability.util.ts`) gives TypeScript exact 
 
 ### 8. Current lint warning count (post-cleanup)
 
-- **Frontend:** `ng lint` → `0 errors, ~45 warnings` (preexistentes, mayoría imports no usados).
+- **Frontend:** `ng lint` → `0 errors, 0 warnings`.
 - **Backend:** `npm run lint` → `0 errors, 0 warnings`.
 
 ---
@@ -618,9 +618,9 @@ Importar desde `@shared/luna-form`:
 - **Formularios restantes:** 0.
 - **Páginas de detalle y configuración migradas (7):** `assembly-order-detail`, `item-detail`, `partner-detail`, `permissions`, `settings`, `dimensions-config`, `bulk-upload`.
 - **Deuda de layout antiguo:** 0 archivos restantes con `form-page` / `form-header` / `form-section` / `form-row`.
-- **Build:** ✅ éxito (warning de bundle budget: +18.25 kB, no bloqueante).
-- **Lint:** ✅ 0 errores, 44 warnings preexistentes (sin nuevos warnings introducidos).
-- **Tests:** ✅ 586/586 SUCCESS.
+- **Build:** ✅ éxito (warning de bundle budget: +55.56 kB vs 1.00 MB, no bloqueante).
+- **Lint:** ✅ 0 errores, 0 warnings.
+- **Tests:** ✅ 579/579 SUCCESS.
 - **Cobertura general de componentes LUNA:** 182/185 templates HTML (98.4%) usan al menos un componente LUNA. Restantes: `app.component.html` (layout raíz), `pages/sap-integration/sap-integration.component.html` (contenedor de rutas) y `shared/document-flow/document-flow.component.html` (mantenido intacto por decisión de arquitectura).
 
 ### 6. Próximos pasos
