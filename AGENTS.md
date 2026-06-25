@@ -3191,3 +3191,33 @@ If a new price source is added (e.g. "promotional campaign", "loyalty discount")
 4. `sale-invoices.service.ts` — uses `resolveItemPriceForPartner` / `resolveItemPriceBulkForPartner`
 5. `sale-reserve-invoices.service.ts` — same as above
 6. `document-drafts.service.ts` — uses `resolveItemPriceBulkForPartner` for price checks
+
+## Auth default credentials (Jun 2026)
+
+> **Context:** migración de login de `email` a `username`. Los usuarios seed se crean con `username` obligatorio y `email` opcional.
+
+After running `npx prisma db seed` (or `npx prisma migrate reset` with seed), the following default users are available in tenant `1`:
+
+| Username    | Password     | Role  | Email (optional)      |
+|-------------|--------------|-------|-----------------------|
+| `admin`     | `admin123`   | ADMIN | `admin@erp.com`       |
+| `vendedor1` | `vendedor123`| USER  | `vendedor1@erp.com`   |
+| `vendedor2` | `vendedor123`| USER  | `vendedor2@erp.com`   |
+
+Use `username` (not email) to log in via the frontend or `POST /auth/login`.
+
+### Cleaning old test data
+
+If you need a clean local environment after previous seeds that used email as the identifier, run:
+
+```bash
+# WARNING: destructive — only for local development databases
+npx prisma migrate reset
+```
+
+This resets the database and re-runs the seed with the new `username` model.
+
+### Post-deploy notes
+
+- Tokens JWT issued before this migration contain `email` in the payload and are therefore invalid after deploy. Users must log in again.
+- Any external integrations or scripts that call `POST /auth/login` must switch from `{ email, password }` to `{ username, password }`.
