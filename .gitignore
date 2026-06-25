@@ -74,3 +74,11 @@ page.html
 banner.png
 image.png
 frontend.zip
+
+# ── Nested sub-repositories (independent Git repos) ──
+/backend-erp/
+/erp-frontend/
+
+# ── Local caches / session files ──
+__pycache__/
+memory/
