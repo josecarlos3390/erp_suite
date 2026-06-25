@@ -576,7 +576,7 @@ Importar desde `@shared/luna-form`:
 
 ### 2. Densidad
 
-`density` en `<luna-form-page>` acepta `compact | comfortable | spacious` (default `comfortable`). Los tokens viven en `src/styles/_form-density.scss` y afectan padding, gaps y altura de controles.
+`density` en `<luna-form-page>` acepta `compact | comfortable | spacious` (default `compact`). Los tokens viven en `src/styles/_form-density.scss` y afectan padding, gaps y altura de controles.
 
 ### 3. Patrón de uso
 
@@ -610,6 +610,7 @@ Importar desde `@shared/luna-form`:
 - Para tabs, usar `<luna-form-tabs>` en lugar de `.tab-bar` / `.tab-switcher`.
 - No usar `::ng-deep` para perforar primitivos LUNA. Las variantes necesarias deben solicitarse al equipo de design system.
 - Los slots `lunaFormHeader` y `lunaFormActions` deben aplicarse **directamente** sobre el componente proyectable (`app-document-form-header`, `app-document-action-bar`). No envolverlos en `<div>` ni `<ng-container>`, porque `<luna-form-page>` proyecta esos selectores exactos como `ng-content select="[lunaFormHeader]"`.
+- **Accesibilidad de botones icon-only:** nunca dejar un `<luna-action-icon>` suelto como control interactivo. Usar `<luna-button action="moreHorizontal" (lunaClick)="..."></luna-button>`; `LunaButtonComponent` resuelve `title` y `aria-label` automáticamente desde `ACTION_TITLES`. Si el icono no tiene título registrado, agregarlo en `luna-button.component.ts`.
 - Todo formulario refactorizado debe incluir un spec de Playwright que capture un screenshot (`e2e/screenshots/<nombre>-form-after.png`) y verifique renderizado real de la UI.
 
 ### 5. Estado de la migración
@@ -618,7 +619,7 @@ Importar desde `@shared/luna-form`:
 - **Formularios restantes:** 0.
 - **Páginas de detalle y configuración migradas (7):** `assembly-order-detail`, `item-detail`, `partner-detail`, `permissions`, `settings`, `dimensions-config`, `bulk-upload`.
 - **Deuda de layout antiguo:** 0 archivos restantes con `form-page` / `form-header` / `form-section` / `form-row`.
-- **Build:** ✅ éxito (warning de bundle budget: +55.56 kB vs 1.00 MB, no bloqueante).
+- **Build:** ✅ éxito (warning de bundle budget: +59.56 kB vs 1.00 MB, no bloqueante).
 - **Lint:** ✅ 0 errores, 0 warnings.
 - **Tests:** ✅ 579/579 SUCCESS.
 - **Cobertura general de componentes LUNA:** 182/185 templates HTML (98.4%) usan al menos un componente LUNA. Restantes: `app.component.html` (layout raíz), `pages/sap-integration/sap-integration.component.html` (contenedor de rutas) y `shared/document-flow/document-flow.component.html` (mantenido intacto por decisión de arquitectura).
