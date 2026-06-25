@@ -4,6 +4,30 @@ The project already has a rich set of shared standalone components in `src/app/s
 
 ---
 
+## 0. LUNA Modal Selector Trigger Standard
+
+All modal entity selectors (`src/app/shared/*-selector`) share a single visual contract so they look identical in every form. The full specification lives in `SKILL.md` §9.1; the rules below are the practical checklist.
+
+**Inputs every modal selector must expose:**
+- `[id]` — forwarded to the trigger element via `[attr.id]="id"` so `<luna-form-field inputId="...">` works.
+- `[compact]` — `true` for table cells / document lines; `false` (default) for form fields.
+- `[disabled]` / `[readonly]` — standard `ControlValueAccessor` states.
+
+**Empty trigger rules:**
+- Use a native `<button type="button">`, **not** `<luna-button>`.
+- Use a unique prefix per selector (e.g. `ws-` for warehouse, `ps-` for partner).
+- Trigger height is `36px` (`28px` compact); border is `1px solid var(--border-default)`; radius `var(--radius-md)`.
+- Left icon = domain icon; right icon = `chevronDown`.
+- Label truncates with ellipsis.
+
+**Selected pill rules:**
+- Keep the same `36px` / `28px` heights.
+- Show the selected entity name and a clear/remove action.
+
+See the prefix/icon table in `SKILL.md` §9.1.
+
+---
+
 ## 1. PartnerSelectorComponent
 
 **File:** `src/app/shared/partner-selector/`
@@ -26,19 +50,24 @@ export class MyFormComponent {
 ```
 
 ```html
-<app-partner-selector
-  formControlName="partnerId"
-  [partnerType]="'SUPPLIER'"
-></app-partner-selector>
+<luna-form-field label="Proveedor" inputId="partner-field" [required]="true">
+  <app-partner-selector
+    [id]="'partner-field'"
+    formControlName="partnerId"
+    [partnerType]="'SUPPLIER'"
+  ></app-partner-selector>
+</luna-form-field>
 ```
 
 **Inputs:**
 - `partnerType?: 'CLIENT' | 'SUPPLIER' | 'BOTH'` — filter by partner type
+- `compact?: boolean` — use `[compact]="true"` inside line tables
 
 **Notes:**
 - Implements `ControlValueAccessor`, so it works with `formControlName`.
 - Displays partner name once selected.
 - Opens modal with search + pagination.
+- Always wrap in `<luna-form-field>` with matching `inputId` / `[id]` for accessibility.
 
 ---
 
@@ -50,13 +79,14 @@ export class MyFormComponent {
 
 ```typescript
 import { ItemSearchModalComponent } from '../../shared/item-search-modal/item-search-modal.component';
+import { ItemSearchResult } from '../../models/item.model';
 
 @Component({
   standalone: true,
   imports: [ItemSearchModalComponent, ...],
 })
 export class MyFormComponent {
-  onItemSelected(item: any) {
+  onItemSelected(item: ItemSearchResult) {
     this.addLine(item);
   }
 }
@@ -84,7 +114,13 @@ export class MyFormComponent {
 **File:** `src/app/shared/warehouse-selector/`
 
 ```html
-<app-warehouse-selector formControlName="warehouseId"></app-warehouse-selector>
+<luna-form-field label="Almacen" inputId="warehouse-field">
+  <app-warehouse-selector
+    [id]="'warehouse-field'"
+    formControlName="warehouseId"
+    placeholder="— Sin almacen —"
+  ></app-warehouse-selector>
+</luna-form-field>
 ```
 
 ---
@@ -94,37 +130,43 @@ export class MyFormComponent {
 **File:** `src/app/shared/tax-indicator-selector/`
 
 ```html
-<app-tax-indicator-selector formControlName="taxIndicatorId"></app-tax-indicator-selector>
+<luna-form-field label="Impuesto" inputId="tax-field">
+  <app-tax-indicator-selector
+    [id]="'tax-field'"
+    formControlName="taxIndicatorId"
+    placeholder="— Sin impuesto —"
+  ></app-tax-indicator-selector>
+</luna-form-field>
 ```
 
 ---
 
-## 5. PaginatorComponent
+## 5. LunaPaginatorComponent
 
-**File:** `src/app/shared/paginator/`
+**File:** `src/app/shared/luna/luna-paginator/`
 
-**Use case:** Pagination controls for list pages.
-
-```typescript
-import { PaginatorComponent } from '../../shared/paginator/paginator.component';
-```
+**Use case:** Pagination controls for list pages. Use the Luna paginator, not the legacy `app-paginator`.
 
 ```html
-<app-paginator
+<luna-paginator
   [page]="page"
-  [totalPages]="totalPages"
+  [limit]="limit"
   [total]="total"
+  [totalPages]="totalPages"
   (pageChange)="onPageChange($event)"
-></app-paginator>
+  (limitChange)="onLimitChange($event)"
+></luna-paginator>
 ```
 
 **Inputs:**
 - `page: number`
-- `totalPages: number`
+- `limit: number`
 - `total: number`
+- `totalPages: number`
 
 **Outputs:**
 - `pageChange: EventEmitter<number>`
+- `limitChange: EventEmitter<number>`
 
 ---
 
