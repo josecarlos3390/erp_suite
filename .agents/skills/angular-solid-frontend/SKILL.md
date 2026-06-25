@@ -236,48 +236,56 @@ Keep models minimal. Use union types for enums. Add helper constants in the same
 
 ## 5. Luna List Pattern (catalogs, documents, settings)
 
-All list pages MUST follow this exact HTML structure and CSS classes. Global styles live in `src/styles/_lists.scss`.
+All list pages MUST follow this exact HTML structure. Global list styles live in `src/styles/_lists.scss`.
 
-**HTML structure:**
+**Canonical example:** `src/app/pages/items/items.component.html`.
 
 ```html
 <div class="page-container">
   <!-- Header -->
   <div class="page-header">
-    <h2>Título de página</h2>
+    <h2>
+      Articulos
+      <app-help-hint
+        sectionId="items-intro"
+        categoryId="items"
+        label="Gestion de articulos"
+      ></app-help-hint>
+    </h2>
     <div class="header-actions">
-      <luna-button variant="primary" size="sm" text="+ Nuevo" (lunaClick)="goNew()"></luna-button>
+      <luna-button
+        variant="primary"
+        size="sm"
+        (lunaClick)="openNew()"
+      >
+        <luna-action-icon action="plus" lunaButtonIcon></luna-action-icon>
+        Nuevo Articulo
+      </luna-button>
     </div>
   </div>
 
   <!-- Info banner (optional but recommended) -->
   <div class="info-banner">
-    <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
-    <span><strong>Contexto:</strong> Descripción breve de qué se gestiona aquí.</span>
+    <luna-action-icon action="info"></luna-action-icon>
+    <span>
+      <strong>Articulos:</strong> Administra el catalogo de productos, servicios
+      y kits. Configura precios, costos, unidades de medida y seguimiento por
+      lote o serie.
+    </span>
   </div>
 
   <!-- Filter bar -->
   <div class="filter-bar">
     <div class="filter-search">
-      <i class="fas fa-search search-icon"></i>
-      <input type="text" class="search-input" placeholder="Buscar…"
-             [(ngModel)]="search" (input)="onSearchInput()" />
-      @if (search) {
-        <button class="search-clear" (click)="clearSearch()">✕</button>
-      }
-    </div>
-
-    <!-- Additional filters (optional) -->
-    <div class="filter-group">
-      <div class="filter-field">
-        <label>Kit / Partner / Estado</label>
-        <app-item-selector
-          [(ngModel)]="filterKitId"
-          [items]="kits"
-          placeholder="Todos los kits"
-          (itemSelected)="onFilterChange()"
-        ></app-item-selector>
-      </div>
+      <luna-input
+        type="text"
+        [(ngModel)]="search"
+        placeholder="Buscar por nombre o codigo..."
+        leadingAction="search"
+        [clearable]="true"
+        (input)="onSearch(search)"
+        (cleared)="onSearch('')"
+      ></luna-input>
     </div>
   </div>
 
@@ -285,58 +293,65 @@ All list pages MUST follow this exact HTML structure and CSS classes. Global sty
   <luna-data-table
     [data]="items"
     [columns]="columns"
-    tableKey="feature-list"
+    [loading]="loading"
+    tableKey="items-list"
     [columnReorderable]="true"
     [columnVisibilityToggle]="true"
-    [loading]="loading"
-    density="compact"
-    emptyTitle="Sin registros"
-    emptyDescription="No hay registros para mostrar."
-    emptyActionLabel="Crear la primera"
-    (emptyAction)="goNew()"
-    (rowClick)="edit($event)"
+    emptyTitle="Sin articulos"
+    [emptyDescription]="emptyDesc"
+    [emptyActionLabel]="search ? '' : 'Crear el primero'"
+    (emptyAction)="openNew()"
+    (rowClick)="openDetail($event)"
   >
-    <ng-template #actions let-row>
+    <ng-template #actions let-item>
       <div class="actions">
+        <luna-button
+          action="view"
+          variant="secondary"
+          (lunaClick)="openDetail(item); $event.stopPropagation()"
+        ></luna-button>
         <luna-button
           action="edit"
           variant="secondary"
-          (lunaClick)="edit(row); $event.stopPropagation()"
+          (lunaClick)="openEdit(item); $event.stopPropagation()"
         ></luna-button>
         <luna-button
           action="delete"
           variant="destructive"
-          (lunaClick)="remove(row); $event.stopPropagation()"
+          (lunaClick)="remove(item); $event.stopPropagation()"
         ></luna-button>
       </div>
     </ng-template>
   </luna-data-table>
 
   <!-- Paginator -->
-  @if (totalPages > 1) {
-    <app-paginator
-      [page]="page"
-      [limit]="limit"
-      [total]="total"
-      [totalPages]="totalPages"
-      (pageChange)="onPageChange($event)"
-      (limitChange)="onLimitChange($event)"
-    ></app-paginator>
-  }
+  <luna-paginator
+    [page]="page"
+    [limit]="limit"
+    [total]="total"
+    [totalPages]="totalPages"
+    (pageChange)="onPageChange($event)"
+    (limitChange)="onLimitChange($event)"
+  >
+  </luna-paginator>
 </div>
 ```
+
+**Key rules for list pages:**
+- Use `<div class="page-container">` as the root.
+- Page title lives in `<div class="page-header"><h2>`. Add `<app-help-hint>` when a contextual help entry exists.
+- Primary CTA uses `luna-button variant="primary" size="sm"` with an icon (`plus`) and text.
+- Info banner uses `<luna-action-icon action="info">` (not FontAwesome).
+- Search uses `<luna-input leadingAction="search" [clearable]="true">` inside `<div class="filter-search">`.
+- Table uses `<luna-data-table>` with `emptyTitle`, `emptyDescription`, and `emptyActionLabel` props.
+- Pagination uses `<luna-paginator>` (not the legacy `app-paginator`).
 
 **Key rules for list actions:**
 - Action buttons MUST be wrapped in `<div class="actions">`.
 - Use `luna-button` with `action="edit"` + `variant="secondary"` for edit.
 - Use `luna-button` with `action="delete"` + `variant="destructive"` for delete.
 - Always add `$event.stopPropagation()` so `rowClick` does not fire when clicking actions.
-- Do NOT use raw text/symbols (e.g. `✎`) inside action buttons.
-
-**Key rules for header action buttons:**
-- Every primary CTA button inside `.page-header` (e.g. "+ Nuevo", "Restaurar Defaults") MUST use `size="sm"`.
-- Secondary/auxiliary buttons in the same header MAY use `size="sm"` for consistency but it is not strictly required.
-- The `size="sm"` attribute yields a 28px-tall button that visually pairs correctly with the 32px search inputs and filter bars.
+- Do NOT use raw text/symbols (e.g. `✎`, `✕`) inside action buttons.
 
 **Component TS pattern:**
 
@@ -393,78 +408,124 @@ export class MyListComponent implements OnInit {
 
 ## 6. Luna Form Pattern
 
-All form pages MUST follow this exact HTML structure. Global styles live in `src/styles/_forms.scss`.
+All form pages MUST use `<luna-form-page>` as the root container. It provides density tokens, sticky header/action-bar compensation, and named content slots.
 
-### 6.1 Document Form (purchase-orders, sale-invoices, etc.)
+**Primitives:**
+- `<luna-form-page>` — root wrapper; exposes `density` (`compact` | `comfortable` | `spacious`).
+- `<luna-form-section>` — card with `title`, `hint`, and `lunaFormSectionActions` slot.
+- `<luna-form-row>` — responsive grid; `columns` accepts `1`–`4`.
+- `<luna-form-field>` — label + hint + error wrapper for custom controls that do not expose their own label (e.g. modal selectors).
+- `<luna-form-tabs>` — accessible tab bar; each tab may have an `action` icon.
 
-Uses `DocumentFormHeaderComponent` + `DocumentActionBarComponent`:
+### 6.1 Document Form (purchase-orders, sale-invoices, stock-entries, etc.)
+
+Uses `luna-form-page` + `DocumentFormHeaderComponent` + `DocumentActionBarComponent`.
+
+**Canonical example:** `src/app/pages/purchase-orders/purchase-orders-form.component.html`.
 
 ```html
-<div class="form-page">
-  <app-document-form-header (back)="goBack()">
+<luna-form-page>
+  <app-document-form-header lunaFormHeader (back)="goBack()">
     <h2 formTitle>
-      @if (isEditing) { Editar documento } @else { Nuevo documento }
+      @if (orderId) { Orden de Compra {{ orderCode }} }
+      @else { Nueva Orden de Compra }
     </h2>
-    @if (hasChanges) {
-      <span formStatus class="dirty-badge">Sin guardar</span>
-    }
+    <span
+      formStatus
+      class="status-badge"
+      [class.status-open]="status === 'OPEN'"
+      [class.status-closed]="status === 'CLOSED'"
+    >
+      {{ status === 'OPEN' ? 'Abierta' : 'Cerrada' }}
+    </span>
   </app-document-form-header>
 
   @if (isLoading) {
-    <div class="info-banner"><i class="fas fa-spinner fa-spin"></i> Cargando…</div>
+    <div class="info-banner">
+      <luna-action-icon action="spinner"></luna-action-icon> Cargando orden...
+    </div>
   }
 
-  <form [formGroup]="form" (ngSubmit)="save()" class="form-body" novalidate>
-    <div class="form-section">
-      <h3 class="section-title">Información general</h3>
-
-      <div class="form-row-3">
-        <div class="form-field">
-          <label>Partner <span class="required">*</span></label>
+  <form
+    [formGroup]="form"
+    (ngSubmit)="save()"
+    class="luna-form-page__body"
+    novalidate
+  >
+    <luna-form-section title="Informacion general">
+      <luna-form-row [columns]="4">
+        <luna-form-field label="Proveedor" [required]="true" inputId="po-partner">
           <app-partner-selector
+            [id]="'po-partner'"
             formControlName="partnerId"
             filterType="SUPPLIER"
-            placeholder="Buscar partner…"
+            placeholder="Buscar proveedor..."
           ></app-partner-selector>
-        </div>
+        </luna-form-field>
 
-        <div class="form-field">
-          <label for="f-date">Fecha</label>
-          <input id="f-date" type="date" formControlName="date" />
-        </div>
+        <luna-input
+          type="date"
+          formControlName="date"
+          label="Fecha"
+        ></luna-input>
 
-        <div class="form-field">
-          <label>Almacén</label>
+        <luna-form-field label="Almacen" inputId="po-warehouse">
           <app-warehouse-selector
+            [id]="'po-warehouse'"
             formControlName="warehouseId"
             [warehouses]="warehouses"
-            placeholder="— Sin almacén —"
+            placeholder="— Sin almacen —"
           ></app-warehouse-selector>
-        </div>
-      </div>
-    </div>
+        </luna-form-field>
+
+        <luna-form-field label="Sucursal" inputId="po-branch">
+          <app-branch-selector
+            [id]="'po-branch'"
+            formControlName="branchId"
+            placeholder="— Sin sucursal —"
+          ></app-branch-selector>
+        </luna-form-field>
+      </luna-form-row>
+    </luna-form-section>
+
+    <!-- Lines section -->
+    <luna-form-section title="Lineas">
+      <luna-button
+        lunaFormSectionActions
+        variant="secondary"
+        size="sm"
+        (lunaClick)="addLine()"
+      >
+        <luna-action-icon action="plus" lunaButtonIcon></luna-action-icon>
+        Agregar linea
+      </luna-button>
+
+      <app-document-lines-table [lines]="itemsArray" ...></app-document-lines-table>
+    </luna-form-section>
   </form>
 
-  <app-document-action-bar (back)="goBack()">
+  <app-document-action-bar lunaFormActions (back)="goBack()">
     <luna-button
       variant="primary"
-      [text]="isSaving ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear'"
+      [text]="isSaving ? 'Guardando...' : orderId ? 'Guardar cambios' : 'Crear orden'"
       [disabled]="form.invalid || isSaving || !hasChanges"
       [loading]="isSaving"
       (lunaClick)="save()"
     ></luna-button>
   </app-document-action-bar>
-</div>
+</luna-form-page>
 ```
 
 ### 6.2 Master-Data Form (items, partners, warehouses, tax-indicators)
 
-Master-data forms share the same shell. They use stacked `.form-section` cards for complex entities (see §6.7 for the rare cases that need tabs). They do NOT use `DocumentFormBase` (that is only for commercial documents with header+lines+accounting).
+Master-data forms use the same `luna-form-page` shell. They do NOT use `DocumentFormBase` (that is only for commercial documents with header+lines+accounting).
+
+**Canonical example:** `src/app/pages/items/item-form.component.html`.
 
 ```html
-<div class="form-page">
-  <app-document-form-header (back)="goBack()">
-    <h2 formTitle>{{ isEditing ? 'Editar Artículo' : 'Nuevo Artículo' }}</h2>
+<luna-form-page>
+  <app-document-form-header lunaFormHeader (back)="goBack()">
+    <h2 formTitle>{{ isEditing ? 'Editar Articulo' : 'Nuevo Articulo' }}</h2>
     @if (hasChanges) {
       <span formStatus class="dirty-badge">Sin guardar</span>
     }
@@ -472,36 +533,67 @@ Master-data forms share the same shell. They use stacked `.form-section` cards f
 
   @if (catalogsLoading || isLoading) {
     <div class="info-banner info-neutral">
-      <i class="fas fa-spinner fa-spin"></i> Cargando…
+      <luna-action-icon action="spinner"></luna-action-icon> Cargando...
     </div>
   }
 
-  <form [formGroup]="form" (ngSubmit)="save()" class="form-body" novalidate>
-    <!-- Sections with form-row / form-row-2 / form-row-3 / form-row-4 -->
-    <div class="form-section">
-      <h3 class="section-title">Identificación</h3>
-      <div class="form-row-3">
-        <div class="form-field">
-          <label class="required">Nombre</label>
-          <input type="text" formControlName="name" />
-        </div>
-        <!-- more fields… -->
-      </div>
-    </div>
+  <form
+    [formGroup]="form"
+    (ngSubmit)="save()"
+    class="luna-form-page__body"
+    novalidate
+  >
+    <luna-form-tabs
+      [tabs]="tabs"
+      [(activeTab)]="activeTab"
+      ariaLabel="Secciones del articulo"
+    ></luna-form-tabs>
+
+    @switch (activeTab) {
+      @case ('general') {
+        <luna-form-section title="Identificacion">
+          <luna-form-row>
+            <luna-input
+              type="text"
+              formControlName="name"
+              label="Nombre"
+              [required]="true"
+            ></luna-input>
+            <luna-input
+              type="text"
+              formControlName="barcode"
+              label="Codigo de barras"
+            ></luna-input>
+          </luna-form-row>
+
+          <luna-form-row>
+            <luna-form-field label="Grupo" inputId="item-group">
+              <app-item-group-selector
+                [id]="'item-group'"
+                formControlName="groupId"
+                [itemGroups]="itemGroups"
+                placeholder="— Sin grupo —"
+              ></app-item-group-selector>
+            </luna-form-field>
+          </luna-form-row>
+        </luna-form-section>
+      }
+    }
   </form>
 
-  <app-document-action-bar (back)="goBack()">
+  <app-document-action-bar lunaFormActions (back)="goBack()">
     <luna-button
       variant="primary"
+      [text]="isSaving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear'"
       [loading]="isSaving"
       [disabled]="form.invalid || isSaving || !hasChanges"
       (lunaClick)="save()"
-    >
-      {{ isSaving ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear' }}
-    </luna-button>
+    ></luna-button>
   </app-document-action-bar>
-</div>
+</luna-form-page>
 ```
+
+**Master-data action-bar rule:** do NOT add a "Cancelar" button. The header already provides the back action (`(back)="goBack()"`). Only the primary save button belongs in the action bar.
 
 ### 6.3 Dirty tracking (required for all forms)
 
@@ -558,21 +650,16 @@ export class MyFormComponent implements OnInit {
 }
 ```
 
-### 6.4 Key CSS classes for forms
+### 6.4 Key primitives for forms
 
-| Class | Purpose |
+| Component/Class | Purpose |
 |---|---|
-| `.form-page` | Wrapper with padding for fixed header + action-bar |
-| `.form-section` | White card with border, padding, shadow |
-| `.section-title` | Uppercase muted label with bottom border |
-| `.form-row` | 2-column grid (1 col on mobile) |
-| `.form-row-2` | 2-column grid |
-| `.form-row-3` | 3-column grid (2 on tablet, 1 on mobile) |
-| `.form-row-4` | 4-column grid (2 on tablet, 1 on mobile) |
-| `.form-field` | Flex column with label + input + error/hint |
-| `.field-error` | Red error text below input |
-| `.field-error-input` | Red border on invalid input |
-| `.field-hint` | Muted helper text below input |
+| `<luna-form-page>` | Root wrapper with density tokens and sticky header/action-bar compensation |
+| `<luna-form-section>` | White card with `title`, `hint`, and `lunaFormSectionActions` slot |
+| `<luna-form-row>` | Responsive grid; use `[columns]="N"` instead of custom SCSS grids |
+| `<luna-form-field>` | Label + hint + error wrapper for custom controls without built-in label |
+| `<luna-form-tabs>` | Accessible tab bar; tabs may include `action` icons |
+| `.luna-form-page__body` | Class applied to the `<form>` inside `<luna-form-page>` |
 | `.field-dirty` | Optional: highlights modified fields (used in item-form) |
 | `.readonly-value` | **Deprecated** — use `<app-item-selector [readonly]="true">` or equivalent instead |
 | `.field-value` | Read-only value in detail views: semibold, bordered-bottom, prominent |
@@ -580,11 +667,82 @@ export class MyFormComponent implements OnInit {
 | `.detail-grid-2` | 2-column detail grid (1 col on mobile) |
 | `.summary-block` | Highlighted card for key totals/quantities in detail views |
 | `.info-chip` | Inline badge for status/metadata in detail views |
-| `.action-bar` | Fixed bottom bar (provided by `DocumentActionBarComponent`) |
+
+**Legacy classes (deprecated, do not use in new code):** `.form-page`, `.form-body`, `.form-section`, `.section-title`, `.form-row`, `.form-row-2`, `.form-row-3`, `.form-row-4`, `.form-field`.
+
+### 6.5 Tabs with icons
+
+Tabbed forms use `<luna-form-tabs>`. Each tab can display an `action` icon from the LUNA icon set.
+
+**Canonical example:** `src/app/pages/items/item-form.component.ts`.
+
+```typescript
+tabs: LunaFormTab[] = [
+  { id: 'general',    label: 'General',          action: 'clipboard' },
+  { id: 'stock',      label: 'Stock y logistica', action: 'box' },
+  { id: 'production', label: 'Produccion',       action: 'cubes' },
+  { id: 'warehouses', label: 'Almacenes y cuentas', action: 'warehouse' },
+];
+```
+
+Rules:
+- Always set `ariaLabel` on `<luna-form-tabs>`.
+- Use meaningful icons; do not leave tabs without icons unless the form has only one tab.
+- Do not use emoji in tab labels; rely on `action` icons.
+
+### 6.6 Modal selectors and accessibility (`inputId` / `forId`)
+
+Modal selectors are custom form controls. Because they do not render a native `<label>`, wrap them in `<luna-form-field>` and bind `inputId` to the selector's `id`.
+
+**Canonical example:** `src/app/pages/stock-entries/stock-entries-form.component.html`.
+
+```html
+<luna-form-field label="Almacen" [required]="true" inputId="se-warehouse">
+  <app-warehouse-selector
+    [id]="'se-warehouse'"
+    formControlName="warehouseId"
+    [warehouses]="warehouses"
+  ></app-warehouse-selector>
+</luna-form-field>
+```
+
+Rules:
+- Every modal selector in a form MUST be wrapped in `<luna-form-field>` (not a manual `<label>` + `<div>`).
+- `inputId` on `<luna-form-field>` must match `[id]` on the selector component.
+- The selector component must forward that `id` to its trigger element via `[attr.id]="id"`.
+- Mark `[required]="true"` on `<luna-form-field>` when the underlying control is required.
+
+### 6.7 Empty states
+
+Empty states inside tables use the `emptyTitle`, `emptyDescription`, and `emptyActionLabel` props of `<luna-data-table>`.
+
+For inline empty states (e.g. inside a modal list, a card, or a custom section), use the `.empty-state` class family:
+
+```html
+<div class="empty-state">
+  <luna-action-icon action="box" class="empty-state-icon"></luna-action-icon>
+  <p class="empty-state-title">Sin registros</p>
+  <p class="empty-state-description">No hay articulos para mostrar.</p>
+</div>
+```
+
+For compact contexts (e.g. small cards or dropdown panels), use `.empty-state-sm`:
+
+```html
+<div class="empty-state-sm">
+  <luna-action-icon action="search"></luna-action-icon>
+  <p>No se encontraron resultados</p>
+</div>
+```
+
+Rules:
+- Do not use raw `<p>Sin registros...</p>` without the `.empty-state` wrapper.
+- Always pair the message with a relevant `luna-action-icon`.
+- Provide an action (button or link) when the user can create the first record.
 
 ---
 
-## 6.5 Settings / Configuration Form
+## 6.8 Settings / Configuration Form
 
 Configuration pages (e.g. **Parametrización del sistema**) do **NOT** use `DocumentFormHeaderComponent` or `DocumentActionBarComponent`. They follow a lighter card-based layout because they edit key-value settings, not business documents.
 
@@ -1302,17 +1460,17 @@ detailColumns: LunaColumn[] = [
 
 Use modals for **bulk actions**, **confirmations**, or **sub-forms** that don't need their own route.
 
-### `app-paginator`
+### `luna-paginator`
 
 ```html
-<app-paginator
+<luna-paginator
   [page]="page"
   [limit]="limit"
   [total]="total"
   [totalPages]="totalPages"
   (pageChange)="onPageChange($event)"
   (limitChange)="onLimitChange($event)"
-></app-paginator>
+></luna-paginator>
 ```
 
 ---
@@ -1321,14 +1479,27 @@ Use modals for **bulk actions**, **confirmations**, or **sub-forms** that don't 
 
 All selectors are `standalone: true`, implement `ControlValueAccessor`, and emit the full selected object via `@Output`.
 
+When a selector is used inside `<luna-form-field>`, bind `[id]` on the selector to `inputId` on the field so the label's `for` attribute points to the selector trigger. The selector must forward that `id` to its trigger element with `[attr.id]="id"`.
+
+```html
+<luna-form-field label="Almacen" inputId="wh-field">
+  <app-warehouse-selector
+    [id]="'wh-field'"
+    formControlName="warehouseId"
+    [warehouses]="warehouses"
+  ></app-warehouse-selector>
+</luna-form-field>
+```
+
 ### `app-item-selector`
 
 ```html
 <app-item-selector
+  [id]="'item-field'"
   formControlName="itemId"
   [items]="items"
-  placeholder="Seleccionar artículo…"
-  title="Seleccionar artículo"
+  placeholder="Seleccionar articulo..."
+  title="Seleccionar articulo"
   [compact]="false"
   [readonly]="false"
   (itemSelected)="onItemSelected($event)"
@@ -1337,11 +1508,13 @@ All selectors are `standalone: true`, implement `ControlValueAccessor`, and emit
 
 - Use `[readonly]="true"` for displaying a selected item without allowing changes.
 - In line tables: `[compact]="true"`.
+- Bind `[id]` when wrapped by `<luna-form-field inputId="...">`.
 
 ### `app-uom-selector`
 
 ```html
 <app-uom-selector
+  [id]="'uom-field'"
   formControlName="uomId"
   placeholder="— Sin unidad —"
   [compact]="false"
@@ -1353,10 +1526,11 @@ All selectors are `standalone: true`, implement `ControlValueAccessor`, and emit
 
 ```html
 <app-warehouse-selector
+  [id]="'warehouse-field'"
   formControlName="warehouseId"
   [warehouses]="warehouses"
-  placeholder="— Sin almacén —"
-  title="Seleccionar almacén"
+  placeholder="— Sin almacen —"
+  title="Seleccionar almacen"
   [compact]="false"
   [readonly]="false"
   (warehouseSelected)="onWarehouseSelected($event)"
@@ -1367,9 +1541,10 @@ All selectors are `standalone: true`, implement `ControlValueAccessor`, and emit
 
 ```html
 <app-partner-selector
+  [id]="'partner-field'"
   formControlName="partnerId"
   filterType="SUPPLIER"
-  placeholder="Buscar partner…"
+  placeholder="Buscar partner..."
   title="Seleccionar partner"
   [readonly]="false"
   [showViewButton]="false"
@@ -1383,6 +1558,7 @@ All selectors are `standalone: true`, implement `ControlValueAccessor`, and emit
 
 ```html
 <app-tax-indicator-selector
+  [id]="'tax-field'"
   formControlName="taxIndicatorId"
   [indicators]="taxIndicators"
   placeholder="— Sin impuesto —"
@@ -1423,13 +1599,18 @@ Before creating a new UI control, check if one of these already exists in `src/a
 
 | Component | Purpose | How to use |
 |---|---|---|
-| `PartnerSelectorComponent` | Select partner with search modal | `<app-partner-selector formControlName="partnerId" [partnerType]="'SUPPLIER'" />` |
+| `PartnerSelectorComponent` | Select partner with search modal | `<app-partner-selector formControlName="partnerId" filterType="SUPPLIER" />` |
 | `ItemSelectorComponent` | Select item with search modal | `<app-item-selector formControlName="itemId" [items]="items" />` |
 | `UomSelectorComponent` | Select unit of measure | `<app-uom-selector formControlName="uomId" />` |
-| `WarehouseSelectorComponent` | Select warehouse | `<app-warehouse-selector formControlName="warehouseId" />` |
-| `TaxIndicatorSelectorComponent` | Select tax indicator | `<app-tax-indicator-selector formControlName="taxIndicatorId" />` |
+| `WarehouseSelectorComponent` | Select warehouse | `<app-warehouse-selector formControlName="warehouseId" [warehouses]="warehouses" />` |
+| `TaxIndicatorSelectorComponent` | Select tax indicator | `<app-tax-indicator-selector formControlName="taxIndicatorId" [indicators]="indicators" />` |
 | `CurrencySelectorComponent` | Select currency ISO code | `<app-currency-selector formControlName="currency" [currencies]="list" />` |
-| `PaginatorComponent` | Pagination controls | `<app-paginator [page]="page" ... (pageChange)="onPageChange($event)" />` |
+| `LunaPaginatorComponent` | Pagination controls | `<luna-paginator [page]="page" ... (pageChange)="onPageChange($event)" />` |
+| `LunaFormPageComponent` | Form page root container | `<luna-form-page><app-document-form-header lunaFormHeader ... /></luna-form-page>` |
+| `LunaFormSectionComponent` | Card section for forms | `<luna-form-section title="General">...</luna-form-section>` |
+| `LunaFormRowComponent` | Responsive form grid | `<luna-form-row [columns]="3">...</luna-form-row>` |
+| `LunaFormFieldComponent` | Label wrapper for custom controls | `<luna-form-field label="Almacen" inputId="wh"><app-warehouse-selector [id]="'wh'" /></luna-form-field>` |
+| `LunaFormTabsComponent` | Accessible form tabs | `<luna-form-tabs [tabs]="tabs" [(activeTab)]="activeTab" />` |
 | `DocumentFlowMapComponent` | Show document traceability | `<app-document-flow-map [docId]="id" [docType]="'SALES_QUOTATION'" />` |
 | `DocumentFormHeaderComponent` | Fixed form header with back button | `<app-document-form-header (back)="goBack()"><h2 formTitle>Título</h2></app-document-form-header>` |
 | `DocumentActionBarComponent` | Fixed bottom action bar | `<app-document-action-bar (back)="goBack()"><luna-button …/></app-document-action-bar>` |

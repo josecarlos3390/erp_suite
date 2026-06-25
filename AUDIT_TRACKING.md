@@ -250,7 +250,7 @@
 | 5 | **SalesOrders.createManual** no setea `date`/`postingDate` (asimetría con `purchase-orders`). | 🟡 Media | `sales-orders.service.ts` | ✅ Done (ya propagaba vía `buildBaseDocumentData`) |
 | 6 | **PurchaseOrders.createFromDraft** no re-resuelve precios si cotización vencida (pone 0). Ventas sí re-resuelve desde lista de precios. | 🟡 Media | `purchase-orders.service.ts` | ✅ Done |
 | 7 | **PurchaseInvoices.createFromOrder** no expone `discountPct`/`discountAmt` en payload de líneas. | 🟡 Media | `purchase-invoices.service.ts` | ✅ Done |
-| 8 | **DeliveryOrders.createManual** auto-confirma; `purchase-receipts.createManual` no. Asimetría UX. | 🟡 Media | `delivery-orders.service.ts`, `purchase-receipts.service.ts` | 🔲 |
+| 8 | **DeliveryOrders.createManual** auto-confirma; `purchase-receipts.createManual` no. Asimetría UX. | 🟡 Media | `delivery-orders.service.ts`, `purchase-receipts.service.ts` | ✅ Done — todos los flujos de delivery (simples y multi-origen) y purchase-receipts usan el patrón OPEN → `confirm()`. |
 
 ### 5.2 Hallazgos críticos de document-flow (trazabilidad)
 
