@@ -988,13 +988,52 @@ Sidebar
 
 ### 6.35 Entity Lookup / Record Selector
 
-- **Trigger:** Input with search icon + selected record display. "+ Select Customer" placeholder.
-- **Panel:** Modal or dropdown, `w-[560px]`, `bg-surface`, `shadow-xl`, `radius-2xl`.
+Used to choose a single entity (partner, item, warehouse, account, etc.) from a searchable modal. All modal selectors share the same trigger contract so the UI stays consistent across every form.
+
+#### Empty trigger
+
+- **Element:** Native `<button type="button">`. Do not use the primary button component; a native button keeps the trigger visually aligned with form inputs.
+- **Height:** `36px` default; `28px` in compact mode (table cells, document lines).
+- **Width:** `100%` of the field container.
+- **Padding:** `0 14px` default; `0 8px` compact.
+- **Background:** `bg-base`.
+- **Border:** `1px solid border-default`, `radius-md`.
+- **Typography:** `text-sm`, `font-medium`, `text-secondary`.
+- **Content layout:** inline-flex, gap `10px` (`6px` compact), items vertically centered.
+  - **Left:** domain icon (`16px`), `text-secondary`.
+  - **Middle:** placeholder text (e.g. "Seleccionar proveedor…"), truncates with ellipsis.
+  - **Right:** `chevronDown` icon (`12px`), `text-tertiary`, pushed to the far right.
+- **Hover:** `border-strong`, `text-primary`, `bg-hover`.
+- **Disabled:** opacity `0.5`, cursor `not-allowed`.
+- **Accessibility:** forward `[id]` to the trigger element so an external `<label for="...">` (or `<luna-form-field inputId="...">`) points to it.
+
+#### Selected value (pill)
+
+When a value is selected, replace the empty trigger with a read-only pill:
+
+- **Height:** same as the empty trigger (`36px` / `28px` compact).
+- **Background:** `bg-subtle`.
+- **Border:** `1px solid border-default`, `radius-md`.
+- **Content:** selected entity name (truncated) + optional clear/remove action.
+- **Compact:** same proportions scaled down.
+
+#### Selection panel
+
+- **Container:** `<luna-modal>` or dropdown, `w-[560px]`, `bg-surface`, `shadow-xl`, `radius-2xl`.
 - **Layout:** Search bar top + filter chips + data table of records.
 - **Columns:** Key identifying fields (Name, Code, Status). Minimal.
-- **Selection:** Click row selects, closes panel, populates trigger input.
+- **Selection:** Click row selects, closes panel, populates trigger.
 - **Create New:** "+ Create new [Entity]" button at bottom for when record doesn't exist.
 - **Recent:** Section at top showing recently selected records.
+
+#### Compact mode
+
+- Use `[compact]="true"` inside table cells and document lines.
+- Reduces height to `28px`, padding to `0 8px`, gap to `6px`, font to `text-xs`, radius to `radius-sm`.
+
+#### Domain icons & prefixes
+
+Each selector uses a unique CSS prefix and a domain icon so the trigger is instantly recognizable. Examples: warehouse (`ws-`, `warehouse`), partner (`ps-`, `user`), account (`acc-`, `book`), item (`its-`, `box`). The implementation skill contains the full prefix/icon mapping.
 
 ### 6.36 Context Menu
 
