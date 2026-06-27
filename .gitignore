@@ -51,6 +51,7 @@ erp-frontend/playwright/.cache/
 *.pdf
 *.png
 *.zip
+*.dump
 *.html
 *.json
 !package.json
