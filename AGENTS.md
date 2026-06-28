@@ -131,7 +131,7 @@ Ordenados por impacto y dependencias:
 
 1. **Pruebas de carga y concurrencia multitenant** (k6/Locust) — pendiente en `ROADMAP.md`, `AUDIT_TRACKING.md` y `BUGS_RESUELTOS.md`.
 2. **Validación obligatoria de `date`/`postingDate`** (DT.10) — quitar opcionalidad en Prisma/DTOs y eliminar defaults `null`.
-3. **Baseline visual de formularios** con Playwright (`e2e/forms-reference-screenshots.spec.ts`).
+3. ✅ **Baseline visual de formularios** con Playwright (`e2e/forms-reference-screenshots.spec.ts`) — completado; 51 screenshots generados.
 4. **Completar E2E críticos** faltantes: ventas, compras, stock, pagos parciales, devoluciones, conciliación.
 5. **Estabilizar runner Karma** del frontend o planificar migración progresiva.
 6. **Reconstrucción frontend de `special-prices`** — E2E `special-price-quantity-breaks.e2e-spec.ts` y ajustes de listado.
