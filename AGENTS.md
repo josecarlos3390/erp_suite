@@ -67,6 +67,8 @@ npm run build
 npm run lint
 npm test                 # 114 suites / 958 tests
 npm run test:e2e         # 10 suites / 51 tests
+npm run perf             # Performance con autocannon (local)
+npm run perf:k6          # Performance y concurrencia multitenant con k6 (local)
 npx prisma migrate dev   # crear/aplicar migración
 npx prisma db seed
 ```
@@ -100,6 +102,9 @@ npm run lint
 npm test                 # Karma en modo watch (desarrollo)
 npx ng test --watch=false --browsers=ChromeHeadless  # Karma CI / pre-push
 npm run e2e              # Playwright (backend + seed y frontend automáticos)
+npm run e2e:functional   # Todos los E2E excepto regresión visual de formularios
+npm run e2e:visual       # Regresión visual de los 51 formularios (Chromium, workers=4)
+npm run e2e:baseline     # Regenerar baseline visual de los 51 formularios
 ```
 
 ---
@@ -107,6 +112,7 @@ npm run e2e              # Playwright (backend + seed y frontend automáticos)
 ## 5. Estado actual del proyecto
 
 ### Completado recientemente
+- ✅ Ejecución green de la suite de carga k6 (perfil `small`): 5/5 escenarios passed, 0% fallos, aislamiento multitenant verificado.
 - ✅ Fase 1-6 de limpieza de tipos (`as any`, acumuladores, parámetros, casts, payloads `createFrom*`).
 - ✅ Fase 8: extensión Prisma de aislamiento de tenant fortalecida (inyección recursiva).
 - ✅ Fase 9: eliminación de diagnósticos temporales en `special-prices`.
@@ -122,6 +128,7 @@ npm run e2e              # Playwright (backend + seed y frontend automáticos)
 | `as any` en backend `src/` | **0** |
 | `as any` en backend `*.spec.ts` | **0** |
 | Backend tests | **118 suites / 1018 passed** |
+| Load tests k6 (perfil `small`) | **5/5 escenarios passed** |
 | Backend E2E | **57 tests / 11 suites passed** |
 | Playwright E2E (Chromium) | **184 passed** |
 | Playwright E2E (Firefox — flujos críticos) | **27 passed** |
@@ -135,14 +142,19 @@ npm run e2e              # Playwright (backend + seed y frontend automáticos)
 
 Ordenados por impacto y dependencias:
 
-1. **Pruebas de carga y concurrencia multitenant** (k6/Locust) — pendiente en `ROADMAP.md`, `AUDIT_TRACKING.md` y `BUGS_RESUELTOS.md`.
+1. **Pruebas de carga y concurrencia multitenant** (k6):
+   - ✅ Suite k6 creada en `backend-erp/load-tests/k6/` (smoke, load, bulk-import, kardex, multitenant isolation).
+   - ✅ CI separado en job `load-tests` del backend.
+   - ✅ **Primera ejecución green validada localmente** (perfil `small`, 5/5 escenarios, 0% fallos, ~229 s).
+   - 🔄 **Pendiente CI:** validar ejecución green en el job `load-tests` de GitHub Actions.
 2. **Validación obligatoria de `date`/`postingDate`** (DT.10):
    - ✅ **Fase 1 — Documentos comerciales** completada.
    - ✅ **Fase 2 — Stock/logística** completada.
    - ✅ **Fase 3 — Pagos y contabilidad** completada.
-3. ✅ **Baseline visual de formularios** con Playwright (`e2e/forms-reference-screenshots.spec.ts`) — 51 screenshots generados. 
+3. ✅ **Baseline visual de formularios** con Playwright (`e2e/forms-reference-screenshots.gen.ts`) — 51 screenshots generados.
    - ✅ Generación completada.
-   - 🔄 **Pendiente:** revisión/comparación del baseline visual para detectar regresiones inesperadas.
+   - ✅ Regresión visual automatizada (`e2e/forms-visual-regression.spec.ts`) con `maxDiffPixels: 100` — 51/51 passed en Chromium.
+   - ✅ CI separado en job `visual-regression` con `workers=4`.
 4. ✅ **E2E críticos completados**: ventas, compras, stock, pagos parciales, devoluciones y conciliación.
 5. ✅ **Runner Karma estabilizado**: `npx ng test --watch=false --browsers=ChromeHeadless` termina limpio con **622/622 SUCCESS**. El `npm test` por defecto entra en modo watch y no termina el proceso; usarlo solo en desarrollo.
 6. ✅ **Cross-browser Playwright** (config CI con `ng serve --watch=false`):
