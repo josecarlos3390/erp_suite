@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite (monorepo)
 
-> **Última actualización:** 2026-06-24.  
+> **Última actualización:** 2026-06-29.  
 > Este es el archivo canónico de restricciones, convenciones y comandos para todo el monorepo. Todo agente de código debe consultarlo antes de modificar archivos en `backend-erp/` o `erp-frontend/`. Para detalles específicos de cada subproyecto, ver:
 >
 > - Backend: `backend-erp/TECH_DEBT.md`, `backend-erp/docs/TYPE_SAFETY.md`.
@@ -97,8 +97,9 @@ Ver `backend-erp/TECH_DEBT.md`. **Fases 1-10 completadas.** Actualmente:
 cd erp-frontend
 npm run build
 npm run lint
-npm test                 # Karma headless
-npm run e2e              # Playwright
+npm test                 # Karma en modo watch (desarrollo)
+npx ng test --watch=false --browsers=ChromeHeadless  # Karma CI / pre-push
+npm run e2e              # Playwright (backend + seed y frontend automáticos)
 ```
 
 ---
@@ -111,15 +112,20 @@ npm run e2e              # Playwright
 - ✅ Fase 9: eliminación de diagnósticos temporales en `special-prices`.
 - ✅ Fase 10: mitigación del aviso intermitente de worker process force exited.
 - ✅ Fase 7: limpieza de `as any` en 20 archivos `.spec.ts` del backend.
+- ✅ DT.10 Fase 2: `date`/`postingDate` obligatorios en stock/logística (schema, DTOs, servicios, frontend).
+- ✅ DT.10 Fase 3: `date`/`postingDate` obligatorios en pagos y contabilidad (schema, DTOs, servicios, frontend).
+- ✅ Limpieza de archivos temporales de DT.10.
 
 ### Métricas de referencia
 | Métrica | Valor |
 |---------|-------|
 | `as any` en backend `src/` | **0** |
 | `as any` en backend `*.spec.ts` | **0** |
-| Backend tests | **114 suites / 958 passed** |
-| Backend E2E | **10 suites / 51 passed** |
-| Frontend tests | **608 passed** |
+| Backend tests | **118 suites / 1018 passed** |
+| Backend E2E | **57 tests / 11 suites passed** |
+| Playwright E2E (Chromium) | **184 passed** |
+| Playwright E2E (Firefox — flujos críticos) | **27 passed** |
+| Frontend tests | **622 passed** |
 | Build backend | **0 errores** |
 | Build frontend | **0 errores** |
 
@@ -130,17 +136,43 @@ npm run e2e              # Playwright
 Ordenados por impacto y dependencias:
 
 1. **Pruebas de carga y concurrencia multitenant** (k6/Locust) — pendiente en `ROADMAP.md`, `AUDIT_TRACKING.md` y `BUGS_RESUELTOS.md`.
-2. **Validación obligatoria de `date`/`postingDate`** (DT.10) — quitar opcionalidad en Prisma/DTOs y eliminar defaults `null`.
-3. ✅ **Baseline visual de formularios** con Playwright (`e2e/forms-reference-screenshots.spec.ts`) — completado; 51 screenshots generados.
-4. **Completar E2E críticos** faltantes: ventas, compras, stock, pagos parciales, devoluciones, conciliación.
-5. **Estabilizar runner Karma** del frontend o planificar migración progresiva.
-6. **Reconstrucción frontend de `special-prices`** — E2E `special-price-quantity-breaks.e2e-spec.ts` y ajustes de listado.
-7. **Features de negocio** (por orden de madurez operativa):
-   - Restricción por almacén por usuario (F2.3).
-   - Bulk import de partners y stock inicial (F3.4).
-   - CRM básico (F5.4).
-   - Facturación electrónica SIN Bolivia (F5.1).
-   - Módulo contable completo (F6) — estados financieros, cierre, activos fijos, nómina.
+2. **Validación obligatoria de `date`/`postingDate`** (DT.10):
+   - ✅ **Fase 1 — Documentos comerciales** completada.
+   - ✅ **Fase 2 — Stock/logística** completada.
+   - ✅ **Fase 3 — Pagos y contabilidad** completada.
+3. ✅ **Baseline visual de formularios** con Playwright (`e2e/forms-reference-screenshots.spec.ts`) — 51 screenshots generados. 
+   - ✅ Generación completada.
+   - 🔄 **Pendiente:** revisión/comparación del baseline visual para detectar regresiones inesperadas.
+4. ✅ **E2E críticos completados**: ventas, compras, stock, pagos parciales, devoluciones y conciliación.
+5. ✅ **Runner Karma estabilizado**: `npx ng test --watch=false --browsers=ChromeHeadless` termina limpio con **622/622 SUCCESS**. El `npm test` por defecto entra en modo watch y no termina el proceso; usarlo solo en desarrollo.
+6. ✅ **Cross-browser Playwright** (config CI con `ng serve --watch=false`):
+   - ✅ **Chromium**: **184/184 passed** (confirmado formalmente).
+   - ✅ **Firefox**: **184/184 passed**.
+   - ✅ **Mobile Chrome**: **184/184 passed**.
+   - ✅ **Mobile Safari**: **184/184 passed**. Se aplicó `test.setTimeout(60000)` en `qa-tax-calculations.spec.ts` porque los tests API-only excedían 30s bajo carga de WebKit mobile.
+   - ✅ **Tablet Safari**: **184/184 passed**.
+   - ⚠️ **WebKit worker cleanup** (Playwright 1.60.0 en Windows): Mobile/Tablet Safari terminan funcionalmente bien, pero Playwright reporta `worker process did not exit within 300000ms after stop, force-killed it` y dejan huérfanos `WebKitNetworkProcess`. No afecta el pass rate.
+     - Script: `erp-frontend/scripts/cleanup-playwright-webkit.ps1`.
+     - Uso local (dry-run): `powershell -ExecutionPolicy Bypass -File erp-frontend/scripts/cleanup-playwright-webkit.ps1 -DryRun`.
+     - Uso local (limpieza real): `powershell -ExecutionPolicy Bypass -File erp-frontend/scripts/cleanup-playwright-webkit.ps1`.
+     - **Uso en CI (Windows runners):** ejecutar el script incondicionalmente después de cualquier paso de Playwright que incluya Safari (mobile/tablet). El script es idempotente y no falla si no hay procesos huérfanos. Ejemplo de paso en GitHub Actions:
+       ```yaml
+       - name: Cleanup orphan WebKit processes
+         if: runner.os == 'Windows' && always()
+         shell: pwsh
+         run: |
+           .\erp-frontend\scripts\cleanup-playwright-webkit.ps1
+       ```
+     - A largo plazo: actualizar Playwright cuando se valide una versión estable sin la regresión.
+7. ✅ **Advertencia `Cannot find control with name: 'acctCode'`** en `sale-reserve-invoices-form` — no se reproduce con la implementación actual (UDFs usan `[formControl]` sobre `customFields`, no `formControlName` en la fila).
+8. ✅ **Archivos temporales de DT.10 eliminados** (`scripts/add_posting_date.py`, `apply_dt10_dtos.py`, `dt10-phase1-schema.js`, `dt10_backfill.sql`, `tmp_check_tenant.js`).
+9. ✅ **Reconstrucción frontend de `special-prices`** — completada.
+10. **Features de negocio** (por orden de madurez operativa):
+    - ✅ Restricción por almacén por usuario (F2.3).
+    - ✅ Bulk import de partners y stock inicial (F3.4).
+    - CRM básico (F5.4).
+    - Facturación electrónica SIN Bolivia (F5.1).
+    - Módulo contable completo (F6) — estados financieros, cierre, activos fijos, nómina.
 
 ---
 
