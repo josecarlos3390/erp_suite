@@ -30,6 +30,7 @@ Thumbs.db
 
 # Generated files
 backend-erp/generated/
+baseline_review_report.md
 
 # Prisma
 backend-erp/prisma/migrations/*/migration_lock.toml
