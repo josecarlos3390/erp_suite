@@ -146,7 +146,7 @@ Ordenados por impacto y dependencias:
    - ✅ Suite k6 creada en `backend-erp/load-tests/k6/` (smoke, load, bulk-import, kardex, multitenant isolation).
    - ✅ CI separado en job `load-tests` del backend.
    - ✅ **Primera ejecución green validada localmente** (perfil `small`, 5/5 escenarios, 0% fallos, ~229 s).
-   - 🔄 **Pendiente CI:** validar ejecución green en el job `load-tests` de GitHub Actions.
+   - ✅ **Ejecución green validada en GitHub Actions** (perfil `small`, 0% fallos, aislamiento multitenant verificado, ~216 s).
 2. **Validación obligatoria de `date`/`postingDate`** (DT.10):
    - ✅ **Fase 1 — Documentos comerciales** completada.
    - ✅ **Fase 2 — Stock/logística** completada.
