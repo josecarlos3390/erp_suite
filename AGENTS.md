@@ -93,6 +93,7 @@ Ver `backend-erp/TECH_DEBT.md`. **Fases 1-10 completadas.** Actualmente:
 - Formularios nuevos usan `<luna-form-page>` y componentes LUNA.
 - Selectores modales usan el trigger estándar (ver `erp-frontend/AGENTS.md`).
 - Componentes con `OnPush` requieren `cdr.markForCheck()` tras suscripciones (ver `erp-frontend/AGENTS.md`).
+- **Patrones de diseño canónicos:** ver `erp-frontend/docs/monorepo/DESIGN_PATTERNS.md` (Ver/Editar, botones en listados, protección por permisos, etc.).
 
 ### Comandos esenciales
 ```bash
