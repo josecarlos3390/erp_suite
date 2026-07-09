@@ -1,14 +1,67 @@
-# AGENTS.md — erp_suite (monorepo)
+# AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-06-29.  
-> Este es el archivo canónico de restricciones, convenciones y comandos para todo el monorepo. Todo agente de código debe consultarlo antes de modificar archivos en `backend-erp/` o `erp-frontend/`. Para detalles específicos de cada subproyecto, ver:
->
-> - Backend: `backend-erp/TECH_DEBT.md`, `backend-erp/docs/TYPE_SAFETY.md`.
-> - Frontend: `erp-frontend/AGENTS.md`, `erp-frontend/docs/monorepo/AGENTS.md`, `erp-frontend/docs/monorepo/ROADMAP.md`.
+> **Última actualización:** 2026-07-02.  
+> **Versión canónica de restricciones transversales.**  
+> Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
 ---
 
-## 1. Estructura del monorepo
+## 🔒 Protocolo de inicio de trabajo (OBLIGATORIO)
+
+Antes de realizar **cualquier acción** de código, diseño, planificación, refactorización, bugfix o auditoría en este monorepo, el agente **DEBE** leer el archivo de guía correspondiente según la naturaleza de la tarea. No se asumirá conocimiento previo de patrones, reglas de tipado, layouts ni estándares de UI.
+
+| Tipo de tarea | Archivo obligatorio | Qué contiene |
+|---------------|---------------------|--------------|
+| **Frontend** (Angular, UI, componentes, formularios, listados, selectores, LUNA) | `FRONTEND_GUIDE.md` | Patrones canónicos, OnPush, LUNA, action bars, selectores, tipado, checklists |
+| **Backend** (NestJS, API, Prisma, DTOs, servicios, queries, tests) | `BACKEND_GUIDE.md` | Arquitectura, seguridad de tipos (0 `as any`), deuda técnica, infraestructura, testing |
+| **Planificación** (nuevas features, priorización, alcance, fases) | `ROADMAP.md` | Fases completadas, pendientes, criterios de aceptación, próximos pasos |
+| **Bug / Auditoría** (investigar errores, fixes, regresiones, performance) | `AUDIT.md` | Hallazgos resueltos, base de bugs, métricas de referencia, issues activos |
+| **General / Transversal** (tarea ambigua, onboarding, duda de arquitectura) | **Todos los anteriores** | — |
+
+### Reglas de lectura
+
+1. **Si la tarea toca `erp-frontend/src/`** (`.ts`, `.html`, `.scss`) → leer `FRONTEND_GUIDE.md` **completo** antes de escribir o modificar cualquier archivo.
+2. **Si la tarea toca `backend-erp/src/`** (`.ts`, schema Prisma, DTOs, tests) → leer `BACKEND_GUIDE.md` **completo** antes de escribir o modificar cualquier archivo.
+3. **Si la tarea es una nueva feature** → leer `ROADMAP.md` para verificar prioridades, fases y criterios de aceptación antes de proponer implementación.
+4. **Si la tarea es un bug o fix** → leer `AUDIT.md` para verificar si el problema ya fue documentado, resuelto, o si hay un patrón de fix establecido.
+5. **Nunca asumir conocimiento** de patrones que viven en estos archivos. Siempre leer primero.
+6. **Después de leer**, seguir las **checklists** al final de cada guía antes de entregar el trabajo.
+
+> ⚠️ **Incumplimiento:** Si un agente modifica código sin haber leído la guía correspondiente, está autorizado el usuario a rechazar el cambio y solicitar relectura.
+
+---
+
+## Índice de documentación canónica
+
+| Archivo | Contenido | Ubicación |
+|---------|-----------|-----------|
+| **FRONTEND_GUIDE.md** | Patrones de diseño, OnPush, LUNA, action bars, selectores, tipado | `./FRONTEND_GUIDE.md` |
+| **BACKEND_GUIDE.md** | Arquitectura, seguridad de tipos, deuda técnica, infraestructura | `./BACKEND_GUIDE.md` |
+| **ROADMAP.md** | Roadmap de features por fases, deuda técnica, criterios de aceptación | `./ROADMAP.md` |
+| **AUDIT.md** | Hallazgos de auditoría, tracking de acciones, métricas, bugs | `./AUDIT.md` |
+
+---
+
+## 1. Visión general del proyecto
+
+`erp_suite` es un ERP modular para el mercado boliviano, inspirado en SAP Business One. Monorepo físico con dos subproyectos independientes:
+
+- **`backend-erp/`** — API REST en **NestJS 11.0.1** + **TypeScript 5.7.3** + **Prisma 6.19.2** sobre **PostgreSQL**.
+- **`erp-frontend/`** — SPA en **Angular 19.2.19** + **TypeScript ~5.7.2** + **Angular Material 19.2.19**, componentes standalone y **SSR habilitado**.
+
+Ambos subproyectos usan **npm** como gestor de paquetes. Cada uno es un repositorio Git anidado con sus propios hooks de Husky. La raíz del monorepo solo orquesta Husky + lint-staged.
+
+### Alcance funcional (módulos principales)
+
+- **Catálogos maestros:** terceros (clientes/proveedores), artículos, almacenes, sucursales, empleados, proyectos, impuestos, listas de precios, cuentas contables, dimensiones, UDFs.
+- **Ventas:** cotizaciones, pedidos, entregas, facturas, facturas de reserva, notas de crédito/débito, devoluciones.
+- **Compras:** solicitudes, cotizaciones, pedidos, recepciones, facturas, facturas de reserva, notas de crédito/débito, devoluciones.
+- **Inventario:** entradas, salidas, transferencias, ajustes, tomas de inventario, ensamblajes, lotes, seriados.
+- **Finanzas / Contabilidad:** pagos entrantes/salientes, asientos contables, condiciones de pago.
+- **POS:** terminales y sesiones de punto de venta.
+- **Soporte:** flujo de documentos, borradores, aprobaciones, alertas, auditoría, monitoreo, integración SAP.
+
+### Organización del monorepo
 
 ```
 erp_suite/
@@ -16,184 +69,336 @@ erp_suite/
 │   ├── src/              # ~90 módulos de dominio
 │   ├── prisma/           # schema, migraciones, seed
 │   ├── test/             # tests E2E con Jest
-│   └── docs/             # TYPE_SAFETY.md, BACKUPS.md, MONITORING.md, etc.
+│   └── dist/             # salida de build
 ├── erp-frontend/         # SPA Angular (repo Git propio)
 │   ├── src/app/          # páginas, modelos, shared, core, auth
 │   ├── e2e/              # tests E2E con Playwright
-│   └── docs/monorepo/    # ROADMAP.md, AGENTS.md, AUDIT_TRACKING.md, etc.
-├── luna/                 # copia de referencia del design system
-└── .agents/skills/       # skills de Kimi para backend/frontend
+│   └── dist/             # salida de build
+├── luna/                 # componentes standalone del design system (copia de referencia)
+├── .agents/skills/       # skills de Kimi para backend/frontend
+├── AGENTS.md             # este archivo (índice)
+├── FRONTEND_GUIDE.md     # guía frontend canónica
+├── BACKEND_GUIDE.md      # guía backend canónica
+├── ROADMAP.md            # hoja de ruta consolidada
+├── AUDIT.md              # auditoría y tracking
+└── package.json          # solo husky + lint-staged en raíz
 ```
 
-- **No hay workspace unificado** (ni Nx, ni Lerna, ni Turbo). Cada subproyecto se instala y construye por separado.
-- Los hooks de Husky viven en tres niveles: raíz, `backend-erp/.husky/` y `erp-frontend/.husky/`.
-- El `.gitignore` raíz excluye `/backend-erp/` y `/erp-frontend/` porque son repositorios Git anidados.
+---
+
+## 2. Stack tecnológico
+
+### Backend (`backend-erp/`)
+
+| Capa | Tecnología | Versión / Detalle |
+|------|------------|-------------------|
+| Framework | NestJS | 11.0.1 |
+| Lenguaje | TypeScript | 5.7.3 |
+| ORM | Prisma | 6.19.2 (client + generator) |
+| Base de datos | PostgreSQL | vía `DATABASE_URL` |
+| Auth | Passport + JWT | cookies HttpOnly + XSRF |
+| Validación | class-validator / class-transformer | DTOs estrictos |
+| Documentación | Swagger/OpenAPI | `/api` en dev/prod |
+| PDF/Excel | pdfmake / xlsx | reportes e imports |
+| Métricas | prom-client + @nestjs/terminus | health checks |
+| Tests | Jest + ts-jest | unitarios en `src/`, E2E en `test/` |
+
+### Frontend (`erp-frontend/`)
+
+| Capa | Tecnología | Versión / Detalle |
+|------|------------|-------------------|
+| Framework | Angular | 19.2.19 |
+| Lenguaje | TypeScript | ~5.7.2 |
+| Componentes | Standalone | sin `NgModule`s de dominio |
+| UI | Angular Material + Design System LUNA | componentes propios en `shared/luna/` |
+| SSR | @angular/ssr | habilitado en producción, deshabilitado en desarrollo |
+| Estado HTTP | RxJS | ~7.8.0 |
+| Formularios | Reactive Forms | `FormBuilder`, `FormGroup`, `FormArray` |
+| Tests unitarios | Karma + Jasmine | ChromeHeadless |
+| Tests E2E | Playwright | multi-navegador + setup de autenticación |
 
 ---
 
-## 2. Reglas transversales (no negociables)
+## 3. Comandos de build, test y lint
 
-| # | Regla | Razón |
-|---|-------|-------|
-| 1 | **Cero `as any` en código de producción.** En tests se permite solo `as unknown as T` o `satisfies Partial<T>`; nunca `as any`. | Evita regresiones de tipo y deuda técnica. |
-| 2 | **Un commit por archivo.** Agrupar solo cuando un cambio es indivisible (ej. DTO + controller + service de la misma funcionalidad). | Historial limpio y revertible. |
-| 3 | **Build limpio y tests verdes antes de push.** | `npm run build` (backend) / `ng build` (frontend) sin errores; `npm test` / `ng test` al 100%. |
-| 4 | **No `// @ts-ignore` ni `// @ts-expect-error`.** | Cero supresiones de tipos. |
-| 5 | **No redefinir modelos de dominio en servicios.** Frontend: usar `src/app/models/`. Backend: usar tipos Prisma/DTOs. | Fuente única de verdad. |
-| 6 | **Documentar cambios arquitectónicos.** Si tocas convenciones, patrones o deuda técnica, actualiza `AGENTS.md`, `TECH_DEBT.md` o `ROADMAP.md`. | Evita que decisiones se pierdan. |
-| 7 | **No tocar archivos fuera del working directory** salvo instrucción explícita. | Seguridad e integridad del sistema. |
+> **Importante:** todos los comandos deben ejecutarse desde el subproyecto correspondiente.
 
----
+### Backend
 
-## 3. Backend (`backend-erp/`)
-
-### Stack
-- NestJS 11.0.1, TypeScript 5.7.3, Prisma 6.19.2, PostgreSQL.
-- Auth: JWT en cookie `access_token` HttpOnly + header `X-XSRF-TOKEN`.
-- Tests: Jest + ts-jest. E2E en `test/`.
-
-### Reglas clave
-- DTOs con `class-validator`; nunca `body: any`.
-- Servicios con tipos de retorno explícitos.
-- Prisma payloads tipados con `Prisma.*GetPayload<typeof include>` o `as const`.
-- Utilitarios genéricos; nunca `any` en parámetros.
-- `tenantId` se inyecta automáticamente vía `tenant-isolation.extension.ts`; no exponer `tenantId` en DTOs públicos.
-- Patrón `createFrom*`: usar DTOs formales en `dto/from-*.dto.ts`, no payloads anónimos.
-
-### Comandos esenciales
 ```bash
 cd backend-erp
-npm run build
-npm run lint
-npm test                 # 114 suites / 958 tests
-npm run test:e2e         # 10 suites / 51 tests
-npm run perf             # Performance con autocannon (local)
-npm run perf:k6          # Performance y concurrencia multitenant con k6 (local)
-npx prisma migrate dev   # crear/aplicar migración
+npm install              # también ejecuta prisma generate por postinstall
+npm run build            # nest build — 0 errores
+npm run start:dev        # watch mode
+npm run start:prod       # node dist/main.js
+npm run format           # prettier --write
+npm run lint             # eslint — 0 errores, 0 warnings
+npm test                 # jest — 118 suites / 1018 tests
+npm run test:watch       # jest --watch
+npm run test:cov         # jest --coverage
+npm run test:e2e         # jest --config ./test/jest-e2e.json — 11 suites / 57 tests
+npx prisma generate
+npx prisma migrate dev --name <migration-name>
 npx prisma db seed
 ```
 
-### Estado de deuda técnica
-Ver `backend-erp/TECH_DEBT.md`. **Fases 1-10 completadas.** Actualmente:
-- 0 `as any` en `src/**/*.ts`.
-- Build limpio, tests verdes.
+### Frontend
 
----
-
-## 4. Frontend (`erp-frontend/`)
-
-### Stack
-- Angular 19.2.19, TypeScript ~5.7.2, Angular Material 19.2.19, standalone components, SSR habilitado.
-- Design System LUNA en `src/app/shared/luna/`.
-- Tests: Karma + Jasmine (unitarios), Playwright (E2E).
-
-### Reglas clave
-- Modelos en `src/app/models/` son la **única fuente de verdad**.
-- Cero `: any` (salvo excepción documentada en `LunaDataTable.format` / `badgeVariant`).
-- Formularios nuevos usan `<luna-form-page>` y componentes LUNA.
-- Selectores modales usan el trigger estándar (ver `erp-frontend/AGENTS.md`).
-- Componentes con `OnPush` requieren `cdr.markForCheck()` tras suscripciones (ver `erp-frontend/AGENTS.md`).
-- **Patrones de diseño canónicos:** ver `erp-frontend/docs/monorepo/DESIGN_PATTERNS.md` (Ver/Editar, botones en listados, protección por permisos, etc.).
-
-### Comandos esenciales
 ```bash
 cd erp-frontend
-npm run build
-npm run lint
-npm test                 # Karma en modo watch (desarrollo)
-npx ng test --watch=false --browsers=ChromeHeadless  # Karma CI / pre-push
-npm run e2e              # Playwright (backend + seed y frontend automáticos)
-npm run e2e:functional   # Todos los E2E excepto regresión visual de formularios
-npm run e2e:visual       # Regresión visual de los 51 formularios (Chromium, workers=4)
-npm run e2e:baseline     # Regenerar baseline visual de los 51 formularios
+npm install
+npm start                # ng serve
+npm run build            # ng build — 0 errores
+npm run watch            # ng build --watch --configuration development
+npm run serve:ssr:erp-frontend   # SSR local
+npm run format           # prettier --write
+npm run lint             # ng lint — 0 errores, ~44 warnings preexistentes
+npm test                 # Karma + Jasmine — 622 tests
+npm run e2e              # playwright test — 184 passed
+npm run e2e:ui           # playwright test --ui
+npm run e2e:report       # playwright show-report
+npm run generate-types   # copia prisma-types.ts desde backend
 ```
 
----
+### Git hooks
 
-## 5. Estado actual del proyecto
-
-### Completado recientemente
-- ✅ Ejecución green de la suite de carga k6 (perfil `small`): 5/5 escenarios passed, 0% fallos, aislamiento multitenant verificado.
-- ✅ Fase 1-6 de limpieza de tipos (`as any`, acumuladores, parámetros, casts, payloads `createFrom*`).
-- ✅ Fase 8: extensión Prisma de aislamiento de tenant fortalecida (inyección recursiva).
-- ✅ Fase 9: eliminación de diagnósticos temporales en `special-prices`.
-- ✅ Fase 10: mitigación del aviso intermitente de worker process force exited.
-- ✅ Fase 7: limpieza de `as any` en 20 archivos `.spec.ts` del backend.
-- ✅ DT.10 Fase 2: `date`/`postingDate` obligatorios en stock/logística (schema, DTOs, servicios, frontend).
-- ✅ DT.10 Fase 3: `date`/`postingDate` obligatorios en pagos y contabilidad (schema, DTOs, servicios, frontend).
-- ✅ Limpieza de archivos temporales de DT.10.
-
-### Métricas de referencia
-| Métrica | Valor |
-|---------|-------|
-| `as any` en backend `src/` | **0** |
-| `as any` en backend `*.spec.ts` | **0** |
-| Backend tests | **118 suites / 1018 passed** |
-| Load tests k6 (perfil `small`) | **5/5 escenarios passed** |
-| Backend E2E | **57 tests / 11 suites passed** |
-| Playwright E2E (Chromium) | **184 passed** |
-| Playwright E2E (Firefox — flujos críticos) | **27 passed** |
-| Frontend tests | **622 passed** |
-| Build backend | **0 errores** |
-| Build frontend | **0 errores** |
+- **Raíz:** `.husky/pre-commit` → `npx lint-staged`. Staged files: backend `.ts` → ESLint fix; frontend `.{ts,html,scss}` → `ng build --aot`.
+- **Backend:** pre-commit lint, pre-push `npm test`.
+- **Frontend:** pre-commit lint, pre-push tests Karma + build producción.
 
 ---
 
-## 6. Próximos pasos prioritarios
+## 4. Estado real del proyecto (2026-06-29)
 
-Ordenados por impacto y dependencias:
+### Backend (`backend-erp/`)
 
-1. **Pruebas de carga y concurrencia multitenant** (k6):
-   - ✅ Suite k6 creada en `backend-erp/load-tests/k6/` (smoke, load, bulk-import, kardex, multitenant isolation).
-   - ✅ CI separado en job `load-tests` del backend.
-   - ✅ **Primera ejecución green validada localmente** (perfil `small`, 5/5 escenarios, 0% fallos, ~229 s).
-   - ✅ **Ejecución green validada en GitHub Actions** (perfil `small`, 0% fallos, aislamiento multitenant verificado, ~216 s).
-2. **Validación obligatoria de `date`/`postingDate`** (DT.10):
-   - ✅ **Fase 1 — Documentos comerciales** completada.
-   - ✅ **Fase 2 — Stock/logística** completada.
-   - ✅ **Fase 3 — Pagos y contabilidad** completada.
-3. ✅ **Baseline visual de formularios** con Playwright (`e2e/forms-reference-screenshots.gen.ts`) — 51 screenshots generados.
-   - ✅ Generación completada.
-   - ✅ Regresión visual automatizada (`e2e/forms-visual-regression.spec.ts`) con `maxDiffPixels: 100` — 51/51 passed en Chromium.
-   - ✅ CI separado en job `visual-regression` con `workers=4`.
-4. ✅ **E2E críticos completados**: ventas, compras, stock, pagos parciales, devoluciones y conciliación.
-5. ✅ **Runner Karma estabilizado**: `npx ng test --watch=false --browsers=ChromeHeadless` termina limpio con **622/622 SUCCESS**. El `npm test` por defecto entra en modo watch y no termina el proceso; usarlo solo en desarrollo.
-6. ✅ **Cross-browser Playwright** (config CI con `ng serve --watch=false`):
-   - ✅ **Chromium**: **184/184 passed** (confirmado formalmente).
-   - ✅ **Firefox**: **184/184 passed**.
-   - ✅ **Mobile Chrome**: **184/184 passed**.
-   - ✅ **Mobile Safari**: **184/184 passed**. Se aplicó `test.setTimeout(60000)` en `qa-tax-calculations.spec.ts` porque los tests API-only excedían 30s bajo carga de WebKit mobile.
-   - ✅ **Tablet Safari**: **184/184 passed**.
-   - ⚠️ **WebKit worker cleanup** (Playwright 1.60.0 en Windows): Mobile/Tablet Safari terminan funcionalmente bien, pero Playwright reporta `worker process did not exit within 300000ms after stop, force-killed it` y dejan huérfanos `WebKitNetworkProcess`. No afecta el pass rate.
-     - Script: `erp-frontend/scripts/cleanup-playwright-webkit.ps1`.
-     - Uso local (dry-run): `powershell -ExecutionPolicy Bypass -File erp-frontend/scripts/cleanup-playwright-webkit.ps1 -DryRun`.
-     - Uso local (limpieza real): `powershell -ExecutionPolicy Bypass -File erp-frontend/scripts/cleanup-playwright-webkit.ps1`.
-     - **Uso en CI (Windows runners):** ejecutar el script incondicionalmente después de cualquier paso de Playwright que incluya Safari (mobile/tablet). El script es idempotente y no falla si no hay procesos huérfanos. Ejemplo de paso en GitHub Actions:
-       ```yaml
-       - name: Cleanup orphan WebKit processes
-         if: runner.os == 'Windows' && always()
-         shell: pwsh
-         run: |
-           .\erp-frontend\scripts\cleanup-playwright-webkit.ps1
-       ```
-     - A largo plazo: actualizar Playwright cuando se valide una versión estable sin la regresión.
-7. ✅ **Advertencia `Cannot find control with name: 'acctCode'`** en `sale-reserve-invoices-form` — no se reproduce con la implementación actual (UDFs usan `[formControl]` sobre `customFields`, no `formControlName` en la fila).
-8. ✅ **Archivos temporales de DT.10 eliminados** (`scripts/add_posting_date.py`, `apply_dt10_dtos.py`, `dt10-phase1-schema.js`, `dt10_backfill.sql`, `tmp_check_tenant.js`).
-9. ✅ **Reconstrucción frontend de `special-prices`** — completada.
-10. **Features de negocio** (por orden de madurez operativa):
-    - ✅ Restricción por almacén por usuario (F2.3).
-    - ✅ Bulk import de partners y stock inicial (F3.4).
-    - CRM básico (F5.4).
-    - Facturación electrónica SIN Bolivia (F5.1).
-    - Módulo contable completo (F6) — estados financieros, cierre, activos fijos, nómina.
+| Comando | Estado | Evidencia |
+|---------|--------|-----------|
+| `npm run build` | ✅ **OK** | 0 errores |
+| `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
+| `npm test` | ✅ **OK** | 118 suites / 1018 tests passed |
+| `npm run test:e2e` | ✅ **OK** | 11 suites / 57 tests passed |
+| `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`)|
+
+### Frontend (`erp-frontend/`)
+
+| Comando | Estado | Evidencia |
+|---------|--------|-----------|
+| `npm run build` | ✅ **OK** | 0 errores (~44 warnings preexistentes) |
+| `npm run lint` | ✅ **OK** | 0 errores, ~44 warnings preexistentes |
+| `npx ng test --watch=false --browsers=ChromeHeadless` | ✅ **OK** | 622 tests passed |
+| `npm run e2e` | ✅ **OK** | 184/184 passed (Chromium) |
 
 ---
 
-## 7. Cómo mantener actualizada esta guía
+## 5. Sistema ShortName — Cuentas Asociadas y Trazabilidad en Asientos Contables
 
-Cada vez que se introduzca, modifique o retire una **convención transversal**, actualizar este archivo. Si el cambio es específico de backend o frontend, actualizar también:
+> **Contexto:** Jun 2026 — implementación del patrón SAP B1 `JDT1.ShortName` en el ERP. Permite que una cuenta de mayor (ej. CxC, CxP) se desagregue por código de partner en el libro mayor, manteniendo trazabilidad desde el documento origen.
 
-- Backend: `backend-erp/TECH_DEBT.md` o `backend-erp/docs/TYPE_SAFETY.md`.
-- Frontend: `erp-frontend/AGENTS.md` o `erp-frontend/docs/monorepo/AGENTS.md`.
+### 5.1 Conceptos clave
 
-La meta es que ningún agente futuro tenga que adivinar restricciones que ya fueron aprendidas en sesiones anteriores.
+| Concepto SAP B1 | Equivalente en nuestro ERP | Campo DB |
+|-----------------|---------------------------|----------|
+| `JDT1.Account` | Cuenta contable real del grupo | `JournalEntryLine.accountId` |
+| `JDT1.ShortName` | Código del partner (CxC/CxP) | `JournalEntryLine.partnerCode` |
+| `JDT1.ContraAct` | Cuenta contraaria | `JournalEntryLine.contraAccountId` |
+| `JDT1.TransId` | ID único del asiento | `JournalEntry.id` |
+| `JDT1.SourceID` / `SourceLine` | Trazabilidad al documento origen | `JournalEntry.sourceDocumentType` + `sourceDocumentId` |
+
+### 5.2 Cuentas que requieren partner obligatorio (`requiresPartner = true`)
+
+Las siguientes cuentas del plan de cuentas boliviano tienen `requiresPartner: true` en el seed:
+
+| Código | Nombre | Tipo | Naturaleza |
+|--------|--------|------|------------|
+| `1.1.2.01.001` | CxC Clientes M/N | Activo | Deudor |
+| `1.1.2.01.002` | CxC Clientes M/E | Activo | Deudor |
+| `1.1.2.03.001` | Documentos por Cobrar M/N | Activo | Deudor |
+| `1.1.2.03.002` | Documentos por Cobrar M/E | Activo | Deudor |
+| `1.1.2.05.001` | Anticipos Proveedores Nacionales | Activo | Deudor |
+| `1.1.2.05.002` | Anticipos Proveedores Extranjeros | Activo | Deudor |
+| `2.1.1.01.001` | CxP Proveedores M/N | Pasivo | Acreedor |
+| `2.1.1.01.002` | CxP Proveedores M/E | Pasivo | Acreedor |
+| `2.1.1.02.001` | Documentos por Pagar M/N | Pasivo | Acreedor |
+| `2.1.1.02.002` | Documentos por Pagar M/E | Pasivo | Acreedor |
+| `2.1.5.01.001` | Anticipo Clientes M/N | Pasivo | Acreedor |
+| `2.1.5.01.002` | Anticipo Clientes M/E | Pasivo | Acreedor |
+
+**Regla:** Si una línea de asiento usa una cuenta con `requiresPartner = true`, el backend exige `partnerId` en la línea (`JournalEntriesService.validatePartnerRequirements`).
+
+### 5.3 Configuración de cuentas asociadas en el maestro de partners
+
+Cada partner debe tener configuradas sus cuentas contables en la pestaña **"Contabilidad"** del formulario de socio de negocio:
+
+| Campo | Tipo de partner | Cuenta recomendada (seed) |
+|-------|----------------|---------------------------|
+| `receivableAccountId` | Cliente / Ambos | `1.1.2.01.001` (CxC Clientes M/N) |
+| `advanceReceivableAccountId` | Cliente / Ambos | `2.1.5.01.001` (Anticipo Clientes M/N) |
+| `payableAccountId` | Proveedor / Ambos | `2.1.1.01.001` (CxP Proveedores M/N) |
+| `advancePayableAccountId` | Proveedor / Ambos | `1.1.2.05.001` (Anticipos Proveedores Nacionales) |
+
+**Seed automático:** `prisma/seed.ts` asigna estas cuentas por defecto a todos los partners creados en el seed (`updateMany` por tipo).
+
+### 5.4 Flujo de asiento automático con ShortName
+
+```
+Factura de Venta (SaleInvoice) a Cliente CLI-00001
+        ↓
+AccountingEngine._buildSaleInvoiceJournalEntryLines()
+  ↓ accountId = 1.1.2.01.001 (CxC)  ← determinada por AccountDeterminationService
+  ↓ partnerId = 123
+  ↓ partnerCode = 'CLI-00001'       ← denormalizado desde Partner.code
+        ↓
+JournalEntryLine (POSTED)
+  accountId: 1.1.2.01.001
+  partnerId: 123
+  partnerCode: 'CLI-00001'          ← ShortName
+  debit: 100.00
+  sourceDocumentType: 'SALE_INVOICE'
+  sourceDocumentId: 157644
+        ↓
+Ledger (Libro Mayor de la cuenta 1.1.2.01.001)
+  Muestra: CLI-00001 | Débito 100.00 | Saldo acum.
+```
+
+### 5.5 Asientos manuales con partner
+
+En el formulario de **Asientos Contables** (`journal-entries-form`):
+- Si se selecciona una cuenta con `requiresPartner`, aparece el selector `<app-partner-selector>` automáticamente.
+- El backend valida que la línea tenga `partnerId` antes de persistir.
+- Al guardar, el backend resuelve `partnerCode` desde `Partner.code` y lo denormaliza en la línea.
+
+### 5.6 Archivos clave
+
+| Propósito | Archivo |
+|-----------|---------|
+| Schema `partnerCode` | `backend-erp/prisma/schema.prisma` (`JournalEntryLine.partnerCode`) |
+| DTO línea con `partnerId` | `backend-erp/src/journal-entries/dto/create-journal-entry.dto.ts` |
+| Validación `requiresPartner` | `backend-erp/src/journal-entries/journal-entries.service.ts` (`validatePartnerRequirements`) |
+| Denormalización en asientos automáticos | `backend-erp/src/common/accounting-engine.service.ts` (`_persist`) |
+| Ledger con partner | `backend-erp/src/accounts/accounts.service.ts` (`findLedger`) |
+| Frontend: línea de asiento con partner | `erp-frontend/src/app/pages/journal-entries/journal-entries-form.component.ts` |
+| Frontend: ledger con partner | `erp-frontend/src/app/pages/accounts/account-ledger.component.ts` |
+| Seed: cuentas con `requiresPartner` | `backend-erp/src/common/chart-of-accounts.data.ts` |
+| Seed: asignación a partners | `backend-erp/prisma/seed.ts` (bloque 14a) |
+
+### 5.2 Fixes y mejoras contables aplicados (Jul 2026)
+
+#### Bugs críticos arreglados
+
+| # | Bug | Archivo | Fix |
+|---|-----|---------|-----|
+| 1 | `reverseJournalEntry` no copiaba `debitLocal/creditLocal/debitSystem/creditSystem` | `accounting-engine.service.ts` | Ahora copia todos los campos de doble expresión en la reversa, además de `currency`, `projectCode`, `dimension1-5`, `sourceTransactionLineId`, `taxRate`, `taxAmount` |
+| 2 | `post()` no revalidaba balance del asiento | `journal-entries.service.ts` | Agregada validación `totalDebit === totalCredit` (tolerancia 0.001) antes de cambiar status a POSTED |
+
+#### Gaps arquitectónicos resueltos
+
+| # | Gap | Archivo | Estado |
+|---|-----|---------|--------|
+| 3 | `JournalEntryLine` sin `projectId` relación | `prisma/schema.prisma` | Agregado `projectId Int?` + FK + relación inversa en `Project` |
+| 4 | Campos `ref1`, `ref2`, `dueDate` faltantes en `JournalEntryLine` | `prisma/schema.prisma` | Agregados; persistidos en `_persist()` y `reverseJournalEntry()` |
+| 5 | Navegación inversa desde asiento a documento origen | `journal-entries-form.component.ts/html` | Botón "Ver documento origen" en header cuando `sourceDocumentType` + `sourceDocumentId` existen. Mapeo de 15 tipos de documento a rutas Angular |
+
+#### Pendientes (requieren diseño dedicado)
+
+| # | Item | Razón |
+|---|------|-------|
+| 6 | Refactor `AssemblyOrder` para usar `AccountingEngine` | Tiene lógica propia `createJournalEntryForAssembly` que duplica código. Requiere rediseñar la interfaz de entrada del engine para soportar ensamblajes. |
+| 7 | Convertir `sourceDocumentType` a enum | Requiere migración de datos de `String` a `enum` en PostgreSQL con conversión de valores existentes. |
+| 8 | Cierre de período contable (`AccountingPeriod`) | Feature completo: tabla, protección, reportes de cierre, apertura de nuevo período. |
+| 9 | Asientos de ajuste por diferencia de cambio | Requiere módulo de revaluación de saldos en moneda extranjera y generación automática de asientos de ajuste. |
+| 10 | Reconciliación bancaria | Módulo completo: import de extractos, matching de pagos, conciliación. |
+| 11 | Fixed Assets / depreciación | Módulo completo: master de activos, métodos de depreciación, asientos automáticos mensuales. |
+
+---
+
+## 6. Variables de entorno críticas
+
+Archivo de referencia: `backend-erp/.env` (no existe `.env.example`).
+
+```bash
+# Base de datos
+DATABASE_URL=postgresql://...
+SHADOW_DATABASE_URL=postgresql://...
+
+# Seguridad
+JWT_SECRET=...
+
+# CORS
+FRONTEND_URL=...            # requerido en producción
+
+# Puertos / entorno
+PORT=3000
+NODE_ENV=development|production|test
+
+# Rate limiting
+THROTTLE_TTL_MS=...
+THROTTLE_LIMIT_DEDICATED=...
+THROTTLE_LIMIT_SHARED=...
+THROTTLE_LIMIT_PUBLIC=...
+
+# Superadmin
+SUPERADMIN_USERNAME=...
+SUPERADMIN_PASSWORD_HASH=...
+
+# Import masivo
+BULK_IMPORT_SAFE_MODE=true   # instancia dedicada (default)
+# BULK_IMPORT_SAFE_MODE=false  # instancia compartida
+
+# Health checks
+HEALTH_MEMORY_THRESHOLD_PERCENT=...
+HEALTH_DISK_THRESHOLD_PERCENT=...
+```
+
+Frontend: la URL de la API se configura en `src/environments/environment.ts` (desarrollo apunta a `window.location.hostname:3000`) y `environment.prod.ts`.
+
+---
+
+## 6. Consideraciones de seguridad
+
+- **JWT en cookie HttpOnly** + header XSRF. El token también puede venir por header Bearer o query param `token`.
+- **CORS dinámico:** en producción solo se permiten orígenes configurados en `FRONTEND_URL`.
+- **CSRF middleware** (`CsrfMiddleware`) y `SanitizeInterceptor` globales.
+- **RBAC:** `@RequirePermission(...)` en endpoints; `PermissionsGuard` global.
+- **Multitenancy:** `TenantGuard` + aislamiento automático en Prisma. Nunca ejecutar queries sin `tenantId`.
+- **Superadmin:** credenciales separadas (`SUPERADMIN_USERNAME` / `SUPERADMIN_PASSWORD_HASH`).
+- **Login por username:** desde la migración `20260624212300_username_login`, el login usa `username` (no email).
+- **Import masivo seguro:** `BULK_IMPORT_SAFE_MODE=true` nunca desactiva triggers; `false` desactiva triggers temporalmente y usa lock global.
+- **Validación de entrada:** `ValidationPipe` global con `whitelist`, `forbidNonWhitelisted`, `transform`.
+
+---
+
+## 7. Próximos pasos recomendados
+
+### Features de negocio (alta prioridad)
+
+1. **Módulo contable completo (F6)** — estados financieros, cierre de período, activos fijos, nómina.
+2. **Facturación electrónica SIN Bolivia (F5.1)** — firma digital, envío masivo, consulta de estado. *(siguiente feature prioritario)*
+3. **Integración bancaria (F5.2)** — conciliación automática de extractos, import CSV/Excel, matching de pagos.
+4. **Multi-divisa (F7.2)** y localización de reportes fiscales para otros países (F7.3).
+5. **CRM básico (F5.4)** — oportunidades, actividades, pipeline.
+
+### QA / E2E
+
+6. **Generar baseline visual consolidado** con Playwright (`e2e/forms-reference-screenshots.spec.ts`).
+7. **Completar flujos críticos en E2E** — ventas, compras, stock, pagos parciales, devoluciones y conciliación.
+
+---
+
+## 8. Documentación adicional (referencia, no obligatoria)
+
+Archivos complementarios que no requieren lectura obligatoria para tareas rutinarias, pero pueden ser útiles para contexto adicional:
+
+| Archivo | Contenido | Cuándo leer |
+|---------|-----------|-------------|
+| `erp-frontend/docs/monorepo/DESIGN.md` | Design System LUNA completo: tokens, componentes, layouts, dark mode, animaciones. | Cuando se diseñe un componente nuevo o se modifique el design system. |
+| `luna/MODO_USO.md` | Uso básico de componentes standalone LUNA. | Referencia rápida de componentes LUNA. |
+| `backend-erp/CHANGELOG.md` / `erp-frontend/CHANGELOG.md` | Historial de cambios por versión. | Para entender evolución reciente del proyecto. |
+| `backend-erp/load-tests/k6/README.md` | Documentación de la suite de carga k6. | Antes de ejecutar o modificar tests de carga. |
+| `backend-erp/perf/README.md` | Documentación del módulo de performance. | Antes de trabajar en optimización de performance. |
+
+> **Nota:** Los archivos listados arriba son **referencia**. Las reglas obligatorias de diseño, tipado, arquitectura y testing viven en los 5 archivos canónicos de la sección "Protocolo de inicio de trabajo".
+
+---
+
+*Este archivo es el índice maestro y carga automáticamente como standing instructions en cada sesión de Kimi Work. Para detalles de implementación, patrones de código y decisiones de arquitectura, consultar los 4 archivos canónicos enlazados en la sección "Protocolo de inicio de trabajo".*
