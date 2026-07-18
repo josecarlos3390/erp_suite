@@ -1,7 +1,7 @@
 # AUDIT.md — ERP Suite
 
 > Documento vivo de auditoría, hallazgos y tracking de acciones.  
-> **Última actualización:** 2026-07-07.
+> **Última actualización:** 2026-07-14.
 
 ---
 
@@ -356,6 +356,16 @@ Se detectaron **7 ocurrencias** en **5 servicios** (todos en `trackingAssignment
 3. **Karma frontend hangs** (`frontend / tests`) — `🔲 Pendiente` (problema recurrente del runner)
 4. **Consistencia de `subtotal`/`lineTotal`** (`backend / document flows`) — `✅ Resuelto` (purchase-invoices fixeado, cobertura E2E agregada)
 5. **Race condition en `upsertStock`** (`backend / stock`) — `✅ Resuelto` (`pg_advisory_xact_lock` implementado)
+6. **Entrega creada pese a artículo no habilitado en almacén** (`backend / document flows`) — `✅ Resuelto`
+   - **Síntoma:** En el flujo SQ → SO → DO, si el artículo no tenía `ItemWarehouseAccount` activa, el backend lanzaba el error pero la entrega se persistía (quedaba en estado inconsistente).
+   - **Causa:** `validateItemWarehouseAssignment` solo se ejecutaba dentro de `upsertStock` (durante `confirm`), y `confirm()` se llamaba fuera de la transacción de creación; además, antes marcaba la entrega como `CLOSED` antes de aplicar el stock.
+   - **Fix:** Se agregó la validación explícita de asignación artículo-almacén en todos los flujos `createFrom*` y `createManual` de `delivery-orders.service.ts` antes de crear el registro. Se reordenó `confirm()` para aplicar `applyOutgoingStock` antes de actualizar el estado a `CLOSED`.
+   - **Cobertura:** `test/sales-flow.e2e-spec.ts` agrega dos tests E2E: SQ → SO → DO con artículo sin asignación, y DO manual con artículo sin asignación; ambos devuelven 400 y no crean la entrega.
+7. **No se guarda cuenta contable vacía en matriz artículo-almacén** (`backend / tenant isolation`) — `✅ Resuelto`
+   - **Síntoma:** En *Editar Artículo → Almacenes y cuentas*, asignar una cuenta contable se guardaba, pero borrarla (dejar el selector vacío) no persistía el cambio.
+   - **Causa:** La extensión de aislamiento de tenant (`tenant-isolation.extension.ts`) convertía FK numéricas a relaciones explícitas (`{ connect }`) y **eliminaba** las FK con valor `null`, creyendo que Prisma 6.19+ no acepta FK null. Para relaciones opcionales esto omitía la actualización, dejando el valor anterior.
+   - **Fix:** `injectRequiredRelations` ahora distingue `create` vs `update` y, en updates de relaciones opcionales con FK `null`, inyecta `{ disconnect: true }` antes de eliminar la FK, permitiendo que Prisma limpie realmente el campo.
+   - **Cobertura:** `test/item-warehouse-accounts.e2e-spec.ts` agrega test E2E que verifica que `batchUpsert` con `inventoryAccountId: null` deja el campo en `null`.
 
 ---
 
@@ -363,7 +373,7 @@ Se detectaron **7 ocurrencias** en **5 servicios** (todos en `trackingAssignment
 
 | Métrica | Valor | Fecha |
 |---------|-------|-------|
-| Backend build / lint / unit / E2E | ✅ build / ✅ 0 errors 0 warnings / ✅ 118 suites 1018 tests / ✅ 11 suites 57 E2E | 29/06/2026 |
+| Backend build / lint / unit / E2E | ✅ build / ✅ 0 errors 0 warnings / ✅ 126 suites 1157 tests / ✅ 12 suites 60 E2E | 14/07/2026 |
 | Load tests k6 (perfil `small`) | 5/5 escenarios passed, 0% fallos, aislamiento multitenant verificado | 29/06/2026 |
 | Backend suites passing | 64/64 (100%) | 23/05/2026 |
 | Backend tests passing | 341/341 (100%) | 23/05/2026 |
