@@ -24,12 +24,23 @@ Consecuencia real medida en esta saga: cada mejora (trace-bar, clamp del nombre,
 - Implementaciones por defecto de tabs `taxes` y `udfs` (`DocumentLineTaxesTabComponent`, `DocumentLineUdfsTabComponent`).
 - `LineStatusBadgeComponent`, botones add/remove con `ConfirmDialogService`.
 - **Limitación actual:** la tab `detail` SIEMPRE requiere template propio → la tabla de columnas sigue duplicada en cada formulario.
+- **Ubicación incorrecta:** NO forma parte del design system LUNA (vive en `shared/` como componente de dominio), aunque internamente ya está construido con primitivas LUNA (`luna-data-table`, `luna-button`, `luna-input`). Ver Fase 0.
 
 ## 3. Fases propuestas
 
+### Fase 0 — Elevar el componente al design system LUNA
+
+Antes de adoptarlo en los 15 formularios, el componente debe convertirse en ciudadano de primera clase de LUNA (regla del proyecto: toda la UI se construye con el design system):
+
+- Mover `shared/document-lines-table/` → `shared/luna/luna-document-lines/` renombrando a `LunaDocumentLinesComponent` (selector `luna-document-lines`), exportado desde el barrel `@shared/luna`.
+- Auditoría visual contra `docs/monorepo/DESIGN.md`: tokens de color/espaciado/tipografía (nada de valores hardcodeados), dark mode, densidades, animaciones y foco igual que el resto de LUNA.
+- Las celdas canónicas de la Fase 2 (artículo código+nombre+trace-bar, almacén, lote/serie, número, moneda) nacen ya como sub-componentes LUNA, reutilizando `luna-trace-bar` e `ItemNameClampDirective`.
+- Storybook: agregar stories si el proyecto las tiene para componentes LUNA (`.storybook/` existe en la raíz del frontend).
+- Criterio de salida: el componente pasa el mismo checklist de diseño que cualquier primitiva LUNA.
+
 ### Fase 1 — Adoptar el shell de tabs (impacto medio, riesgo bajo)
 
-Migrar los 15 formularios a `<app-document-lines-table>` reemplazando: shell de tabs, botones agregar/quitar línea y tabs de impuestos/UDFs por las implementaciones compartidas.
+Migrar los 15 formularios a `<luna-document-lines>` (ya elevado a LUNA en Fase 0) reemplazando: shell de tabs, botones agregar/quitar línea y tabs de impuestos/UDFs por las implementaciones compartidas.
 
 - Cada formulario conserva su `appDocumentLineTab="detail"` (su tabla actual se mueve dentro del template, sin tocar columnas).
 - Reducción estimada: ~150–250 líneas por formulario.
@@ -37,7 +48,7 @@ Migrar los 15 formularios a `<app-document-lines-table>` reemplazando: shell de 
 
 ### Fase 2 — Tabla Detalle configurable (impacto alto, riesgo medio)
 
-Extraer la tabla de líneas a `DocumentLinesDetailTableComponent` con columnas declarativas:
+Extraer la tabla de líneas a `LunaDocumentLinesDetailComponent` (dentro de `shared/luna/luna-document-lines/`) con columnas declarativas:
 
 ```ts
 detailColumns: [
@@ -69,8 +80,9 @@ detailColumns: [
 
 | Fase | Alcance | Estimado |
 |------|---------|----------|
+| 0 | Elevar el componente a LUNA (tokens, dark mode, barrel, stories) | 1 sesión |
 | 1 | 15 formularios al shell compartido | 1–2 sesiones |
-| 2 | celda canónica + 15 migraciones | 4–6 sesiones |
+| 2 | celdas canónicas LUNA + 15 migraciones | 4–6 sesiones |
 | 3 | limpieza | 1 sesión |
 
 ## 6. Criterio de éxito
