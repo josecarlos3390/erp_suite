@@ -1,6 +1,7 @@
 # Plan de migración: `document-lines-table` en los 15 formularios de documentos
 
-> **Fecha:** 2026-07-19 · **Estado:** Fase 1 completada · Fase 2 pendiente
+> **Fecha:** 2026-07-19 · **Estado:** Fase 2 completada en ventas (2026-07-20) · Compras e inventario pendientes
+> **Sucesor:** `docs/ESTANDAR_LINEAS_DOCUMENTO.md` — patrón canónico final, checklist de migración y estado por formulario.
 > **Origen:** saga de estandarización visual (trace-bar, clamp, anchos `LINE_COL`, readonly). Todos esos fixes tuvieron que aplicarse formulario por formulario porque cada uno duplica el markup de su tabla de líneas.
 
 ---

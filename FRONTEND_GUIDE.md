@@ -17,7 +17,8 @@
 7. [Selectores modales estándar](#7-selectores-modales-estándar)
 8. [Patrón toggle switch](#8-patrón-toggle-switch)
 9. [Estándares de tipado](#9-estándares-de-tipado)
-10. [Checklists](#10-checklists)
+10. [Líneas de documento — estándar luna-document-lines](#10-líneas-de-documento--estándar-luna-document-lines)
+11. [Checklists](#11-checklists)
 
 ---
 
@@ -747,7 +748,21 @@ error: (err: any) => { this.toast.error(err?.error?.message); }
 
 ---
 
-## 10. Checklists
+## 10. Líneas de documento — estándar `luna-document-lines`
+
+> **Patrón canónico completo:** `docs/ESTANDAR_LINEAS_DOCUMENTO.md` (arquitectura, celdas canónicas, celdas custom, checklist de migración, estado por formulario). Ventas está 100% migrado (2026-07-20); compras e inventario siguen ese documento.
+
+Reglas rápidas (detalle en el doc enlazado):
+
+- Todo documento comercial usa `<luna-document-lines>` (shell) + `<luna-document-lines-detail>` con `lineDetailColumns` declarativo para la tab Detalle.
+- **Ninguna columna puede quedar fuera** al migrar: las que no tengan celda canónica se proyectan con `<ng-template lunaDocumentLineDetailCell="key">`.
+- En tabs Descuentos/Costos (`<luna-data-table>` propia): `[formArray]="itemsArray"`, slots `#cell`/`#actions` (nunca `#cell2`/`#actions3` — la celda item renderiza vacía), celda item con `<app-item-combobox>`.
+- Prohibido `[formControl]` + `[disabled]` en el mismo control: usar `@if (canEdit) { input } @if (!canEdit) { span }`.
+- Selectores por línea (cuenta, etc.): siempre `[formControl]="row.get('campo')"`, nunca `formControlName` sin contexto de fila.
+
+---
+
+## 11. Checklists
 
 ### Checklist para nuevo formulario
 

@@ -392,6 +392,7 @@ Archivos complementarios que no requieren lectura obligatoria para tareas rutina
 | Archivo | Contenido | Cuándo leer |
 |---------|-----------|-------------|
 | `erp-frontend/docs/monorepo/DESIGN.md` | Design System LUNA completo: tokens, componentes, layouts, dark mode, animaciones. | Cuando se diseñe un componente nuevo o se modifique el design system. |
+| `docs/ESTANDAR_LINEAS_DOCUMENTO.md` | Estándar de líneas de documento (`luna-document-lines` Fase 2): celdas canónicas/custom, checklist, estado por formulario. | Antes de migrar o crear formularios de documentos (compras, inventario). Referenciado desde FRONTEND_GUIDE.md §10. |
 | `luna/MODO_USO.md` | Uso básico de componentes standalone LUNA. | Referencia rápida de componentes LUNA. |
 | `backend-erp/CHANGELOG.md` / `erp-frontend/CHANGELOG.md` | Historial de cambios por versión. | Para entender evolución reciente del proyecto. |
 | `backend-erp/load-tests/k6/README.md` | Documentación de la suite de carga k6. | Antes de ejecutar o modificar tests de carga. |
