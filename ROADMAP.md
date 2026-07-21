@@ -180,6 +180,20 @@
 | Media | **F7.3 — Localización de reportes** | Para Chile, Perú, Argentina. |
 | Baja | **F5.3 — SAP Integration Real** | Reemplazar mock por conector real a SAP B1. |
 
+## Mejoras contables identificadas (auditoría 2026-07-20)
+
+> Evaluación del motor de determinación de cuentas tras el endurecimiento contable.
+> El diseño actual es correcto; estos son gaps para llevarlo al nivel SAP B1 completo.
+> Implementar solo cuando el negocio lo requiera.
+
+| Prioridad | Gap | Descripción / Alcance |
+|-----------|-----|------------------------|
+| Media | **Ingresos/gastos por jerarquía de artículo** | Hoy `SALES_REVENUE`/`PURCHASES` van solo por Account Mapping (una sola cuenta para todo el catálogo). Para P&L por línea de negocio: agregar `revenueAccountId`/`purchaseAccountId` a Item/ItemGroup/Warehouse + resolverlos en el engine antes del mapping. Tamaño mediano (schema + engine + forms). |
+| Media | **Cuentas partner local/extranjero sin resolver** | Campos persistidos (AGENTS.md §5.2) pero sin resolución por país del partner. Al activar M/E real: CxC/CxP deben bifurcar M/N vs M/E automáticamente. |
+| Baja | **Nivel ITEM no lee el maestro del artículo** | `Item.salesCreditAccountId` (y similares) existen en schema y forms pero la determinación nivel ITEM solo lee la matriz artículo-almacén (decisión deliberada con tests). Decidir: leer maestro como fallback (actualizando los 2 tests) o quitar el campo/mención del mensaje de error. |
+| Baja | **Cuenta dedicada de redondeo** | El plug de redondeo (M9) postea a SALES_DISCOUNT; lo limpio sería una cuenta "Diferencias de redondeo" vía mapping. |
+| Baja | **Descuento por pronto pago / retenciones en ventas** | No existen como entry types; evaluar cuando el negocio lo pida. |
+
 ---
 
 ## Criterios de aceptación por fase
