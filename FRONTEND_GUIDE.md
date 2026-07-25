@@ -1,7 +1,7 @@
 # FRONTEND_GUIDE.md — erp-frontend
 
 > Guía única y canónica para el desarrollo frontend del ERP. Cualquier nuevo formulario, listado, o módulo debe seguir estos patrones. 
-> **Última actualización:** 2026-07-25 (CD en handlers de partner).  
+> **Última actualización:** 2026-07-25 (limpieza y consolidación de documentación).  
 > **Scope:** Angular 19.2.19, standalone components, LUNA design system.
 
 ---
@@ -141,6 +141,48 @@ goEdit(row: MyEntity) {
 ```typescript
 menuOpen: Record<number, boolean> = {};
 ```
+
+### 1.2.1. Barra de filtros
+
+El buscador **nunca** debe estar envuelto en `.filter-field` con `<label>`. El `leadingAction="search"` del `luna-input` ya actúa como label visual; envolverlo genera un label extra, doble fondo/borde y desalineación.
+
+**Patrón correcto:**
+
+```html
+<div class="filter-bar">
+  <!-- Buscador: SIN .filter-field, SIN <label> -->
+  <div class="filter-search">
+    <luna-input
+      type="text"
+      [(ngModel)]="search"
+      placeholder="Buscar..."
+      leadingAction="search"
+      [clearable]="true"
+      (cleared)="clearSearch()"
+    ></luna-input>
+  </div>
+
+  <!-- Filtros adicionales: CON .filter-field + <label> -->
+  <div class="filter-group">
+    <div class="filter-field">
+      <label>Estado</label>
+      <luna-select ...></luna-select>
+    </div>
+    <div class="filter-field">
+      <label>Fecha</label>
+      <luna-input type="date" ...></luna-input>
+    </div>
+  </div>
+</div>
+```
+
+**Reglas:**
+
+- El buscador vive en `<div class="filter-search">`, hermano de `<div class="filter-group">`.
+- El buscador no lleva `<label>` explícito.
+- Los demás filtros sí usan `<div class="filter-field">` con `<label>` arriba.
+- No duplicar estilos globales de `.filter-bar`, `.filter-group`, `.filter-field` ni `.filter-search` en componentes locales; ya existen en `src/styles/_layout.scss` y `src/styles/_lists.scss`.
+- Si se necesita ajustar el ancho del buscador, mantener proporciones: `flex: 1 1 0`, `min-width: 180px`, `max-width: 240px`, `align-self: flex-end`.
 
 ---
 
@@ -407,6 +449,40 @@ export class InvoiceFormComponent {
   hasDiscount = computed(() => (this.invoice()?.discount ?? 0) > 0);
 }
 ```
+
+### `signal()` y `computed()` en código nuevo (sin migrar existentes)
+
+Esta guía **no es una migración**: el código existente con RxJS + `takeUntilDestroyed` está bien y no se toca. En código **nuevo**, la regla es:
+
+| Situación | Usar | Por qué |
+|---|---|---|
+| Estado local simple de UI (tab activa, término de búsqueda, flag de modal) | `signal()` | Sin boilerplate de suscripción; lectura síncrona en cualquier lado |
+| Valor derivado de otros estados | `computed()` | Se recalcula solo; sin `subscribe` manual ni `markForCheck` |
+| Estado de servicio compartido (ej. panel abierto) | `signal()` | Los consumidores reaccionan automáticamente |
+| Stream async: HTTP, `valueChanges`, websockets | RxJS | Son secuencias; signals no modelan "flujo de eventos en el tiempo" |
+| Combinar múltiples fuentes async / debounce / switchMap | RxJS | Es lo que RxJS resuelve mejor |
+| Reaccionar a un observable en un componente (1 suscripción) | RxJS + `takeUntilDestroyed` o `toSignal()` | `toSignal` puentea el observable a signal sin subscribe manual |
+
+Regla rápida: **estado = signal; flujo de eventos = RxJS.** Si dudás, quedate con RxJS (es el default seguro del proyecto).
+
+```typescript
+// ✅ signal para estado local de UI
+query = signal('');
+activeTabId = signal('all');
+favoriteCount = computed(() => this.help.favoriteIds().size);
+```
+
+#### Interoperabilidad
+
+- **Observable → signal:** `toSignal(obs, { requireSync?: true })` (`@angular/core/rxjs-interop`). Útil para consumir un servicio que expone un observable sin escribir `subscribe`.
+- **signal → observable:** `toObservable(signal)` cuando necesites operadores RxJS sobre un estado signal.
+- **OnPush:** las signals integran con `ChangeDetectionStrategy.OnPush` automáticamente. Si el componente muta estado dentro de un callback async, la signal igual dispara la detección; igualmente, mantened `cdr.detectChanges()` en `finally` de flujos async que muten colecciones (las signals no reemplazan la detección cuando se muta el contenido de un array existente sin reasignar).
+
+#### Qué NO hacer
+
+- **No migrar RxJS existente a signals "de paso".** Cambio de estructura y cambio de lógica en el mismo PR hacen imposible aislar la causa de un bug.
+- **No usar signals para modelar flujos de eventos** (HTTP, websockets, debounce). Ahí RxJS es la herramienta correcta.
+- **No mezclar `markForCheck()` manual con signals** para el mismo estado: o es signal (se auto-detecta) o es campo plano + `markForCheck`, no ambos.
 
 ---
 

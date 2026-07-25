@@ -363,6 +363,53 @@ En celda item usar `[canBePurchased]` en vez de `[canBeSold]`.
 2. **Documento de servicio (SAP B1)**: toggle Artículo/Servicio en cabecera; líneas de servicio = descripción + cuenta contable + monto, sin stock; asiento por cuenta de línea. Decisión del usuario 2026-07-20: se planea aparte, NO improvisar con columnas sueltas.
 3. Posibles extensiones del shared reportadas por los agentes: input `max` en celda quantity, filtro `canBeInventoried` en celda item, readonly por celda (no solo por índice).
 
+## 11. Anchos de columna centralizados
+
+Los formularios de inventario y compras que aún usan `<luna-data-table>` para el detalle deben usar el sistema centralizado de anchos en lugar de hardcodear `minWidth` en cada formulario.
+
+### Fuente de verdad
+
+```typescript
+// src/app/shared/document-line/column-standards.ts
+export const LINE_WIDTHS = {
+  item: '380px',
+  warehouse: '320px',
+  batch: '160px',
+  serial: '160px',
+  quantity: '100px',
+  uom: '80px',
+  project: '200px',
+  // ... etc
+} as const;
+```
+
+### Factory functions
+
+```typescript
+import {
+  createItemColumn,
+  createWarehouseColumn,
+  createQuantityColumn,
+  LINE_WIDTHS,
+} from '@shared/document-line/column-standards';
+
+get detailColumns(): LunaColumn<FormGroup>[] {
+  return [
+    createItemColumn(),
+    createWarehouseColumn(),
+    createQuantityColumn({ label: 'Cantidad' }),
+    { key: 'notes', type: 'custom', minWidth: LINE_WIDTHS.notes },
+  ];
+}
+```
+
+### Reglas
+
+- Usar las factory functions para columnas estándar (`item`, `warehouse`, `batch`, `serial`, `quantity`, `uom`, `project`).
+- No duplicar valores de `minWidth` en formularios individuales.
+- Las factory functions aceptan overrides opcionales (`label`, `minWidth`, etc.) para casos especiales.
+- Los formularios de ventas que usan `<luna-document-lines-detail>` declaran columnas vía `lineDetailColumns`; su migración al sistema centralizado es trabajo aparte.
+
 ---
 
-*Última actualización: 2026-07-25 — estandarización de botón eliminar aplicada a ventas, compras, pagos e inventario; patrón de change detection documentado.*
+*Última actualización: 2026-07-25 — estandarización de botón eliminar aplicada a ventas, compras, pagos e inventario; patrón de change detection documentado; anchos de columna centralizados incorporados.*
