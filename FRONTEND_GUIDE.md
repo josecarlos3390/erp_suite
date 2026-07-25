@@ -621,59 +621,196 @@ Los estilos viven en `src/styles/_forms.scss`:
 
 ## 7. Selectores modales estándar
 
-### Contrato del componente
+> **Estado actual (2026-07-25):** los selectores del ERP se migraron a envoltorios sobre `<luna-entity-select>`. La sección anterior (prefijos `acc-`, `ws-`, etc. y markup propio) quedó obsoleta; el markup y la lógica de modal/búsqueda/lista viven ahora en el componente genérico de LUNA.
 
-Cada selector modal debe exponer:
+### Arquitectura actual
+
+Existen dos familias de selectores:
+
+1. **Selectores con lista por `@Input`** — el componente padre carga y pasa el catálogo.
+   - Ejemplos: `account-selector`, `warehouse-selector`, `item-selector`, `bank-selector`.
+   - Responsabilidades del wrapper:
+     - Recibir `[items]` (o `[accounts]`, `[warehouses]`, etc.) por `@Input`.
+     - Implementar `ControlValueAccessor`.
+     - Recuperar el item preseleccionado si no está en la lista (ej. inactivo, o el padre cargó el documento después del selector).
+
+2. **Selectores async** — el selector carga su propia lista por HTTP.
+   - Ejemplos: `branch-selector`, `employee-selector`, `payment-term-selector`, `sales-person-selector`, `uom-selector`, `user-selector`.
+   - Extienden `AsyncEntitySelectorBase<T>` (`src/app/shared/async-entity-selector-base/`).
+   - Solo requieren implementar `fetchList()` y `fetchOne(id)`.
+
+### Contrato común
+
+Todo selector debe:
 
 ```typescript
 /** Modo compacto: para celdas de tabla / líneas de documento. */
 @Input() compact = false;
+
+/** Placeholder del trigger. */
+@Input() placeholder = 'Buscar...';
+
+/** Título del modal. */
+@Input() title = 'Seleccionar';
+
+/** Solo lectura. */
+@Input() readonly = false;
 ```
 
-### HTML del trigger vacío
+Y exponer `@Output() <entity>Selected` cuando el consumidor necesite el objeto completo (no solo el id).
+
+### ControlValueAccessor y detección de cambios
+
+Todos los selectores usan `ChangeDetectionStrategy.OnPush`. Como la carga de datos y los `writeValue()` pueden venir de `HttpClient` con `withFetch()` (no zone-aware), se requiere `detectChanges()` para forzar el render inmediato.
+
+```typescript
+writeValue(id: number | null): void {
+  this.value = id ?? null;
+  this.ensureSelectedResolved();
+  this.cdr.detectChanges();   // ← inmediato, no markForCheck()
+}
+```
+
+En suscripciones async (carga inicial o recuperación de item ausente) también se usa `detectChanges()`:
+
+```typescript
+this.fetchList().subscribe((list) => {
+  this.items = list ?? [];
+  this.listLoaded = true;
+  this.handlePreselectedMissing();
+  this.cdr.detectChanges();
+});
+```
+
+### Recuperación de preseleccionados ausentes
+
+Cuando un documento se carga en modo ver/editar, `writeValue()` puede llegar con un id que aún no está en la lista del selector (item inactivo, lista no cargada, etc.). El selector **no debe dejar el campo vacío para siempre**.
+
+- **Selectores async:** `AsyncEntitySelectorBase.handlePreselectedMissing()` llama a `fetchOne(id)` y agrega el item a `items`.
+- **Selectores por `@Input`:** cada wrapper implementa su propia lógica (ver `warehouse-selector.component.ts` como referencia: `ensureSelectedResolved()` usa `WarehousesService.getOne()`).
+
+### Selectores async — patrón mínimo
+
+```typescript
+@Component({
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-branch-selector',
+  imports: [FormsModule, LunaEntitySelectComponent],
+  templateUrl: './branch-selector.component.html',
+  providers: [{
+    provide: NG_VALUE_ACCESSOR,
+    useExisting: forwardRef(() => BranchSelectorComponent),
+    multi: true,
+  }],
+})
+export class BranchSelectorComponent
+  extends AsyncEntitySelectorBase<Branch>
+  implements OnInit
+{
+  protected cdr = inject(ChangeDetectorRef);
+  protected destroyRef = inject(DestroyRef);
+  private svc = inject(BranchesService);
+
+  protected fetchList() {
+    return this.svc.getAll();
+  }
+
+  protected fetchOne(id: number) {
+    return this.svc.getOne(id);
+  }
+}
+```
+
+Template típico:
 
 ```html
-<button type="button" class="<prefix>-open-btn"
-  [class.<prefix>-compact]="compact" [disabled]="isDisabled" (click)="openModal()">
-  <span class="<prefix>-open-icon">
-    <luna-action-icon action="<icon>"></luna-action-icon>
-  </span>
-  <span class="<prefix>-open-label">{{ placeholder }}</span>
-  <span class="<prefix>-open-arrow">
-    <luna-action-icon action="chevronDown"></luna-action-icon>
-  </span>
-</button>
+<luna-entity-select
+  [(ngModel)]="value"
+  [items]="items"
+  [placeholder]="placeholder"
+  [title]="title"
+  [compact]="compact"
+  [readonly]="readonly"
+  [disabled]="isDisabled"
+  [searchFn]="searchFn"
+  [filterFn]="filterFn"
+  [getKey]="getKey"
+  [getLabel]="getLabel"
+  (selectionChange)="onValueChange($event)">
+</luna-entity-select>
 ```
 
-Reglas:
-- Usar siempre `<button type="button">` nativo. **No** `<luna-button>`.
-- `<prefix>` debe ser único por selector (ej. `ws-` warehouse, `bs-` bank, `acc-` account).
-- El icono identifica el dominio; la flecha siempre es `chevronDown`.
-- La clase compacta se bindea como `[class.<prefix>-compact]="compact"`.
+### Selectores por `@Input` — patrón mínimo
 
-### Prefijos por selector
+```typescript
+@Component({...})
+export class WarehouseSelectorComponent implements ControlValueAccessor, OnChanges {
+  @Input() warehouses: Warehouse[] = [];
+  @Input() branchId: number | null = null;
+  @Input() compact = false;
 
-| Selector | Prefijo | Icono |
-|----------|---------|-------|
-| account-selector | `acc-` | `book` |
-| bank-selector | `bs-` | `bank` |
-| branch-selector | `brs-` | `building` |
-| cost-center-selector | `ccs-` | `crosshair` |
-| currency-selector | `cur-` | `coins` |
-| employee-selector | `emp-` | `user` |
-| invoice-selector | `inv-` | `invoice` |
-| item-group-selector | `igs-` | `folder` |
-| item-selector | `its-` | `box` |
-| partner-group-selector | `pgs-` | `users` |
-| partner-selector | `ps-` | `user` |
-| payment-term-selector | `ptm-` | `creditCard` |
-| price-list-selector | `pls-` | `tags` |
-| project-selector | `prj-` | `projectDiagram` |
-| sales-person-selector | `spm-` | `user` |
-| tax-indicator-selector | `tis-` | `receipt` |
-| uom-selector | `usm-` | `scale` |
-| user-selector | `usr-` | `user` |
-| warehouse-selector | `ws-` | `warehouse` |
+  value: number | null = null;
+  private resolvedMissing: Warehouse | null = null;
+
+  get displayItems(): Warehouse[] {
+    if (this.resolvedMissing && !this.warehouses.some(w => w.id === this.resolvedMissing!.id)) {
+      return [...this.warehouses, this.resolvedMissing];
+    }
+    return this.warehouses;
+  }
+
+  writeValue(id: number | null): void {
+    this.value = id ?? null;
+    this.resolvedMissing = null;
+    this.ensureSelectedResolved();
+    this.cdr.detectChanges();
+  }
+
+  private ensureSelectedResolved(): void {
+    if (this.value == null) return;
+    if (this.warehouses.some(w => w.id === this.value)) return;
+    this.svc.getOne(this.value)
+      .pipe(catchError(() => of(null)))
+      .subscribe(w => {
+        if (w && w.id === this.value) {
+          this.resolvedMissing = w;
+          this.cdr.detectChanges();
+        }
+      });
+  }
+}
+```
+
+### Lista de selectores vigentes
+
+| Selector | Origen de datos | Notas |
+|----------|-----------------|-------|
+| `account-selector` | `@Input` `[accounts]` | Filtra por `level`, recupera por id |
+| `bank-selector` | `@Input` `[banks]` | — |
+| `branch-selector` | Async (`AsyncEntitySelectorBase`) | — |
+| `cost-center-selector` | `@Input` `[costCenters]` | — |
+| `currency-selector` | `@Input` `[currencies]` | — |
+| `employee-selector` | Async | — |
+| `invoice-selector` | `@Input` `[invoices]` | — |
+| `item-group-selector` | `@Input` `[itemGroups]` | — |
+| `item-selector` | `@Input` `[items]` | — |
+| `partner-group-selector` | `@Input` `[partnerGroups]` | — |
+| `partner-selector` | Custom | Selector propio de partner |
+| `payment-term-selector` | Async | Auto-selecciona default si aplica |
+| `price-list-selector` | `@Input` `[priceLists]` | — |
+| `project-selector` | `@Input` `[projects]` | — |
+| `sales-person-selector` | Async | Notifica al padre si el preseleccionado no existe |
+| `tax-indicator-selector` | `@Input` `[taxIndicators]` | Usado en líneas de documento |
+| `uom-selector` | Async | — |
+| `user-selector` | Async | Notifica al padre si el preseleccionado no existe |
+| `warehouse-selector` | `@Input` `[warehouses]` | Filtra por `branchId`, recupera por id |
+
+### Anti-patrón a evitar
+
+- **No duplicar markup de modal/búsqueda/lista** en cada selector. Usar `<luna-entity-select>`.
+- **No usar `markForCheck()` solo en `writeValue()`** de un selector; puede no renderizar si el padre no dispara un tick de CD.
+- **No dejar el selector vacío** cuando el valor preseleccionado no está en la lista inicial; recuperarlo vía `fetchOne()` / `getOne()`.
 
 ---
 
