@@ -1,7 +1,7 @@
 # FRONTEND_GUIDE.md — erp-frontend
 
 > Guía única y canónica para el desarrollo frontend del ERP. Cualquier nuevo formulario, listado, o módulo debe seguir estos patrones. 
-> **Última actualización:** 2026-07-25.  
+> **Última actualización:** 2026-07-25 (CD en handlers de partner).  
 > **Scope:** Angular 19.2.19, standalone components, LUNA design system.
 
 ---
@@ -811,6 +811,21 @@ export class WarehouseSelectorComponent implements ControlValueAccessor, OnChang
 - **No duplicar markup de modal/búsqueda/lista** en cada selector. Usar `<luna-entity-select>`.
 - **No usar `markForCheck()` solo en `writeValue()`** de un selector; puede no renderizar si el padre no dispara un tick de CD.
 - **No dejar el selector vacío** cuando el valor preseleccionado no está en la lista inicial; recuperarlo vía `fetchOne()` / `getOne()`.
+
+### Change detection en handlers del formulario padre
+
+Cuando un selector de cabecera dispara la carga de datos dependientes (por ejemplo, cambiar el partner actualiza condición de pago, vendedor y datos de contacto), el handler del formulario padre debe forzar change detection al finalizar. De lo contrario, los selectores dependientes pueden quedar desactualizados en componentes `OnPush`.
+
+```typescript
+onPartnerSelected(partner: Partner | null): void {
+  this.selectedPartner = partner;
+  this.applyPartnerDefaults(partner);   // muta el FormGroup
+  // ... recálculos de líneas si aplica ...
+  this.cdr.detectChanges();             // ← refresca selectores de cabecera inmediatamente
+}
+```
+
+Regla: si el handler muta el `FormGroup` o propiedades usadas por selectores del template, termina con `this.cdr.detectChanges()`. Esto es complementario al `detectChanges()` interno del selector: el selector se encarga de su propio label/lista, y el formulario padre se encarga de propagar el cambio a los demás controles.
 
 ---
 
