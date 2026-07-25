@@ -1,6 +1,6 @@
 # Estándar de líneas de documento — `luna-document-lines` (Fase 2)
 
-> **Fecha:** 2026-07-25 · **Estado:** ✅ Ventas 100% · ✅ Botón eliminar estandarizado en ventas, compras, pagos e inventario · ⏳ Migración visual a `<luna-document-lines>` pendiente en compras e inventario
+> **Fecha:** 2026-07-25 · **Estado:** ✅ Ventas 100% · ✅ Botón eliminar estandarizado en ventas, compras, pagos e inventario · ✅ Flujo de impuestos estandarizado y corregido · ⏳ Migración visual a `<luna-document-lines>` pendiente en compras e inventario
 > **Predecesor:** plan de migración inicial de la tabla de líneas (Fases 0 y 1), removido en la reorganización de documentación; el historial completo permanece en git.
 > **Audiencia:** cualquier agente/persona que migre un formulario de documento (compras, inventario) o cree uno nuevo.
 
@@ -249,7 +249,7 @@ onLineTaxChange(index: number, taxIndicatorId: number | null) {
     this.itemsArray,
     taxIndicatorId,
     this.taxIndicators,
-    this.discountMode,
+    this.lineCalcConfig,
   );
   if (!this.isLoading) this.hasChanges = true;
   // applyLineTax muta controles disabled con emitEvent: false; los getters de
@@ -257,6 +257,18 @@ onLineTaxChange(index: number, taxIndicatorId: number | null) {
   this.cdr.detectChanges();
 }
 ```
+
+### Reglas adicionales del flujo de impuestos
+
+- **`document-line-taxes-tab.handleTaxChange()`** debe terminar con `this.cdr.markForCheck()` como defensa en profundidad, aunque el formulario padre ya fuerce CD.
+- **`luna-document-lines.onTaxChange()`** debe invalidar cualquier caché de tasa por línea (p. ej. `_taxRateCache`) antes de emitir el evento, para que la tasa mostrada en el detalle se refresque si el usuario vuelve a la pestaña **Detalle**.
+- **Formularios de compra** deben forzar `forceInclusive: true` en `lineCalcConfig`, porque el precio de compra en Bolivia siempre incluye IVA:
+  ```typescript
+  protected override get lineCalcConfig(): LineCalcConfig {
+    return { discountMode: this.discountMode, forceInclusive: true };
+  }
+  ```
+- **Formularios con implementación propia de `onLineTaxChange`** (facturas y facturas de reserva) deben actualizar los mismos campos que `applyLineTax`, incluyendo `lineSubtotal`, y terminar con `detectChanges()`.
 
 ### 6.3 Cálculo de línea tras cambios manuales
 
