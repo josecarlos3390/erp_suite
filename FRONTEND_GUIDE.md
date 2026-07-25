@@ -903,6 +903,56 @@ onPartnerSelected(partner: Partner | null): void {
 
 Regla: si el handler muta el `FormGroup` o propiedades usadas por selectores del template, termina con `this.cdr.detectChanges()`. Esto es complementario al `detectChanges()` interno del selector: el selector se encarga de su propio label/lista, y el formulario padre se encarga de propagar el cambio a los demás controles.
 
+### Selectores dependientes
+
+Cuando un selector hijo depende de otro selector padre (por ejemplo, almacén filtrado por sucursal, lote/serie filtrado por artículo), ambos lados deben cooperar para que la UI se refresque.
+
+#### Selector hijo
+
+El componente hijo debe implementar `OnChanges` y reaccionar a cambios de sus `@Input` de filtro. Si el valor seleccionado deja de ser válido para los nuevos filtros, debe limpiarse y notificar al padre.
+
+```typescript
+ngOnChanges(changes: SimpleChanges): void {
+  if (changes['itemId'] || changes['warehouseId']) {
+    this.value = null;
+    this.displayValue = '';
+    this.onValueChange(null);   // notifica al formulario padre
+    this.cdr.detectChanges();
+  }
+}
+```
+
+Ejemplos implementados: `warehouse-selector` (filtra por `branchId`), `batch-combobox` y `serial-combobox` (limpiar al cambiar `itemId`/`warehouseId`).
+
+#### Formulario padre
+
+Cuando el selector padre cambia, el formulario debe:
+
+1. Actualizar el valor del padre en el `FormGroup`.
+2. Resetear el valor del selector hijo si ya no aplica.
+3. Forzar CD para que el hijo reciba los nuevos filtros.
+
+```typescript
+onItemSelected(index: number, item: Item | null) {
+  const line = this.itemsArray.at(index);
+  line.patchValue({
+    itemId: item?.id ?? null,
+    batchId: null,          // ← resetear dependientes
+    serialNumberId: null,
+  }, { emitEvent: false });
+  this.cdr.detectChanges(); // ← el hijo recibe el nuevo itemId y limpia su selección
+}
+```
+
+#### Defaults de partner y fecha de vencimiento
+
+Al aplicar defaults de partner (`paymentTermsId`), si se usa `emitEvent: false`, las suscripciones a `valueChanges` no se disparan y la fecha de vencimiento no se recalcula. La solución es:
+
+- Hacer que `applyPartnerDefaults` emita el evento de `paymentTermsId`, o
+- Llamar explícitamente al recálculo de `dueDate` después de aplicar los defaults.
+
+Siempre terminar el handler con `this.cdr.detectChanges()` para refrescar los selectores de cabecera.
+
 ---
 
 ## 8. Patrón toggle switch
