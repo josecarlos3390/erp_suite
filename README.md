@@ -68,7 +68,7 @@ npm start                # ng serve
 cd backend-erp
 npm run build
 npm run lint
-npm test                 # 118 suites / 1018 tests
+npm test                 # 128 suites / 1247 tests
 npm run test:e2e         # 11 suites / 57 tests
 ```
 

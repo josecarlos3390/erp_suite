@@ -1,7 +1,7 @@
 # AUDIT.md — ERP Suite
 
 > Documento vivo de auditoría, hallazgos y tracking de acciones.  
-> **Última actualización:** 2026-07-14.
+> **Última actualización:** 2026-07-25.
 
 ---
 
@@ -30,7 +30,7 @@
 | **SQL `SELECT *`** | ✅ 0 ocurrencias | N/A | 🟢 |
 | **Desync frontend-backend** | ✅ `account-mappings` creado | N/A | 🟢 |
 
-**Conclusión general:** Todas las fases de estabilización (Fase 1–3) se completaron exitosamente. El proyecto cuenta con **build limpio, tests al 100%, lint rápido, Swagger básico documentado, zero `as any` en producción, y zero memory leaks reales en componentes**.
+**Conclusión general:** Todas las fases de estabilización (Fase 1–3) se completaron exitosamente. El proyecto cuenta con **build limpio, tests al 100%, lint rápido, Swagger básico documentado, y zero memory leaks reales en componentes**. Quedan **excepciones técnicas de `as any` en producción** documentadas en `BACKEND_GUIDE.md` §2 como deuda técnica activa.
 
 ---
 
@@ -371,7 +371,7 @@ Se detectaron **7 ocurrencias** en **5 servicios** (todos en `trackingAssignment
    - **Causa:** En los documentos fuente de entregas (cotización, pedido, factura de reserva) `subtotal` almacena el **BRUTO** de la línea. Los 3 bloques de creación de `delivery-orders.service.ts` (createFromQuotation, createFromReserveInvoice, createFromOrder) calculaban `neto = round(bruto×r − iva×r)` y `iva = iva×r` sin redondear: `round(45 − 5.175) = 39.83` + `5.175 → 5.18` = **45.01** (doble redondeo con ambos componentes hacia arriba).
    - **Fix:** Helper `prorateLineAmounts` en `src/common/document-totals.util.ts` con semántica bruta: prorratea el **bruto** (un solo redondeo, exacto: `90 × 1/2 = 45.00`), prorratea el IVA aparte y deriva el neto por diferencia → `39.82 + 5.18 = 45.00`. Invariante garantizada: `subtotal + taxAmount === lineTotal`. Aplicado a los 3 bloques de creación de `delivery-orders.service.ts` y al bloque equivalente de `purchase-receipts.service.ts` (mismo patrón en compras, `PurchaseOrderItem.subtotal` también es bruto). Los prorrateos de `getDraft` eran solo para display y quedaron intactos.
    - **Nota:** Las facturas generadas desde entregas/recepciones recalculan sus líneas desde cero (`calcLineWithIndicator`), por lo que el IVA oficial nunca se vio afectado; el centavo solo vivía en el documento de entrega/recepción. Las notas de crédito (ventas y compras) anclan el neto por unidad (`priceNet × qty`, exacto) y no sufren el bug. El resto de documentos no prorratea dinero de documentos base — recomputan por línea.
-   - **Cobertura:** `src/common/document-totals.util.spec.ts` con 10 tests (caso DEL-000081, suma de parciales = total del pedido, exentos, descuentos, nulos, qty inválida). Suite completa: 128 suites / 1207 tests.
+   - **Cobertura:** `src/common/document-totals.util.spec.ts` con 10 tests (caso DEL-000081, suma de parciales = total del pedido, exentos, descuentos, nulos, qty inválida). Suite completa: 128 suites / 1247 tests.
    - **Dato histórico:** DEL-000081 (45.01 persistido, CLOSED) se deja sin ajuste por decisión del usuario (2026-07-20); el fix solo aplica a documentos nuevos.
 9. **Endurecimiento contable integral — asientos automáticos vs NIC** (`backend / accounting`) — `✅ Resuelto` (2026-07-20)
    - **Contexto:** Auditoría de los 10 builders del `accounting-engine` tras revisar la NC de venta. Objetivo del usuario: la contabilidad debe ser el módulo más sólido del ERP.
@@ -392,6 +392,7 @@ Se detectaron **7 ocurrencias** en **5 servicios** (todos en `trackingAssignment
 
 | Métrica | Valor | Fecha |
 |---------|-------|-------|
+| Backend build / lint / unit / E2E | ✅ build / ✅ 0 errors 0 warnings / ✅ 128 suites 1247 tests / ✅ 11 suites 57 E2E | 25/07/2026 |
 | Backend build / lint / unit / E2E | ✅ build / ✅ 0 errors 0 warnings / ✅ 126 suites 1157 tests / ✅ 12 suites 60 E2E | 14/07/2026 |
 | Load tests k6 (perfil `small`) | 5/5 escenarios passed, 0% fallos, aislamiento multitenant verificado | 29/06/2026 |
 | Backend suites passing | 64/64 (100%) | 23/05/2026 |

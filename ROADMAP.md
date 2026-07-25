@@ -1,6 +1,6 @@
 # ROADMAP.md — ERP Suite
 
-> Hoja de ruta única y consolidada. Estado actualizado al 2026-07-03.
+> Hoja de ruta única y consolidada. Estado actualizado al 2026-07-25.
 
 ---
 
@@ -41,6 +41,8 @@
 | ✅ 1.4 | **Alertas de vencimiento** | Toast/alerta automática al iniciar sesión si hay facturas por vencer o vencidas. | ✅ Backend: reglas `INVOICE_OVERDUE` e `INVOICE_DUE_SOON`. Frontend: toasts automáticos en `LayoutComponent`. |
 | ✅ 1.5 | **Solicitudes de Compra** | Flujo completo: creación → envío a aprobación → aprobación/rechazo → conversión a Orden de Compra. Estados: DRAFT/PENDING/APPROVED/REJECTED/CLOSED. | ✅ Backend: 16 endpoints, 9 tests. Frontend: listado, formulario, modal de conversión. |
 | ✅ 1.6 | **Perfil fiscal del emisor (tenant)** | Razón social, NIT, dirección fiscal, teléfono, correo, representante legal y logo del emisor. Requerido para PDFs/reportes fiscales. | ✅ Backend: endpoints `/tenants/me/company-profile`. Frontend: `/company-profile`. |
+| ✅ 1.7 | **Campos definidos por usuario (UDF)** | Configuración dinámica de campos personalizados por entidad y almacenamiento de valores (`UserDefinedField`, `CustomFieldValue`). | ✅ Backend (`src/udf/`) + frontend (`src/app/pages/udf/`). Soporta entidades maestros y documentos. |
+| ✅ 1.8 | **Guías de transporte** | Documento de transporte para entregas (`TransportGuide`) con estados y tracking. | ✅ Backend (`src/transport-guides/`) + frontend (`src/app/pages/transport-guides/`). |
 
 ---
 
@@ -73,6 +75,11 @@
 | ✅ 4.2 | **Centro de notificaciones** | Badge en header con lista de: aprobaciones pendientes, stock bajo, vencimientos. | ✅ `AlertPanelComponent` con badge en sidebar y panel deslizable. |
 | ✅ 4.3 | **Búsqueda global** | Input en header que busque partners, artículos y documentos por código. | ✅ Endpoint `GET /search`. Frontend `/search` con resultados agrupados. |
 | ✅ 4.4 | **Logs de auditoría** | Tabla `AuditLog` (quién, qué, cuándo, valor anterior/nuevo) en documentos clave. | ✅ Modelo Prisma `AuditLog`, endpoint `GET /audit-logs` con filtros. Frontend `/audit-logs`. |
+| ✅ 4.5 | **Libro mayor** | Reporte de movimientos por cuenta contable con saldo acumulado. | ✅ Endpoint `GET /accounts/:id/ledger`. Frontend `/reports/ledger`. |
+| ✅ 4.6 | **Reportes de compras y ventas** | Resúmenes de compras/ventas por período, artículo y partner. | ✅ Endpoints `/reports/purchase` y `/reports/sales`. Frontend `/reports/purchase`, `/reports/sales`. |
+| ✅ 4.7 | **Reportes de stock** | Valoración, rotación y vencimiento de lotes. | ✅ Endpoints `/reports/stock-valuation`, `/reports/stock-rotation`, `/reports/batch-expiry`. |
+| ✅ 4.8 | **Rentabilidad por artículo** | Margen y rentabilidad por artículo en ventas. | ✅ Frontend `/reports/item-profitability`. |
+| ✅ 4.9 | **Balance por partner** | Resumen de saldos por partner (cliente/proveedor). | ✅ Frontend `/reports/partner-balance`. |
 
 ---
 
@@ -83,7 +90,9 @@
 | ✅ 5.1 | **Precios por escala** | Tabla `PriceListItemScale` con `maxQty`, descuentos/precios por cantidad. | ✅ Implementado y testeado. |
 | ✅ 5.2 | **Bancos y cuentas bancarias** | CRUD de cuentas; asociar pagos a cuenta bancaria; saldo bancario. | ✅ Modelos `Bank` y `BankAccount`. Endpoints CRUD. Frontend `/banks`. |
 | ✅ 5.3 | **BOM / Ensamblaje** | Receta de fabricación (`ItemBom`) + ensamblaje de kits (`POST /items/:id/assemble`). | ✅ Backend + frontend. Falta `ProductionOrder` como entidad separada (Fase 6). |
-| ☐ 5.4 | **CRM básico** | Oportunidades de venta, actividades/calendario por partner, pipeline. | Pendiente |
+| ✅ 5.4 | **POS / Punto de venta** | Terminales (`PosTerminal`), sesiones (`PosSession`), carrito, checkout y listado de facturas POS. | ✅ Backend (`src/pos/`, `src/pos-terminals/`, `src/pos-sessions/`) + frontend (`src/app/pages/pos/`). |
+| ✅ 5.5 | **Conciliación bancaria** | Extractos bancarios (`BankStatement`), importación CSV/Excel, asignación de cuentas/partner/proyecto, posting a asientos y reconciliación. | ✅ Backend (`src/bank-reconciliation/`, `src/banks/`) + frontend (`src/app/pages/bank-reconciliation/`). |
+| ☐ 5.6 | **CRM básico** | Oportunidades de venta, actividades/calendario por partner, pipeline. | Pendiente |
 
 ---
 
@@ -96,15 +105,18 @@
 | ✅ 6.3 | **Libro de compras/ventas** | Reportes fiscales bolivianos formateados. | ✅ Endpoints `GET /reports/sales-ledger` y `GET /reports/purchase-ledger`. |
 | ☐ 6.4 | **Estado de resultados y balance** | Reportes financieros estándar. | Pendiente (requiere F6.1 Accounting Engine primero) |
 
-### Fase 6.1 — Accounting Engine Integrado (Pendiente)
+### Fase 6.1 — Accounting Engine Integrado (En progreso)
 
-- Generación automática de asientos desde documentos comerciales.
-- Validación de partida doble (debit == credit).
-- Saldos por cuenta en tiempo real.
+- ✅ Servicio `AccountingEngine` creado (`src/common/accounting-engine.service.ts`) con generación de asientos para ventas, compras, pagos y stock.
+- ✅ Validación de partida doble al postear asientos (`totalDebit === totalCredit`).
+- ✅ Saldos por cuenta en tiempo real vía `JournalEntryLine` POSTED.
+- ⏳ Falta refactorizar `AssemblyOrder` para usar `AccountingEngine` en lugar de su lógica propia.
 
-### Fase 6.2 — Dimensiones Contables (Pendiente)
+### Fase 6.2 — Dimensiones Contables (En progreso)
 
-- `CostCenter`, `Project`, `Dimension1`, `Dimension2` en `JournalEntryLine`.
+- ✅ Modelos `CostCenter` y `Project` creados; usados en documentos comerciales y asientos.
+- ✅ `projectId` y `costCenterId` disponibles en `JournalEntryLine`.
+- ⏳ `Dimension1` / `Dimension2` personalizables pendientes.
 
 ### Fase 6.3 — Estados Financieros (Pendiente)
 
@@ -112,16 +124,19 @@
 - Estado de Resultados.
 - Estado de Flujo de Efectivo.
 
-### Fase 6.4 — Cierre de Período (Pendiente)
+### Fase 6.4 — Cierre de Período (En progreso)
 
-- `FiscalPeriod` / `AccountingPeriod`.
-- Bloqueo de modificaciones en períodos cerrados.
-- Asientos de cierre de ejercicio.
+- ✅ Modelos `FiscalYear` y `AccountingPeriod` creados en Prisma.
+- ✅ CRUD backend (`src/fiscal-years/`) + frontend (`src/app/pages/fiscal-years/`).
+- ✅ Estados `OPEN` / `LOCKED` para bloquear modificaciones en períodos cerrados.
+- ⏳ Asientos de cierre de ejercicio automáticos pendientes.
 
-### Fase 6.5 — Activos Fijos (Pendiente)
+### Fase 6.5 — Activos Fijos (En progreso)
 
-- `FixedAsset` con depreciación (lineal, acelerada).
-- Asientos de depreciación mensual.
+- ✅ Módulo `FixedAsset` creado en backend (`src/fixed-assets/`) y frontend (`src/app/pages/fixed-assets/`).
+- ✅ Depreciación lineal implementada.
+- ⏳ Depreciación acelerada pendiente.
+- ⏳ Asientos de depreciación mensual automáticos pendientes.
 
 ### Fase 6.6 — Nómina (Pendiente)
 
@@ -145,9 +160,9 @@
 | # | Módulo | Descripción | Estado |
 |---|--------|-------------|--------|
 | ✅ 8.1 | **Billing y suscripciones** | Modelo `Subscription` 1:1 con `Tenant`, estados `TRIAL/ACTIVE/PAST_DUE/CANCELLED/EXPIRED`, activación/cancelación manual, cron diario. | ✅ MVP implementado: backend + frontend `/billing`. |
-| ✅ 8.2 | **Rate limiting por tenant** | `TenantThrottlerGuard` diferencia límites por plan (`SHARED` 300 req/min, `DEDICATED` 2000 req/min). | ✅ Backend: tests unitarios, docs `RATE_LIMITING.md`. |
-| ✅ 8.3 | **Backups y disaster recovery** | Scripts de backup/restore de PostgreSQL, documentación de RPO/RTO y validación periódica. | ✅ Scripts `backup-db.js`/`restore-db.js`, `docs/BACKUPS.md`. |
-| ✅ 8.4 | **Monitoreo y alertas** | Health checks (`@nestjs/terminus`) y métricas Prometheus (`prom-client`). | ✅ Backend: `/health`, `/metrics`, `docs/MONITORING.md`. |
+| ✅ 8.2 | **Rate limiting por tenant** | `TenantThrottlerGuard` diferencia límites por plan (`SHARED` 300 req/min, `DEDICATED` 2000 req/min). | ✅ Backend: tests unitarios, ver `BACKEND_GUIDE.md` §6.3. |
+| ✅ 8.3 | **Backups y disaster recovery** | Scripts de backup/restore de PostgreSQL, documentación de RPO/RTO y validación periódica. | ✅ Scripts `backup-db.js`/`restore-db.js`, ver `BACKEND_GUIDE.md` §6.1. |
+| ✅ 8.4 | **Monitoreo y alertas** | Health checks (`@nestjs/terminus`) y métricas Prometheus (`prom-client`). | ✅ Backend: `/health`, `/metrics`, ver `BACKEND_GUIDE.md` §6.2. |
 | ✅ 8.5 | **Pruebas de carga multitenant** | Suite k6 en `load-tests/k6/` (smoke, load, bulk-import, kardex, aislamiento multitenant); job CI. | ✅ 5/5 escenarios passed local y en GitHub Actions (perfil `small`). |
 
 ---
@@ -221,4 +236,4 @@
 
 ---
 
-*Última actualización: 2026-07-03*
+*Última actualización: 2026-07-25*

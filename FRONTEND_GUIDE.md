@@ -1,7 +1,7 @@
 # FRONTEND_GUIDE.md — erp-frontend
 
 > Guía única y canónica para el desarrollo frontend del ERP. Cualquier nuevo formulario, listado, o módulo debe seguir estos patrones. 
-> **Última actualización:** 2026-07-02.  
+> **Última actualización:** 2026-07-25.  
 > **Scope:** Angular 19.2.19, standalone components, LUNA design system.
 
 ---
@@ -299,6 +299,51 @@ ngOnInit() {
   this.load();
 }
 ```
+
+---
+
+### Cuándo usar `detectChanges()` en lugar de `markForCheck()`
+
+`markForCheck()` marca la rama como sucia y Angular la revisará en el **próximo ciclo** de detección. Eso es suficiente cuando el cambio viene de una suscripción async (la zona dispara el ciclo).
+
+`detectChanges()` fuerza un ciclo de detección **inmediato** en el componente y sus hijos. Usarlo cuando:
+
+| Escenario | Por qué `detectChanges()` | Ejemplo |
+|-----------|---------------------------|---------|
+| `ControlValueAccessor.writeValue()` | El formulario padre llama `writeValue` síncronamente; sin render inmediato el selector no muestra el valor seleccionado. | Selectores modales LUNA |
+| Handler síncrono que cambia el DOM | Se necesita que la UI refleje el cambio antes de que termine el evento. | Cambio de impuesto en línea de documento |
+| Validación/visibilidad condicional tras mutar el formulario | Se requiere que Angular re-evalúe `@if` / `[disabled]` inmediatamente. | Mostrar/ocultar botón eliminar en pestaña |
+
+#### Ejemplo: selector modal
+
+```typescript
+writeValue(value: number | null): void {
+  this.selectedId = value;
+  if (value) {
+    this.resolveLabel(value).then(() => this.cdr.detectChanges());
+  } else {
+    this.label = this.placeholder;
+    this.cdr.detectChanges();
+  }
+}
+```
+
+#### Ejemplo: cambio de impuesto en línea de documento
+
+```typescript
+onLineTaxChange(index: number): void {
+  const line = this.itemsArray.at(index);
+  const taxInd = this.taxIndicators.find(t => t.id === line.get('taxIndicatorId')?.value);
+  line.patchValue({ taxRate: taxInd?.rate ?? 0 }, { emitEvent: false });
+  this.recalculateLineTotal(index);
+  this.cdr.detectChanges(); // ← render inmediato del total de la línea y del documento
+}
+```
+
+#### Regla mnemotécnica
+
+- ¿El cambio viene de una suscripción HTTP/WebSocket? → `markForCheck()`.
+- ¿El cambio viene de un evento síncrono que debe reflejarse **ahora**? → `detectChanges()`.
 
 ---
 
@@ -750,7 +795,7 @@ error: (err: any) => { this.toast.error(err?.error?.message); }
 
 ## 10. Líneas de documento — estándar `luna-document-lines`
 
-> **Patrón canónico completo:** `docs/ESTANDAR_LINEAS_DOCUMENTO.md` (arquitectura, celdas canónicas, celdas custom, checklist de migración, estado por formulario). Ventas está 100% migrado (2026-07-20); compras e inventario siguen ese documento.
+> **Patrón canónico completo:** `docs/guides/ESTANDAR_LINEAS_DOCUMENTO.md` (arquitectura, celdas canónicas, celdas custom, checklist de migración, estado por formulario). Ventas está 100% migrado (2026-07-20); compras e inventario siguen ese documento.
 
 Reglas rápidas (detalle en el doc enlazado):
 

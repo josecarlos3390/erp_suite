@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-07-02.  
+> **Última actualización:** 2026-07-25.  
 > **Versión canónica de restricciones transversales.**  
 > Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
@@ -39,6 +39,16 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
 | **BACKEND_GUIDE.md** | Arquitectura, seguridad de tipos, deuda técnica, infraestructura | `./BACKEND_GUIDE.md` |
 | **ROADMAP.md** | Roadmap de features por fases, deuda técnica, criterios de aceptación | `./ROADMAP.md` |
 | **AUDIT.md** | Hallazgos de auditoría, tracking de acciones, métricas, bugs | `./AUDIT.md` |
+| **README.md** | Onboarding, stack y comandos principales del monorepo | `./README.md` |
+
+### Documentación por dominio
+
+| Carpeta | Propósito | Archivos clave |
+|---------|-----------|----------------|
+| `docs/guides/` | Guías canónicas de dominio específico | `ESTANDAR_LINEAS_DOCUMENTO.md`, `ACCOUNTING_ENTRIES_GUIDE.md` |
+| `docs/plans/` | Planes de trabajo activos | `plan-consistencia-visual-v2.md`, `RESUMEN-EJECUTIVO-PLAN-MEJORAS.md` |
+| `docs/reference/` | Análisis técnicos y referencias de arquitectura | `ACCOUNTS_DETERMINATION_FIX.md`, `SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md` |
+| `docs/archive/` | Informes históricos de migraciones completadas | Índice de frentes y cierres de fase |
 
 ---
 
@@ -76,11 +86,17 @@ erp_suite/
 │   └── dist/             # salida de build
 ├── luna/                 # componentes standalone del design system (copia de referencia)
 ├── .agents/skills/       # skills de Kimi para backend/frontend
+├── docs/                 # documentación del proyecto
+│   ├── guides/           # guías canónicas de dominio
+│   ├── plans/            # planes de trabajo activos
+│   ├── reference/        # análisis y referencias técnicas
+│   └── archive/          # informes históricos completados
 ├── AGENTS.md             # este archivo (índice)
 ├── FRONTEND_GUIDE.md     # guía frontend canónica
 ├── BACKEND_GUIDE.md      # guía backend canónica
 ├── ROADMAP.md            # hoja de ruta consolidada
 ├── AUDIT.md              # auditoría y tracking
+├── README.md             # onboarding del monorepo
 └── package.json          # solo husky + lint-staged en raíz
 ```
 
@@ -133,7 +149,7 @@ npm run start:dev        # watch mode
 npm run start:prod       # node dist/main.js
 npm run format           # prettier --write
 npm run lint             # eslint — 0 errores, 0 warnings
-npm test                 # jest — 118 suites / 1018 tests
+npm test                 # jest — 128 suites / 1247 tests
 npm run test:watch       # jest --watch
 npm run test:cov         # jest --coverage
 npm run test:e2e         # jest --config ./test/jest-e2e.json — 11 suites / 57 tests
@@ -153,7 +169,7 @@ npm run watch            # ng build --watch --configuration development
 npm run serve:ssr:erp-frontend   # SSR local
 npm run format           # prettier --write
 npm run lint             # ng lint — 0 errores, ~44 warnings preexistentes
-npm test                 # Karma + Jasmine — 622 tests
+npm test                 # Karma + Jasmine — 1172 tests
 npm run e2e              # playwright test — 184 passed
 npm run e2e:ui           # playwright test --ui
 npm run e2e:report       # playwright show-report
@@ -168,7 +184,7 @@ npm run generate-types   # copia prisma-types.ts desde backend
 
 ---
 
-## 4. Estado real del proyecto (2026-06-29)
+## 4. Estado real del proyecto (2026-07-25)
 
 ### Backend (`backend-erp/`)
 
@@ -176,7 +192,7 @@ npm run generate-types   # copia prisma-types.ts desde backend
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npm test` | ✅ **OK** | 118 suites / 1018 tests passed |
+| `npm test` | ✅ **OK** | 128 suites / 1247 tests passed |
 | `npm run test:e2e` | ✅ **OK** | 11 suites / 57 tests passed |
 | `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`)|
 
@@ -186,7 +202,7 @@ npm run generate-types   # copia prisma-types.ts desde backend
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores (~44 warnings preexistentes) |
 | `npm run lint` | ✅ **OK** | 0 errores, ~44 warnings preexistentes |
-| `npx ng test --watch=false --browsers=ChromeHeadless` | ✅ **OK** | 622 tests passed |
+| `npx ng test --watch=false --browsers=ChromeHeadless` | ✅ **OK** | 1172 tests passed |
 | `npm run e2e` | ✅ **OK** | 184/184 passed (Chromium) |
 
 ---
@@ -282,7 +298,7 @@ En el formulario de **Asientos Contables** (`journal-entries-form`):
 | Seed: cuentas con `requiresPartner` | `backend-erp/src/common/chart-of-accounts.data.ts` |
 | Seed: asignación a partners | `backend-erp/prisma/seed.ts` (bloque 14a) |
 
-### 5.2 Fixes y mejoras contables aplicados (Jul 2026)
+### 5.7 Fixes y mejoras contables aplicados (Jul 2026)
 
 #### Bugs críticos arreglados
 
@@ -354,7 +370,7 @@ Frontend: la URL de la API se configura en `src/environments/environment.ts` (de
 
 ---
 
-## 6. Consideraciones de seguridad
+## 7. Consideraciones de seguridad
 
 - **JWT en cookie HttpOnly** + header XSRF. El token también puede venir por header Bearer o query param `token`.
 - **CORS dinámico:** en producción solo se permiten orígenes configurados en `FRONTEND_URL`.
@@ -368,7 +384,7 @@ Frontend: la URL de la API se configura en `src/environments/environment.ts` (de
 
 ---
 
-## 7. Próximos pasos recomendados
+## 8. Próximos pasos recomendados
 
 ### Features de negocio (alta prioridad)
 
@@ -385,14 +401,19 @@ Frontend: la URL de la API se configura en `src/environments/environment.ts` (de
 
 ---
 
-## 8. Documentación adicional (referencia, no obligatoria)
+## 9. Documentación adicional (referencia, no obligatoria)
 
 Archivos complementarios que no requieren lectura obligatoria para tareas rutinarias, pero pueden ser útiles para contexto adicional:
 
 | Archivo | Contenido | Cuándo leer |
 |---------|-----------|-------------|
 | `erp-frontend/docs/monorepo/DESIGN.md` | Design System LUNA completo: tokens, componentes, layouts, dark mode, animaciones. | Cuando se diseñe un componente nuevo o se modifique el design system. |
-| `docs/ESTANDAR_LINEAS_DOCUMENTO.md` | Estándar de líneas de documento (`luna-document-lines` Fase 2): celdas canónicas/custom, checklist, estado por formulario. | Antes de migrar o crear formularios de documentos (compras, inventario). Referenciado desde FRONTEND_GUIDE.md §10. |
+| `docs/guides/ESTANDAR_LINEAS_DOCUMENTO.md` | Estándar de líneas de documento (`luna-document-lines` Fase 2): celdas canónicas/custom, checklist, estado por formulario. | Antes de migrar o crear formularios de documentos (compras, inventario). Referenciado desde FRONTEND_GUIDE.md §10. |
+| `docs/guides/ACCOUNTING_ENTRIES_GUIDE.md` | Guía de asientos contables por tipo de documento. | Al trabajar contabilidad, asientos automáticos o determinación de cuentas. |
+| `docs/plans/plan-consistencia-visual-v2.md` | Plan validado de remediación visual frontend (7 fases). | Al planificar mejoras visuales o migraciones de tokens/spacing. |
+| `docs/reference/ACCOUNTS_DETERMINATION_FIX.md` | Análisis y corrección de paridad de cuentas contables por nivel. | Como referencia del fix de paridad de cuentas. |
+| `docs/reference/SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md` | Análisis comparativo de determinación de cuentas: SAP B1 vs ERP. | Como referencia de arquitectura contable. |
+| `docs/archive/` | Informes históricos de frentes completados y cierres de fase. | Solo si se necesita trazabilidad histórica de una migración ya cerrada. |
 | `luna/MODO_USO.md` | Uso básico de componentes standalone LUNA. | Referencia rápida de componentes LUNA. |
 | `backend-erp/CHANGELOG.md` / `erp-frontend/CHANGELOG.md` | Historial de cambios por versión. | Para entender evolución reciente del proyecto. |
 | `backend-erp/load-tests/k6/README.md` | Documentación de la suite de carga k6. | Antes de ejecutar o modificar tests de carga. |
@@ -402,4 +423,4 @@ Archivos complementarios que no requieren lectura obligatoria para tareas rutina
 
 ---
 
-*Este archivo es el índice maestro y carga automáticamente como standing instructions en cada sesión de Kimi Work. Para detalles de implementación, patrones de código y decisiones de arquitectura, consultar los 4 archivos canónicos enlazados en la sección "Protocolo de inicio de trabajo".*
+*Este archivo es el índice maestro y carga automáticamente como standing instructions en cada sesión de Kimi Work. Para detalles de implementación, patrones de código y decisiones de arquitectura, consultar los 5 archivos canónicos enlazados en la sección "Protocolo de inicio de trabajo".*

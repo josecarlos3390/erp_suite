@@ -1,7 +1,7 @@
 # BACKEND_GUIDE.md — backend-erp
 
 > Guía única y canónica para el desarrollo backend del ERP. Cualquier nuevo módulo, servicio, o endpoint debe seguir estos patrones.
-> **Última actualización:** 2026-07-07.  
+> **Última actualización:** 2026-07-25.  
 > **Scope:** NestJS 11.0.1, TypeScript 5.7.3, Prisma 6.19.2, PostgreSQL.
 
 ---
@@ -73,10 +73,12 @@ El schema (`prisma/schema.prisma`) tiene ~106 modelos. Los más relevantes:
 
 ### Política base
 
-- **Cero `as any` en producción** (`src/**/*.ts` sin `.spec`).
+- **Objetivo: cero `as any` en producción** (`src/**/*.ts` sin `.spec`).
 - **Cero anotaciones `: any`** en parámetros, variables y propiedades de producción.
 - **Cero tipos anónimos inline** en firmas de servicios que reciban datos de controllers o de otros servicios.
 - En archivos `.spec.ts` se permite `as unknown as T` para mocks parciales, pero nunca `as any`.
+
+> **Estado real (2026-07-25):** quedan `as any` justificados temporalmente en producción. Están documentados como deuda técnica activa en la lista de abajo y deben eliminarse en un refactor posterior.
 
 ### Patrones seguros con `strictNullChecks: true`
 
@@ -123,6 +125,17 @@ El schema (`prisma/schema.prisma`) tiene ~106 modelos. Los más relevantes:
 
 10. **Mantén los DTOs en `dto/` del módulo y extiende `CommercialLineItemDto`.**
     Extender el DTO base de líneas evita repetir campos transversales (`projectCode`, `dimension1-5`, `uomId`, `trackingAssignments`, `baseDocType`, etc.) y reduce la divergencia entre flujos.
+
+### Excepciones actuales en producción (deuda técnica)
+
+Los siguientes archivos aún usan `as any` y deben refactorizarse:
+
+| Archivo | Líneas | Motivo / Patrón a reemplazar |
+|---------|--------|------------------------------|
+| `src/fiscal-years/fiscal-years.controller.ts` | 27, 33, 39, 45, 51, 57, 63 | `undefined as any` usado como `tenantId`; el controller debería inyectar `tenantId` con `@CurrentUser()` y pasarlo al servicio. |
+| `src/payment-terms/payment-term-movement-checker.ts` | 18 | `prisma as any` para acceder a un cliente Prisma genérico; tipar con `PrismaClient` o el tipo de transacción correspondiente. |
+| `src/tax-indicators/tax-indicator-movement-checker.ts` | 17 | Idem `prisma as any`. |
+| `src/warehouses/warehouse-movement-checker.ts` | 19 | Idem `prisma as any`. |
 
 ### Checklist para nuevos flujos `createFrom*`
 
@@ -208,12 +221,12 @@ Antes de mergear un PR que agregue un flujo `createFrom*`, verificar:
 ### Fase 11: Validación obligatoria de `date`/`postingDate` — DT.10 Fase 1 ✅ COMPLETADA
 
 **Meta:** Hacer obligatorios los campos `date` y `postingDate` en documentos comerciales, eliminando `@default(now())` en Prisma y rechazando creaciones sin fecha.  
-**Resultado:** Schema Prisma migrado, DTOs base creados (`CreateAccountingDocumentHeaderDto`, `CreateCommercialDocumentHeaderDto`), `buildBaseDocumentData` lanza `BadRequestException` si faltan fechas. Build 0 errores, 118 suites / 1018 tests passed.
+**Resultado:** Schema Prisma migrado, DTOs base creados (`CreateAccountingDocumentHeaderDto`, `CreateCommercialDocumentHeaderDto`), `buildBaseDocumentData` lanza `BadRequestException` si faltan fechas. Build 0 errores, 128 suites / 1247 tests passed.
 
 ### Fase 12: Validación obligatoria de `date`/`postingDate` — DT.10 Fase 2 ✅ COMPLETADA
 
 **Meta:** Extender la validación obligatoria de fechas a documentos de inventario/logística (`StockEntry`, `StockExit`, `StockAdjustment`, `StockTransfer`, `StockCount`, `TransportGuide`, `AssemblyOrder`).  
-**Resultado:** Schema Prisma migrado, DTOs base aplicados, controladores normalizados, servicios sin fallbacks. Build 0 errores, lint 0/0, 118 suites / 1018 tests passed.
+**Resultado:** Schema Prisma migrado, DTOs base aplicados, controladores normalizados, servicios sin fallbacks. Build 0 errores, lint 0/0, 128 suites / 1247 tests passed.
 
 ### Fase 13: Pruebas de carga y concurrencia multitenant con k6 ✅ COMPLETADA
 
@@ -456,7 +469,7 @@ El extracto bancario (`BankStatement`) no genera asientos contables automáticam
 cd backend-erp
 npm run build            # 0 errores
 npm run lint             # 0 errores, 0 warnings
-npm test                 # 118 suites / 1018 tests
+npm test                 # 128 suites / 1247 tests
 npm run test:e2e         # 11 suites / 57 tests
 npm run perf:k6          # 5/5 escenarios passed
 ```
@@ -467,6 +480,6 @@ npm run perf:k6          # 5/5 escenarios passed
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npm test` | ✅ **OK** | 120 suites / 1068 tests passed |
+| `npm test` | ✅ **OK** | 128 suites / 1247 tests passed |
 | `npm run test:e2e` | ✅ **OK** | 11 suites / 57 tests passed |
 | `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`) |
