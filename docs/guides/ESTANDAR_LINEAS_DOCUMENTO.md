@@ -1,7 +1,7 @@
 # Estándar de líneas de documento — `luna-document-lines` (Fase 2)
 
 > **Fecha:** 2026-07-20 · **Estado:** ✅ Ventas 100% · ⏳ Compras e Inventario pendientes
-> **Predecesor:** `docs/PLAN_MIGRACION_DOCUMENT_LINES_TABLE.md` (Fases 0 y 1).
+> **Predecesor:** plan de migración inicial de la tabla de líneas (Fases 0 y 1), removido en la reorganización de documentación; el historial completo permanece en git.
 > **Audiencia:** cualquier agente/persona que migre un formulario de documento (compras, inventario) o cree uno nuevo.
 
 ---
@@ -221,7 +221,7 @@ Estas tabs siguen usando `<luna-data-table>` propia (no el detail component), co
 | sale-reserve-invoices | Custom: `sourceQty` ("Entregado"), `invoicedQty` ("Facturado") con markup condicional cotización/entrega. |
 | sales-returns | Custom: `manualAccount` (binding corregido). batch/serial editables en OPEN guardada (default canónico; antes siempre readonly). |
 | sales-credit-notes | Custom: `manualAccount`, `batch`, `serial` (readonly `!canEdit \|\| !!noteId` difiere del canónico a propósito). |
-| sales-debit-notes | ⏸️ **Bloqueado por backend**: no existe `SalesDebitNoteItem` en el schema (documento solo-cabecera). Ver `docs/CORRECCIONES_INTEGRALES_PROGRESO.md` C4. |
+| sales-debit-notes | ⏸️ **Bloqueado por backend**: no existe `SalesDebitNoteItem` en el schema (documento solo-cabecera). Ver `docs/archive/CORRECCIONES_INTEGRALES_PROGRESO.md` C4. |
 
 ### Compras — ⏳ pendientes (tienen shell Fase 1)
 
