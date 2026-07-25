@@ -1,6 +1,6 @@
 # Estándar de líneas de documento — `luna-document-lines` (Fase 2)
 
-> **Fecha:** 2026-07-25 · **Estado:** ✅ Ventas 100% · ✅ Botón eliminar estandarizado en ventas y compras migradas · ⏳ Compras e Inventario pendientes de migración completa
+> **Fecha:** 2026-07-25 · **Estado:** ✅ Ventas 100% · ✅ Botón eliminar estandarizado en ventas, compras, pagos e inventario · ⏳ Migración visual a `<luna-document-lines>` pendiente en compras e inventario
 > **Predecesor:** plan de migración inicial de la tabla de líneas (Fases 0 y 1), removido en la reorganización de documentación; el historial completo permanece en git.
 > **Audiencia:** cualquier agente/persona que migre un formulario de documento (compras, inventario) o cree uno nuevo.
 
@@ -309,9 +309,27 @@ Los componentes de tablas (`luna-document-lines-detail`, `document-line-taxes-ta
 | purchase-reserve-invoices | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts (tab costs sin columna actions). |
 | purchase-credit-notes | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts/costs; se preserva `!!noteId` en `[disabled]`. |
 | purchase-returns | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts/costs. |
-| purchase-requests | ⏳ Pendiente de migración a `<luna-document-lines>`. |
+| purchase-requests | ✅ Botón eliminar estandarizado en detail (estructura actual no usa `<luna-document-lines>`). |
 
 En celda item usar `[canBePurchased]` en vez de `[canBeSold]`.
+
+### Pagos — ✅ botón eliminar estandarizado (2026-07-25)
+
+| Formulario | Notas |
+|------------|-------|
+| incoming-payments | Fix 2026-07-25: botón eliminar estandarizado en account lines, métodos de pago, pagos desde factura y asignación manual. |
+| outgoing-payments | Fix 2026-07-25: botón eliminar estandarizado en account lines, pagos desde factura, métodos de pago y asignación manual. |
+
+### Inventario — ✅ botón eliminar estandarizado (2026-07-25) · ⏳ migración visual completa pendiente
+
+| Formulario | Notas |
+|------------|-------|
+| stock-entries | Fix 2026-07-25: botón eliminar estandarizado en detail y costs. |
+| stock-exits | Fix 2026-07-25: botón eliminar estandarizado en detail y costs. |
+| stock-transfers | Fix 2026-07-25: botón eliminar estandarizado en detail y costs. |
+| stock-adjustments | Fix 2026-07-25: botón eliminar estandarizado en detail y costs. |
+| stock-counts | Fix 2026-07-25: botón eliminar estandarizado; `canEdit` expuesto como getter de `canEditLines`. |
+| assembly-orders | N/A: tabla de componentes del BOM es solo lectura, sin botón eliminar.
 
 ### Fase 0 (sin shell) — ⏳ por evaluar
 
@@ -335,4 +353,4 @@ En celda item usar `[canBePurchased]` en vez de `[canBeSold]`.
 
 ---
 
-*Última actualización: 2026-07-25 — estandarización de botón eliminar aplicada a todas las formas de ventas y compras migradas; patrón de change detection documentado.*
+*Última actualización: 2026-07-25 — estandarización de botón eliminar aplicada a ventas, compras, pagos e inventario; patrón de change detection documentado.*
