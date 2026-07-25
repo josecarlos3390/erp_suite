@@ -1,6 +1,6 @@
 # Estándar de líneas de documento — `luna-document-lines` (Fase 2)
 
-> **Fecha:** 2026-07-20 · **Estado:** ✅ Ventas 100% · ⏳ Compras e Inventario pendientes
+> **Fecha:** 2026-07-25 · **Estado:** ✅ Ventas 100% · ⏳ Compras e Inventario pendientes
 > **Predecesor:** plan de migración inicial de la tabla de líneas (Fases 0 y 1), removido en la reorganización de documentación; el historial completo permanece en git.
 > **Audiencia:** cualquier agente/persona que migre un formulario de documento (compras, inventario) o cree uno nuevo.
 
@@ -55,7 +55,7 @@ El `@switch` del detail reconoce estas keys (declarar con `cell` según tipo):
 | `projectCode` | `luna-input` texto | |
 | `dimension1`–`dimension5` | `app-cost-center-selector` | `[costCentersByDimension]`, `[dimensionLabels]`. |
 | `lineStatus` | `app-line-status-badge` | Solo si el documento tiene estado por línea. |
-| `actions` | botón eliminar | Emite `(removeLine)`; solo si `canEdit`. |
+| `actions` | botón eliminar | Columna siempre presente; el botón se renderiza solo si `canEdit`. Emite `(removeLine)`. Ver §5.6. |
 
 > Nota: `cell: 'custom'` en la columna es solo declarativo — el render real lo decide la KEY en el `@switch`. Una key no listada cae al `@default` (ver §4).
 
@@ -130,7 +130,10 @@ get lineDetailColumns(): LunaDocumentLineDetailColumn[] {
     // ... dimension2-5 ...
   ];
   if (this.orderId) cols.push({ key: 'lineStatus', label: 'Estado', cell: 'status' });
-  if (this.canEdit) cols.push({ key: 'actions', label: '', cell: 'actions' });
+  // Columna actions SIEMPRE presente; la visibilidad del botón la controla
+  // canEdit dentro del template (#actions / #actions2 / #actions3). Evita
+  // que la columna desaparezca en OnPush cuando canEdit fluctúa al cargar.
+  cols.push({ key: 'actions', label: '', cell: 'actions' });
   return cols;
 }
 ```
@@ -168,8 +171,10 @@ Casos de uso reales ya aplicados: `manualAccount` (delivery-orders, sale-invoice
 
 Estas tabs siguen usando `<luna-data-table>` propia (no el detail component), con reglas estrictas:
 
-1. **`[formArray]="itemsArray"`** — nunca `[data]="itemsArray.controls"`.
-2. **Slots `#cell` y `#actions`** — `luna-data-table` solo reconoce esos nombres. Usar `#cell2`/`#cell3`/`#actions2` hace que la celda caiga al fallback y la columna ARTÍCULO renderice **vacía** (bug real resuelto en sales-orders, 2026-07-20).
+1. **`[formArray]="itemsArray"`** — nunca `[data]="itemsArray.controls"`. Con `formArray`, `luna-data-table` asigna `formGroup` a cada fila y permite usar `formControlName`/`[formControl]` correctamente.
+2. **Slots de template**:
+   - Tabla única en el componente: usar `#cell` y `#actions`.
+   - Múltiples tablas en el mismo componente (p. ej. tabs discounts + costs): usar `#cell2`/`#actions2` y `#cell3`/`#actions3`. `luna-data-table` las reconoce y `_effectiveCellTemplate` / `_effectiveActionsTemplate` resuelven la primera disponible.
 3. **Celda `item` = `<app-item-combobox>`**, no spans de texto:
    ```html
    <app-item-combobox
@@ -192,10 +197,78 @@ Estas tabs siguen usando `<luna-data-table>` propia (no el detail component), co
    }
    ```
 5. **Account selector por línea**: siempre `[formControl]="row.get('acctCode')"`. El `formControlName="acctCode"` heredado estaba roto (resolvía contra el form raíz) — corregido en todos los forms migrados.
+6. **Botón eliminar**: la columna `actions` debe existir siempre; el botón se envuelve con `@if (canEdit)` dentro del template `#actions`/`#actions2`/`#actions3`. Esto aplica también a la tab **Impuestos** (`document-line-taxes-tab`).
+   ```html
+   <ng-template #actions let-row let-index="index">
+     @if (canEdit) {
+       <luna-button
+         variant="destructive"
+         size="sm"
+         [disabled]="itemsArray.length === 1"
+         (lunaClick)="removeItem(index)"
+         action="close"
+       ></luna-button>
+     }
+   </ng-template>
+   ```
 
 ---
 
-## 6. Checklist de migración por formulario
+## 6. Change detection en líneas de documento (OnPush)
+
+Todos los componentes del estándar usan `ChangeDetectionStrategy.OnPush`. Los cálculos de línea mutan el `FormArray` con `emitEvent: false` para evitar ciclos infinitos, por lo que el render no se dispara solo. Se aplican estas reglas:
+
+### 6.1 `markForCheck()` vs `detectChanges()`
+
+| Escenario | Método | Razón |
+|-----------|--------|-------|
+| Respuesta asíncrona de `HttpClient` (withFetch) | `detectChanges()` | `markForCheck()` no garantiza tick porque con `withFetch()` no corre dentro de Zone.js. |
+| Evento síncrono del usuario que muta FormArray y requiere refresco inmediato de totales | `detectChanges()` | Fuerza re-evaluación de getters (`subtotal`, `tax`, `total`) en el mismo tick. |
+| Cambio de estado interno que ya será cubierto por un tick próximo (evento padre, async pipe, etc.) | `markForCheck()` | Suficiente si hay un ancestro que forzará CD. |
+
+### 6.2 Cambio de indicador de impuestos
+
+Flujo canónico:
+
+```
+<app-tax-indicator-selector> (línea)
+  → (indicatorSelected)
+  → <app-document-line-taxes-tab>.handleTaxChange()
+  → <luna-document-lines>.onTaxChange()
+  → Formulario padre.onLineTaxChange(index, taxId)
+  → DocumentLineArrayService.applyLineTax(...)  // actualiza taxAmount, subtotal, etc.
+  → this.cdr.detectChanges()                    // fuerza render de totales
+```
+
+Ejemplo en el formulario padre:
+
+```typescript
+onLineTaxChange(index: number, taxIndicatorId: number | null) {
+  this.lineSvc.applyLineTax(
+    index,
+    this.itemsArray,
+    taxIndicatorId,
+    this.taxIndicators,
+    this.discountMode,
+  );
+  if (!this.isLoading) this.hasChanges = true;
+  // applyLineTax muta controles disabled con emitEvent: false; los getters de
+  // totales solo se re-evalúan si forzamos CD de forma síncrona.
+  this.cdr.detectChanges();
+}
+```
+
+### 6.3 Cálculo de línea tras cambios manuales
+
+`CommercialDocumentFormBase.calculateLine()` ya usa `markForCheck()`. Si el cambio proviene de un input dentro de la misma vista y los totales no se refrescan, el caller puede forzar `detectChanges()` tras `calculateLine()`.
+
+### 6.4 Suscripción a `itemsArray.valueChanges`
+
+Los componentes de tablas (`luna-document-lines-detail`, `document-line-taxes-tab`, `document-line-udfs-tab`) se suscriben a `itemsArray.valueChanges` y llaman `markForCheck()`. Esto cubre cambios en controles **habilitados** desde otra pestaña, pero **no** cambios en controles `disabled` (como `taxAmount`, `subtotal`, `discountTotal`). Por eso el formulario padre siempre debe forzar CD tras mutar esos controles.
+
+---
+
+## 7. Checklist de migración por formulario
 
 1. Leer `FRONTEND_GUIDE.md` completo (regla AGENTS.md).
 2. Inventariar las tablas actuales: detail, discounts, costs + TODAS sus columnas (salida esperada: ninguna se pierde).
@@ -203,18 +276,20 @@ Estas tabs siguen usando `<luna-data-table>` propia (no el detail component), co
 4. DETAIL → `<luna-document-lines-detail>` con `lineDetailColumns` declarativo; cablear handlers existentes (`itemNameForRow`, `isItemReadonly`, trazas, dimensions, branchId, ordersCount).
 5. Columnas sin key canónica → `cell: 'custom'` + `<ng-template lunaDocumentLineDetailCell>`.
 6. DISCOUNTS/COSTS → reglas de §5.
-7. Shell → `getItemNameFn` + `itemSelected` si hay modo manual.
-8. Imports: agregar `LunaDocumentLinesDetailComponent`, `LunaDocumentLineDetailCellDirective`, `ItemComboboxComponent`; eliminar los que queden muertos (`ItemNameClampDirective`, `withLineColWidths`, comboboxes sueltos, etc.).
-9. Verificar: `npx eslint src/app/pages/<form> --ext .ts,.html` (0 errores) + `npx ngc --noEmit -p tsconfig.app.json` (0 errores del form) + spec del formulario si existe.
-10. Reportar cambios de comportamiento (readonly, formatos, min/step) — no esconderlos.
+7. Verificar botón eliminar: columna `actions` siempre presente y envuelta en `@if (canEdit)`.
+8. Verificar recálculo de impuestos: `onLineTaxChange` fuerza CD (`detectChanges()`) tras `applyLineTax`.
+9. Shell → `getItemNameFn` + `itemSelected` si hay modo manual.
+10. Imports: agregar `LunaDocumentLinesDetailComponent`, `LunaDocumentLineDetailCellDirective`, `ItemComboboxComponent`; eliminar los que queden muertos (`ItemNameClampDirective`, `withLineColWidths`, comboboxes sueltos, etc.).
+11. Verificar: `npx eslint src/app/pages/<form> --ext .ts,.html` (0 errores) + `npx ngc --noEmit -p tsconfig.app.json` (0 errores del form) + spec del formulario si existe.
+12. Reportar cambios de comportamiento (readonly, formatos, min/step) — no esconderlos.
 
-## 7. Estado por formulario
+## 8. Estado por formulario
 
 ### Ventas — ✅ completos (2026-07-20)
 
 | Formulario | Notas |
 |------------|-------|
-| sales-quotations | Referencia piloto. |
+| sales-quotations | Referencia piloto. Fix 2026-07-25: botón eliminar estandarizado en discounts/costs; tab taxes usa `@if (canEdit)` para el botón eliminar. |
 | sales-orders | Referencia principal. |
 | delivery-orders | Custom: `invoicedQty`, `pendingInvoiceQty`, `manualAccount`. `[canEdit]="canEdit && !deliveryId"` (cantidad bloqueada en entregas posteadas → proyecto/dimensiones readonly en guardadas, trade-off documentado). |
 | sale-invoices | Custom: `manualAccount`. Fix: `rowState` se puebla en `loadIntoForm` (nombres de ítem en discounts/costs). |
@@ -233,7 +308,7 @@ En celda item usar `[canBePurchased]` en vez de `[canBeSold]`.
 - purchase-debit-notes: verificar si tiene líneas (su par de ventas no las tiene).
 - stock-transfers, assembly-orders: documentos de inventario con estructura distinta; evaluar adopción parcial (tabs que apliquen).
 
-## 8. Desviaciones aceptadas (convergencia al patrón)
+## 9. Desviaciones aceptadas (convergencia al patrón)
 
 | Desviación | Forms | Motivo |
 |-----------|-------|--------|
@@ -242,7 +317,7 @@ En celda item usar `[canBePurchased]` en vez de `[canBeSold]`.
 | `lineTotal` = bruto (price × qty) | todos | El neto con descuento vive en la tab Descuentos. |
 | Formatos number homologados (1.2-2 / 1.0-2) | varios | Convergencia visual. |
 
-## 9. Features derivadas (trabajo aparte)
+## 10. Features derivadas (trabajo aparte)
 
 1. **Líneas en notas de débito** (`SalesDebitNoteItem` en schema + DTOs + contabilidad por líneas) — desbloquea sales-debit-notes y probablemente purchase-debit-notes.
 2. **Documento de servicio (SAP B1)**: toggle Artículo/Servicio en cabecera; líneas de servicio = descripción + cuenta contable + monto, sin stock; asiento por cuenta de línea. Decisión del usuario 2026-07-20: se planea aparte, NO improvisar con columnas sueltas.
@@ -250,4 +325,4 @@ En celda item usar `[canBePurchased]` en vez de `[canBeSold]`.
 
 ---
 
-*Última actualización: 2026-07-20 — cierre de la estandarización de ventas.*
+*Última actualización: 2026-07-25 — estandarización de botón eliminar y patrón de change detection en líneas de documento.*
