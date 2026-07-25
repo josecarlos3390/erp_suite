@@ -1,7 +1,7 @@
 # BACKEND_GUIDE.md — backend-erp
 
 > Guía única y canónica para el desarrollo backend del ERP. Cualquier nuevo módulo, servicio, o endpoint debe seguir estos patrones.
-> **Última actualización:** 2026-07-25.  
+> **Última actualización:** 2026-07-25 (sección ShortName y estado de testing).  
 > **Scope:** NestJS 11.0.1, TypeScript 5.7.3, Prisma 6.19.2, PostgreSQL.
 
 ---
@@ -413,6 +413,47 @@ Para cambiar las monedas de un tenant, actualizar directamente el modelo `Tenant
 
 ---
 
+## 7.5 Sistema ShortName — Cuentas Asociadas y Trazabilidad en Asientos
+
+> Implementado en Jun 2026. Permite que una cuenta de mayor (CxC, CxP, etc.) se desagregue por código de partner en el libro mayor, manteniendo trazabilidad al documento origen. Detalle completo en `docs/guides/ACCOUNTING_ENTRIES_GUIDE.md`.
+
+### Conceptos clave
+
+| SAP B1 | Equivalente ERP | Campo |
+|---|---|---|
+| `JDT1.Account` | Cuenta contable real | `JournalEntryLine.accountId` |
+| `JDT1.ShortName` | Código del partner (CxC/CxP) | `JournalEntryLine.partnerCode` |
+| `JDT1.ContraAct` | Cuenta contraaria | `JournalEntryLine.contraAccountId` |
+| `JDT1.TransId` | ID del asiento | `JournalEntry.id` |
+| `JDT1.SourceID` / `SourceLine` | Documento origen | `JournalEntry.sourceDocumentType` + `sourceDocumentId` |
+
+### Cuentas que requieren partner (`requiresPartner = true`)
+
+El seed marca como `requiresPartner: true` las cuentas de CxC, CxP, documentos por cobrar/pagar, y anticipos de clientes/proveedores (ver `src/common/chart-of-accounts.data.ts`). Si una línea de asiento usa una de estas cuentas, `JournalEntriesService.validatePartnerRequirements` exige `partnerId`.
+
+### Configuración en el maestro de partners
+
+Cada partner debe tener configuradas sus cuentas contables en la pestaña "Contabilidad":
+
+| Campo | Tipo de partner | Cuenta por defecto |
+|---|---|---|
+| `receivableAccountId` | Cliente / Ambos | `1.1.2.01.001` (CxC Clientes M/N) |
+| `advanceReceivableAccountId` | Cliente / Ambos | `2.1.5.01.001` (Anticipo Clientes M/N) |
+| `payableAccountId` | Proveedor / Ambos | `2.1.1.01.001` (CxP Proveedores M/N) |
+| `advancePayableAccountId` | Proveedor / Ambos | `1.1.2.05.001` (Anticipos Proveedores Nacionales) |
+
+### Flujo automático
+
+`AccountingEngine._buildSaleInvoiceJournalEntryLines()` (y sus pares de compras/pagos/stock) determinan la cuenta vía `AccountDeterminationService`, setean `partnerId` y el backend denormaliza `partnerCode` desde `Partner.code` en `JournalEntryLine` al persistir.
+
+### Validaciones y fixes recientes (Jul 2026)
+
+- `reverseJournalEntry` copia todos los campos de doble expresión (`debitLocal`, `creditLocal`, `debitSystem`, `creditSystem`), moneda, dimensiones y referencias.
+- `post()` revalida que `totalDebit === totalCredit` (tolerancia 0.001) antes de cambiar el estado a `POSTED`.
+- `JournalEntryLine` incluye `projectId`, `ref1`, `ref2` y `dueDate`.
+
+---
+
 ## 8. Integración bancaria — Bank Statement Posting
 
 ### 8.1 Flujo de posting de extractos bancarios
@@ -474,7 +515,7 @@ npm run test:e2e         # 11 suites / 57 tests
 npm run perf:k6          # 5/5 escenarios passed
 ```
 
-### Estado actual (2026-07-03)
+### Estado actual (2026-07-25)
 
 | Comando | Estado | Evidencia |
 |---------|--------|-----------|
