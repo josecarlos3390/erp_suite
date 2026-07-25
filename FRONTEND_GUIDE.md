@@ -939,7 +939,7 @@ Reglas rápidas (detalle en el doc enlazado):
 - Todo documento comercial usa `<luna-document-lines>` (shell) + `<luna-document-lines-detail>` con `lineDetailColumns` declarativo para la tab Detalle.
 - **Ninguna columna puede quedar fuera** al migrar: las que no tengan celda canónica se proyectan con `<ng-template lunaDocumentLineDetailCell="key">`.
 - En tabs Descuentos/Costos (`<luna-data-table>` propia): `[formArray]="itemsArray"`, slots `#cell`/`#actions`. Si hay varias tablas en el mismo componente, usar `#cell2`/`#actions2` (o `#cell3`/`#actions3`); `luna-data-table` las reconoce.
-- **Botón eliminar estandarizado**: columna `actions` siempre presente; el botón se envuelve con `@if (canEdit)` dentro del template de acciones. Aplica a detail, discounts, costs y taxes.
+- **Botón eliminar estandarizado**: columna `actions` siempre presente; el botón se envuelve con `@if (canEdit)` dentro del template de acciones. Aplica a detail, discounts, costs y taxes. Aplicado en todos los formularios de ventas y compras migrados (2026-07-25).
 - Prohibido `[formControl]` + `[disabled]` en el mismo control: usar `@if (canEdit) { input } @if (!canEdit) { span }`.
 - Selectores por línea (cuenta, etc.): siempre `[formControl]="row.get('campo')"`, nunca `formControlName` sin contexto de fila.
 - **Cambio de impuesto**: `onLineTaxChange()` debe llamar `applyLineTax()` y luego `this.cdr.detectChanges()` para refrescar los totales del documento, porque los montos afectados viven en controles `disabled` con `emitEvent: false`.

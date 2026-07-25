@@ -1,6 +1,6 @@
 # Estándar de líneas de documento — `luna-document-lines` (Fase 2)
 
-> **Fecha:** 2026-07-25 · **Estado:** ✅ Ventas 100% · ⏳ Compras e Inventario pendientes
+> **Fecha:** 2026-07-25 · **Estado:** ✅ Ventas 100% · ✅ Botón eliminar estandarizado en ventas y compras migradas · ⏳ Compras e Inventario pendientes de migración completa
 > **Predecesor:** plan de migración inicial de la tabla de líneas (Fases 0 y 1), removido en la reorganización de documentación; el historial completo permanece en git.
 > **Audiencia:** cualquier agente/persona que migre un formulario de documento (compras, inventario) o cree uno nuevo.
 
@@ -289,18 +289,28 @@ Los componentes de tablas (`luna-document-lines-detail`, `document-line-taxes-ta
 
 | Formulario | Notas |
 |------------|-------|
-| sales-quotations | Referencia piloto. Fix 2026-07-25: botón eliminar estandarizado en discounts/costs; tab taxes usa `@if (canEdit)` para el botón eliminar. |
-| sales-orders | Referencia principal. |
-| delivery-orders | Custom: `invoicedQty`, `pendingInvoiceQty`, `manualAccount`. `[canEdit]="canEdit && !deliveryId"` (cantidad bloqueada en entregas posteadas → proyecto/dimensiones readonly en guardadas, trade-off documentado). |
-| sale-invoices | Custom: `manualAccount`. Fix: `rowState` se puebla en `loadIntoForm` (nombres de ítem en discounts/costs). |
-| sale-reserve-invoices | Custom: `sourceQty` ("Entregado"), `invoicedQty` ("Facturado") con markup condicional cotización/entrega. |
-| sales-returns | Custom: `manualAccount` (binding corregido). batch/serial editables en OPEN guardada (default canónico; antes siempre readonly). |
-| sales-credit-notes | Custom: `manualAccount`, `batch`, `serial` (readonly `!canEdit \|\| !!noteId` difiere del canónico a propósito). |
+| sales-quotations | Referencia piloto. Fix 2026-07-25: botón eliminar estandarizado en discounts/costs/taxes. |
+| sales-orders | Referencia principal. Fix 2026-07-25: botón eliminar estandarizado en discounts/costs. |
+| delivery-orders | Custom: `invoicedQty`, `pendingInvoiceQty`, `manualAccount`. `[canEdit]="canEdit && !deliveryId"`. Tabs discounts/costs no tienen botón eliminar (diseño actual). |
+| sale-invoices | Custom: `manualAccount`. Fix: `rowState` se puebla en `loadIntoForm`. Fix 2026-07-25: botón eliminar estandarizado en discounts. |
+| sale-reserve-invoices | Custom: `sourceQty` ("Entregado"), `invoicedQty` ("Facturado") con markup condicional cotización/entrega. Fix 2026-07-25: botón eliminar estandarizado en discounts. |
+| sales-returns | Custom: `manualAccount` (binding corregido). batch/serial editables en OPEN guardada. Fix 2026-07-25: botón eliminar estandarizado en discounts/costs. |
+| sales-credit-notes | Custom: `manualAccount`, `batch`, `serial` (readonly `!canEdit \|\| !!noteId` difiere del canónico a propósito). Fix 2026-07-25: botón eliminar estandarizado en discounts/costs. |
 | sales-debit-notes | ⏸️ **Bloqueado por backend**: no existe `SalesDebitNoteItem` en el schema (documento solo-cabecera). Ver `docs/archive/CORRECCIONES_INTEGRALES_PROGRESO.md` C4. |
 
-### Compras — ⏳ pendientes (tienen shell Fase 1)
+### Compras — ✅ botón eliminar estandarizado (2026-07-25) · ⏳ migración visual completa pendiente
 
-purchase-requests, purchase-quotations, purchase-orders, purchase-receipts, purchase-invoices, purchase-reserve-invoices, purchase-credit-notes, purchase-returns.
+| Formulario | Notas |
+|------------|-------|
+| purchase-quotations | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts/costs. |
+| purchase-orders | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts/costs. |
+| purchase-receipts | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts/costs; se preserva `!!receiptId` en `[disabled]`. |
+| purchase-invoices | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts (tab costs sin columna actions). |
+| purchase-reserve-invoices | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts (tab costs sin columna actions). |
+| purchase-credit-notes | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts/costs; se preserva `!!noteId` en `[disabled]`. |
+| purchase-returns | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts/costs. |
+| purchase-requests | ⏳ Pendiente de migración a `<luna-document-lines>`. |
+
 En celda item usar `[canBePurchased]` en vez de `[canBeSold]`.
 
 ### Fase 0 (sin shell) — ⏳ por evaluar
@@ -325,4 +335,4 @@ En celda item usar `[canBePurchased]` en vez de `[canBeSold]`.
 
 ---
 
-*Última actualización: 2026-07-25 — estandarización de botón eliminar y patrón de change detection en líneas de documento.*
+*Última actualización: 2026-07-25 — estandarización de botón eliminar aplicada a todas las formas de ventas y compras migradas; patrón de change detection documentado.*
