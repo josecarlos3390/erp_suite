@@ -17,6 +17,7 @@
 7. [Sistema de moneda en contabilidad](#7-sistema-de-moneda-en-contabilidad-multi-divisa)
 8. [Integración bancaria — Bank Statement Posting](#8-integración-bancaria--bank-statement-posting)
 9. [Testing](#9-testing)
+10. [Documentación adicional del backend](#10-documentación-adicional-del-backend)
 
 ---
 
@@ -524,3 +525,17 @@ npm run perf:k6          # 5/5 escenarios passed
 | `npm test` | ✅ **OK** | 128 suites / 1247 tests passed |
 | `npm run test:e2e` | ✅ **OK** | 11 suites / 57 tests passed |
 | `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`) |
+
+---
+
+## 10. Documentación adicional del backend
+
+Estos documentos complementan a esta guía canónica. No son obligatorios para tareas rutinarias, pero deben consultarse antes de trabajar en los dominios que cubren.
+
+| Archivo | Contenido | Cuándo consultar |
+|---------|-----------|------------------|
+| `docs/guides/ACCOUNTING_ENTRIES_GUIDE.md` | Estructura de asientos contables por tipo de documento (ventas, compras, stock, pagos). | Al trabajar contabilidad, asientos automáticos o determinación de cuentas. |
+| `docs/reference/ACCOUNTS_DETERMINATION_FIX.md` | Análisis y corrección de paridad de cuentas contables por nivel (artículo, grupo, almacén). | Como referencia del fix de paridad de cuentas y determinación. |
+| `docs/reference/SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md` | Análisis comparativo de determinación de cuentas: SAP B1 vs ERP. | Como referencia de arquitectura contable. |
+| `backend-erp/docs/fixed-assets.md` | Documentación del módulo de Activos Fijos y depreciación. | Al trabajar en `backend-erp/src/fixed-assets/`. |
+| `docs/archive/` | Informes históricos de frentes completados y cierres de fase. | Solo si se necesita trazabilidad histórica de una migración ya cerrada. |

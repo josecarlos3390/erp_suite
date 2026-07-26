@@ -19,6 +19,7 @@
 9. [Estándares de tipado](#9-estándares-de-tipado)
 10. [Líneas de documento — estándar luna-document-lines](#10-líneas-de-documento--estándar-luna-document-lines)
 11. [Checklists](#11-checklists)
+12. [Documentación adicional del frontend](#12-documentación-adicional-del-frontend)
 
 ---
 
@@ -1115,3 +1116,17 @@ Reglas rápidas (detalle en el doc enlazado):
 - [ ] ¿Importa `LunaMenuComponent`?
 - [ ] ¿Usa `goView()` / `goEdit()` para navegación?
 - [ ] ¿Protege acciones con `canEdit` si aplica?
+
+---
+
+## 12. Documentación adicional del frontend
+
+Estos documentos complementan a esta guía canónica. No son obligatorios para tareas rutinarias, pero deben consultarse antes de trabajar en los dominios que cubren.
+
+| Archivo | Contenido | Cuándo consultar |
+|---------|-----------|------------------|
+| `erp-frontend/docs/monorepo/DESIGN.md` | Design System LUNA completo: tokens, componentes, layouts, dark mode, animaciones. | Al diseñar un componente nuevo o modificar el design system. |
+| `docs/guides/ESTANDAR_LINEAS_DOCUMENTO.md` | Estándar de líneas de documento (`luna-document-lines`): celdas canónicas/custom, checklist, estado por formulario. | Antes de migrar o crear formularios de documentos (compras, inventario). |
+| `docs/plans/plan-consistencia-visual-v2.md` | Plan validado de remediación visual frontend (7 fases). | Al planificar mejoras visuales o migraciones de tokens/spacing. |
+| `docs/plans/plan-mejoras-ux-ui-frontend.md` | Recomendaciones UX/UI activas: accesibilidad, copy, limpieza de estilos. | Al atender deuda técnica de UX/UI fuera del scope de una feature. |
+| `docs/archive/` | Informes históricos de frentes completados y cierres de fase. | Solo si se necesita trazabilidad histórica de una migración ya cerrada. |
