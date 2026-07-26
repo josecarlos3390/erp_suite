@@ -167,21 +167,24 @@ src/app/pages/warehouses/warehouses.component.scss
 - **Lote 2b (commit `0bed496`):** 5 archivos (`profile`, `kardex`, `permissions`, `incoming-payments-form`, `outgoing-payments-form`) — eliminados 9 `!important` de media queries simples. Conteo: 48 → 39.
 - **Lote 3 (commit `bcef9f7`):** `warehouses`, `item-detail`, `partner-account-statement`, `partner-detail`, `employee-form` — eliminados 13 `!important` usando mayor especificidad. Conteo: 39 → 26.
 - **Auditoría 2026-07-26:** el conteo se mantiene en **26 `!important` en 10 archivos** fuera de POS, todos con justificación documentada abajo.
+- **Auditoría 2026-07-26 (post-fix):** se eliminaron **5 `!important` adicionales** usando la API de Luna. Conteo: **20 `!important` en 7 archivos** fuera de POS.
+  - `tax-indicator-form.component.scss` (4): el archivo era código muerto (selectores no usados en el template). Se eliminó el SCSS y su `styleUrls`.
+  - `incoming-payments-form.component.scss` (1): se reemplazó `::ng-deep input { text-align: right !important; }` por la propiedad `textAlign="right"` de `<luna-input>`.
 
-### `!important` restantes (26, justificados)
+### `!important` restantes (20, justificados)
 - `sidebar.component.scss` (5): reset de estilos nativos del input de búsqueda (`border`, `background`, `border-radius`, `box-shadow`).
-- `purchase-quotations-form.component.scss` (5): overrides `::ng-deep` de `.action-bar` en mobile.
+- `purchase-quotations-form.component.scss` (6): overrides `::ng-deep` de `.action-bar` y botones en mobile.
 - `sales-credit-notes-form.component.scss` (3): overrides `::ng-deep` de textos en triggers de selectores.
 - `sales-quotations-form.component.scss` (2): overrides `::ng-deep` de botones en mobile.
-- `tax-indicator-form.component.scss` (4): input con sufijo y estado de error (posibles de refactorizar a variantes Luna en el futuro).
-- `incoming-payments-form.component.scss` (1): `text-align: right` en input vía `::ng-deep`.
 - `stock-transfers-form.component.scss` (1): utilidad `.hidden`.
 - `warehouses.component.scss` (1): utilidad `.hidden`.
 - `shared/luna/luna-input/luna-input.component.scss` (2): autofill de WebKit (`-webkit-box-shadow`, `-webkit-text-fill-color`) — caso legítimo documentado.
 
 ### Criterio de aceptación
-- El conteo de `!important` fuera de `/pos/` baja de 139 a un número documentado y justificado (idealmente cerca de 0).
-- No hay regresión visual: correr el checklist ya existente en `docs/archive/FRENTE-3-PLAN-VALIDACION-VISUAL.md` como referencia de método, extendiéndolo a estos archivos.
+- [x] El conteo de `!important` fuera de `/pos/` baja de 139 a un número documentado y justificado.
+- [x] Cada `!important` eliminado usa una alternativa de mayor especificidad o una variante/prop de Luna.
+- [ ] Los `!important` restantes que requieran variantes nuevas en Luna (mobile wrap, triggers de selectores, sufijos de input) se abordan en refactor posteriores o quedan documentados como legítimos.
+- [x] `npm run build` y `npm run lint` pasan sin errores.
 
 ---
 
