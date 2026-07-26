@@ -44,14 +44,33 @@ Hay una inconsistencia de copy: `luna-icon-button` dice `"Más acciones"` y `lun
 ### Contexto
 Fuera del caso anterior, solo 9 archivos `.html` en todo el proyecto usan `aria-label` de forma explícita. No hay evidencia de gestión de foco en `luna-modal` (foco atrapado / devuelto al cerrar), ni de `role`/landmarks en el layout principal.
 
-### Objetivo
-1. Revisar `luna-modal`, `luna-select`, `luna-menu` y `luna-tabs`: confirmar que son operables 100% por teclado (Tab, Escape, flechas donde aplique) y que el foco se atrapa dentro del modal mientras está abierto y regresa al disparador al cerrarlo.
-2. Revisar todos los `luna-icon-button` / `luna-action-icon` que no llevan texto visible (no solo `moreHorizontal`) y asegurar `ariaLabel`.
-3. Agregar un skip-link ("Saltar al contenido principal") en `src/app/core/layout/layout.component.html`.
+### Estado actual ✅ RESUELTO / PARCIALMENTE MEJORADO
+
+Auditoría 2026-07-26 contra el código: la mayoría de los componentes LUNA ya cumplen con los patrones de accesibilidad requeridos.
+
+| Componente | Estado | Detalle |
+|---|---|---|
+| `luna-modal` | ✅ | `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, foco inicial en el panel, trampa de foco (Tab/Shift+Tab), Escape para cerrar, devolución de foco al disparador al cerrar. |
+| `luna-select` | ✅ | Usa `<select>` nativo; navegación por teclado y lectores de pantalla delegados al navegador. |
+| `luna-menu` | ✅ Navegación / ⚠️ ARIA mejorado | Flechas ↑↓/Home/End entre ítems, Escape cierra, foco vuelve al trigger. Se agregaron `id` únicos, `aria-controls` en el wrapper y `aria-labelledby` en el dropdown. `luna-button` ahora expone `[ariaControls]`, por lo que triggers proyectados (ej. `document-more-actions-menu`, `document-copy-to-menu`) pueden enlazar directamente al menú. |
+| `luna-tabs` | ✅ | `role="tablist"`, `role="tab"`, `aria-selected`, tabindex dinámico, navegación con flechas/Home/End. |
+| `luna-icon-button` / `luna-action-icon` | ✅ | `luna-button` usa `aria-label="ariaLabel \|\| resolvedTitle \|\| text"`; para icon-only con `action` cae en `ACTION_TITLES`. `luna-icon-button` aplica default `"Más acciones"` para `moreHorizontal`. |
+| Skip-link | ✅ | Ya existe `<a class="skip-link" href="#main-content">` y `<main id="main-content" tabindex="-1">` con estilos que lo muestran al recibir foco. |
+
+### Mejoras aplicadas
+- `luna-button.component.ts`: nuevo input `ariaControls` para triggers de menús/dropdowns.
+- `luna-menu.component.ts`: IDs únicos para trigger y dropdown; `aria-controls` y `aria-labelledby`; comentario actualizado sobre el patrón recomendado.
+- `document-more-actions-menu.component.html` y `document-copy-to-menu.component.html`: usan `[ariaControls]="menu.dropdownId"` junto con `ariaHasPopup="menu"` y `[ariaExpanded]="open"`.
+
+### Pendiente (fuera del scope inmediato)
+- Los ~60 listados que usan `<luna-menu>` con trigger inline todavía dependen del wrapper ARIA de `luna-menu`; migrarlos uno a uno a `[ariaHasPopup]/[ariaExpanded]/[ariaControls]` en el `<luna-button>` trigger es un refactor mecánico grande que no se hace en este paso.
 
 ### Criterio de aceptación
-- Se puede completar el flujo "abrir modal → llenar formulario → guardar → modal se cierra → foco vuelve al botón que lo abrió" sin usar el mouse, en al menos 3 formularios distintos (ej. `purchase-orders-form`, `partners`, `warehouses`).
-- Lighthouse Accessibility score sube de forma medible (correr antes/después y adjuntar el delta en el PR).
+- [x] `luna-modal`, `luna-select`, `luna-menu` y `luna-tabs` son operables por teclado y anuncian roles/estados correctamente.
+- [x] Skip-link implementado en el layout.
+- [x] Botones de solo ícono tienen `aria-label` efectivo (via `action` title o `ariaLabel` explícito).
+- [ ] Verificación manual del flujo "abrir modal → llenar formulario → guardar → cerrar → foco vuelve al disparador" en 3 formularios (recomendado hacerlo en entorno local antes de cerrar la fase).
+- [ ] Medición Lighthouse Accessibility antes/después (delta en PR).
 
 ---
 
