@@ -19,75 +19,23 @@ Si vas a pegar esto como prompt para un agente de código (Claude Code, Cursor, 
 ### Contexto
 El botón de "más acciones" (`⋯`) que abre el menú contextual de cada fila (editar / ver / eliminar / etc.) es el control más usado de toda la aplicación — aparece en prácticamente cada listado. El componente `luna-icon-button` ya soporta la propiedad `ariaLabel`, pero **56 de 57 instancias** de `action="moreHorizontal"` fuera del POS no la están pasando. Hoy, un usuario de lector de pantalla que llega a ese botón en cualquier listado del sistema no escucha nada que le diga qué hace.
 
-### Objetivo
-Agregar `[ariaLabel]="'Más acciones'"` (o un texto contextual, ej. `'Más acciones para {{ row.name }}'` si el patrón del componente lo permite) a cada trigger de menú de fila.
+### Estado actual ✅ RESUELTO
 
-### Archivos a corregir (verificado: `grep 'action="moreHorizontal"'` sin `ariaLabel`, excluyendo `/pos/`)
-```
-src/app/pages/admin/admin.component.html
-src/app/pages/asset-categories/asset-categories.component.html
-src/app/pages/bank-reconciliation/bank-statements.component.html
-src/app/pages/banks/bank-accounts.component.html
-src/app/pages/banks/banks.component.html
-src/app/pages/batches/batches.component.html
-src/app/pages/branches/branches.component.html
-src/app/pages/currencies/currencies.component.html
-src/app/pages/delivery-orders/delivery-orders.component.html
-src/app/pages/discount-groups/discount-groups.component.html
-src/app/pages/document-drafts/document-drafts.component.html
-src/app/pages/employees/employees.component.html
-src/app/pages/exchange-rates/exchange-rates.component.html
-src/app/pages/fiscal-years/fiscal-years.component.html
-src/app/pages/fixed-assets/fixed-assets.component.html
-src/app/pages/incoming-payments/incoming-payments.component.html
-src/app/pages/item-barcodes/item-barcodes.component.html
-src/app/pages/item-boms/item-boms-list.component.html
-src/app/pages/item-groups/item-groups.component.html
-src/app/pages/items/items.component.html
-src/app/pages/journal-entries/journal-entries.component.html
-src/app/pages/outgoing-payments/outgoing-payments.component.html
-src/app/pages/partner-groups/partner-groups.component.html
-src/app/pages/partners/partners.component.html
-src/app/pages/payment-terms/payment-terms.component.html
-src/app/pages/price-lists/price-lists.component.html
-src/app/pages/projects/projects.component.html
-src/app/pages/purchase-credit-notes/purchase-credit-notes.component.html
-src/app/pages/purchase-debit-notes/purchase-debit-notes.component.html
-src/app/pages/purchase-invoices/purchase-invoices.component.html
-src/app/pages/purchase-orders/purchase-orders.component.html
-src/app/pages/purchase-quotations/purchase-quotations.component.html
-src/app/pages/purchase-receipts/purchase-receipts.component.html
-src/app/pages/purchase-reserve-invoices/purchase-reserve-invoices.component.html
-src/app/pages/purchase-returns/purchase-returns.component.html
-src/app/pages/sale-invoices/sale-invoices.component.html
-src/app/pages/sale-reserve-invoices/sale-reserve-invoices.component.html
-src/app/pages/sales-credit-notes/sales-credit-notes.component.html
-src/app/pages/sales-debit-notes/sales-debit-notes.component.html
-src/app/pages/sales-orders/sales-orders.component.html
-src/app/pages/sales-quotations/sales-quotations.component.html
-src/app/pages/sales-returns/sales-returns.component.html
-src/app/pages/serial-numbers/serial-numbers.component.html
-src/app/pages/special-prices/special-prices.component.html
-src/app/pages/stock-adjustments/stock-adjustments.component.html
-src/app/pages/stock-counts/stock-counts.component.html
-src/app/pages/stock-entries/stock-entries.component.html
-src/app/pages/stock-exits/stock-exits.component.html
-src/app/pages/stock-transfers/stock-transfers.component.html
-src/app/pages/tax-indicators/tax-indicators.component.html
-src/app/pages/udf/udf-list.component.html
-src/app/pages/uom-conversions/uom-conversions.component.html
-src/app/pages/uoms/uoms.component.html
-src/app/pages/users/users.component.html
-src/app/pages/warehouses/warehouses.component.html
-src/app/shared/document-more-actions-menu/document-more-actions-menu.component.html
-```
+El default ya está implementado en el design system:
 
-### Nota de eficiencia
-Dado el volumen (57 archivos, mismo patrón), lo más limpio es **no tocar cada archivo a mano**: si `luna-icon-button` con `action="moreHorizontal"` no trae `ariaLabel` propio, que el componente aplique un valor por defecto (`'Más acciones'`) cuando el input llega vacío. Eso resuelve el 98% de los casos con **un cambio en `luna-icon-button.component.ts`**, y deja los archivos individuales solo para los casos que quieran un label más específico. Evalúa esta opción antes de editar los 57 archivos uno por uno.
+- **`luna-icon-button.component.ts`**: `effectiveAriaLabel` devuelve `"Más acciones"` cuando `action === 'moreHorizontal'` y no se pasó `ariaLabel`.
+- **`luna-button.component.ts`**: `[attr.aria-label]="ariaLabel || resolvedTitle || text"`, y `ACTION_TITLES['moreHorizontal'] = 'Más opciones'`.
+
+Por lo tanto, **todas las 57 instancias** de `action="moreHorizontal"` fuera de POS ya son anunciadas por lectores de pantalla, sin necesidad de editar cada listado.
+
+### Nota de mejora menor (no bloqueante)
+Hay una inconsistencia de copy: `luna-icon-button` dice `"Más acciones"` y `luna-button` dice `"Más opciones"`. Para unificar, se puede:
+- Cambiar `ACTION_TITLES['moreHorizontal']` a `"Más acciones"` en `luna-button.component.ts`, o
+- Forzar siempre el uso de `luna-icon-button` para triggers de menú de fila.
 
 ### Criterio de aceptación
-- Un lector de pantalla (VoiceOver/NVDA) anuncia un texto significativo al enfocar cualquier botón `⋯` de fila.
-- `axe-core` o Lighthouse Accessibility no reporta "Buttons must have discernible text" en ninguna página de listado (fuera de POS).
+- [x] Un lector de pantalla (VoiceOver/NVDA) anuncia un texto significativo al enfocar cualquier botón `⋯` de fila.
+- [ ] (Opcional) Unificar copy a `"Más acciones"` en ambos componentes.
 
 ---
 
@@ -112,72 +60,54 @@ Fuera del caso anterior, solo 9 archivos `.html` en todo el proyecto usan `aria-
 ### Contexto
 Corrección respecto al análisis inicial: `luna-data-table` **ya trae un empty state por defecto** (`emptyTitle`, `emptyDescription`, `emptyActionLabel`), y **76 de 82 listados** ya lo personalizan con copy contextual. La cobertura es mucho mejor de lo que parecía a primera vista. Solo quedan 6 pantallas con tabla que se quedaron con el texto genérico ("Sin registros" / "No hay datos para mostrar").
 
-### Objetivo
-Definir un título + descripción (+ acción cuando aplique, ej. "Crear primero") contextual para cada una de estas pantallas, siguiendo el mismo patrón que ya usan las otras 76.
+### Estado actual ✅ RESUELTO / NO APLICA
 
-### Archivos a corregir
-```
-src/app/pages/assembly-orders/assembly-order-detail.component.html
-src/app/pages/dashboard/dashboard.component.html
-src/app/pages/items/item-detail.component.html
-src/app/pages/partners/partner-detail.component.html
-src/app/pages/purchase-requests/purchase-requests.component.html
-src/app/pages/settings/dimensions-config.component.html
-```
-> Nota: `item-detail`, `partner-detail` y `dashboard` son vistas de detalle/resumen con tablas embebidas (no listados principales) — confirma con el equipo de producto si ahí el texto genérico es aceptable antes de invertir tiempo redactando copy específico. `purchase-requests` y `dimensions-config` sí son listados principales y deberían alinearse con el resto.
+Revisión contra el código (2026-07-26): los 6 archivos ya tienen empty state contextual o no son listados principales:
+
+| Archivo | Estado |
+|---|---|
+| `purchase-requests.component.html` | ✅ `emptyTitle="Sin solicitudes de compra"`, `emptyDescription`, `emptyActionLabel="Crear la primera"` |
+| `dimensions-config.component.html` | ✅ Tablas de centros de costo y normas de reparto ya tienen `emptyTitle`/`emptyDescription` |
+| `assembly-order-detail.component.html` | ✅ Página de detalle; tabs vacíos usan `<luna-empty-state>` con copy específico |
+| `item-detail.component.html` | ✅ Página de detalle; usa `<luna-empty-state>` en stock, ensamblajes y kardex |
+| `partner-detail.component.html` | ✅ Página de detalle; usa `<luna-empty-state>` en transacciones y documentos abiertos |
+| `dashboard.component.html` | ✅ Widget de top artículos tiene `emptyTitle`/`emptyDescription` y fallback `widget-empty` |
+
+No quedan listados principales con empty state genérico fuera de POS. La cobertura es efectivamente 100%.
 
 ### Criterio de aceptación
-- Las 6 pantallas quedan con `emptyTitle`/`emptyDescription` explícitos en el template, consistentes en tono con el resto de la app (mismo patrón de "Sin flanqueras aún: crea la primera" que ya usan, por ejemplo, `sales-orders.component.html` o `warehouses.component.html`).
+- [x] Todas las tablas de listados principales fuera de POS tienen `emptyTitle`/`emptyDescription` contextual.
+- [x] Las páginas de detalle usan `<luna-empty-state>` o `emptyTitle`/`emptyDescription` en sus tablas embebidas.
 
 ---
 
 ## Prioridad 4 — Colores hardcodeados fuera de los tokens
 
 ### Contexto
-El sistema de tokens (`src/styles/tokens/*`) es la fuente única de verdad de color, pero 30 archivos SCSS fuera de `/pos/` tienen valores hex sueltos. Esto rompe la garantía de que un cambio de tema (oscuro, white-label por tenant) se propague sin tocar código, que es justamente el problema que `TenantBrandingService` y `color-contrast.util.ts` ya resuelven en el resto del sistema.
+El sistema de tokens (`src/styles/tokens/*`) es la fuente única de verdad de color. En el análisis inicial quedaban 30 archivos SCSS fuera de `/pos/` con valores hex sueltos, pero el trabajo previo de migración a tokens los redujo drásticamente.
 
-### Objetivo
-Reemplazar cada hex por la variable de token semántico equivalente más cercana (`var(--neutral-0)`, `var(--accent-600)`, etc.). Donde el color no tenga un token equivalente evidente, discutirlo antes de inventar uno nuevo — puede ser una señal de que falta un token, no de que el archivo está "mal".
+### Estado actual 🔄 CASI COMPLETADO
 
-### Archivos a auditar
+Auditoría 2026-07-26:
+
+```bash
+grep -rn "#[0-9a-fA-F]\{3,6\}" src/app --include="*.scss" | grep -v "/pos/"
 ```
-src/app/core/layout/layout.component.scss
-src/app/core/layout/sidebar/sidebar.component.scss
-src/app/login/login.component.scss
-src/app/pages/accounts/accounts.component.scss
-src/app/pages/approvals/approvals.component.scss
-src/app/pages/fiscal-years/fiscal-year-detail.component.scss
-src/app/pages/item-price-histories/item-price-histories.component.scss
-src/app/pages/journal-entries/journal-entries-form.component.scss
-src/app/pages/profile/profile.component.scss
-src/app/pages/purchase-invoices/purchase-invoices-form.component.scss
-src/app/pages/sale-invoices/sale-invoices-form.component.scss
-src/app/pages/sales-orders/sales-orders-form.component.scss
-src/app/pages/stock-counts/stock-counts-form.component.scss
-src/app/pages/transport-guides/transport-guides-form.component.scss
-src/app/pages/udf/udf-list.component.scss
-src/app/shared/advance-selector/advance-selector.component.scss
-src/app/shared/batch-combobox/batch-combobox.component.scss
-src/app/shared/batch-selector/batch-selector.component.scss
-src/app/shared/batch-serial-assignment-modal/batch-serial-assignment-modal.component.scss
-src/app/shared/branch-filter-select/branch-filter-select.component.scss
-src/app/shared/document-action-bar/document-action-bar.component.scss
-src/app/shared/document-line-tabs/document-line-tabs.component.scss
-src/app/shared/item-combobox/item-combobox.component.scss
-src/app/shared/item-search-mode-toggle/item-search-mode-toggle.component.scss
-src/app/shared/luna/luna-dark-mode-switch/luna-dark-mode-switch.component.scss
-src/app/shared/luna/luna-tooltip/luna-tooltip.component.scss
-src/app/shared/partner-selector/partner-selector.component.scss
-src/app/shared/payment-term-installments-preview/payment-term-installments-preview.component.scss
-src/app/shared/sales-person-selector/sales-person-selector.component.scss
-src/app/shared/serial-combobox/serial-combobox.component.scss
-src/app/shared/serial-selector/serial-selector.component.scss
-```
-Prioriza dentro de esta lista los que se repiten en varios selectores similares (`batch-selector`, `batch-combobox`, `serial-selector`, `serial-combobox`, `advance-selector`) — probablemente comparten el mismo origen (copy-paste de un componente selector a otro) y se pueden corregir con el mismo patrón de reemplazo.
+
+Resultado: **solo 2 ocurrencias** en 2 archivos:
+
+| Archivo | Línea | Valor | Nota |
+|---|---|---|---|
+| `src/app/pages/accounts/accounts.component.scss` | 103 | `#ba68c8` | Tono específico para cuentas tipo `INCOME`; ya documentado con comentario |
+| `src/app/pages/udf/udf-list.component.scss` | 115 | `#c084fc` | Tono específico para UDFs; requiere decidir si se agrega un token o se justifica |
+
+### Objetivo restante
+1. Decidir si `#ba68c8` y `#c084fc` merecen un token semántico nuevo (ej. `--semantic-income`, `--semantic-udf`) o se dejan justificados con comentario.
+2. Si se crean tokens, reemplazar los hex y verificar visualmente.
 
 ### Criterio de aceptación
-- `grep -rn "#[0-9a-fA-F]\{3,6\}" src/app --include="*.scss" | grep -v "/pos/"` no devuelve resultados (o solo los que quedaron explícitamente justificados y documentados con un comentario).
-- Cambiar `--accent-600` en `_01-primitives.scss` y verificar visualmente que estos componentes reflejan el cambio sin editar su SCSS.
+- [ ] Quedan 0 hex hardcodeados fuera de POS, **o** cada uno restante tiene un comentario que justifica por qué no usa token.
+- [ ] Cambiar `--accent-600` en `_01-primitives.scss` no requiere editar ninguno de estos archivos para reflejar el cambio.
 
 ---
 
@@ -237,6 +167,7 @@ src/app/pages/warehouses/warehouses.component.scss
 - **Lote 2a (commit `9b35977`):** 17 formularios de documentos — eliminados 66 `!important` de patrones `dt-text-*` y `action-bar-buttons`. Conteo: 114 → 48.
 - **Lote 2b (commit `0bed496`):** 5 archivos (`profile`, `kardex`, `permissions`, `incoming-payments-form`, `outgoing-payments-form`) — eliminados 9 `!important` de media queries simples. Conteo: 48 → 39.
 - **Lote 3 (commit `bcef9f7`):** `warehouses`, `item-detail`, `partner-account-statement`, `partner-detail`, `employee-form` — eliminados 13 `!important` usando mayor especificidad. Conteo: 39 → 26.
+- **Auditoría 2026-07-26:** el conteo se mantiene en **26 `!important` en 10 archivos** fuera de POS, todos con justificación documentada abajo.
 
 ### `!important` restantes (26, justificados)
 - `sidebar.component.scss` (5): reset de estilos nativos del input de búsqueda (`border`, `background`, `border-radius`, `box-shadow`).
