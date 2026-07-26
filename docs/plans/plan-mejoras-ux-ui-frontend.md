@@ -251,7 +251,7 @@ src/app/pages/warehouses/warehouses.component.scss
 
 ### Criterio de aceptación
 - El conteo de `!important` fuera de `/pos/` baja de 139 a un número documentado y justificado (idealmente cerca de 0).
-- No hay regresión visual: correr el checklist ya existente en `src/styles/docs/FRENTE-3-PLAN-VALIDACION-VISUAL.md` como referencia de método, extendiéndolo a estos archivos.
+- No hay regresión visual: correr el checklist ya existente en `docs/archive/FRENTE-3-PLAN-VALIDACION-VISUAL.md` como referencia de método, extendiéndolo a estos archivos.
 
 ---
 
@@ -270,4 +270,4 @@ No proponemos llegar a 100% de cobertura como bloqueante. Sí: **cualquier compo
 
 ## Explícitamente fuera de este plan
 - Todo lo relacionado a `src/app/pages/pos/**`, incluyendo su archivo `pos.component.scss` (1,951 líneas) — se aborda por separado.
-- Migración responsive en curso (ver `src/styles/docs/FRENTE-3-PLAN-VALIDACION-VISUAL.md`) — ya tiene su propio plan activo, no se duplica aquí.
+- Migración responsive en curso (ver `docs/archive/FRENTE-3-PLAN-VALIDACION-VISUAL.md`) — ya tiene su propio plan activo, no se duplica aquí.

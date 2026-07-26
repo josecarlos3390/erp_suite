@@ -1,7 +1,7 @@
 # BACKEND_GUIDE.md — backend-erp
 
 > Guía única y canónica para el desarrollo backend del ERP. Cualquier nuevo módulo, servicio, o endpoint debe seguir estos patrones.
-> **Última actualización:** 2026-07-25 (sección ShortName y estado de testing).  
+> **Última actualización:** 2026-07-26 (estado de testing y consolidación de documentación).  
 > **Scope:** NestJS 11.0.1, TypeScript 5.7.3, Prisma 6.19.2, PostgreSQL.
 
 ---
@@ -213,11 +213,11 @@ Antes de mergear un PR que agregue un flujo `createFrom*`, verificar:
 **Meta:** Eliminar métodos y endpoints de diagnóstico temporales.  
 **Resultado:** Eliminados `debugResolve` y `debugGroupDiscount` de `special-prices.service.ts` y sus endpoints. Build 0 errores, tests verdes.
 
-### Fase 10: Aviso de worker process force exited en tests — ✅ COMPLETADA
+### Fase 10: Aviso de worker process force exited en tests — 🔄 REAPARECIÓ
 
 **Meta:** Localizar y corregir el leak de recursos que provocaba el aviso *"A worker process has failed to exit gracefully..."* al ejecutar los tests unitarios.  
-**Resultado:** `prisma.service.spec.ts` ahora guarda la referencia al `TestingModule` y invoca `module.close()` en `afterEach`, lo que dispara `onModuleDestroy` y `$disconnect()`.  
-**Validación:** `npm test` (default workers): 114 suites / 958 tests passed, sin aviso de worker force exited en 5+ ejecuciones consecutivas. `--detectOpenHandles` limpio.
+**Resultado inicial:** `prisma.service.spec.ts` ahora guarda la referencia al `TestingModule` y invoca `module.close()` en `afterEach`, lo que dispara `onModuleDestroy` y `$disconnect()`.  
+**Estado actual (2026-07-26):** el aviso ha vuelto en `npm test` (default workers): 128 suites / 1247 tests passed, pero con *"A worker process has failed to exit gracefully..."* al finalizar. Se está diagnosticando con `--detectOpenHandles` para identificar el spec que reintrodujo el leak.
 
 ### Fase 11: Validación obligatoria de `date`/`postingDate` — DT.10 Fase 1 ✅ COMPLETADA
 
@@ -500,7 +500,7 @@ El extracto bancario (`BankStatement`) no genera asientos contables automáticam
 
 ### Backend
 
-- **Unitarios:** Jest + ts-jest. Archivos `*.spec.ts` en `src/` (~114 specs).
+- **Unitarios:** Jest + ts-jest. Archivos `*.spec.ts` en `src/` (128 specs).
 - **E2E:** Jest con config `test/jest-e2e.json`, `maxWorkers: 1`, timeout 30s. Setup en `test/setup-e2e.ts` apunta a base de test local.
 - **Mocks:** PrismaService mockeado como `as unknown as PrismaService` o `satisfies Partial<PrismaService>`.
 - **Flujos E2E cubiertos:** ventas, compras, stock, lotes/seriados, pagos, billing, devoluciones/NC, precios especiales con quantity breaks.
@@ -516,13 +516,13 @@ npm run test:e2e         # 11 suites / 57 tests
 npm run perf:k6          # 5/5 escenarios passed
 ```
 
-### Estado actual (2026-07-25)
+### Estado actual (2026-07-26)
 
 | Comando | Estado | Evidencia |
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npm test` | ✅ **OK** | 128 suites / 1247 tests passed |
+| `npm test` | ✅ **OK** (con observación) | 128 suites / 1247 tests passed. **⚠️ Warning:** al finalizar aparece *"A worker process has failed to exit gracefully and has been force exited"*. Estaba aparentemente resuelto en Fase 10 pero ha vuelto; se está diagnosticando con `--detectOpenHandles`. |
 | `npm run test:e2e` | ✅ **OK** | 11 suites / 57 tests passed |
 | `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`) |
 

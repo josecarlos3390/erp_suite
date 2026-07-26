@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-07-25.  
+> **Última actualización:** 2026-07-26.  
 > **Versión canónica de restricciones transversales.**  
 > Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
@@ -408,13 +408,16 @@ Archivos complementarios que no requieren lectura obligatoria para tareas rutina
 | Archivo | Contenido | Cuándo leer |
 |---------|-----------|-------------|
 | `erp-frontend/docs/monorepo/DESIGN.md` | Design System LUNA completo: tokens, componentes, layouts, dark mode, animaciones. | Cuando se diseñe un componente nuevo o se modifique el design system. |
+| `erp-frontend/docs/components/form-sizes.md` | Estándar de alturas unificado (`sm`/`md`/`lg`) para componentes de formulario LUNA. | Al agregar o estandarizar inputs, selectores o botones. |
+| `erp-frontend/docs/components/luna-entity-select.md` | Guía del selector genérico: modos memory/server-side, API y plantillas. | Al crear o modificar selectores de entidades. |
 | `docs/guides/ESTANDAR_LINEAS_DOCUMENTO.md` | Estándar de líneas de documento (`luna-document-lines` Fase 2): celdas canónicas/custom, checklist, estado por formulario. | Antes de migrar o crear formularios de documentos (compras, inventario). Referenciado desde FRONTEND_GUIDE.md §10. |
 | `docs/guides/ACCOUNTING_ENTRIES_GUIDE.md` | Guía de asientos contables por tipo de documento. | Al trabajar contabilidad, asientos automáticos o determinación de cuentas. |
+| `backend-erp/docs/fixed-assets.md` | Documentación del módulo de Activos Fijos y depreciación. | Al trabajar en `backend-erp/src/fixed-assets/`. |
 | `docs/plans/plan-consistencia-visual-v2.md` | Plan validado de remediación visual frontend (7 fases). | Al planificar mejoras visuales o migraciones de tokens/spacing. |
+| `docs/plans/plan-mejoras-ux-ui-frontend.md` | Plan activo de mejoras UX/UI: accesibilidad, copy, colores, `!important`, tests. | Antes de trabajar mejoras de UX/UI fuera de POS. |
 | `docs/reference/ACCOUNTS_DETERMINATION_FIX.md` | Análisis y corrección de paridad de cuentas contables por nivel. | Como referencia del fix de paridad de cuentas. |
 | `docs/reference/SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md` | Análisis comparativo de determinación de cuentas: SAP B1 vs ERP. | Como referencia de arquitectura contable. |
 | `docs/archive/` | Informes históricos de frentes completados y cierres de fase. | Solo si se necesita trazabilidad histórica de una migración ya cerrada. |
-| `luna/MODO_USO.md` | Uso básico de componentes standalone LUNA. | Referencia rápida de componentes LUNA. |
 | `backend-erp/CHANGELOG.md` / `erp-frontend/CHANGELOG.md` | Historial de cambios por versión. | Para entender evolución reciente del proyecto. |
 | `backend-erp/load-tests/k6/README.md` | Documentación de la suite de carga k6. | Antes de ejecutar o modificar tests de carga. |
 | `backend-erp/perf/README.md` | Documentación del módulo de performance. | Antes de trabajar en optimización de performance. |

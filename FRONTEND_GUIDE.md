@@ -1,7 +1,7 @@
 # FRONTEND_GUIDE.md — erp-frontend
 
 > Guía única y canónica para el desarrollo frontend del ERP. Cualquier nuevo formulario, listado, o módulo debe seguir estos patrones. 
-> **Última actualización:** 2026-07-25 (limpieza y consolidación de documentación).  
+> **Última actualización:** 2026-07-26 (limpieza y consolidación de documentación).  
 > **Scope:** Angular 19.2.19, standalone components, LUNA design system.
 
 ---
@@ -1126,6 +1126,8 @@ Estos documentos complementan a esta guía canónica. No son obligatorios para t
 | Archivo | Contenido | Cuándo consultar |
 |---------|-----------|------------------|
 | `erp-frontend/docs/monorepo/DESIGN.md` | Design System LUNA completo: tokens, componentes, layouts, dark mode, animaciones. | Al diseñar un componente nuevo o modificar el design system. |
+| `erp-frontend/docs/components/form-sizes.md` | Estándar de alturas unificado (`sm`/`md`/`lg`) para componentes de formulario LUNA. | Al agregar o estandarizar inputs, selectores o botones. |
+| `erp-frontend/docs/components/luna-entity-select.md` | Guía del selector genérico: modos memory/server-side, API y plantillas. | Al crear o modificar selectores de entidades. |
 | `docs/guides/ESTANDAR_LINEAS_DOCUMENTO.md` | Estándar de líneas de documento (`luna-document-lines`): celdas canónicas/custom, checklist, estado por formulario. | Antes de migrar o crear formularios de documentos (compras, inventario). |
 | `docs/plans/plan-consistencia-visual-v2.md` | Plan validado de remediación visual frontend (7 fases). | Al planificar mejoras visuales o migraciones de tokens/spacing. |
 | `docs/plans/plan-mejoras-ux-ui-frontend.md` | Recomendaciones UX/UI activas: accesibilidad, copy, limpieza de estilos. | Al atender deuda técnica de UX/UI fuera del scope de una feature. |

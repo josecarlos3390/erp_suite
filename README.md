@@ -18,11 +18,14 @@ erp_suite/
 ├── backend-erp/      # API REST NestJS (repo Git anidado)
 ├── erp-frontend/     # SPA Angular (repo Git anidado)
 ├── luna/             # Componentes standalone del design system
-├── docs/             # Documentación del proyecto
-│   ├── guides/       # Guías canónicas de dominio
-│   ├── plans/        # Planes de trabajo activos
-│   ├── reference/    # Análisis y referencias técnicas
-│   └── archive/      # Informes históricos completados
+├── docs/                       # Documentación del proyecto
+│   ├── guides/                 # Guías canónicas de dominio
+│   ├── plans/                  # Planes de trabajo activos
+│   ├── reference/              # Análisis y referencias técnicas
+│   └── archive/                # Informes históricos completados
+├── erp-frontend/docs/          # Design system y guías de componentes
+│   ├── monorepo/               # Design System LUNA
+│   └── components/             # Guías de componentes específicos
 ├── AGENTS.md         # Reglas de entrada para agentes
 ├── FRONTEND_GUIDE.md # Guía canónica frontend
 ├── BACKEND_GUIDE.md  # Guía canónica backend
@@ -68,7 +71,7 @@ npm start                # ng serve
 cd backend-erp
 npm run build
 npm run lint
-npm test                 # 128 suites / 1247 tests
+npm test                 # 128 suites / 1247 tests (ver BACKEND_GUIDE.md §9 por warning de worker process)
 npm run test:e2e         # 11 suites / 57 tests
 ```
 
