@@ -1,6 +1,6 @@
 # Estándar de líneas de documento — `luna-document-lines` (Fase 2)
 
-> **Fecha:** 2026-07-25 · **Estado:** ✅ Ventas 100% · ✅ Botón eliminar estandarizado en ventas, compras, pagos e inventario · ✅ Flujo de impuestos estandarizado y corregido · ⏳ Migración visual a `<luna-document-lines>` pendiente en compras e inventario
+> **Fecha:** 2026-07-26 · **Estado:** ✅ Ventas 100% · ✅ Compras 100% · ✅ Inventario (stock-entries, stock-exits, stock-transfers, stock-adjustments) migrado a `<luna-document-lines>` · ✅ Botón eliminar estandarizado en ventas, compras, pagos e inventario · ✅ Flujo de impuestos estandarizado y corregido
 > **Predecesor:** plan de migración inicial de la tabla de líneas (Fases 0 y 1), removido en la reorganización de documentación; el historial completo permanece en git.
 > **Audiencia:** cualquier agente/persona que migre un formulario de documento (compras, inventario) o cree uno nuevo.
 
@@ -310,18 +310,19 @@ Los componentes de tablas (`luna-document-lines-detail`, `document-line-taxes-ta
 | sales-credit-notes | Custom: `manualAccount`, `batch`, `serial` (readonly `!canEdit \|\| !!noteId` difiere del canónico a propósito). Fix 2026-07-25: botón eliminar estandarizado en discounts/costs. |
 | sales-debit-notes | ⏸️ **Bloqueado por backend**: no existe `SalesDebitNoteItem` en el schema (documento solo-cabecera). Ver `docs/archive/CORRECCIONES_INTEGRALES_PROGRESO.md` C4. |
 
-### Compras — ✅ botón eliminar estandarizado (2026-07-25) · ⏳ migración visual completa pendiente
+### Compras — ✅ migrado a `<luna-document-lines>` (2026-07-25)
 
 | Formulario | Notas |
 |------------|-------|
-| purchase-quotations | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts/costs. |
-| purchase-orders | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts/costs. |
-| purchase-receipts | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts/costs; se preserva `!!receiptId` en `[disabled]`. |
-| purchase-invoices | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts (tab costs sin columna actions). |
-| purchase-reserve-invoices | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts (tab costs sin columna actions). |
-| purchase-credit-notes | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts/costs; se preserva `!!noteId` en `[disabled]`. |
-| purchase-returns | Fix 2026-07-25: botón eliminar estandarizado en detail/discounts/costs. |
-| purchase-requests | ✅ Botón eliminar estandarizado en detail (estructura actual no usa `<luna-document-lines>`). |
+| purchase-quotations | Migrado a `<luna-document-lines>`. Botón eliminar estandarizado en detail/discounts/costs. |
+| purchase-orders | Migrado a `<luna-document-lines>`. Botón eliminar estandarizado en detail/discounts/costs. |
+| purchase-receipts | Migrado a `<luna-document-lines>`. Botón eliminar estandarizado en detail/discounts/costs; se preserva `!!receiptId` en `[disabled]`. |
+| purchase-invoices | Migrado a `<luna-document-lines>`. Botón eliminar estandarizado en detail/discounts (tab costs sin columna actions). |
+| purchase-reserve-invoices | Migrado a `<luna-document-lines>`. Botón eliminar estandarizado en detail/discounts (tab costs sin columna actions). |
+| purchase-credit-notes | Migrado a `<luna-document-lines>`. Botón eliminar estandarizado en detail/discounts/costs; se preserva `!!noteId` en `[disabled]`. |
+| purchase-returns | Migrado a `<luna-document-lines>`. Botón eliminar estandarizado en detail/discounts/costs. |
+| purchase-requests | Estructura simple de solo cabecera + líneas; usa `<luna-data-table>` directamente. No requiere shell de tabs. |
+| purchase-debit-notes | Documento solo-cabecera (sin líneas). No aplica `<luna-document-lines>`. |
 
 En celda item usar `[canBePurchased]` en vez de `[canBeSold]`.
 
@@ -332,21 +333,23 @@ En celda item usar `[canBePurchased]` en vez de `[canBeSold]`.
 | incoming-payments | Fix 2026-07-25: botón eliminar estandarizado en account lines, métodos de pago, pagos desde factura y asignación manual. |
 | outgoing-payments | Fix 2026-07-25: botón eliminar estandarizado en account lines, pagos desde factura, métodos de pago y asignación manual. |
 
-### Inventario — ✅ botón eliminar estandarizado (2026-07-25) · ⏳ migración visual completa pendiente
+### Inventario — ✅ migrado a `<luna-document-lines>` (2026-07-26)
 
 | Formulario | Notas |
 |------------|-------|
-| stock-entries | Fix 2026-07-25: botón eliminar estandarizado en detail y costs. |
-| stock-exits | Fix 2026-07-25: botón eliminar estandarizado en detail y costs. |
-| stock-transfers | Fix 2026-07-25: botón eliminar estandarizado en detail y costs. |
-| stock-adjustments | Fix 2026-07-25: botón eliminar estandarizado en detail y costs. |
-| stock-counts | Fix 2026-07-25: botón eliminar estandarizado; `canEdit` expuesto como getter de `canEditLines`. |
-| assembly-orders | N/A: tabla de componentes del BOM es solo lectura, sin botón eliminar.
+| stock-entries | Migrado a `<luna-document-lines>`. Custom cells: `batch`/`serial` (`allowCreate=true` para ingresos), `origin`, `notes`, `projectId`, `manualAccount`. |
+| stock-exits | Migrado a `<luna-document-lines>`. Custom cells: `batch`/`serial` (`allowCreate=false`, serial `showExisting=true` para salidas), `origin`, `notes`, `projectId`, `manualAccount`. |
+| stock-transfers | Migrado a `<luna-document-lines>`. Custom cells: `sourceWarehouse`, `targetWarehouse`, `batch`, `serial`, `origin`, `notes`, `projectId`, `manualAccount`. |
+| stock-adjustments | Migrado a `<luna-document-lines>`. Custom cells: `type` (INCREASE/DECREASE), `batch`/`serial` condicionales, `weight`, `origin`, `notes`, `projectId`, `manualAccount`. |
+| stock-counts | ✅ Evaluado: se mantiene `<luna-data-table>` directa. Su estructura de conteo (stock sistema / contado / diferencia) no encaja en el detail canónico de documentos comerciales. |
+| assembly-orders | N/A: tabla de componentes del BOM es solo lectura, sin botón eliminar. |
 
-### Fase 0 (sin shell) — ⏳ por evaluar
+### Fase 0 (sin shell)
 
-- purchase-debit-notes: verificar si tiene líneas (su par de ventas no las tiene).
-- stock-transfers, assembly-orders: documentos de inventario con estructura distinta; evaluar adopción parcial (tabs que apliquen).
+- purchase-debit-notes: documento solo-cabecera (sin líneas). No aplica `<luna-document-lines>`.
+- purchase-requests: estructura simple, no requiere shell de tabs.
+- stock-counts: mantiene `<luna-data-table>` directa; estructura de conteo no encaja en el detail canónico.
+- assembly-orders: tabla de componentes del BOM es solo lectura, sin interacciones de línea.
 
 ## 9. Desviaciones aceptadas (convergencia al patrón)
 
@@ -365,7 +368,7 @@ En celda item usar `[canBePurchased]` en vez de `[canBeSold]`.
 
 ## 11. Anchos de columna centralizados
 
-Los formularios de inventario y compras que aún usan `<luna-data-table>` para el detalle deben usar el sistema centralizado de anchos en lugar de hardcodear `minWidth` en cada formulario.
+Los formularios que aún usan `<luna-data-table>` para el detalle (p. ej. `stock-counts`) pueden usar el sistema centralizado de anchos en lugar de hardcodear `minWidth` en cada formulario.
 
 ### Fuente de verdad
 
@@ -412,4 +415,5 @@ get detailColumns(): LunaColumn<FormGroup>[] {
 
 ---
 
-*Última actualización: 2026-07-25 — estandarización de botón eliminar aplicada a ventas, compras, pagos e inventario; patrón de change detection documentado; anchos de columna centralizados incorporados.*
+*Última actualización: 2026-07-26 — migración a `<luna-document-lines>` completada para ventas, compras y los cuatro formularios de inventario con líneas comerciales (`stock-entries`, `stock-exits`, `stock-transfers`, `stock-adjustments`); `stock-counts` evaluado y mantenido con `<luna-data-table>` directa por no encajar en el detail canónico; botón eliminar estandarizado; flujo de impuestos corregido.*
+
