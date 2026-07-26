@@ -35,7 +35,7 @@ Hay una inconsistencia de copy: `luna-icon-button` dice `"Más acciones"` y `lun
 
 ### Criterio de aceptación
 - [x] Un lector de pantalla (VoiceOver/NVDA) anuncia un texto significativo al enfocar cualquier botón `⋯` de fila.
-- [ ] (Opcional) Unificar copy a `"Más acciones"` en ambos componentes.
+- [x] Unificar copy a `"Más acciones"` en ambos componentes (`luna-icon-button` y `luna-button`).
 
 ---
 
