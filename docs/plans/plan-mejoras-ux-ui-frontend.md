@@ -86,28 +86,27 @@ No quedan listados principales con empty state genérico fuera de POS. La cobert
 ### Contexto
 El sistema de tokens (`src/styles/tokens/*`) es la fuente única de verdad de color. En el análisis inicial quedaban 30 archivos SCSS fuera de `/pos/` con valores hex sueltos, pero el trabajo previo de migración a tokens los redujo drásticamente.
 
-### Estado actual 🔄 CASI COMPLETADO
+### Estado actual ✅ RESUELTO
 
-Auditoría 2026-07-26:
+Auditoría 2026-07-26: solo quedaban 2 hex hardcodeados fuera de POS.
+
+**Solución aplicada:**
+1. Se agregó la escala completa `--purple-*` a `src/styles/tokens/_01-primitives.scss` (modo claro y oscuro).
+2. Se agregaron tokens semánticos `--text-purple` y `--bg-purple-subtle` a `src/styles/tokens/_02-semantic.scss`.
+3. Se reemplazaron los hex en:
+   - `src/app/pages/accounts/accounts.component.scss` (`#ba68c8` → `var(--text-purple)`)
+   - `src/app/pages/udf/udf-list.component.scss` (`#c084fc` → `var(--text-purple)`)
 
 ```bash
 grep -rn "#[0-9a-fA-F]\{3,6\}" src/app --include="*.scss" | grep -v "/pos/"
 ```
 
-Resultado: **solo 2 ocurrencias** en 2 archivos:
-
-| Archivo | Línea | Valor | Nota |
-|---|---|---|---|
-| `src/app/pages/accounts/accounts.component.scss` | 103 | `#ba68c8` | Tono específico para cuentas tipo `INCOME`; ya documentado con comentario |
-| `src/app/pages/udf/udf-list.component.scss` | 115 | `#c084fc` | Tono específico para UDFs; requiere decidir si se agrega un token o se justifica |
-
-### Objetivo restante
-1. Decidir si `#ba68c8` y `#c084fc` merecen un token semántico nuevo (ej. `--semantic-income`, `--semantic-udf`) o se dejan justificados con comentario.
-2. Si se crean tokens, reemplazar los hex y verificar visualmente.
+Resultado: **0 coincidencias**.
 
 ### Criterio de aceptación
-- [ ] Quedan 0 hex hardcodeados fuera de POS, **o** cada uno restante tiene un comentario que justifica por qué no usa token.
-- [ ] Cambiar `--accent-600` en `_01-primitives.scss` no requiere editar ninguno de estos archivos para reflejar el cambio.
+- [x] 0 hex hardcodeados fuera de POS.
+- [x] Cambiar `--accent-600` en `_01-primitives.scss` no requiere editar estos archivos.
+- [x] `npm run build` y `npm run lint` pasan sin errores.
 
 ---
 
