@@ -84,3 +84,6 @@ frontend.zip
 # ── Local caches / session files ──
 __pycache__/
 memory/
+
+# ZCode CLI session files
+.zcode/
