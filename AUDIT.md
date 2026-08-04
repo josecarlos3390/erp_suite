@@ -116,21 +116,22 @@ Se detectaron **7 ocurrencias** en **5 servicios** (todos en `trackingAssignment
 
 > Detectados durante la campaña de tests de cálculo financiero. No se arreglaron en esa sesión porque requieren decisión de diseño o tocan lógica de negocio sensible. Los tests que los exponen están en verde con comentarios `// FIXME`.
 
-### 2b.1 Frontend — POS no usa `calcLineWithIndicator` y diverge en IVA (BUG FUNCIONAL)
+### 2b.1 Frontend — POS no usa `calcLineWithIndicator` y diverge en IVA ✅ RESUELTO (2026-08-04)
 
-**Severidad:** Alta (cálculo de dinero) — pendiente de decisión de alcance.
+**Severidad:** Alta (cálculo de dinero) → Resuelto.
 
-**Archivos:** `pages/pos/pos.component.ts:499` (`calcLine` privado duplicado) vs `shared/pricing.util.ts:37` (`calcLineWithIndicator`).
+**Archivos:** `pages/pos/pos.component.ts` (`calcLine` privado eliminado), `pages/pos/pos.types.ts` (`CartItem.calculationMethod` añadido), `models/sale-invoice.model.ts` (`SaleInvoiceItem.calculationMethod` añadido).
 
-**Problema:** El POS tiene su propia función `calcLine` que **no reutiliza** el util compartido `calcLineWithIndicator` que usan todos los formularios comerciales. Divergencias concretas:
+**Problema (resuelto):** El POS tenía su propia función `calcLine` que no reutilizaba el util compartido `calcLineWithIndicator`. No soportaba `calculationMethod: 'STANDARD'` y añadía redondeo divergente.
 
-1. **No soporta `calculationMethod: 'STANDARD'`** (IVA incluido estilo SAP). El POS solo implementa la rama BOLIVIA_SIN (`taxAmount = gross * rate`). Si un partner/indicador tiene `calculationMethod: 'STANDARD'` e `isInclusive: true`, el POS calcula el IVA con la fórmula equivocada. El backend define indicadores con `STANDARD` (`backend-erp/src/common/tax-indicator.util.ts:58`), así que el caso es alcanzable.
-2. **Redondeo divergente:** el POS añade `Math.round(...*100)/100` en `taxAmount` y `lineSubtotal`; el util no redondea (lo hace quien llama).
-3. **No calcula `priceNet`** (el util sí).
+**Fix aplicado:**
+- Eliminado `calcLine` privado duplicado. Los 9 call sites migrados a `calcLineWithIndicator` de `shared/pricing.util.ts`.
+- Añadido `partnerCalculationMethod` al componente (igual que `partnerIsInclusive`), leído del indicador del partner.
+- Añadido `calculationMethod` a `CartItem` y persistido al añadir/recalcular líneas e hidratar sesión.
+- Eliminado el redondeo extra `Math.round(...*100)/100` para alinear con facturas.
+- 4 tests nuevos en `pos.component.spec.ts`: STANDARD inclusivo (taxAmount≈11.50 no 13.00), BOLIVIA_SIN inclusivo (regresión), no-divergencia POS↔facturas, propagación por `onPartnerChange`.
 
-**Impacto:** Para rate=0.13 sobre Bs 100 con `STANDARD` + `isInclusive`: el cálculo correcto da IVA=Bs 11.50; el POS da Bs 13.00 (fórmula BOLIVIA_SIN). **Diferencia de Bs 1.50 por cada Bs 100** en el IVA mostrado por el POS vs la factura.
-
-**Decisión pendiente:** ¿el POS debe soportar `STANDARD` (refactorizar para usar `calcLineWithIndicator`), o se asume que siempre opera en modo BOLIVIA_SIN por diseño? Si es lo segundo, requiere un guard que bloquee partners con indicador STANDARD en POS. Si es lo primero, el refactor toca `addToCart`, `updateCartLine`, y la lógica de totales del carrito.
+**Verificación:** 13/13 tests POS pasan (9 originales + 4 nuevos). El test de no-divergencia confirma que POS y `calcLineWithIndicator` producen resultados idénticos.
 
 ### 2b.2 Frontend — `calcTotals` prorratea IVA incorrectamente en líneas mixtas (BUG)
 
