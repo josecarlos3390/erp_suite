@@ -356,6 +356,8 @@ ngOnInit() {
 | `ControlValueAccessor.writeValue()` | El formulario padre llama `writeValue` síncronamente; sin render inmediato el selector no muestra el valor seleccionado. | Selectores modales LUNA |
 | Handler síncrono que cambia el DOM | Se necesita que la UI refleje el cambio antes de que termine el evento. | Cambio de impuesto en línea de documento |
 | Validación/visibilidad condicional tras mutar el formulario | Se requiere que Angular re-evalúe `@if` / `[disabled]` inmediatamente. | Mostrar/ocultar botón eliminar en pestaña |
+| **HTTP con `withFetch()`** | `provideHttpClient(withFetch())` usa `fetch()` nativo, que **no** está monkey-patcheado por zone.js. La suscripción `.subscribe()` del `HttpClient` no dispara un macrotask de Zone, por lo que `markForCheck()` puede quedarse "sucio" sin que nadie dispare el siguiente tick. | Selectores async que fetchean lista (partner-selector, item-combobox, async-entity-selector.base) |
+| **Mutación de FormArray con `emitEvent:false`** | Al suprimir eventos, Angular no recalcula getters derivados (totales, estado). Se necesita `detectChanges()` para refrescar la UI. | Recalcular totales tras `patchValue({emitEvent:false})` en línea de documento |
 
 #### Ejemplo: selector modal
 
@@ -385,8 +387,10 @@ onLineTaxChange(index: number): void {
 
 #### Regla mnemotécnica
 
-- ¿El cambio viene de una suscripción HTTP/WebSocket? → `markForCheck()`.
-- ¿El cambio viene de un evento síncrono que debe reflejarse **ahora**? → `detectChanges()`.
+- ¿El cambio viene de una suscripción HTTP/WebSocket **cubierta por Zone** (XMLHttpRequest, WebSocket nativo)? → `markForCheck()`.
+- ¿El cambio viene de una suscripción HTTP con **`withFetch()`** (fetch nativo, no zone-aware)? → `detectChanges()`.
+- ¿El cambio viene de `writeValue()`, un handler síncrono o una mutación de FormArray con `emitEvent:false`? → `detectChanges()`.
+- ¿Duda? Si la UI no refresca con `markForCheck()`, era `detectChanges()`. La inversa nunca rompe (solo es menos eficiente).
 
 ---
 

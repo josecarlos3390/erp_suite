@@ -220,10 +220,13 @@ Todos los componentes del estándar usan `ChangeDetectionStrategy.OnPush`. Los c
 
 ### 6.1 `markForCheck()` vs `detectChanges()`
 
+> **Regla canónica:** la guía única vive en `FRONTEND_GUIDE.md` §2 ("Cuándo usar `detectChanges()` en lugar de `markForCheck()`"). La tabla de abajo es un resumen aplicado a líneas de documento; si hay divergencia, prima la guía.
+
 | Escenario | Método | Razón |
 |-----------|--------|-------|
 | Respuesta asíncrona de `HttpClient` (withFetch) | `detectChanges()` | `markForCheck()` no garantiza tick porque con `withFetch()` no corre dentro de Zone.js. |
 | Evento síncrono del usuario que muta FormArray y requiere refresco inmediato de totales | `detectChanges()` | Fuerza re-evaluación de getters (`subtotal`, `tax`, `total`) en el mismo tick. |
+| Mutación de FormArray con `emitEvent: false` (patchValue/setValue sin propagar eventos) | `detectChanges()` | Al suprimir eventos, Angular no recalcula getters derivados; forzar CD los refresca. |
 | Cambio de estado interno que ya será cubierto por un tick próximo (evento padre, async pipe, etc.) | `markForCheck()` | Suficiente si hay un ancestro que forzará CD. |
 
 ### 6.2 Cambio de indicador de impuestos
