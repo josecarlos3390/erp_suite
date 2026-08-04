@@ -133,23 +133,31 @@ Se detectaron **7 ocurrencias** en **5 servicios** (todos en `trackingAssignment
 
 **Verificación:** 13/13 tests POS pasan (9 originales + 4 nuevos). El test de no-divergencia confirma que POS y `calcLineWithIndicator` producen resultados idénticos.
 
-### 2b.2 Frontend — `calcTotals` prorratea IVA incorrectamente en líneas mixtas (BUG)
+### 2b.2 Frontend — `calcTotals` prorratea IVA en líneas mixtas ✅ FALSO POSITIVO (2026-08-04)
 
-**Severidad:** Media-alta (cálculo de dinero) — pendiente de decisión de diseño.
+**Severidad:** — (no es bug) → Cerrado por análisis matemático.
 
 **Archivo:** `shared/document-form/document-form.base.ts:587-643` (`calcTotals`).
 
-**Problema:** Cuando se aplica un descuento de cabecera (`discountMode==='header'`), el ratio de prorrateo se calcula como `(lineTotalSum - hDiscount) / lineTotalSum` y se aplica **al subtotal Y al tax** por igual. Pero `lineTotalSum` incluye bases exentas + gravadas + impuestos. Si hay líneas mixtas (una exenta `taxAmount=0`, otra gravada), el descuento reduce el IVA de la línea gravada en el mismo ratio que la base, **incluso si el descuento recae sobre la línea exenta**.
+**Sospecha inicial (incorrecta):** se creía que el prorrateo lineal del descuento de cabecera distorsionaba el IVA cuando hay líneas mixtas (exenta + gravada), porque el ratio se aplica tanto a `subtotal` como a `tax`.
 
-**Ejemplo:** 2 líneas — L1 exenta (subtotal 100, tax 0), L2 gravada (subtotal 100, tax 13). `headerDiscountPct=10`:
-- subtotal: 200 → 180 (correcto)
-- **tax: 13 → 11.7** (distorsión: el IVA se reduce un 10% aunque parte del descuento recae sobre la base exenta)
+**Veredicto tras auditoría algebraica:** el IVA resultante **es fiscalmente correcto**. El prorrateo lineal por `lineTotalSum` es matemáticamente equivalente al recálculo por línea con su tasa específica:
 
-Fiscalmente, el IVA debería recalcularse solo sobre la base gravada descontada, no prorratearse linealmente.
+```
+Prorrateo (código):   IVA = (Σ baseᵢ · tasaᵢ) · (1 − ratio)
+Recálculo por línea:  IVA = Σ (baseᵢ · (1 − ratio)) · tasaᵢ = (1 − ratio) · Σ baseᵢ · tasaᵢ
+```
 
-**Test que lo documenta:** `document-form.base.spec.ts` (test "descuento de cabecera % con líneas mixtas" con comentario `// FIXME: posible bug — el prorrateo distorsiona el impuesto`).
+Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=0) aportan 0 a ambas, así que no distorsionan. La reducción del IVA (13 → 11.7 con descuento 10%) es la consecuencia fiscal correcta de descontar la base gravada, no una distorsión.
 
-**Decisión pendiente:** ¿el prorrateo de IVA debe ser lineal (comportamiento actual, simple pero impreciso) o recalculado por línea (correcto fiscalmente pero más complejo)? Esto afecta a los 14 formularios comerciales.
+**Verificación numérica:** confirmado para 2 líneas (exenta + 13%) y 3 líneas (exenta + 13% + 25%) — el IVA coincide en ambos métodos hasta el último decimal.
+
+**Deuda cosmética menor (no bloqueante, documentada):**
+- `totalDiscount` se calcula sobre el bruto con IVA (21.3) en vez de sobre bases netas (20). Afecta solo a la presentación del descuento, no al IVA.
+- Nomenclatura engañosa: el campo `subtotal` del FormGroup de línea guarda el total CON IVA, mientras `lineSubtotal` guarda la base neta. Trampa para desarrolladores.
+- `lineTotal` es un campo huérfano (existe en el FormGroup pero `applyLineTax` no lo actualiza).
+
+**Test actualizado:** `document-form.base.spec.ts` — el comentario `// FIXME: posible bug` fue reemplazado por la demostración algebraica que confirma la corrección.
 
 ---
 
