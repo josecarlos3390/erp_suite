@@ -36,6 +36,35 @@
 
 ## 2. Hallazgos críticos resueltos
 
+### 2.0 Backend — Cierre de brecha RBAC fail-open (2026-08-03) ✅
+
+**Severidad:** Alta (seguridad) → Resuelto (parcial: red de seguridad fail-open sigue activa mientras termina la migración total)
+
+**Problema:** `PermissionsGuard` (`src/auth/permissions.guard.ts`) es fail-open: cualquier handler sin `@RequirePermission` era accesible por cualquier usuario autenticado, sin control de rol (bypass de RBAC). 6 controllers críticos estaban en este estado, exponiendo datos transversales del tenant y escritura operativa:
+
+| Controller | Riesgo previo | Fix aplicado |
+|------------|---------------|--------------|
+| `search.controller.ts` | Búsqueda multi-entidad sin control de rol | `@RequirePermission('search', 'view')` |
+| `sap-integration.controller.ts` | Forzar sync SAP + leer logs sin permiso | `sync` (POST) + `view` (GET logs) |
+| `document-flow.controller.ts` | Grafo completo de trazabilidad documental | `@RequirePermission('document-flow', 'view')` |
+| `batches.controller.ts` | CRUD completo de lotes sin permiso | CRUD `view/create/edit/delete` + reorden de rutas |
+| `serial-numbers.controller.ts` | CRUD completo de números de serie sin permiso | CRUD `view/create/edit/delete` + reorden de rutas |
+| `alerts.controller.ts` | Evaluar/dismiss alertas sin permiso | Clase `settings:view` + override `edit` en mutaciones |
+
+**Handlers intencionalmente exentos** (documentados en `permissions-coverage.spec.ts`):
+- `auth/refresh-token` y `auth/me`: cualquier autenticado debe poder refrescar su sesión y consultar su payload (protegerlos causaría lockout). Siguen exigiendo JWT válido vía `JwtAuthGuard` global.
+- Endpoints `@Public`: `app/`, `health`, `metrics`, `auth/login`, `auth/logout`, `super-admin/auth/login`, `billing/webhook/:provider`, `tenants/active`.
+
+**Cambios de configuración:**
+- `permissions.service.ts` (`DEFAULT_PERMISSIONS` rol USER): añadidos módulos `search`, `sap-integration`, `document-flow`, `batches`, `serial-numbers`. El rol ADMIN obtiene `*:*` vía wildcard (línea 178-181), sin cambios.
+- `erp-frontend/src/app/pages/permissions/permissions.service.ts`: añadidos los 5 módulos a `PERMISSION_MODULES` + acción `sync` a `PERMISSION_ACTIONS`, para que el admin pueda asignarlos desde la UI.
+
+**Prevención de regresiones:** nuevo test `src/auth/permissions-coverage.spec.ts` que recorre estáticamente todos los `*.controller.ts` y falla si un handler HTTP aparece sin `@RequirePermission`, `@Public` o entrada en `AUTH_EXEMPT`. Esto da confianza para, en el futuro, pasar el guard a fail-closed cuando la lista `AUTH_EXEMPT` quede vacía.
+
+**Pendiente:** el guard sigue fail-open como red de seguridad. Para pasarlo a fail-closed, garantizar que ningún handler legítimo quede sin decorador (el test de cobertura es la herramienta para esto).
+
+---
+
 ### 2.1 Backend — `as any` en código de producción ✅
 
 **Severidad:** Alta → Resuelto  

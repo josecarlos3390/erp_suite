@@ -46,7 +46,7 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
 | Carpeta | Propósito | Archivos clave |
 |---------|-----------|----------------|
 | `docs/guides/` | Guías canónicas de dominio específico | `ESTANDAR_LINEAS_DOCUMENTO.md`, `ACCOUNTING_ENTRIES_GUIDE.md` |
-| `docs/plans/` | Planes de trabajo activos | `plan-consistencia-visual-v2.md`, `RESUMEN-EJECUTIVO-PLAN-MEJORAS.md` |
+| `docs/plans/` | Planes de trabajo activos | `plan-consistencia-visual-v2.md`, `plan-mejoras-ux-ui-frontend.md` |
 | `docs/reference/` | Análisis técnicos y referencias de arquitectura | `ACCOUNTS_DETERMINATION_FIX.md`, `SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md` |
 | `docs/archive/` | Informes históricos de migraciones completadas | Índice de frentes y cierres de fase |
 
@@ -149,7 +149,7 @@ npm run start:dev        # watch mode
 npm run start:prod       # node dist/main.js
 npm run format           # prettier --write
 npm run lint             # eslint — 0 errores, 0 warnings
-npm test                 # jest — 128 suites / 1247 tests
+npm test                 # jest — 129 suites / 1249 tests
 npm run test:watch       # jest --watch
 npm run test:cov         # jest --coverage
 npm run test:e2e         # jest --config ./test/jest-e2e.json — 11 suites / 57 tests
@@ -184,7 +184,7 @@ npm run generate-types   # copia prisma-types.ts desde backend
 
 ---
 
-## 4. Estado real del proyecto (2026-07-25)
+## 4. Estado real del proyecto (2026-08-04)
 
 ### Backend (`backend-erp/`)
 
@@ -192,7 +192,7 @@ npm run generate-types   # copia prisma-types.ts desde backend
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npm test` | ✅ **OK** | 128 suites / 1247 tests passed |
+| `npm test` | ✅ **OK** | 129 suites / 1249 tests passed (incluye `permissions-coverage.spec.ts`) |
 | `npm run test:e2e` | ✅ **OK** | 11 suites / 57 tests passed |
 | `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`)|
 
@@ -200,10 +200,15 @@ npm run generate-types   # copia prisma-types.ts desde backend
 
 | Comando | Estado | Evidencia |
 |---------|--------|-----------|
-| `npm run build` | ✅ **OK** | 0 errores (~44 warnings preexistentes) |
-| `npm run lint` | ✅ **OK** | 0 errores, ~44 warnings preexistentes |
-| `npx ng test --watch=false --browsers=ChromeHeadless` | ✅ **OK** | 1172 tests passed |
+| `npm run build` | ✅ **OK** | 0 errores (bundle inicial 1.27 MB, +70 kB sobre budget warning — preexistente) |
+| `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
+| `npx ng test --watch=false --browsers=ChromeHeadless` | ✅ **OK** | Suites de formularios comerciales y catálogos en verde (55/55 tras migración Fase 5 + limpieza base); total histórico ~1054 tests |
 | `npm run e2e` | ✅ **OK** | 184/184 passed (Chromium) |
+
+> **Notas de deuda técnica activa (2026-08-04):**
+> - **Tokens de altura creados** (`--size-control-sm/md/lg` en `_07-sizing.scss`); los componentes LUNA ya los consumen. Quedan ~93 alturas crudas en `pages/`/`shared/`, la mayoría decorativas (deuda de design system posterior).
+> - **Patrón `openDialog` eliminado completamente.** Todos los formularios y catálogos usan `ConfirmDialogService.ask()`. `document-form.base.ts` limpiada.
+> - **Plan visual v2**: Fases 0, 1, 3, 4, 5, 6 resueltas. Fase 2 (tokens) parcialmente resuelta. Fase 7 (`::ng-deep`) es backlog continuo.
 
 ---
 

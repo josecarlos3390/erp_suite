@@ -2162,7 +2162,7 @@ A form page is **legacy** if ANY of the following is true:
 
 ## 20. Lint & Type Hygiene
 
-> **Current status (Jun 2026):** Frontend lint is clean (`ng lint` → `0 errors, 0 warnings`) and all unit tests pass (`579/579 SUCCESS`). The codebase went through a `strict: true` cleanup that removed ~318 `: any` annotations and a later pass that cleaned the remaining 45 lint warnings (mostly unused imports/variables).
+> **Current status (Aug 2026):** `ng lint` reports `0 errors, 18 warnings` (unused imports, `@typescript-eslint/no-unused-vars`) — all pre-existing, tracked for cleanup. The codebase went through a `strict: true` cleanup that removed ~318 `: any` annotations. Unit-test count grows as features land; the **lint-clean** target remains a goal, not the current state. Verify with `npm run lint` before treating the tree as clean.
 
 ### Keep the lint clean
 
