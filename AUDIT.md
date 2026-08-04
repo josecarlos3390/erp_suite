@@ -112,6 +112,46 @@ Se detectaron **7 ocurrencias** en **5 servicios** (todos en `trackingAssignment
 
 ---
 
+## 2b. Hallazgos activos — pendientes de fix (2026-08-04)
+
+> Detectados durante la campaña de tests de cálculo financiero. No se arreglaron en esa sesión porque requieren decisión de diseño o tocan lógica de negocio sensible. Los tests que los exponen están en verde con comentarios `// FIXME`.
+
+### 2b.1 Frontend — POS no usa `calcLineWithIndicator` y diverge en IVA (BUG FUNCIONAL)
+
+**Severidad:** Alta (cálculo de dinero) — pendiente de decisión de alcance.
+
+**Archivos:** `pages/pos/pos.component.ts:499` (`calcLine` privado duplicado) vs `shared/pricing.util.ts:37` (`calcLineWithIndicator`).
+
+**Problema:** El POS tiene su propia función `calcLine` que **no reutiliza** el util compartido `calcLineWithIndicator` que usan todos los formularios comerciales. Divergencias concretas:
+
+1. **No soporta `calculationMethod: 'STANDARD'`** (IVA incluido estilo SAP). El POS solo implementa la rama BOLIVIA_SIN (`taxAmount = gross * rate`). Si un partner/indicador tiene `calculationMethod: 'STANDARD'` e `isInclusive: true`, el POS calcula el IVA con la fórmula equivocada. El backend define indicadores con `STANDARD` (`backend-erp/src/common/tax-indicator.util.ts:58`), así que el caso es alcanzable.
+2. **Redondeo divergente:** el POS añade `Math.round(...*100)/100` en `taxAmount` y `lineSubtotal`; el util no redondea (lo hace quien llama).
+3. **No calcula `priceNet`** (el util sí).
+
+**Impacto:** Para rate=0.13 sobre Bs 100 con `STANDARD` + `isInclusive`: el cálculo correcto da IVA=Bs 11.50; el POS da Bs 13.00 (fórmula BOLIVIA_SIN). **Diferencia de Bs 1.50 por cada Bs 100** en el IVA mostrado por el POS vs la factura.
+
+**Decisión pendiente:** ¿el POS debe soportar `STANDARD` (refactorizar para usar `calcLineWithIndicator`), o se asume que siempre opera en modo BOLIVIA_SIN por diseño? Si es lo segundo, requiere un guard que bloquee partners con indicador STANDARD en POS. Si es lo primero, el refactor toca `addToCart`, `updateCartLine`, y la lógica de totales del carrito.
+
+### 2b.2 Frontend — `calcTotals` prorratea IVA incorrectamente en líneas mixtas (BUG)
+
+**Severidad:** Media-alta (cálculo de dinero) — pendiente de decisión de diseño.
+
+**Archivo:** `shared/document-form/document-form.base.ts:587-643` (`calcTotals`).
+
+**Problema:** Cuando se aplica un descuento de cabecera (`discountMode==='header'`), el ratio de prorrateo se calcula como `(lineTotalSum - hDiscount) / lineTotalSum` y se aplica **al subtotal Y al tax** por igual. Pero `lineTotalSum` incluye bases exentas + gravadas + impuestos. Si hay líneas mixtas (una exenta `taxAmount=0`, otra gravada), el descuento reduce el IVA de la línea gravada en el mismo ratio que la base, **incluso si el descuento recae sobre la línea exenta**.
+
+**Ejemplo:** 2 líneas — L1 exenta (subtotal 100, tax 0), L2 gravada (subtotal 100, tax 13). `headerDiscountPct=10`:
+- subtotal: 200 → 180 (correcto)
+- **tax: 13 → 11.7** (distorsión: el IVA se reduce un 10% aunque parte del descuento recae sobre la base exenta)
+
+Fiscalmente, el IVA debería recalcularse solo sobre la base gravada descontada, no prorratearse linealmente.
+
+**Test que lo documenta:** `document-form.base.spec.ts` (test "descuento de cabecera % con líneas mixtas" con comentario `// FIXME: posible bug — el prorrateo distorsiona el impuesto`).
+
+**Decisión pendiente:** ¿el prorrateo de IVA debe ser lineal (comportamiento actual, simple pero impreciso) o recalculado por línea (correcto fiscalmente pero más complejo)? Esto afecta a los 14 formularios comerciales.
+
+---
+
 ## 3. Hallazgos importantes resueltos
 
 ### 3.1 Backend — Queries `SELECT *` crudos ✅
