@@ -1,6 +1,6 @@
 # ROADMAP.md — ERP Suite
 
-> Hoja de ruta única y consolidada. Estado actualizado al 2026-07-25.
+> Hoja de ruta única y consolidada. Estado actualizado al 2026-08-08.
 
 ---
 
@@ -181,6 +181,13 @@
 | ✅ DT.8 | **Permisos audit-logs** | Módulo `audit-logs` agregado a `DEFAULT_PERMISSIONS`. | ✅ |
 | ✅ DT.9 | **Unificación cálculo de impuestos (compras)** | Eliminado `forceInclusive: true` hardcodeado en todos los documentos de compra. | ✅ |
 | ✅ DT.10 | **Validación obligatoria de `date` y `postingDate`** | `date` obligatoria en todos los documentos; `postingDate` obligatoria en documentos comerciales, stock/logística, pagos y contabilidad. | ✅ |
+| ✅ DT.11 | **Consistencia branch↔warehouse backend** | `assertWarehousesInBranch` en los 22 servicios de ventas/compras/inventario + POS (create + update). `warehouse.branchId === document.branchId` garantizado en backend, no solo en frontend. | ✅ |
+| ✅ DT.12 | **Herencia de branchId en flujos de copia (frontend)** | `DocumentFormBase.applyBranchFromSource` + 9 gaps corregidos (delivery-orders, sale-invoices, sale-reserve-invoices, purchase-invoices, purchase-reserve-invoices, sales-returns, credit-notes, multi-quotation de orders, interfaces de drafts). El documento hijo nace en la sucursal del origen. | ✅ |
+| ✅ DT.13 | **stock-transfers: destino libre de sucursal** | Alineado frontend↔backend: el destino puede ser de cualquier sucursal (asiento usa cuentas del destino según su sucursal); solo el origen pertenece a la sucursal del documento. | ✅ |
+| ✅ DT.14 | **Matriz artículo-almacén optimizada** | `validateDocumentLinesWarehouseAssignment` pasa de N `findFirst` por línea a 3 `findMany` en paralelo (matriz, items, warehouses) con deduplicación. Misma API y semántica. | ✅ |
+| 🔄 DT.15 | **Refactor `accounting-engine.service.ts` por dominio** | Monolito de 6,100+ líneas. Refactorizar los builders de asientos por dominio/familia. **Primer paso recomendado antes de F6 completo.** | 🔄 Pendiente — prioridad al llegar a F6 |
+| ☐ DT.16 | **POS delegando en `sale-invoices.service`** | `pos.service.ts` crea la factura con lógica propia; migrar a delegación para no replicar fixes contables. | ☐ Pendiente |
+| ☐ DT.17 | **`purchase-requests-form` al patrón canónico** | Migrar de `implements OnInit` a `PurchaseDocumentFormBase`. | ☐ Pendiente |
 
 ---
 
@@ -236,4 +243,4 @@
 
 ---
 
-*Última actualización: 2026-07-25*
+*Última actualización: 2026-08-08*

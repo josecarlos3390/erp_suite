@@ -490,5 +490,27 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
 
 ---
 
+## 7. Deuda estructural priorizada (auditoría 2026-08-08)
+
+> Evaluación honesta post-fixes de integridad (validación branch↔warehouse en 22 servicios + POS,
+> herencia de branchId en flujos de copia, matriz de almacenes optimizada a 1 query).
+> El ERP es robusto en diseño de fondo; estas son deudas estructurales que cobran interés
+> con el tiempo, no bugs urgentes.
+
+| # | Área | Item | Por qué importa | Cuándo atender |
+|---|------|------|-----------------|----------------|
+| S1 | Backend / accounting | `accounting-engine.service.ts` es un monolito de **6,100+ líneas** con los 10+ builders de asientos | Cada feature contable nueva (cierre de período, activos fijos, nómina, revaluación) lo engorda; un error ahí es difícil de diagnosticar. El refactor por dominio (por documento o por family de asientos) protege el futuro de F6. | **Antes de F6 completo** (primer paso, no sumar features encima) |
+| S2 | Backend / POS | `pos.service.ts` crea la `SaleInvoice` con lógica propia en vez de delegar en `sale-invoices.service` | Ya validamos branch↔warehouse en POS, pero cualquier fix contable de ventas hay que replicarlo manualmente en POS (riesgo de divergencia, como pasó con `calcLineWithIndicator`) | Media — antes de escalar POS |
+| S3 | Frontend / forms | `purchase-requests-form` no extiende `DocumentFormBase` (usa `implements OnInit` directo) | Único formulario fuera del patrón canónico: sin `skipBranchValidation`, sin `defaultWarehouseId` con filtro por sucursal, sin auto-sync branch→warehouse. Funciona, pero puede desviarse | Baja — migrar al patrón cuando se toque |
+| S4 | Frontend / tests | El patrón de testing de formularios es frágil (mocks manuales de ToastService rompían ~6 specs por un método `warn` vs `warning`) | Señal de que los tests de componentes requieren cuidado; el helper de testing mejoró con `warning()`, pero conviene revisar otros mocks que puedan tener API desalineada | Baja — limpieza cuando se toque |
+| S5 | Frontend / design system | ~93 alturas crudas en `pages/`/`shared/` que deberían ser tokens LUNA (`--size-control-sm/md/lg`) | Deuda cosmética acumulativa; la mayoría decorativa. Ya documentada en AGENTS.md §4 | Backlog continuo |
+| S6 | Backend / infra | El guard de permisos sigue **fail-open** como red de seguridad (RBAC) | El test `permissions-coverage.spec.ts` garantiza cobertura; pasarlo a fail-closed cuando `AUTH_EXEMPT` quede vacío | Baja — oportunidad de endurecimiento |
+
+**Veredicto:** los cimientos (trazabilidad documental, doble expresión monetaria, multi-tenancy,
+determinación de cuentas jerárquica, branch↔warehouse consistente) están sólidos. S1 es la única
+deuda que **recomiendo atender activamente** antes de F6; el resto es mantenimiento normal.
+
+---
+
 *Documento vivo. Actualizado automáticamente tras cada auditoría.*
 *Fuentes: `AUDIT_REPORT_V2.md`, `AUDIT_TRACKING.md`, `BUGS_RESUELTOS.md`, `AGENTS.md`.*

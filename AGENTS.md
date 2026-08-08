@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-07-26.  
+> **Última actualización:** 2026-08-08.  
 > **Versión canónica de restricciones transversales.**  
 > Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
@@ -184,7 +184,7 @@ npm run generate-types   # copia prisma-types.ts desde backend
 
 ---
 
-## 4. Estado real del proyecto (2026-08-04)
+## 4. Estado real del proyecto (2026-08-08)
 
 ### Backend (`backend-erp/`)
 
@@ -192,7 +192,7 @@ npm run generate-types   # copia prisma-types.ts desde backend
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npm test` | ✅ **OK** | 129 suites / 1249 tests passed (incluye `permissions-coverage.spec.ts`) |
+| `npm test` | ✅ **OK** | **130 suites / 1258 tests passed** (incluye `permissions-coverage.spec.ts`, helper `warehouse-branch.util.spec.ts` con 8 tests) |
 | `npm run test:e2e` | ✅ **OK** | 11 suites / 57 tests passed |
 | `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`)|
 
@@ -205,10 +205,12 @@ npm run generate-types   # copia prisma-types.ts desde backend
 | `npx ng test --watch=false --browsers=ChromeHeadless` | ✅ **OK** | Suites de formularios comerciales y catálogos en verde (55/55 tras migración Fase 5 + limpieza base); total histórico ~1054 tests |
 | `npm run e2e` | ✅ **OK** | 184/184 passed (Chromium) |
 
-> **Notas de deuda técnica activa (2026-08-04):**
+> **Notas de deuda técnica activa (2026-08-08):**
+> - **Integridad branch↔warehouse completada (2026-08-08):** `assertWarehousesInBranch` en 22 servicios + POS (create/update), herencia de branchId en flujos de copia del frontend (`applyBranchFromSource`), matriz artículo-almacén optimizada a 3 `findMany` en paralelo, stock-transfers con destino libre de sucursal. Ver `AUDIT.md` §7 y `ROADMAP.md` DT.11-14.
 > - **Tokens de altura creados** (`--size-control-sm/md/lg` en `_07-sizing.scss`); los componentes LUNA ya los consumen. Quedan ~93 alturas crudas en `pages/`/`shared/`, la mayoría decorativas (deuda de design system posterior).
 > - **Patrón `openDialog` eliminado completamente.** Todos los formularios y catálogos usan `ConfirmDialogService.ask()`. `document-form.base.ts` limpiada.
 > - **Plan visual v2**: Fases 0, 1, 3, 4, 5, 6 resueltas. Fase 2 (tokens) parcialmente resuelta. Fase 7 (`::ng-deep`) es backlog continuo.
+> - **Deuda estructural priorizada:** ver `AUDIT.md` §7 (S1 refactor del accounting engine es la única recomendada antes de F6; S2-S6 mantenimiento normal).
 
 ---
 
