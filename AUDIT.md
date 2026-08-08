@@ -490,25 +490,26 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
 
 ---
 
-## 7. Deuda estructural priorizada (auditoría 2026-08-08)
+## 7. Deuda estructural priorizada (auditoría 2026-08-08, actualizada)
 
 > Evaluación honesta post-fixes de integridad (validación branch↔warehouse en 22 servicios + POS,
 > herencia de branchId en flujos de copia, matriz de almacenes optimizada a 1 query).
 > El ERP es robusto en diseño de fondo; estas son deudas estructurales que cobran interés
 > con el tiempo, no bugs urgentes.
 
-| # | Área | Item | Por qué importa | Cuándo atender |
-|---|------|------|-----------------|----------------|
-| S1 | Backend / accounting | `accounting-engine.service.ts` es un monolito de **6,100+ líneas** con los 10+ builders de asientos | Cada feature contable nueva (cierre de período, activos fijos, nómina, revaluación) lo engorda; un error ahí es difícil de diagnosticar. El refactor por dominio (por documento o por family de asientos) protege el futuro de F6. | **Antes de F6 completo** (primer paso, no sumar features encima) |
-| S2 | Backend / POS | `pos.service.ts` crea la `SaleInvoice` con lógica propia en vez de delegar en `sale-invoices.service` | Ya validamos branch↔warehouse en POS, pero cualquier fix contable de ventas hay que replicarlo manualmente en POS (riesgo de divergencia, como pasó con `calcLineWithIndicator`) | Media — antes de escalar POS |
-| S3 | Frontend / forms | `purchase-requests-form` no extiende `DocumentFormBase` (usa `implements OnInit` directo) | Único formulario fuera del patrón canónico: sin `skipBranchValidation`, sin `defaultWarehouseId` con filtro por sucursal, sin auto-sync branch→warehouse. Funciona, pero puede desviarse | Baja — migrar al patrón cuando se toque |
-| S4 | Frontend / tests | El patrón de testing de formularios es frágil (mocks manuales de ToastService rompían ~6 specs por un método `warn` vs `warning`) | Señal de que los tests de componentes requieren cuidado; el helper de testing mejoró con `warning()`, pero conviene revisar otros mocks que puedan tener API desalineada | Baja — limpieza cuando se toque |
-| S5 | Frontend / design system | ~93 alturas crudas en `pages/`/`shared/` que deberían ser tokens LUNA (`--size-control-sm/md/lg`) | Deuda cosmética acumulativa; la mayoría decorativa. Ya documentada en AGENTS.md §4 | Backlog continuo |
-| S6 | Backend / infra | El guard de permisos sigue **fail-open** como red de seguridad (RBAC) | El test `permissions-coverage.spec.ts` garantiza cobertura; pasarlo a fail-closed cuando `AUTH_EXEMPT` quede vacío | Baja — oportunidad de endurecimiento |
+| # | Área | Item | Por qué importa | Estado |
+|---|------|------|-----------------|--------|
+| S1 | Backend / accounting | `accounting-engine.service.ts` monolito (6,436 líneas) | Cada feature contable nueva lo engordaba; errores difíciles de diagnosticar | ✅ **RESUELTO (2026-08-08):** split por familia → `src/common/accounting/` (fachada 2,884 + 4 builders por dominio + core compartido). Superficie pública estable. Ver `ROADMAP.md` DT.15. Pendiente menor: `previewJournalEntryFromDraft` (992 líneas) para F6 |
+| S6 | Backend / infra | `PermissionsGuard` fail-open (RBAC) | Cualquier handler sin `@RequirePermission` era accesible por cualquier autenticado | ✅ **RESUELTO (2026-08-08):** fail-closed + permisos incluidos en el JWT (antes el JWT nunca los llevaba). 6 tests del guard. Ver `AUDIT.md` §2.0 |
+| S2 | Backend / POS | `pos.service.ts` crea la `SaleInvoice` con lógica propia en vez de delegar en `sale-invoices.service` | Cada fix contable de ventas hay que replicarlo manualmente en POS (riesgo de divergencia, como pasó con `calcLineWithIndicator`) | 🔄 **EN CURSO (2026-08-08)** — antes de escalar POS |
+| S3 | Frontend / forms | `purchase-requests-form` no extiende `DocumentFormBase` (usa `implements OnInit` directo) | Único formulario fuera del patrón canónico: sin `skipBranchValidation`, sin `defaultWarehouseId` con filtro por sucursal, sin auto-sync branch→warehouse | ☐ Pendiente — migrar al patrón cuando se toque |
+| S4 | Frontend / tests | Patrón de testing de formularios frágil (mocks manuales) | El caso `warn` vs `warning` rompía ~6 specs; conviene auditar otros mocks del helper por API desalineada | ☐ Pendiente — limpieza |
+| S5 | Frontend / design system | ~93 alturas crudas en `pages/`/`shared/` que deberían ser tokens LUNA (`--size-control-sm/md/lg`) | Deuda cosmética acumulativa; la mayoría decorativa. Ya documentada en AGENTS.md §4 | ☐ Backlog continuo |
 
 **Veredicto:** los cimientos (trazabilidad documental, doble expresión monetaria, multi-tenancy,
-determinación de cuentas jerárquica, branch↔warehouse consistente) están sólidos. S1 es la única
-deuda que **recomiendo atender activamente** antes de F6; el resto es mantenimiento normal.
+determinación de cuentas jerárquica, branch↔warehouse consistente) están sólidos. S1 y S6 resueltos;
+**S2 (POS delegando en sale-invoices.service) es la única deuda que recomiendo atender activamente**
+antes de escalar POS, porque cada feature de ventas duplica su lógica contable en el POS.
 
 ---
 
