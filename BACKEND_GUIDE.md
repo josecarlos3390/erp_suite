@@ -150,6 +150,7 @@ Antes de mergear un PR que agregue un flujo `createFrom*`, verificar:
 - [ ] `customFields` es el único campo que usa `Record<string, any>`.
 - [ ] Si el controller inyecta `tenantId` / `createdById` / `branchId`, existe un Input-DTO interno para el servicio.
 - [ ] Si el servicio itera sobre líneas de fuentes distintas (DTO vs modelo Prisma), usa una discriminated union en lugar de casts.
+- [ ] La transacción `$transaction` retorna el documento creado: `return this.prisma.$transaction(...)` o `const x = await ...; return x` — **nunca** `await` a secas que descarte el resultado (ver §4 "Transacciones Prisma"). El endpoint debe responder con el documento, no `{}` con 201/200.
 - [ ] `npm run build`, `npm test` y `npm run lint` están verdes.
 
 ---
@@ -285,6 +286,54 @@ const order = await tx.salesOrder.findUnique({ where: { id }, include });
 async findOne(id: number): Promise<SaleInvoiceDto> { ... }
 async confirm(id: number): Promise<void> { ... }
 ```
+
+### Transacciones Prisma: cuándo `return` vs `const x = await`
+
+> **Lección aprendida (2026-08-08):** los `createFrom*` de `sale-invoices` y
+> `purchase-invoices` usaban `await this.prisma.$transaction(...)` a secas,
+> descartando el resultado del callback. El documento se creaba en BD pero el
+> servicio retornaba `undefined` → Nest respondía **201 con body `{}`** (bug
+> silencioso). Se corrigieron 15 métodos a `return this.prisma.$transaction(...)`.
+
+Los **3 patrones válidos** para transacciones Prisma — la combinación está
+permitida, cada uno con su justificación:
+
+```typescript
+// ── PATRÓN A (default recomendado): el método termina retornando la tx.
+//    El callback retorna el documento; se propaga como respuesta del endpoint.
+return this.prisma.$transaction(async (tx) => {
+  const doc = await tx.saleInvoice.create({ ... });
+  return this._executeConfirmLogic(tx, doc, tenantId, createdById);
+});
+
+// ── PATRÓN B: se necesita el resultado de la tx PARA ALGO MÁS después
+//    (ej. resolver con findOne fuera de la tx, o validar el id antes de
+//    responder). Equivalente en resultado a A; usar cuando hay lógica
+//    posterior que depende del id capturado.
+const orderId = await this.prisma.$transaction(async (tx) => {
+  const order = await tx.purchaseOrder.create({ ... });
+  return order.id;
+});
+return this.findOne(orderId, tenantId);
+
+// ── PATRÓN C (PROHIBIDO): await sin capturar ni retornar el resultado.
+//    El callback retorna algo pero el método lo descarta → undefined.
+//    ❌ NUNCA:  await this.prisma.$transaction(async (tx) => { ... return doc; });
+//    ❌ NUNCA:  this.prisma.$transaction(async (tx) => { ... return doc; });  (sin await ni return)
+```
+
+**Regla de verificación** (para reviews y la checklist de `createFrom*`):
+
+1. Si el método **termina** en la tx → `return this.prisma.$transaction(...)` (Patrón A).
+2. Si necesita el resultado para lógica posterior → `const x = await this.prisma.$transaction(...)` y retornar/usar `x` (Patrón B).
+3. **Prohibido:** `await this.prisma.$transaction(...)` sin asignar el resultado a una variable ni retornarlo.
+4. Al cambiar el patrón de una tx, verificar que el método **no tenga código después** de la tx que dependa de la variable capturada (rompería el retorno).
+5. Test de humo: el endpoint debe devolver el documento creado (no `{}` con 201/200).
+
+> **Nota sobre `await` vs `return` en rendimiento:** la diferencia es despreciable
+> (un microtask de diferencia en el wrapping de la promesa). `await` da mejores
+> stack traces de debugging, pero **solo** cuando se captura el resultado
+> (Patrón B). Nunca justifica el Patrón C.
 
 ### Test mocks tipados
 
