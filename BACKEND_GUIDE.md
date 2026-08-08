@@ -37,6 +37,34 @@ src/<modulo>/
     update-<modulo>.dto.ts
 ```
 
+### Motor contable (`src/common/accounting/`) — refactor por familia (2026-08-08)
+
+El motor contable se dividió por dominio (antes monolito de 6,436 líneas en
+`accounting-engine.service.ts`). La fachada `AccountingEngineService` mantiene la
+**superficie pública estable** (los 15 `create*JournalEntry` + `previewJournalEntry` +
+`previewJournalEntryFromDraft` + `persistManualJournalEntry` + `reverseJournalEntry`),
+así que los 22 servicios que lo consumen y los 19 specs que lo mockean **no cambian**.
+
+```
+src/common/accounting/
+  journal-entry-builder.ts      # JournalEntryBuilder + interfaces (lineas, preview)
+  journal-entry-core.ts         # clase base: det/settingsService + helpers compartidos
+  sales.journal-builder.ts      # 5 builders de ventas (invoice, delivery, NC, ND, return)
+  purchases.journal-builder.ts  # 5 builders de compras (invoice, receipt, NC, ND, return)
+  inventory.journal-builder.ts  # 4 builders de inventario (entry, exit, adjustment, transfer)
+  payments.journal-builder.ts   # 2 builders de pagos (incoming, outgoing)
+  accounting-engine.service.ts  # fachada: persiste y delega en los builders
+```
+
+**Reglas al añadir un nuevo tipo de asiento (ej. cierre de período, activos fijos):**
+1. Añadir el builder `_buildXxx` (o `buildXxx`) al archivo de la familia correspondiente
+   (`src/common/accounting/<familia>.journal-builder.ts`).
+2. Añadir el `createXxxJournalEntry` a la fachada (`accounting-engine.service.ts`),
+   que llama al builder y persiste vía `_persist` (heredado de `JournalEntryCore`).
+3. Registrar el `case` en `previewJournalEntry` y `previewJournalEntryFromDraft` si
+   el documento tiene preview.
+4. Verificar con `npm test` (el spec del engine cubre los 15 builders existentes).
+
 ### Capas y patrones clave
 
 - **`AppModule`** (`src/app.module.ts`) importa todos los módulos y registra guards/interceptores globales.
