@@ -533,6 +533,7 @@ favoriteCount = computed(() => this.help.favoriteIds().size);
 | `LunaFormSectionComponent` | `<luna-form-section>` | Tarjeta de sección con `title`, `hint`, `status`. |
 | `LunaFormRowComponent` | `<luna-form-row>` | Fila grid configurable (`columns` 1-4, `gap` sm/md/lg). |
 | `LunaFormFieldComponent` | `<luna-form-field>` | Wrapper `label + hint + error` para controles custom. |
+| `LunaFormFieldRowComponent` | `<luna-form-field-row>` | Label + control alineados horizontalmente (útil en celdas/tablas). |
 | `LunaFormTabsComponent` | `<luna-form-tabs>` | Pestañas accesibles unificadas. |
 
 ---
