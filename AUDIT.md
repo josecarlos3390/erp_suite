@@ -502,15 +502,16 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
 | S1 | Backend / accounting | `accounting-engine.service.ts` monolito (6,436 líneas) | Cada feature contable nueva lo engordaba; errores difíciles de diagnosticar | ✅ **RESUELTO (2026-08-08):** split por familia → `src/common/accounting/` (fachada 2,884 + 4 builders por dominio + core compartido). Superficie pública estable. Ver `ROADMAP.md` DT.15. Pendiente menor: `previewJournalEntryFromDraft` (992 líneas) para F6 |
 | S6 | Backend / infra | `PermissionsGuard` fail-open (RBAC) | Cualquier handler sin `@RequirePermission` era accesible por cualquier autenticado | ✅ **RESUELTO (2026-08-08):** fail-closed + permisos incluidos en el JWT (antes el JWT nunca los llevaba). 6 tests del guard. Ver `AUDIT.md` §2.0 |
 | S2 | Backend / POS | `pos.service.ts` duplicaba la lógica de salida de stock de `sale-invoices.service` | Riesgo de divergencia (como pasó con `calcLineWithIndicator`); el POS perdía la multi-asignación de lotes/series | ✅ **RESUELTO (2026-08-08):** análisis previo mostró que la delegación pura rompería el comportamiento del POS (asiento contable nuevo, saldos AR, precios, stock — divergencias deliberadas de un diseño de venta atómica con pago). Se optó por **helpers compartidos**: el POS ahora usa `applyOutgoingStock` (mismo helper que delivery-orders/stock-exits) en vez de su bucle inline, ganando multi-asignación de lotes/series. Kits SELL_AS_COMPONENTS se mantienen aparte. ~40 líneas duplicadas eliminadas, sin cambio de comportamiento. Nota: el POS sigue sin generar asiento contable — si el negocio lo requiere, es una feature separada, no deuda |
-| S3 | Frontend / forms | `purchase-requests-form` no extiende `DocumentFormBase` (usa `implements OnInit` directo) | Único formulario fuera del patrón canónico: sin `skipBranchValidation`, sin `defaultWarehouseId` con filtro por sucursal, sin auto-sync branch→warehouse | ☐ Pendiente — migrar al patrón cuando se toque |
+| S3 | Frontend / forms | `purchase-requests-form` no extiende `DocumentFormBase` (usa `implements OnInit` directo) | Único formulario fuera del patrón canónico: sin `skipBranchValidation`, sin `defaultWarehouseId` con filtro por sucursal, sin auto-sync branch→warehouse | ✅ **RESUELTO (2026-08-08):** migrado a `PurchaseDocumentFormBase`. Implementa los 5 abstracts (canEdit, form, documentType, documentId, itemsArray), hereda `defaultWarehouseId` con filtro por sucursal, `skipBranchValidation`, auto-sync branch→warehouse y `onHeaderWarehouseChanged`. `status` pasó de getter a campo sync desde el request. Override de `applyEditRestrictions` conserva el comportamiento DRAFT-editable de solicitudes. `'PURCHASE_REQUEST'` agregado al union `DocumentType` de prisma-types. Build + lint + 1,251 unit tests en verde. Ver `ROADMAP.md` DT.17 |
 | S4 | Frontend / tests | Patrón de testing de formularios frágil (mocks manuales) | El caso `warn` vs `warning` rompía ~6 specs; conviene auditar otros mocks del helper por API desalineada | ☐ Pendiente — limpieza |
 | S5 | Frontend / design system | ~93 alturas crudas en `pages/`/`shared/` que deberían ser tokens LUNA (`--size-control-sm/md/lg`) | Deuda cosmética acumulativa; la mayoría decorativa. Ya documentada en AGENTS.md §4 | ☐ Backlog continuo |
 
 **Veredicto:** los cimientos (trazabilidad documental, doble expresión monetaria, multi-tenancy,
-determinación de cuentas jerárquica, branch↔warehouse consistente) están sólidos. **S1, S2 y S6
-resueltos (2026-08-08).** Resta S3 (`purchase-requests-form` al patrón canónico, media), S4
-(limpieza de mocks de testing, baja) y S5 (tokens LUNA, backlog). Recomendación: atender S3 cuando
-se toque el formulario de solicitudes; S4 es barato y preventivo.
+determinación de cuentas jerárquica, branch↔warehouse consistente) están sólidos. **S1, S2, S6 y
+S3 resueltos (2026-08-08).** Todos los formularios de documentos ya extienden el patrón canónico
+(`DocumentFormBase`/`CommercialDocumentFormBase`/`PurchaseDocumentFormBase`). Resta S4
+(limpieza de mocks de testing, baja) y S5 (tokens LUNA, backlog). Recomendación: S4 es barato y
+preventivo — auditar el resto de mocks del helper de testing por API desalineada.
 
 ---
 
