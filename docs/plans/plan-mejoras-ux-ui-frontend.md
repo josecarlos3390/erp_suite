@@ -220,6 +220,27 @@ No proponemos llegar a 100% de cobertura como bloqueante. Sí: **cualquier compo
 
 ---
 
+## Prioridad 7 — Confusiones críticas de UX (Bloque A, S17) ✅ RESUELTO (2026-08-09)
+
+### Contexto
+Auditoría de explicabilidad (2026-08-09) detectó 4 hallazgos 🔴 que pueden causar errores de datos o desorientar al usuario final. Todos resueltos:
+
+| # | Hallazgo | Fix |
+|---|----------|-----|
+| 1 | **"Vendedor" pedía el ID numérico interno** (`luna-input type="number"` con placeholder "ID del vendedor...") en 7 formularios de ventas — el usuario no conoce su ID de BD y puede tipear cualquier número | Reemplazado por el selector canónico `app-sales-person-selector` (búsqueda por nombre) en `sale-invoices`, `sales-orders`, `delivery-orders`, `sale-reserve-invoices`, `sales-credit-notes`, `sales-returns`, `sales-quotations`. Control `salesPersonId` del FormGroup intacto (CVA compatible) — sin cambios de payload |
+| 2 | **"Fecha" vs "F. Contab." sin explicación** en 21 formularios — el usuario no sabe que la fecha contable define el período del asiento | `helperText` (INLINE) o `hint` (wrapper `luna-form-field`) en los 21 forms: "Fecha del documento. La fecha contable define el período en que se registra el asiento." |
+| 3 | **Búsqueda global mostraba estados en inglés crudo** ("OPEN"/"CLOSED") sin color semántico | `statusLabel()` (Abierta/Cerrada/Cancelada) + `typeLabel()` (Cliente/Proveedor) en `search.component`; badges con color por estado en `search.component.scss` |
+| 4 | **Listado de facturas se contradice**: empty state decía "Se crean desde un pedido" pero el botón crea manual | `emptyDesc` ahora explica ambos flujos: "Puedes crearla manualmente con '+ Nueva Factura', o generarla desde un pedido de venta con 'Copiar a'." |
+
+### Pendientes documentados (Bloques B y C, futuras pasadas)
+- **B — Unificación visual**: color de estado OPEN contradictorio (verde en stock vs azul en ventas), labels/placeholders de `referenceNo`/`customerRef` en 3 variantes, botón "Crear" genérico en 5 maestros, toasts "creado correctamente" vs "creado", densidad de tabla en facturas/recepciones, capitalización y prefijo "+" en botones "Nuevo X", iconos residuales (emojis ✅/❌ en purchase-requests, "½" para PARTIAL, `fas fa-link`, ⚠), tildes ("Nuevo Articulo", "Sin articulos").
+- **C — Explicabilidad**: "GRIR" sin traducir en 3 forms, "DPP" en tablas de cuotas, help-hints desiguales en listados de documentos, banners de campos readonly (Cliente en pago desde factura, Costo en tab Costos), placeholder "- Sin almacén -".
+
+### Verificación
+- `npm run build` + `npm run lint` 0/0 + suite completa 1,257 tests en verde.
+
+---
+
 ## Explícitamente fuera de este plan
 - Todo lo relacionado a `src/app/pages/pos/**`, incluyendo su archivo `pos.component.scss` (1,951 líneas) — se aborda por separado.
 - Migración responsive en curso (ver `docs/archive/FRENTE-3-PLAN-VALIDACION-VISUAL.md`) — ya tiene su propio plan activo, no se duplica aquí.
