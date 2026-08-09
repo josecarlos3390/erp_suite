@@ -542,6 +542,16 @@ excepciones cosméticas documentadas (alturas 28px/38px intencionales y decorati
 pertenecen al token de control) y pendientes de F7.2 contable (diferencia de cambio automática en
 asientos manuales; gain/loss accounts del settings sin consumo por builders).
 
+**Deuda estructural del motor contable (2026-08-09):** el último monolito de la fachada —
+`previewJournalEntryFromDraft` (~1010 líneas, switch de 16 cases de preview de borradores) — fue
+extraído a `src/common/accounting/drafts.journal-builder.ts` (`DraftsJournalBuilder` + interfaz
+`DraftPreviewDocument`), y los helpers compartidos de preview (`_enrichPreviewLines`,
+`_buildPreviewResponse`, `_formatPreviewDate`, `_groupPreviewLines`) se movieron a
+`JournalEntryCore` (eliminando el enrich duplicado entre `previewJournalEntry` y el preview de
+draft). La fachada bajó de 2,922 → 1,718 líneas con superficie pública estable (el único consumidor
+`journal-entries.service.previewFromDraft` no cambió). Ver `ROADMAP.md` DT.15. Backend 132
+suites/1287 tests en verde (incluye 4 tests nuevos de preview de borrador).
+
 ---
 
 *Documento vivo. Actualizado automáticamente tras cada auditoría.*
