@@ -511,19 +511,23 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
 | S10 | Frontend / formularios | Bugs funcionales en formularios comerciales (auditoría UX 2026-08-08): (1) `purchase-returns` selector de proveedor filtraba `CLIENT` en vez de `SUPPLIER`, panel de trazabilidad mostraba flujo `SALES_RETURN` en una devolución de compra, y buscador de ítems usaba `canBeSold` en vez de `canBePurchased`; (2) `delivery-orders` el Almacén de cabecera era un `luna-input` readonly (todos los demás formularios usan selector editable); (3) `journal-entries` `getAccountRequiresPartner` estaba definida pero **nunca se llamaba** → el asiento manual no avisaba ni validaba cuentas CxC/CxP sin socio | (1) El usuario creando una devolución de compra veía clientes en vez de proveedores y no podía buscar ítems comprables; (2) en entregas no se podía cambiar el almacén de cabecera; (3) el backend rechazaba el posteo de asientos sin partner sin feedback previo | ✅ **RESUELTO (2026-08-08):** (1) `purchase-returns` → `filterType="SUPPLIER"`, `type="PURCHASE_RETURN"`, `canBePurchased`; (2) `delivery-orders` → `app-warehouse-selector` editable con `skipBranchValidation` + `onHeaderWarehouseChanged`; (3) `journal-entries` → warning "requiere socio" en la celda de cuenta + validación en `save()` (bloquea con toast). Build + lint + 1,257 tests en verde. Ver `ROADMAP.md` DT.23 |
 | S11 | Backend + Frontend / coherencia contable y moneda | (1) El estado de cuenta del partner (`getTransactions`) sumaba en moneda del documento mientras el ledger sumaba en moneda base → montos divergentes con transacciones mixtas BOB/USD; (2) el listado de asientos no mostraba montos; (3) el asiento manual no bloqueaba períodos cerrados en `save()` (solo badge) y no validaba el período al crear; (4) `previewIsBalanced` cuadraba en moneda del documento vs `isBalanced` en base; (5) "Bs" hardcodeado en kardex, item-detail, returns, dashboard y settings | (1) Un usuario con transacciones USD veía totales del estado de cuenta que no coincidían con el ledger; (2) no podía cuadrar la lista de asientos visualmente; (3) el backend rechazaba al guardar en período cerrado sin aviso previo; (4) preview y form podían discrepar en multi-moneda; (5) si el tenant cambiaba de moneda base, las etiquetas quedaban mal | ✅ **RESUELTO (2026-08-08):** (1) `getTransactions` emite `debit_base`/`credit_base` por rama del UNION (con `totalInBaseCurrency` cuando existe), y los aggregates + saldo corrido usan esos → summary y running balance en base, consistentes con el ledger; (2) `findAll` de journal-entries expone `totalDebitBase`/`totalCreditBase` y el listado muestra columnas "Débito M/N"/"Crédito M/N"; (3) `save()` bloquea si `periodValidation.isOpen === false` y `ngOnInit` valida el período al crear; (4) `previewIsBalanced` cuadra en moneda base; (5) etiquetas dinámicas con `baseCurrency` (kardex, item-detail, returns, dashboard, settings). Ver `ROADMAP.md` DT.24 |
 
+| S12 | Frontend / kardex unificado | La pestaña Kardex del detalle del artículo y la página kardex completa mostraban información distinta: la pestaña sin columnas Lote/Costo prom., sin tarjetas de resumen, con el tipo de movimiento como texto plano (vs badge), y `fmtAmount` confundía `0` con `null` (entrada gratis indistinguible de movimiento sin valorizar) en ambas vistas; además no había ninguna advertencia de que `avgCost`/`balanceValue` se calculan solo sobre el subconjunto filtrado (almacén/lote/serie) | El usuario que consultaba el kardex desde el detalle no veía el costo promedio ni el resumen, el tipo de movimiento se percibía distinto según la pantalla, y el "Costo prom." filtrado podía malinterpretarse como el promedio global | ✅ **RESUELTO (2026-08-08):** (1) la pestaña `item-detail` ahora incluye las columnas **Lote** y **Costo prom.** (paridad con la página) y el **badge de tipo de movimiento** (luna-badge con variante in/out); (2) tarjetas de **resumen del kardex** (Entradas/Salidas/Saldo actual/Costo prom./Valor inventario) en la pestaña, alimentadas por `kardexSummary`; (3) `fmtAmount` distingue `null` (→ "—") de `0` (→ "0,00") en kardex e item-detail; (4) **hint ⓘ** en "Costo prom." del kardex (cuando hay filtro de almacén/lote/serie) y del item-detail (siempre, al estar filtrado por almacén) explicando que el promedio es del subconjunto. Build + lint + 1,257 tests en verde. Ver `ROADMAP.md` DT.25 |
+
 **Veredicto:** los cimientos (trazabilidad documental, doble expresión monetaria, multi-tenancy,
 determinación de cuentas jerárquica, branch↔warehouse consistente) están sólidos. **S1, S2, S3,
-S4, S5, S6, S7, S8, S9, S10 y S11 resueltos (2026-08-08).** Todos los formularios de documentos
-usan el patrón canónico, el helper de testing refleja las APIs reales, las alturas de control usan
-tokens LUNA, el Plan de Cuentas muestra todas las cuentas con totalización por nivel (POSTED por
-defecto, DRAFT opcional como proyección), la devolución de compra es siempre el espejo logístico
-de la recepción incluso en el asiento preliminar del borrador, el kardex del detalle del artículo
-muestra la valorización completa, los bugs funcionales de formularios comerciales están
-corregidos, y la coherencia contable/moneda quedó unificada (estado de cuenta en moneda base,
-montos en el listado de asientos, bloqueo de períodos cerrados, preview cuadrado en base, y
-etiquetas de moneda dinámicas). **La deuda estructural priorizada está liquidada.** Quedan solo
-excepciones cosméticas documentadas (alturas 28px/38px intencionales y decorativas que no
-pertenecen al token de control).
+S4, S5, S6, S7, S8, S9, S10, S11 y S12 resueltos (2026-08-08).** Todos los formularios de
+documentos usan el patrón canónico, el helper de testing refleja las APIs reales, las alturas de
+control usan tokens LUNA, el Plan de Cuentas muestra todas las cuentas con totalización por nivel
+(POSTED por defecto, DRAFT opcional como proyección), la devolución de compra es siempre el espejo
+logístico de la recepción incluso en el asiento preliminar del borrador, el kardex del detalle del
+artículo muestra la valorización completa y el resumen (paridad con la página completa), los bugs
+funcionales de formularios comerciales están corregidos, la coherencia contable/moneda quedó
+unificada (estado de cuenta en moneda base, montos en el listado de asientos, bloqueo de períodos
+cerrados, preview cuadrado en base, etiquetas de moneda dinámicas), y el kardex es consistente
+entre la pestaña y la página (columnas, resumen, badge, 0 vs null, hint de promedio filtrado).
+**La deuda estructural priorizada está liquidada.** Quedan solo excepciones cosméticas
+documentadas (alturas 28px/38px intencionales y decorativas que no pertenecen al token de
+control).
 decorativas que no pertenecen al token de control).
 
 ---
