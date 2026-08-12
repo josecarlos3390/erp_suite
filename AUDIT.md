@@ -496,6 +496,11 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Causa raíz (3 bugs encadenados):** (1) `delivery-orders.createManual` ignoraba `line.discountPct` del payload (solo usaba el descuento automático) → la entrega nacía sin descuento; (2) `sale-reserve-invoices.createFromDelivery` usaba solo el `discountPct` del payload sin heredar el del ítem de la entrega (viola R1) en las ramas "entrega suelta" y "resolver genérico"; (3) el módulo FRV persistía `item.subtotal = lineTotal` (con IVA) y no `lineSubtotal`, corrompiendo el preview del documento confirmado.
    - **Fix:** (1) `discountPct` del payload tiene prioridad y si no viene se usa el automático; (2) fallback a `di.discountPct`/`di.discountAmt` en ambas ramas del FRV createFromDelivery; (3) persistir `subtotal = lineSubtotal` (neto) + `lineSubtotal` explícito, con fallback en `_generateJournalEntry` para registros viejos (`lineSubtotal ?? subtotal − tax`).
    - **Cobertura:** 1 test unitario (FRV línea 350×5/8% → 87/13) + 1 E2E (entrega manual con descuento → FRV → asiento con SALES_DISCOUNT y preview con descuento). Backend 133 suites/1317 tests, E2E 71.
+17. **Fix: previewFromDraft descartaba discountTotal** (`backend / journal-entries`) — `✅ Resuelto` (2026-08-12)
+   - **Síntoma:** al crear la FRV con "copiar a" desde la entrega (DEL-000059 del flujo COT-000071→PED-000048), el **asiento preliminar del formulario** no mostraba el descuento aunque la factura sí lo tenía.
+   - **Causa raíz:** `JournalEntriesService.previewFromDraft` mapeaba las líneas del DTO al draft del preview **sin `discountTotal`** (ni `taxIndicatorId`, `purchaseReceiptItemId`, `receiptExchangeRate`, `baseDocType`). El descuento llegaba en el payload pero se descartaba → el builder contabilizaba el ingreso por el neto, sin línea de SALES_DISCOUNT.
+   - **Fix:** el mapeo ahora incluye **todos** los campos de `DraftPreviewDocument.lines`. Verificado en vivo contra la API y con E2E de regresión `preview-draft`.
+   - **Cobertura:** 1 E2E nuevo en `discount-propagation.e2e-spec.ts` (preview-draft con descuento → SALES_DISCOUNT). Backend E2E 73.
 
 ---
 
