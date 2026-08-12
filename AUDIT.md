@@ -479,6 +479,10 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Consistencia corregida:** el desglose del descuento 87/13 en **ventas** (FV/NC/ND/devolución) era solo por perfil (`profile.splitSaleDiscountBaseTax && isBolivia`), mientras **compras** ya era indicator-aware (`resolveEffectiveCalculationMethod`). Nuevo helper `resolveDiscountSplit` en `journal-entry-core.ts`: el indicador de la línea manda si está explícito (una línea STANDARD o tasa cero en tenant BO no se desglosa); sin indicador, usa el método por defecto del país. Compartido por las 4 familias de ventas.
    - **Form 200 completo:** el reporte `GET /reports/tax-declaration` ahora incluye la **base de compras** (casilla 26: FPI/FRC − NC compra) y el **detalle de documentos de compra** (facturas y NC) además del de ventas. Pantalla actualizada.
    - **Cobertura:** 1 test unitario A8 nuevo (NC en tenant BO con indicador STANDARD no desglosa 87/13).
+13. **Retención type-aware en el pago + ICE por artículo** (`backend / accounting`) — `✅ Resuelto` (2026-08-12)
+   - **Retención type-aware:** el `withholdingAmount` del pago saliente acreditaba siempre la cuenta genérica de IT (`2.1.2.01.009`). Nuevo `OutgoingPayment.withholdingTaxTypeId` (schema + db push): si se indica el tipo (IT/IUE/RC-IVA), el asiento acredita la **cuenta específica del tipo** (`WithholdingTaxType.accountId`); sin tipo, fallback legacy al mapping `WITHHOLDING_TAX_PAYABLE`. DTOs create/update, validación (tipo activo del tenant), preview de borrador y selector de tipo en el form de pagos.
+   - **ICE por artículo:** el reporte `GET /reports/tax-declaration` agrega `icePorArticulo` (código, nombre, tasa y monto por ítem desde el mayor) para el Form 605/608.
+   - **Cobertura:** 1 test unitario (pago con tipo → acredita la cuenta del tipo, no la genérica).
 
 ---
 
