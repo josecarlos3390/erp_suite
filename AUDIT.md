@@ -487,6 +487,10 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **ICE específico (DS 24053):** el ICE boliviano se liquida mayormente por monto fijo por unidad (bebidas, cigarrillos, cosméticos), no solo por porcentaje. Nuevos `Item.iceBasis` (`PERCENTAGE` | `SPECIFIC`) y `Item.iceAmountPerUnit`; el builder de venta calcula `SPECIFIC → cantidad × monto por unidad` o `PERCENTAGE → neto × tasa`. Form de artículo con selector condicional.
    - **Libro de Compras y Ventas:** `GET /reports/iva-books?from&to` (solo BO) — detalle mensual por factura (ventas FV+FRV, compras FPI+FRC, NC como filas) con código, fecha, NIT, razón social, total, base e IVA, y débito/crédito fiscal netos como respaldo del Form 200. Pantalla en Reports con tabs.
    - **Cobertura:** 1 test unitario (ICE específico: 2 ud × 5 Bs = 10 Bs a ICE por Pagar).
+15. **Cierre de período contable — protección en el motor** (`backend / accounting`) — `✅ Resuelto` (2026-08-12)
+   - **Gap:** la infraestructura de períodos (`FiscalYear`/`AccountingPeriod`, `close/reopen/validatePostingDate`, UI) protegía los asientos **manuales** y activos fijos, pero **no los asientos automáticos** (confirmación de documentos: facturas, pagos, stock) — un período cerrado podía seguir recibiendo asientos vía documentos.
+   - **Fix:** en `JournalEntryCore._persist` (choke point de todos los asientos): si existe período para la fecha y está cerrado/bloqueado (o año fiscal cerrado) → `ConflictException`; si existe período abierto → el asiento se vincula a `fiscalYearId`/`periodId`; si no existe período → se permite (backward compatible).
+   - **Cobertura:** 2 tests unitarios (bloqueo en período cerrado + vínculo del asiento al período).
 
 ---
 
