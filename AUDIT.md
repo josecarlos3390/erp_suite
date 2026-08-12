@@ -511,6 +511,11 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Causa raíz:** la recepción/entrega incrementaban `receivedQty`/`deliveredQty` del pedido y lo cerraban, pero la devolución no liberaba esas cantidades ni recalculaba la orden.
    - **Fix:** simétrico en `purchase-returns` y `sales-returns` (crear y cancelar): compras decrementa `receivedQty` del PO + `recalcPurchaseOrderProgress` + `refreshHeaderStatus`; ventas decrementa `deliveredQty` del SO + `recalcSalesOrderProgress` + `refreshHeaderStatus`. Ajusta `openQty`/`lineStatus` de los ítems. La cancelación de la devolución revierte el proceso.
    - **Cobertura:** E2E en `purchase-flow` y `sales-flow` (PO/SO vuelven a OPEN, receivedQty/deliveredQty=0, openQty=10, nueva recepción/entrega posible → CLOSED de nuevo). Backend E2E 78.
+20. **Fix guard PO→PRI→Receipt (solo bloquea PRI avance)** (`backend / flujos`) — `✅ Resuelto` (2026-08-12)
+   - **Síntoma:** tras PO→recepción→devolución→recepción→PRI→recepción de las pendientes, el sistema bloqueaba con "Esta orden ya tiene una Factura de Reserva activa. En el flujo PO→PRI→Receipt...".
+   - **Causa raíz:** el guard bloqueaba cualquier recepción directa desde el PO si existía una PRI activa, incluso cuando la PRI nació de una recepción (ya cumplida).
+   - **Fix:** el guard solo bloquea cuando la PRI es un **avance** (`purchaseReceiptItemId = null`) con `openQty > 0`; si la PRI viene de una recepción (ya cumplida), se permite recibir las unidades pendientes del PO. Mismo fix en ventas (`deliveryOrderItemId = null`).
+   - **Cobertura:** E2E en `purchase-flow` (caso usuario: PRI desde recepción → recepción pendiente OK; caso avance: bloqueado). Backend E2E 80.
 
 ---
 
