@@ -483,6 +483,10 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Retención type-aware:** el `withholdingAmount` del pago saliente acreditaba siempre la cuenta genérica de IT (`2.1.2.01.009`). Nuevo `OutgoingPayment.withholdingTaxTypeId` (schema + db push): si se indica el tipo (IT/IUE/RC-IVA), el asiento acredita la **cuenta específica del tipo** (`WithholdingTaxType.accountId`); sin tipo, fallback legacy al mapping `WITHHOLDING_TAX_PAYABLE`. DTOs create/update, validación (tipo activo del tenant), preview de borrador y selector de tipo en el form de pagos.
    - **ICE por artículo:** el reporte `GET /reports/tax-declaration` agrega `icePorArticulo` (código, nombre, tasa y monto por ítem desde el mayor) para el Form 605/608.
    - **Cobertura:** 1 test unitario (pago con tipo → acredita la cuenta del tipo, no la genérica).
+14. **ICE específico por unidad + Libro de Compras y Ventas** (`backend / accounting`) — `✅ Resuelto` (2026-08-12)
+   - **ICE específico (DS 24053):** el ICE boliviano se liquida mayormente por monto fijo por unidad (bebidas, cigarrillos, cosméticos), no solo por porcentaje. Nuevos `Item.iceBasis` (`PERCENTAGE` | `SPECIFIC`) y `Item.iceAmountPerUnit`; el builder de venta calcula `SPECIFIC → cantidad × monto por unidad` o `PERCENTAGE → neto × tasa`. Form de artículo con selector condicional.
+   - **Libro de Compras y Ventas:** `GET /reports/iva-books?from&to` (solo BO) — detalle mensual por factura (ventas FV+FRV, compras FPI+FRC, NC como filas) con código, fecha, NIT, razón social, total, base e IVA, y débito/crédito fiscal netos como respaldo del Form 200. Pantalla en Reports con tabs.
+   - **Cobertura:** 1 test unitario (ICE específico: 2 ud × 5 Bs = 10 Bs a ICE por Pagar).
 
 ---
 
