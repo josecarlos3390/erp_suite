@@ -428,6 +428,7 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
 | **Backend / fiscal** | 1 bug (cálculo de impuestos en compras) | ✅ Todos resueltos |
 | **Frontend / fiscal** | 1 bug (tasa IVA mostrada como 15% en FRC/FPI/FV/FRV) | ✅ Resuelto (2026-08-10) |
 | **Frontend+Backend / totales documento** | 4 inconsistencias (mapa trazabilidad REC vs devolución, devolución sin split 87/13, FRC listado vs detalle, FRC form "Total" sin IVA) | ✅ Resuelto (2026-08-10) |
+| **Frontend / estandarización UI documentos** | 4 items (PO Costos sin Costo Total, celda artículo sin formato FRC, listado FRC "Manual", Precio Total vacío en PO) | ✅ Resuelto (2026-08-10) |
 
 > **Frontend / fiscal — tasa de IVA en totales (2026-08-10).** Las FRC mostraban `IVA (15%)` en vez de `IVA (13%)`. **Causa:** `storedTaxRate = tax / subtotal` calculaba la tasa *efectiva* del IVA "por dentro" (13/87 ≈ 14.94% ≈ 15%) en lugar de la nominal. **Fix:** se creó `resolveTaxRateFromLines()` (`shared/utils/tax-rate.util.ts`) que toma la tasa del **indicador de impuestos** (`taxIndicator.rate`) — fuente canónica — con fallback al `taxRate` de la línea; se aplicó en los forms de FRC/FPI/FV/FRV y en los mappers de draft (order/FRV → factura). El backend ahora incluye `taxIndicator` en las líneas del detalle (`findOneEnriched` de purchase/sale/sale-reserve invoices). Verificación: build + lint + Karma 1272/1272 + Jest 8 suites.
 
