@@ -506,6 +506,11 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Causa raíz:** (1) la entrega solo tenía `invoiceStatus` (progreso de facturación) sin concepto de devolución; (2) el display usaba `invoicedQty` denormalizado que puede quedar fantasma al cancelar una factura sin decremento.
    - **Fix:** (1) `returnStatus` (`NONE`/`PARTIAL`/`FULL`) en listado y detalle de entrega, calculado de las devoluciones no canceladas; (2) `invoicedQty` para el display se deriva de las facturas activas (no canceladas). Frontend: columna Facturación muestra "● Devuelto"/"● Parcial devuelto".
    - **Cobertura:** E2E 1b en `returns-and-credit-notes.e2e-spec.ts` (entrega devuelta → returnStatus FULL + invoiceStatus PENDING). Backend E2E 75.
+19. **La devolución libera las cantidades del pedido (PO/SO se reabren)** (`backend / devoluciones`) — `✅ Resuelto` (2026-08-12)
+   - **Síntoma:** tras cotización→pedido→recepción→devolución, el pedido de compra quedaba CLOSED y no permitía generar una nueva recepción.
+   - **Causa raíz:** la recepción/entrega incrementaban `receivedQty`/`deliveredQty` del pedido y lo cerraban, pero la devolución no liberaba esas cantidades ni recalculaba la orden.
+   - **Fix:** simétrico en `purchase-returns` y `sales-returns` (crear y cancelar): compras decrementa `receivedQty` del PO + `recalcPurchaseOrderProgress` + `refreshHeaderStatus`; ventas decrementa `deliveredQty` del SO + `recalcSalesOrderProgress` + `refreshHeaderStatus`. Ajusta `openQty`/`lineStatus` de los ítems. La cancelación de la devolución revierte el proceso.
+   - **Cobertura:** E2E en `purchase-flow` y `sales-flow` (PO/SO vuelven a OPEN, receivedQty/deliveredQty=0, openQty=10, nueva recepción/entrega posible → CLOSED de nuevo). Backend E2E 78.
 
 ---
 
