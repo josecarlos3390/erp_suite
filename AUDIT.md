@@ -491,6 +491,11 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Gap:** la infraestructura de períodos (`FiscalYear`/`AccountingPeriod`, `close/reopen/validatePostingDate`, UI) protegía los asientos **manuales** y activos fijos, pero **no los asientos automáticos** (confirmación de documentos: facturas, pagos, stock) — un período cerrado podía seguir recibiendo asientos vía documentos.
    - **Fix:** en `JournalEntryCore._persist` (choke point de todos los asientos): si existe período para la fecha y está cerrado/bloqueado (o año fiscal cerrado) → `ConflictException`; si existe período abierto → el asiento se vincula a `fiscalYearId`/`periodId`; si no existe período → se permite (backward compatible).
    - **Cobertura:** 2 tests unitarios (bloqueo en período cerrado + vínculo del asiento al período).
+16. **Fix: descuento no figura en FRV desde entrega** (`backend / ventas`) — `✅ Resuelto` (2026-08-12)
+   - **Síntoma:** FRV de venta con descuento creada desde la entrega (DEL-000057) — el asiento preliminar no mostraba el descuento.
+   - **Causa raíz (3 bugs encadenados):** (1) `delivery-orders.createManual` ignoraba `line.discountPct` del payload (solo usaba el descuento automático) → la entrega nacía sin descuento; (2) `sale-reserve-invoices.createFromDelivery` usaba solo el `discountPct` del payload sin heredar el del ítem de la entrega (viola R1) en las ramas "entrega suelta" y "resolver genérico"; (3) el módulo FRV persistía `item.subtotal = lineTotal` (con IVA) y no `lineSubtotal`, corrompiendo el preview del documento confirmado.
+   - **Fix:** (1) `discountPct` del payload tiene prioridad y si no viene se usa el automático; (2) fallback a `di.discountPct`/`di.discountAmt` en ambas ramas del FRV createFromDelivery; (3) persistir `subtotal = lineSubtotal` (neto) + `lineSubtotal` explícito, con fallback en `_generateJournalEntry` para registros viejos (`lineSubtotal ?? subtotal − tax`).
+   - **Cobertura:** 1 test unitario (FRV línea 350×5/8% → 87/13) + 1 E2E (entrega manual con descuento → FRV → asiento con SALES_DISCOUNT y preview con descuento). Backend 133 suites/1317 tests, E2E 71.
 
 ---
 
