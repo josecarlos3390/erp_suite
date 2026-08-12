@@ -475,6 +475,10 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Descuento en NC/ND/devolución:** desglose **87/13** (Bolivia) y reversa del **descuento de cabecera** mediante plug espejo de la factura (con ajuste de redondeo a cuentas ROUNDING).
    - **Reporte de declaración tributaria:** `GET /reports/tax-declaration?from&to` (solo `countryCode === 'BO'`) agrega del mayor (asientos POSTED) y de los documentos de venta las cifras del **Formulario 200** (ingresos brutos FV+FRV netos de NC/ND/devoluciones, débito `2.1.2.01.001`, crédito `1.1.6.01.001`, descuentos `4.1.1.01.003`/`5.1.2.01.005`, IT `2.1.2.01.003`, ICE `2.1.2.01.012`, retenciones `2.1.2.01.006-009`) + pantalla en Reports.
    - **Cobertura:** 5 tests unitarios A8 en `accounting-engine.service.spec.ts` + 1 E2E en `test/returns-and-credit-notes.e2e-spec.ts` (FV genera IT → NC lo revierte, asiento balanceado). Backend 133 suites/1311 tests.
+12. **Split 87/13 indicator-aware + Form 200 completo** (`backend / accounting`) — `✅ Resuelto` (2026-08-12)
+   - **Consistencia corregida:** el desglose del descuento 87/13 en **ventas** (FV/NC/ND/devolución) era solo por perfil (`profile.splitSaleDiscountBaseTax && isBolivia`), mientras **compras** ya era indicator-aware (`resolveEffectiveCalculationMethod`). Nuevo helper `resolveDiscountSplit` en `journal-entry-core.ts`: el indicador de la línea manda si está explícito (una línea STANDARD o tasa cero en tenant BO no se desglosa); sin indicador, usa el método por defecto del país. Compartido por las 4 familias de ventas.
+   - **Form 200 completo:** el reporte `GET /reports/tax-declaration` ahora incluye la **base de compras** (casilla 26: FPI/FRC − NC compra) y el **detalle de documentos de compra** (facturas y NC) además del de ventas. Pantalla actualizada.
+   - **Cobertura:** 1 test unitario A8 nuevo (NC en tenant BO con indicador STANDARD no desglosa 87/13).
 
 ---
 
