@@ -501,6 +501,11 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Causa raíz:** `JournalEntriesService.previewFromDraft` mapeaba las líneas del DTO al draft del preview **sin `discountTotal`** (ni `taxIndicatorId`, `purchaseReceiptItemId`, `receiptExchangeRate`, `baseDocType`). El descuento llegaba en el payload pero se descartaba → el builder contabilizaba el ingreso por el neto, sin línea de SALES_DISCOUNT.
    - **Fix:** el mapeo ahora incluye **todos** los campos de `DraftPreviewDocument.lines`. Verificado en vivo contra la API y con E2E de regresión `preview-draft`.
    - **Cobertura:** 1 E2E nuevo en `discount-propagation.e2e-spec.ts` (preview-draft con descuento → SALES_DISCOUNT). Backend E2E 73.
+18. **Estado "Devuelto" en entregas + fix invoicedQty fantasma** (`backend / ventas`) — `✅ Resuelto` (2026-08-12)
+   - **Síntoma:** al aplicar una devolución a una entrega, ésta figuraba como "Facturado" aunque no se facturó (DEL-000058: `invoicedQty` denormalizado = 3 sin ninguna factura).
+   - **Causa raíz:** (1) la entrega solo tenía `invoiceStatus` (progreso de facturación) sin concepto de devolución; (2) el display usaba `invoicedQty` denormalizado que puede quedar fantasma al cancelar una factura sin decremento.
+   - **Fix:** (1) `returnStatus` (`NONE`/`PARTIAL`/`FULL`) en listado y detalle de entrega, calculado de las devoluciones no canceladas; (2) `invoicedQty` para el display se deriva de las facturas activas (no canceladas). Frontend: columna Facturación muestra "● Devuelto"/"● Parcial devuelto".
+   - **Cobertura:** E2E 1b en `returns-and-credit-notes.e2e-spec.ts` (entrega devuelta → returnStatus FULL + invoiceStatus PENDING). Backend E2E 75.
 
 ---
 
