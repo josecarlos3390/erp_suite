@@ -380,6 +380,16 @@ Cr  CxP Proveedores M/N                     1,350.00   (bruto − descuento)
     Totales: 1,350 / 1,350 ✅   →  crédito fiscal neto: 175.50, costo unitario: 234.90
 ```
 
+> 🌎 **Alcance — Solo Bolivia (countryCode `BO`):** el tratamiento del IVA del descuento
+> (desglose 87/13, crédito/débito fiscal neto sobre el facturado, mecanismos del Art. 7
+> último párr. y Art. 8 de la **Ley 843**) aplica **únicamente** para la localización
+> Bolivia, alineado al SIN. Está **gated por perfil de localización**:
+> `splitPurchaseDiscountBaseTax`/`splitSaleDiscountBaseTax` son `true` solo para `BO`
+> (`localization.profiles.ts`) e `isBoliviaSIN` exige el perfil BO — un tenant PE/XX con
+> indicador BOLIVIA_SIN **no** desglosa 87/13 ni adiciona al débito. El **costeo neto**
+> del descuento al costo (**NIC 2**, costo de adquisición neto de descuentos comerciales)
+> es norma internacional y aplica en todos los países.
+
 ---
 
 ### **7. PURCHASE CREDIT NOTE (Nota de Crédito de Compra)**
@@ -404,6 +414,13 @@ y **adiciona al débito fiscal** el 13% del importe de la NC (Art. 7 último pá
 revierte la cuenta de Descuentos (no existe línea de descuento en la factura neta). Aplica
 **total o parcial** (los montos se prorratean por la cantidad devuelta); el tratamiento de
 cuentas es idéntico.
+
+> 🌎 **Alcance — Solo Bolivia (countryCode `BO`):** el mecanismo del **Art. 7 último párr.**
+> (la NC de compra **adiciona al débito fiscal** la alícuota sobre el importe de la NC)
+> aplica **únicamente** para la localización Bolivia. En países **NO Bolivia** (PE/XX), la
+> NC de compra revierte el IVA contra **TAX_INPUT (crédito fiscal)** — el tratamiento
+> estándar —, sin adicionar al débito. El gating vive en `isBoliviaSIN` (perfil BO) en
+> `purchases.journal-builder.ts` y `localization.profiles.ts`.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
