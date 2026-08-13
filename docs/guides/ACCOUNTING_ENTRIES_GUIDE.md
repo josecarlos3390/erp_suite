@@ -362,40 +362,133 @@ Línea 2:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+**Factura con descuento de cabecera (BOLIVIA_SIN, IVA por dentro):** el descuento se
+desglosa 87/13 — 87% a Descuentos y Bonificaciones sobre Compras (Cr) y **13% a IVA —
+Crédito Fiscal (Cr)**, reducción directa del crédito fiscal (Ley 843, Art. 8, inciso b).
+Ejemplo real (FRC-000107, bruto 1,500, descuento 10% = 150):
+
+```
+Dr  GRIR — Mercancías Recibidas             1,305.00   (87% del bruto)
+Dr  IVA — Crédito Fiscal                      195.00   (13% del bruto)
+Cr  Descuentos y Bonif. sobre Compras         130.50   (87% del descuento)
+Cr  IVA — Crédito Fiscal (por descuento)       19.50   (13% del descuento)
+Cr  CxP Proveedores M/N                     1,350.00   (bruto − descuento)
+    Totales: 1,500 / 1,500 ✅   →  crédito fiscal neto: 175.50
+```
+
 ---
 
 ### **7. PURCHASE CREDIT NOTE (Nota de Crédito de Compra)**
 
 **Momento:** Al confirmar la nota de crédito
 
+> **⛳ Criterio normativo (IVA Bolivia):** la NC de compra es emitida por el **proveedor**
+> y recibida por el **comprador** (nuestro ERP). El comprador **reduce su crédito fiscal**
+> (el IVA que computó en la factura original). El **débito fiscal** se reduce solo del lado
+> del **vendedor que emite la NC** (o en NC de **ventas**, ver §2). Base normativa:
+> **Ley 843, Art. 8, inciso b)** — el crédito fiscal se deduce por *descuentos,
+> bonificaciones, rebajas, devoluciones o rescisiones* del período; reglamentación NCD
+> **RA 05-0043-99** (procede por devolución total/parcial de bienes o rescisión de
+> servicios; el comprador sujeto pasivo admite devoluciones parciales sin devolver la
+> factura original).
+
+La NC es el **inverso exacto** del asiento de la factura origen. Aplica **total o parcial**:
+los montos se prorratean por la cantidad devuelta (ratio = qty / qty_facturada); el
+tratamiento de cuentas es idéntico.
+
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  NOTA DE CRÉDITO COMPRA: NCC-001 | Proveedor: XYZ Ltda         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ASIENTO CONTABLE:                                               │
-│  ─────────────────────────────────────────────────────────────── │
-│                                                                   │
-│  Línea 1:                                                        │
-│    Débito:  CxP (ACCOUNTS_PAYABLE)                 $200           │
-│    Descripción: "Nota de Crédito Compra NCC-001 — CxP"         │
-│    Partner: XYZ Ltda                                             │
-│    Referencia: PURCHASE_CREDIT_NOTE #NCC-001                     │
-│                                                                   │
-│  Línea 2:                                                        │
-│    Crédito:  Inventario (reversa entrada)          $180           │
-│    Descripción: "Reversa Inventario — NCC-001"                   │
-│    Item: Laptops                                                  │
-│    Referencia: PURCHASE_CREDIT_NOTE #NCC-001                     │
-│                                                                   │
-│  Línea 3:                                                        │
-│    Crédito:  IVA Crédito Fiscal (reversa)            $20       │
-│    Descripción: "Reversa IVA Crédito — NCC-001"                 │
-│    Referencia: PURCHASE_CREDIT_NOTE #NCC-001                     │
-│                                                                   │
-│  TOTALES: Débitos: $200 = Créditos: $200 ✅                       │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  NOTA DE CRÉDITO COMPRA — Caso A: factura de RESERVA (FRC)          │
+│  Factura origen: FRC-001 (reserva, descuento 10%) | Total NC: $1,350 │
+├──────────────────────────────────────────────────────────────────────┤
+│  La FRC NUNCA movió inventario (solo ALLOCATION), por lo que su NC   │
+│  tampoco: NO toca inventario. Reabre el GRIR que la FRC cerró para   │
+│  que la Devolución de Compra posterior cuadre (Dr GRIR).             │
+│                                                                      │
+│  Línea 1:                                                           │
+│    Débito:  CxP (ACCOUNTS_PAYABLE)                   $1,350         │
+│    Descripción: "Nota de Crédito Compra NCC-001 — CxP"             │
+│    Partner: proveedor                                              │
+│    Referencia: PURCHASE_CREDIT_NOTE #NCC-001                        │
+│                                                                      │
+│  Línea 2:                                                           │
+│    Crédito:  GRIR (reabre la recepción)              $1,305         │
+│    Descripción: "Reversa Compras — NCC-001"                         │
+│    Item + Almacén (matriz GRIR)                                     │
+│    Referencia: PURCHASE_CREDIT_NOTE #NCC-001, línea 1              │
+│                                                                      │
+│  Línea 3:                                                           │
+│    Crédito:  IVA — Crédito Fiscal (TAX_INPUT)          $195         │
+│    Descripción: "Reversa IVA Crédito — NCC-001"                     │
+│    Tax Indicator: IVA 13% SIN                                       │
+│    Referencia: PURCHASE_CREDIT_NOTE #NCC-001                        │
+│                                                                      │
+│  Línea 4 (factura con descuento de cabecera → desglose 87/13):      │
+│    Débito:  Descuentos y Bonif. sobre Compras (PURCHASE_DISCOUNT) $130.50│
+│    Descripción: "Reversa descuento compras — NCC-001"               │
+│                                                                      │
+│  Línea 5:                                                           │
+│    Débito:  IVA — Crédito Fiscal (13% del descuento)    $19.50      │
+│    Descripción: "Reversa IVA Crédito por descuento — NCC-001"       │
+│                                                                      │
+│  TOTALES: Débitos: $1,500 = Créditos: $1,500 ✅                      │
+└──────────────────────────────────────────────────────────────────────┘
 ```
+
+> ℹ️ **Aclaración (crédito fiscal vs débito fiscal):** en una NC de **compra**, tanto el IVA
+> principal (Línea 3, Cr $195) como el IVA del descuento (Línea 5, Dr $19.50) van contra
+> **IVA — Crédito Fiscal**: la NC reduce el crédito fiscal neto (195 − 19.5 = **175.50**).
+> **No** hay débito fiscal en una NC de compra — el débito fiscal solo corresponde al
+> **vendedor que emite la NC** (o a NC de **ventas**, §2). Base normativa: **Ley 843,
+> Art. 8, inciso b)** (los descuentos/devoluciones del período se deducen del crédito
+> fiscal).
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  NOTA DE CRÉDITO COMPRA — Caso B: factura normal (no reserva)       │
+│  con retorno de stock (returnsStock)                                │
+├──────────────────────────────────────────────────────────────────────┤
+│  La mercadería SÍ sale del inventario (vuelve al proveedor). La NC   │
+│  revierte la cuenta de compra por el monto y el inventario por el    │
+│  costo; la diferencia (monto − costo) va a Devoluciones sobre        │
+│  Compras.                                                           │
+│                                                                      │
+│  Línea 1:                                                           │
+│    Débito:  CxP (ACCOUNTS_PAYABLE)                   $200           │
+│    Descripción: "Nota de Crédito Compra NCC-002 — CxP"             │
+│    Referencia: PURCHASE_CREDIT_NOTE #NCC-002                        │
+│                                                                      │
+│  Línea 2:                                                           │
+│    Crédito:  Inventario (por el COSTO)                $180           │
+│    Descripción: "Salida Inventario — NCC-002"                       │
+│    Item + Almacén (matriz inventario)                               │
+│    Referencia: PURCHASE_CREDIT_NOTE #NCC-002, línea 1              │
+│                                                                      │
+│  Línea 3 (si monto ≠ costo):                                        │
+│    Crédito:  Devoluciones sobre Compras (PURCHASE_CREDIT)   $0      │
+│    (diff > 0 → Crédito; diff < 0 → Débito)                         │
+│    Referencia: PURCHASE_CREDIT_NOTE #NCC-002, línea 1              │
+│                                                                      │
+│  Línea 4:                                                           │
+│    Crédito:  IVA — Crédito Fiscal (TAX_INPUT, reversa)     $20      │
+│    Descripción: "Reversa IVA Crédito — NCC-002"                     │
+│    Tax Indicator: IVA 13% SIN                                       │
+│    Referencia: PURCHASE_CREDIT_NOTE #NCC-002                        │
+│                                                                      │
+│  TOTALES: Débitos: $200 = Créditos: $200 ✅                          │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Reglas de negocio de la NC de compra:**
+
+- `returnsStock` solo aplica a facturas **NO reserva** (`isReserve === 'N'`); la FRC nunca
+  devuelve stock (su reversión logística es la **Devolución de Compra**, no la NC).
+- La NC **libera el `invoicedQty`** de la recepción y del pedido al confirmarse (restaura
+  al cancelarse), para que la Devolución de Compra posterior no falle por "cantidad no
+  facturada".
+- La NC revierte el **descuento de cabecera** heredado de la factura origen (desglose
+  87/13: 87% a Descuentos y Bonificaciones sobre Compras, 13% a IVA Crédito Fiscal —
+  reducción directa del crédito fiscal).
 
 ---
 
@@ -626,6 +719,17 @@ Mal: Asiento sin sourceTransactionType/sourceTransactionId
 Bien: Cada línea referencia al documento origen
 ```
 
+### **❌ ERROR 5: Confundir crédito fiscal con débito fiscal en NC de compra**
+```
+Mal: NC de compra revierte el IVA (principal y del descuento) contra
+     IVA — Débito Fiscal (eso corresponde al VENDEDOR que emite la NC,
+     o a NC de ventas)
+Bien: El COMPRADOR reduce su CRÉDITO fiscal → todo el IVA de la NC va
+     contra IVA — Crédito Fiscal (principal Cr y descuento Dr, desglose
+     87/13). Ley 843, Art. 8, inciso b. En ventas es el espejo: el
+     descuento reduce IVA — Débito Fiscal.
+```
+
 ---
 
 ## 🎯 Checklist de Implementación
@@ -647,8 +751,15 @@ Para cada documento, verificar:
 - **SAP Business One:** Documentación de "Account Determination"
 - **NIIF:** Normas Internacionales de Información Financiera
 - **PCGA:** Principios de Contabilidad Generalmente Aceptados
+- **Ley N° 843 (Texto Ordenado Vigente), Art. 8, inciso b):** reducción del crédito fiscal
+  por descuentos, bonificaciones, rebajas, devoluciones o rescisiones del período
+  (Servicio de Impuestos Nacionales de Bolivia).
+- **RA 05-0043-99 (y reglamentación NCD):** emisión de Notas de Crédito–Débito por
+  devolución total/parcial de bienes o rescisión de servicios; tratamiento por lado de la
+  operación (vendedor → débito fiscal; comprador → crédito fiscal).
+- **D.S. N° 21530:** Reglamento del Impuesto al Valor Agregado.
 
 ---
 
-**Última actualización:** 2026-07-17  
+**Última actualización:** 2026-08-13  
 **Mantenedor:** Equipo de Contabilidad
