@@ -366,16 +366,18 @@ Línea 2:
 está en la **misma factura**, el crédito fiscal se calcula sobre el **neto facturado**
 (Ley 843, Art. 8, inc. a: "sobre el monto de las compras... que se los hubiesen
 facturado"). El 13% del IVA del descuento queda **absorbido en el crédito fiscal neto**
-(no hay línea separada). El mecanismo del Art. 7 último párr. (adicionar al débito)
-aplica SOLO a ajustes posteriores (NC de compra). Ejemplo real (FRC-000107, bruto 1,500,
-descuento 10% = 150):
+(no hay línea separada). **Costeo NETO (NIC 2):** el descuento de cabecera se **prorratea
+al costo de las líneas** (costo = priceNet × ratio) — el inventario se valora neto del
+descuento (234.90/ud en el ejemplo) y el asiento NO registra "Descuentos" como ingreso
+(el descuento queda embebido en el costo). El mecanismo del Art. 7 último párr.
+(adicionar al débito) aplica SOLO a ajustes posteriores (NC de compra). Ejemplo real
+(FRC-000107, bruto 1,500, descuento 10% = 150):
 
 ```
-Dr  GRIR — Mercancías Recibidas             1,305.00   (87% del bruto)
+Dr  GRIR — Mercancías Recibidas             1,174.50   (costo neto: 5 × 234.90)
 Dr  IVA — Crédito Fiscal                      175.50   (13% del neto facturado 1,350)
-Cr  Descuentos y Bonif. sobre Compras         130.50   (87% del descuento)
 Cr  CxP Proveedores M/N                     1,350.00   (bruto − descuento)
-    Totales: 1,480.50 / 1,480.50 ✅   →  crédito fiscal neto: 175.50
+    Totales: 1,350 / 1,350 ✅   →  crédito fiscal neto: 175.50, costo unitario: 234.90
 ```
 
 ---
@@ -396,10 +398,12 @@ Cr  CxP Proveedores M/N                     1,350.00   (bruto − descuento)
 > total/parcial; el comprador sujeto pasivo admite devoluciones parciales sin devolver la
 > factura original).
 
-La NC de compra es el **ajuste posterior** del asiento de la factura: reabre el GRIR,
-revierte la parte **base** del descuento y **adiciona al débito fiscal** el 13% del importe
-de la NC (Art. 7 último párr.). Aplica **total o parcial** (los montos se prorratean por la
-cantidad devuelta); el tratamiento de cuentas es idéntico.
+La NC de compra es el **ajuste posterior** del asiento de la factura: reabre el GRIR por el
+costo **neto** (el descuento de cabecera ya está embebido en el costo — costeo neto NIC 2)
+y **adiciona al débito fiscal** el 13% del importe de la NC (Art. 7 último párr.). NO
+revierte la cuenta de Descuentos (no existe línea de descuento en la factura neta). Aplica
+**total o parcial** (los montos se prorratean por la cantidad devuelta); el tratamiento de
+cuentas es idéntico.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -407,8 +411,9 @@ cantidad devuelta); el tratamiento de cuentas es idéntico.
 │  Factura origen: FRC-001 (reserva, descuento 10%) | Total NC: $1,350 │
 ├──────────────────────────────────────────────────────────────────────┤
 │  La FRC NUNCA movió inventario (solo ALLOCATION), por lo que su NC   │
-│  tampoco: NO toca inventario. Reabre el GRIR que la FRC cerró para   │
-│  que la Devolución de Compra posterior cuadre (Dr GRIR).             │
+│  tampoco: NO toca inventario. Reabre el GRIR que la FRC cerró (por   │
+│  el costo NETO, sin línea de Descuentos) para que la Devolución de   │
+│  Compra posterior cuadre (Dr GRIR).                                  │
 │                                                                      │
 │  Línea 1:                                                           │
 │    Débito:  CxP (ACCOUNTS_PAYABLE)                   $1,350         │
@@ -417,7 +422,7 @@ cantidad devuelta); el tratamiento de cuentas es idéntico.
 │    Referencia: PURCHASE_CREDIT_NOTE #NCC-001                        │
 │                                                                      │
 │  Línea 2:                                                           │
-│    Crédito:  GRIR (reabre la recepción)              $1,305         │
+│    Crédito:  GRIR (reabre la recepción)              $1,174.50      │
 │    Descripción: "Reversa Compras — NCC-001"                         │
 │    Item + Almacén (matriz GRIR)                                     │
 │    Referencia: PURCHASE_CREDIT_NOTE #NCC-001, línea 1              │
@@ -428,11 +433,7 @@ cantidad devuelta); el tratamiento de cuentas es idéntico.
 │    Tax Indicator: IVA 13% SIN                                       │
 │    Referencia: PURCHASE_CREDIT_NOTE #NCC-001                        │
 │                                                                      │
-│  Línea 4 (factura con descuento de cabecera):                      │
-│    Débito:  Descuentos y Bonif. sobre Compras (PURCHASE_DISCOUNT) $130.50│
-│    Descripción: "Reversa descuento compras — NCC-001"               │
-│                                                                      │
-│  TOTALES: Débitos: $1,480.50 = Créditos: $1,480.50 ✅              │
+│  TOTALES: Débitos: $1,350 = Créditos: $1,350 ✅                      │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -487,9 +488,9 @@ cantidad devuelta); el tratamiento de cuentas es idéntico.
 - La NC **libera el `invoicedQty`** de la recepción y del pedido al confirmarse (restaura
   al cancelarse), para que la Devolución de Compra posterior no falle por "cantidad no
   facturada".
-- La NC revierte la parte **base** del descuento de cabecera de la factura origen (87% en
-  BOLIVIA_SIN); el 13% del IVA del descuento queda absorbido en el débito fiscal neto que
-  adiciona la NC (Art. 7 último párr.).
+- La NC revierte el costo **neto** de la factura origen (el descuento de cabecera ya está
+  embebido en el costo — costeo neto NIC 2), por lo que NO revierte la cuenta de
+  Descuentos; el IVA se adiciona al débito fiscal (Art. 7 último párr.).
 
 ---
 
