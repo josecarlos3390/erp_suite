@@ -362,18 +362,20 @@ Línea 2:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Factura con descuento de cabecera (BOLIVIA_SIN, IVA por dentro):** el descuento se
-desglosa 87/13 — 87% a Descuentos y Bonificaciones sobre Compras (Cr) y **13% a IVA —
-Crédito Fiscal (Cr)**, reducción directa del crédito fiscal (Ley 843, Art. 8, inciso b).
-Ejemplo real (FRC-000107, bruto 1,500, descuento 10% = 150):
+**Factura con descuento de cabecera (BOLIVIA_SIN, IVA por dentro):** cuando el descuento
+está en la **misma factura**, el crédito fiscal se calcula sobre el **neto facturado**
+(Ley 843, Art. 8, inc. a: "sobre el monto de las compras... que se los hubiesen
+facturado"). El 13% del IVA del descuento queda **absorbido en el crédito fiscal neto**
+(no hay línea separada). El mecanismo del Art. 7 último párr. (adicionar al débito)
+aplica SOLO a ajustes posteriores (NC de compra). Ejemplo real (FRC-000107, bruto 1,500,
+descuento 10% = 150):
 
 ```
 Dr  GRIR — Mercancías Recibidas             1,305.00   (87% del bruto)
-Dr  IVA — Crédito Fiscal                      195.00   (13% del bruto)
+Dr  IVA — Crédito Fiscal                      175.50   (13% del neto facturado 1,350)
 Cr  Descuentos y Bonif. sobre Compras         130.50   (87% del descuento)
-Cr  IVA — Crédito Fiscal (por descuento)       19.50   (13% del descuento)
 Cr  CxP Proveedores M/N                     1,350.00   (bruto − descuento)
-    Totales: 1,500 / 1,500 ✅   →  crédito fiscal neto: 175.50
+    Totales: 1,480.50 / 1,480.50 ✅   →  crédito fiscal neto: 175.50
 ```
 
 ---
@@ -382,19 +384,22 @@ Cr  CxP Proveedores M/N                     1,350.00   (bruto − descuento)
 
 **Momento:** Al confirmar la nota de crédito
 
-> **⛳ Criterio normativo (IVA Bolivia):** la NC de compra es emitida por el **proveedor**
-> y recibida por el **comprador** (nuestro ERP). El comprador **reduce su crédito fiscal**
-> (el IVA que computó en la factura original). El **débito fiscal** se reduce solo del lado
-> del **vendedor que emite la NC** (o en NC de **ventas**, ver §2). Base normativa:
-> **Ley 843, Art. 8, inciso b)** — el crédito fiscal se deduce por *descuentos,
-> bonificaciones, rebajas, devoluciones o rescisiones* del período; reglamentación NCD
-> **RA 05-0043-99** (procede por devolución total/parcial de bienes o rescisión de
-> servicios; el comprador sujeto pasivo admite devoluciones parciales sin devolver la
+> **⛳ Criterio normativo (IVA Bolivia):** la NC de compra es una **devolución/descuento
+> obtenido** en un período **posterior** a la factura: el comprador **ADICIONA al débito
+> fiscal** la alícuota sobre el importe de la NC — **Ley 843, Art. 7, último párrafo**:
+> "Al impuesto así obtenido se le adicionará el que resulte de aplicar la alícuota
+> establecida a las devoluciones efectuadas, rescisiones, descuentos, bonificaciones o
+> rebajas **obtenidas** que, respecto del precio neto de las compras efectuadas, hubiese
+> logrado el responsable en dicho período". NO reduce el crédito ya computado en la factura.
+> Reglamento: **D.S. 21530, Art. 7** (aplica a operaciones que dieron lugar al cómputo del
+> crédito fiscal, Art. 8 de la Ley). Reglamentación NCD: **RA 05-0043-99** (devolución
+> total/parcial; el comprador sujeto pasivo admite devoluciones parciales sin devolver la
 > factura original).
 
-La NC es el **inverso exacto** del asiento de la factura origen. Aplica **total o parcial**:
-los montos se prorratean por la cantidad devuelta (ratio = qty / qty_facturada); el
-tratamiento de cuentas es idéntico.
+La NC de compra es el **ajuste posterior** del asiento de la factura: reabre el GRIR,
+revierte la parte **base** del descuento y **adiciona al débito fiscal** el 13% del importe
+de la NC (Art. 7 último párr.). Aplica **total o parcial** (los montos se prorratean por la
+cantidad devuelta); el tratamiento de cuentas es idéntico.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -418,30 +423,26 @@ tratamiento de cuentas es idéntico.
 │    Referencia: PURCHASE_CREDIT_NOTE #NCC-001, línea 1              │
 │                                                                      │
 │  Línea 3:                                                           │
-│    Crédito:  IVA — Crédito Fiscal (TAX_INPUT)          $195         │
-│    Descripción: "Reversa IVA Crédito — NCC-001"                     │
+│    Crédito:  IVA — Débito Fiscal (Art. 7)             $175.50      │
+│    Descripción: "Reversa IVA Débito (Art. 7) — NCC-001"            │
 │    Tax Indicator: IVA 13% SIN                                       │
 │    Referencia: PURCHASE_CREDIT_NOTE #NCC-001                        │
 │                                                                      │
-│  Línea 4 (factura con descuento de cabecera → desglose 87/13):      │
+│  Línea 4 (factura con descuento de cabecera):                      │
 │    Débito:  Descuentos y Bonif. sobre Compras (PURCHASE_DISCOUNT) $130.50│
 │    Descripción: "Reversa descuento compras — NCC-001"               │
 │                                                                      │
-│  Línea 5:                                                           │
-│    Débito:  IVA — Crédito Fiscal (13% del descuento)    $19.50      │
-│    Descripción: "Reversa IVA Crédito por descuento — NCC-001"       │
-│                                                                      │
-│  TOTALES: Débitos: $1,500 = Créditos: $1,500 ✅                      │
+│  TOTALES: Débitos: $1,480.50 = Créditos: $1,480.50 ✅              │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-> ℹ️ **Aclaración (crédito fiscal vs débito fiscal):** en una NC de **compra**, tanto el IVA
-> principal (Línea 3, Cr $195) como el IVA del descuento (Línea 5, Dr $19.50) van contra
-> **IVA — Crédito Fiscal**: la NC reduce el crédito fiscal neto (195 − 19.5 = **175.50**).
-> **No** hay débito fiscal en una NC de compra — el débito fiscal solo corresponde al
-> **vendedor que emite la NC** (o a NC de **ventas**, §2). Base normativa: **Ley 843,
-> Art. 8, inciso b)** (los descuentos/devoluciones del período se deducen del crédito
-> fiscal).
+> ℹ️ **Aclaración (crédito vs débito fiscal):** la NC de **compra** NO reduce el crédito
+> fiscal de la factura (ese crédito ya quedó computado en el período de la FRC): per la
+> Ley 843, **Art. 7 último párr.**, el comprador **ADICIONA al débito fiscal** la alícuota
+> (13%) sobre el importe de la NC ($175.50 en el Caso A = 13% × 1,350). La factura con
+> descuento en la misma hoja usa el **crédito neto directo** (Art. 8, inc. a). En
+> **ventas** es el espejo: la NC/devolución de venta **resta del impuesto**
+> (Dr IVA — Crédito Fiscal) por **Art. 8, inc. b**.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -486,9 +487,9 @@ tratamiento de cuentas es idéntico.
 - La NC **libera el `invoicedQty`** de la recepción y del pedido al confirmarse (restaura
   al cancelarse), para que la Devolución de Compra posterior no falle por "cantidad no
   facturada".
-- La NC revierte el **descuento de cabecera** heredado de la factura origen (desglose
-  87/13: 87% a Descuentos y Bonificaciones sobre Compras, 13% a IVA Crédito Fiscal —
-  reducción directa del crédito fiscal).
+- La NC revierte la parte **base** del descuento de cabecera de la factura origen (87% en
+  BOLIVIA_SIN); el 13% del IVA del descuento queda absorbido en el débito fiscal neto que
+  adiciona la NC (Art. 7 último párr.).
 
 ---
 
@@ -721,13 +722,13 @@ Bien: Cada línea referencia al documento origen
 
 ### **❌ ERROR 5: Confundir crédito fiscal con débito fiscal en NC de compra**
 ```
-Mal: NC de compra revierte el IVA (principal y del descuento) contra
-     IVA — Débito Fiscal (eso corresponde al VENDEDOR que emite la NC,
-     o a NC de ventas)
-Bien: El COMPRADOR reduce su CRÉDITO fiscal → todo el IVA de la NC va
-     contra IVA — Crédito Fiscal (principal Cr y descuento Dr, desglose
-     87/13). Ley 843, Art. 8, inciso b. En ventas es el espejo: el
-     descuento reduce IVA — Débito Fiscal.
+Mal: NC de compra revierte el IVA contra IVA — Crédito Fiscal (como si
+     redujera el crédito ya computado en la factura)
+Bien: La NC de compra (ajuste POSTERIOR) ADICIONA al DÉBITO fiscal el 13%
+     del importe de la NC (Ley 843, Art. 7 último párr.). La factura con
+     descuento en la misma hoja usa el crédito NETO directo (Art. 8, inc.
+     a). En ventas es el espejo: la NC/devolución de venta RESTA del
+     impuesto (Dr IVA — Crédito Fiscal) por Art. 8, inc. b.
 ```
 
 ---
@@ -751,13 +752,20 @@ Para cada documento, verificar:
 - **SAP Business One:** Documentación de "Account Determination"
 - **NIIF:** Normas Internacionales de Información Financiera
 - **PCGA:** Principios de Contabilidad Generalmente Aceptados
-- **Ley N° 843 (Texto Ordenado Vigente), Art. 8, inciso b):** reducción del crédito fiscal
-  por descuentos, bonificaciones, rebajas, devoluciones o rescisiones del período
-  (Servicio de Impuestos Nacionales de Bolivia).
+- **Ley N° 843 (Texto Ordenado, actualizado al 31/07/2026 — SIN), Art. 7:** débito fiscal =
+  alícuota sobre los **precios netos de las ventas**; último párrafo: **se adiciona al
+  débito** la alícuota sobre devoluciones, rescisiones, descuentos, bonificaciones o
+  rebajas **obtenidas** respecto del precio neto de las **compras**.
+- **Ley N° 843, Art. 8:** crédito fiscal = alícuota sobre el monto de las **compras
+  facturadas** (inc. a) **menos** la alícuota sobre los descuentos **otorgados** respecto
+  de los precios netos de **venta** (inc. b).
+- **D.S. N° 21530 (Reglamento del IVA), Art. 7 y sección Crédito Fiscal:** aplica el
+  mecanismo del Art. 7 (adicionar al débito) a los descuentos/devoluciones **logrados**
+  sobre compras; el inciso b) del Art. 8 (restar del impuesto) a los descuentos
+  **otorgados** sobre ventas.
 - **RA 05-0043-99 (y reglamentación NCD):** emisión de Notas de Crédito–Débito por
   devolución total/parcial de bienes o rescisión de servicios; tratamiento por lado de la
-  operación (vendedor → débito fiscal; comprador → crédito fiscal).
-- **D.S. N° 21530:** Reglamento del Impuesto al Valor Agregado.
+  operación (vendedor → resta del impuesto; comprador → adiciona al débito).
 
 ---
 
