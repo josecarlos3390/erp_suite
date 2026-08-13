@@ -285,6 +285,14 @@ Línea 5:
 
 **Lógica:** Separar recepción física de la factura fiscal
 
+> **Display del documento (2026-08-13):** la recepción es un documento **logístico**
+> (solo maneja costo): el asiento capitaliza inventario al costo (`line.totalCost`) y
+> **no genera deuda ni IVA** — el IVA/CxP viven en la factura (FRC/FPI). Por eso el
+> bloque de totales muestra solo **"Costo total"** (+ peso si > 0) y NO Subtotal/IVA/Total
+> financiero (mismo criterio que SAP B1 GRPO / Odoo / NetSuite). Se aplica igual a las
+> **Devoluciones** (compra/venta) y la **Entrega de venta** (COGS al costo): `showPrimaryTotals=false`
+> en `document-totals-section`. Fix visual puro — el asiento no cambia.
+
 **Cuando llega la factura de compra, el GRIR se revierte:**
 ```
 Línea 1:
