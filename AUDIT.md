@@ -587,6 +587,19 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
      - DEV-000002 (devolución): `Dr INVENTORY 440 / Cr COGS 440`
      - Saldos netos: CxC 945 (1575−630) ✓, COGS 660 (3 uds×220) ✓, IVA neto 122.85 (débito 204.75 − crédito 81.90) ✓, stock físico 2 ✓.
    - **Cobertura:** Backend build/lint OK + 146 tests (8 services de ventas + accounting-engine). Verificado por API con circuito completo.
+31. **FRV-000044 no reflejaba el descuento en los totales del formulario** (`frontend / ventas + display`) — `✅ Resuelto` (2026-08-14)
+   - **Síntoma (reportado por el usuario al revisar el circuito de ventas):** la factura de reserva **FRV-000044** mostraba los totales (Subtotal/IVA/Total) **sin el renglón de Descuento**, a diferencia de la cotización COT-075 que sí mostraba `Descuento 175.00`.
+   - **Diagnóstico (3 causas encadenadas, verificadas contra datos reales):**
+     (a) La FRV guarda el descuento de cabecera **embebido** (netting NIC 2 del item 30: líneas con `discountTotal=0`, montos netos) y el header **no persiste** `headerDiscountPct/Amt` — a diferencia de la FV (`createFromDelivery` los guarda en el header). El formulario no tenía de dónde reconstruir el descuento.
+     (b) `buildDeliveryLine` y `calculateLine` llamaban a `calcLineWithIndicator` **sin `calculationMethod`** → default `STANDARD`; con el indicador `IVA13SIN` (`BOLIVIA_SIN`, IVA por dentro) el subtotal/priceNet recalculados no coincidían con los almacenados (1393.81 vs 1370.25).
+     (c) El getter `totalDiscount` sumaba `discountTotal` de líneas (todo 0 tras el netting) → el renglón Descuento quedaba oculto y la columna "Dto. total" mostraba "—".
+   - **Fix (frontend, display-only — los montos almacenados y los asientos NO cambian):**
+     - `calculationMethod` del indicador pasado a `calcLineWithIndicator` en `buildDeliveryLine` y `calculateLine` de la FRV (paridad: el backend ya lo usaba) → la línea cargada recalcula idéntico a lo almacenado (`subtotal 1370.25 / priceNet 274.05 / lineTotal 1575`).
+     - Getter `totalDiscount`: si las líneas vienen neteadas (`discountTotal` suman 0), **reconstruye el descuento visual** desde `price × qty × discountPct/100` (o `discountAmt`) — el % efectivo que la línea conserva. Nuevo helper `displayDiscountForRow(row)` usado también en la celda "Dto. total".
+     - **NC de venta** (`sales-credit-notes-form`): `lineDiscountForRow` usaba `price × qty − subtotal`, que **mezclaba IVA** con el descuento (NCR-033 mostraba 151.90 en vez de 70 — subtotal es neto sin impuesto). Cambiado a `price × qty × discountPct/100` (o `discountAmt`), igual que la FRV.
+     - **FV** (`sale-invoices-form`): mismo fix de `calculationMethod` en sus 2 llamadas (`buildLineFromDraft`/`onLineTaxChange`) — sus líneas conservan `discountTotal` (la FV no lo zeroea), por lo que su renglón Descuento ya funcionaba; solo faltaba la paridad BOLIVIA_SIN en el recálculo.
+   - **Resultado (FRV-000044):** totales `Subtotal 1,370.25 | Descuento 175.00 | IVA 204.75 | Total 1,575.00` — idénticos a la COT-075 de origen. Descuentos en el circuito de ventas ahora consistentes en cotización, entrega, FRV, NC y devolución.
+   - **Cobertura:** Frontend build (AOT) + lint OK + 27 tests Karma (3 forms, 6 tests nuevos de reconstrucción/desglose). Sin cambios de backend ni de asientos.
 
 ---
 
