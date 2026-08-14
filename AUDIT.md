@@ -576,6 +576,17 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Diagnóstico (verificado en vivo):** el **panel** del formulario (`document-flow-panel`) usa `getFlow` → `/document-flow/{type}/{id}` que devuelve **solo 1 nivel** (Origen + Generados directos) — y la devolución **SÍ estaba** en `downstream` (FRC-129 + DCP-031). El **mapa** de la lista (`document-flow-map`) usa `getGraph` → `/graph` que hace **BFS transitivo** (todo el flujo: PCOT → PO → REC → FRC → NC → DCP). No era un problema de datos: el panel estaba **colapsado por defecto** y, al ser 1 nivel, no evidenciaba que existían documentos alcanzables fuera del nivel directo.
    - **Fix (decisión del usuario: "Hint + Ver Mapa"):** el panel mantiene el 1 nivel (rápido, 2 queries) y en paralelo consulta el grafo **solo para contar** cuántos documentos alcanzables no se ven en el nivel directo (`extraFlowCount = graph.nodes − nodos visibles`). Si hay extras, muestra un **hint informativo** "+N documentos más en el flujo completo → [Ver Mapa]" (nuevo estilo `flow-extra-hint`). El grafo es decorativo: si falla, no bloquea el panel.
    - **Cobertura:** Frontend build/lint OK + 14 tests (document-flow + purchase-receipts). Verificado: en REC-000099 el panel muestra FRC-129 y DCP-031 en "Generados" y el hint "+1 documento más" (el grafo alcanzable incluye además NC-104 y FRC-130 en ramas — el conteo refleja los nodos no visibles).
+30. **Circuito de ventas validado + fix: FRV desde entrega no neteaba descuento de cabecera** (`backend / accounting + circuito`) — `✅ Resuelto` (2026-08-14)
+   - **Hallazgo (al ejecutar el circuito de ventas COT→PED→DEL→FRV→NC→devolución):** la **FRV** (`sale-reserve-invoices.createFromMultiDelivery`) **no aplicaba el netting** del descuento de cabecera, a diferencia de la **FV** (`sale-invoices.createFromDelivery`). La FRV materializaba el descuento a línea (`discountTotal: 175`) → el asiento desglosaba SALES_DISCOUNT (152.25 base + 22.75 IVA) en vez de embeberse, y la **NC de venta** posterior heredaba líneas que **NO balanceaban** (`Asiento desbalanceado: D=718.9 C=709.8 diff=9.10`).
+   - **Fix (paridad con la FV):** aplicar `computeHeaderDiscountRatio` + `netAmountWithHeaderDiscount` a `priceNet/subtotal/lineSubtotal/taxAmount` de las líneas y `discountTotal = 0` (descuento embebido). Se recalculan los totales del header desde las líneas neteadas. Resultado: asiento FRV **neto** (`Dr CxC 1,575 / Cr Ventas 1,370.25 / Cr IVA Débito 204.75` + IT 47.25, SIN línea Descuentos) y la NC venta balancea. Además: fallback `description = line.description ?? item.name` en devolución de venta (mismo patrón que compras, item 28).
+   - **Circuito de ventas validado (5 asientos balanceados):**
+     - ENT (stock inicial 5 uds @220)
+     - DEL-000061: `Dr COGS 1,100 / Cr INVENTORY 1,100`
+     - FRV-000044 (reserva, neto): `Dr CxC 1,575 / Cr Ventas 1,370.25 / Cr IVA Débito 204.75` + `Dr IT 47.25 / Cr IT x Pagar 47.25`
+     - NCR-000033 (NC venta, Art. 8 inc. b): `Dr Devoluciones 548.10 / Dr IVA Crédito 81.90 / Cr CxC 630` + reversa IT 18.90
+     - DEV-000002 (devolución): `Dr INVENTORY 440 / Cr COGS 440`
+     - Saldos netos: CxC 945 (1575−630) ✓, COGS 660 (3 uds×220) ✓, IVA neto 122.85 (débito 204.75 − crédito 81.90) ✓, stock físico 2 ✓.
+   - **Cobertura:** Backend build/lint OK + 146 tests (8 services de ventas + accounting-engine). Verificado por API con circuito completo.
 
 ---
 
