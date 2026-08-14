@@ -157,6 +157,22 @@ Línea 5:
   Descripción: "Reversa COGS — NC-001"
 ```
 
+> ⚠️ **Factura de RESERVA (FRV) vs factura NORMAL (FV) — quién mueve inventario**
+> (espejo del caso de compras, verificado 2026-08-13):
+>
+> | Documento | Mueve inventario | Acompaña a | NC / reversa |
+> |---|---|---|---|
+> | **FRV** (Factura de Reserva de Venta, `isReserve='Y'`) | ❌ **NO** — la mercadería ya salió por la entrega (la FRV es solo financiera: `Dr CxC / Cr Ingresos / Cr IVA Débito`) | **SIEMPRE una entrega** | La NC/Devolución no revierte stock por la factura; el COGS lo revierte la **Devolución de Venta** (documento logístico) |
+> | **FV** (Factura de Venta normal, `isReserve='N'`) | ✅ **SÍ** — descarga inventario (COGS / INVENTORY) en la propia factura | Venta **sin entrega** (factura directa) | La **NC de venta** revierte el stock si `returnsStock` (Dr INVENTORY / Cr COGS) |
+>
+> **Regla operativa:** la factura de **reserva** acompaña SIEMPRE al documento logístico
+> (recepción en compras, entrega en ventas) y **no mueve inventario por sí sola** — el
+> movimiento de stock lo hace el documento logístico. La factura **normal** mueve
+> inventario directamente (descarga/ingresa stock). Por eso el circuito de ventas con
+> entrega debe usar la **FRV**, y el circuito de compras con recepción debe usar la
+> **FRC** — mezclar factura normal con documento logístico rompe el balance de inventario
+> (doble descarga) y deja GRIR con residual.
+
 ---
 
 ### **3. DELIVERY ORDER (Remito de Entrega)**
@@ -397,6 +413,20 @@ Cr  CxP Proveedores M/N                     1,350.00   (bruto − descuento)
 > indicador BOLIVIA_SIN **no** desglosa 87/13 ni adiciona al débito. El **costeo neto**
 > del descuento al costo (**NIC 2**, costo de adquisición neto de descuentos comerciales)
 > es norma internacional y aplica en todos los países.
+
+> ⚠️ **Factura de RESERVA (FRC) vs factura NORMAL (FCP) — quién mueve inventario**
+> (verificado en circuito 2026-08-13, item 24 de `AUDIT.md`):
+>
+> | Documento | Mueve inventario | Acompaña a | NC / reversa |
+> |---|---|---|---|
+> | **FRC** (Factura de Reserva de Compra, `isReserve='Y'`) | ❌ **NO** — la mercadería ya entró por la recepción (solo cierra GRIR con `Dr GRIR / Dr IVA / Cr CxP`) | **SIEMPRE una recepción** (`from-receipt`) | La NC **NO** revierte stock (`returnsStock=false`): **reabre GRIR** (`Cr GRIR`) para que la **Devolución de Compra** posterior lo cierre (`Dr GRIR / Cr INVENTORY`) |
+> | **FCP** (Factura de Compra normal, `isReserve='N'`) | ✅ **SÍ** — capitaliza/descarga inventario directamente | Compra **sin recepción** (factura directa) | La NC **SÍ** revierte stock (`returnsStock=true`): **descarga inventario** (`Cr INVENTORY`) |
+>
+> **Regla operativa:** en el circuito con recepción (`cotización → PO → recepción → FRC → NC → devolución`)
+> la factura **debe ser la FRC de reserva**. Si se usa una FCP normal cuando hay recepción, la NC
+> descarga inventario Y la devolución lo vuelve a descargar → **inventario doblemente descargado y
+> GRIR con residual**. El circuito verificado cuadra solo con la FRC de reserva:
+> GRIR = 0, INVENTORY = 704.70 (3 uds × 234.90), CxP = 810, stock físico = 3, avgCost = 234.90.
 
 ---
 
