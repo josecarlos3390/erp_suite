@@ -629,6 +629,12 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
 
 ---
 
+35. **Auditoría de pestañas y columnas en los formularios de documentos** (`frontend / UX, consistencia`) — `✅ Resuelto` (2026-08-14)
+   - **Requerimiento del usuario:** revisar las pestañas (Detalle/Descuentos/Costos/Impuestos) y las columnas de cada una: que los campos existentes tengan valor, adicionar columnas relevantes por pestaña y quitar las que no correspondan, con consistencia entre documentos. La auditoría cubrió los 14 formularios (cotización, pedido, recepción/entrega, FRC/FRC-reserva/FV/FRV, NC y devoluciones, compras y ventas).
+   - **Hallazgos:** (a) purchase-orders tab Descuentos con columnas `lineTotal`/`weight`/`totalWeight` sin celda → vacías (celda `grossTotal` muerta); (b) sales-orders con columna `grossTotal` sin celda; (c) `netTotal` de FV y devoluciones leía `priceNet` (unitario) en vez del total de línea; (d) cotizaciones inicializaban `lineSubtotal`/`subtotal` con el priceNet unitario; (e) FRV "Facturado" (flujo cotización) mostraba la cantidad ordenada; (f) devoluciones sin "Precio Total" en Descuentos; (g) delivery-orders sin acciones en Descuentos; (h) labels inconsistentes ("Neto", "Precio c/IVA", "Precio c/Dto.").
+   - **Fix (3 commits):** `8da4a63` (celdas lineTotal/weight, netTotal = price×qty−descuento, lineSubtotal = priceNet×qty, grossTotal→lineTotal) + `4ad66c8` (cálculo de línea lee el descuento materializado en modo header — `useLineDiscountsInHeader`) + `467a5f8` (FRV "Facturado" = cantidad facturada, devoluciones con Precio Total, labels unificados a "Precio Unit."/"Precio Total c/Dto.", acciones en delivery Descuentos). Tab Descuentos estandarizado: Artículo | Cant. | Precio Unit. | Precio Total (bruto) | Dto. % | Dto. monto | Dto. total | Precio Total c/Dto.
+   - **Cobertura:** Frontend build (AOT) + lint OK + 39 tests Karma.
+
 ## 6. Métricas de referencia
 
 | Métrica | Valor | Fecha |
