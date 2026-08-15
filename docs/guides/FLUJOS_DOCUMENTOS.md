@@ -138,6 +138,7 @@ PREQ → PCOT → PO → FCP (mueve stock ↑) → [NC] + [Devolución]
 
 - [x] **FRV desde entrega**: la devolución **libera** lo facturable — al crear la FRV desde la entrega (y la FRC desde la recepción) se resta lo ya devuelto: `pendiente = entregado − devuelto − facturado` (helper `sumReturnedQtyByBaseLine`). Implementado (2026-08-15).
 - [x] **Devolución sobre mercadería facturada**: permitida — el límite es `entregado − ya devuelto` (antes se bloqueaba al exceder lo no facturado). El crédito financiero lo da la NC (documentos independientes). Implementado (2026-08-15).
+- [x] **MODELO A (decisión 2026-08-15)**: la **devolución es SIEMPRE logística** (Dr Inventario / Cr COGS) y la **NC revierte lo financiero** (CxC, ingresos, IVA, IT). Se eliminó la reversa financiera condicional de la devolución de venta (`financialReversal` siempre false) — sin riesgo de doble reversa. **Vínculo NC↔DEV**: la devolución expone `creditNoteRequired` cuando la mercadería devuelta ya estaba facturada y el formulario avisa "emite una nota de crédito". Implementado.
 - [ ] **Regla de negocio para elegir V1 vs V2 / C1 vs C2**: ¿configurable por tipo de venta (mostrador → directa, crédito/logística → con entrega) o decisión del usuario al facturar? Recomendado: decisión del usuario con defaults inteligentes.
-- [ ] **Sugerir NC al devolver mercadería facturada** (aviso UX, frontend).
 - [ ] **Estado de trazabilidad**: unificar el mapa visual por flujo (qué documentos quedan OPEN/PARTIAL/CLOSED en cada eslabón).
+- [ ] **Verificar cuenta de IVA en NC de venta**: el builder revierte contra "IVA — Crédito Fiscal" (decisión documentada en `sales.journal-builder`); validar si debe ser "IVA — Débito Fiscal" para el balance de la deuda tributaria.
