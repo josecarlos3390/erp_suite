@@ -71,6 +71,7 @@ COT → FRV (no mueve stock) → DEL (mueve stock ↓) → [NC / ND] + [Devoluci
 | **Devolución** | Física / logística | La **Entrega**: el stock vuelve al almacén (Dr Inventario / Cr COGS) | Que exista entrega |
 | **NC** | Financiera | La **factura**: CxC, ingreso, IVA débito, IT, descuento 87/13 | Que exista factura |
 | **ND** | Financiera | Incrementa lo facturado (IT adicional) | Que exista factura |
+| **Cancelación** | Legal | La **factura emitida** dentro del plazo de anulación (asiento de reversa + stock si lo movió + motivo) | Dentro del plazo RND 10-0016-17 |
 
 - **Una NC NO requiere devolución** (ajuste financiero: descuento posterior,
   rebaja, anulación sin devolver mercadería). **Una devolución NO requiere NC**
@@ -78,6 +79,26 @@ COT → FRV (no mueve stock) → DEL (mueve stock ↓) → [NC / ND] + [Devoluci
 - **Van juntas** cuando el cliente devuelve físicamente mercadería que ya estaba
   facturada: Devolución (stock) + NC (financiero).
 - En el flujo directo (V2), la devolución revierte el stock que movió la FV.
+
+### Anulación de facturas (vs. nota de crédito)
+
+| Situación | Documento |
+|-----------|-----------|
+| Factura **OPEN** (no emitida / sin asiento) | **Cancelación** directa, motivo opcional |
+| Factura **CLOSED** dentro del plazo legal | **Cancelación** con **motivo obligatorio** (RND 10-0016-17 Art. 38) |
+| Factura **CLOSED** fuera del plazo | **Nota de crédito** (la cancelación se rechaza con 400 y referencia a la norma) |
+| Factura con NC vinculada | **Solo NC** (la cancelación se rechaza: "ya tiene una nota de crédito vinculada") |
+
+- **Plazo legal (RND 10-0016-17 Art. 38, mod. RND 102100000021):** la factura
+  emitida puede anularse hasta el **día 9 del mes siguiente** a su emisión
+  (fin del día, según la zona horaria del tenant). Fuera de ese plazo corresponde
+  nota de crédito.
+- **Motivo obligatorio** para facturas emitidas (emitido por error, duplicada,
+  etc.); se persiste en `cancellationReason` y se muestra en el mapa de relaciones.
+- **Efectos de la cancelación:** asiento de reversa (la factura queda CANCELLED con
+  `reversalJournalEntryId`), devolución del stock si la factura lo movió, y reapertura
+  del pedido origen. En el grafo de trazabilidad aparece el nodo **Cancelación**
+  (fecha, motivo y usuario). Implementado (2026-08-15).
 
 ---
 
@@ -136,6 +157,7 @@ PREQ → PCOT → PO → FCP (mueve stock ↑) → [NC] + [Devolución]
 
 ## 5. Decisiones pendientes de validación (afinar)
 
+- [x] **Anulación de facturas emitidas (2026-08-15)**: dentro del plazo legal (día 9 del mes siguiente a la emisión, RND 10-0016-17 Art. 38) la factura CLOSED se puede **cancelar** con motivo obligatorio; fuera del plazo corresponde **nota de crédito**. La cancelación crea asiento de reversa, devuelve el stock y agrega el nodo **Cancelación** al mapa de relaciones. Validado contra la normativa SIN. Implementado en backend + frontend.
 - [x] **FRV desde entrega**: la devolución **libera** lo facturable — al crear la FRV desde la entrega (y la FRC desde la recepción) se resta lo ya devuelto: `pendiente = entregado − devuelto − facturado` (helper `sumReturnedQtyByBaseLine`). Implementado (2026-08-15).
 - [x] **Devolución sobre mercadería facturada**: permitida — el límite es `entregado − ya devuelto` (antes se bloqueaba al exceder lo no facturado). El crédito financiero lo da la NC (documentos independientes). Implementado (2026-08-15).
 - [x] **MODELO A (decisión 2026-08-15)**: la **devolución es SIEMPRE logística** (Dr Inventario / Cr COGS) y la **NC revierte lo financiero** (CxC, ingresos, IVA, IT). Se eliminó la reversa financiera condicional de la devolución de venta (`financialReversal` siempre false) — sin riesgo de doble reversa. **Vínculo NC↔DEV**: la devolución expone `creditNoteRequired` cuando la mercadería devuelta ya estaba facturada y el formulario avisa "emite una nota de crédito". Implementado.
