@@ -210,7 +210,11 @@ Un tenant con 30% de ventas exentas ve en su Form 200 el crédito fiscal de comp
 
 ---
 
-## Fase T6 — G3: RC-IVA declarativo (Form 110, dependientes y terceros)
+## Fase T6 — G3: RC-IVA declarativo (Form 110, dependientes y terceros) ✅ COMPLETADA (2026-08-16)
+
+> **✅ Resultado (ver ROADMAP DT.51 / AUDIT S38):** schema `WageParam` (SMN por gestión historizado), `PayrollRcIva` (cálculo por empleado/período con arrastre de saldos a favor) y `EmployeeTaxCreditInvoice` (facturas presentadas por el dependiente, crédito = 13%) — SQL manual `prisma/manual/20260816_add_rc_iva_declarativo.sql`; módulo `src/rc-iva/` con el motor (sueldo − aportes 12.71% → neto − 2×SMN → 13% − crédito por facturas ± saldo anterior; Ley 843 Arts. 26-31, DS 21529) y endpoints (SMN upsert, CRUD de facturas del dependiente, `calculate`, listado por período, reporte de terceros consolidado por beneficiario desde las retenciones de compras, Art. 19 inc. g); frontend: `/reports/rc-iva-dependientes` (parámetros SMN, cálculo por empleado, máscara del Form 110, CRUD de facturas) y `/reports/rc-iva-terceros` (consolidado de agente de retención) en el menú de reportes. Tests: 5 unitarios del motor (ejemplo canónico SIN, crédito con arrastre, validaciones, terceros); backend 140 suites/1375 tests, E2E 81/81, frontend en verde. Verificación en vivo: SMN 2500 + factura 500 (crédito 65) + sueldo 8000 → impuesto 192.82 (257.82 − 65).
+>
+> **Decisiones de diseño:** (1) el sueldo bruto es **input por período** (F6.6 Nómina aún no existe — el motor es un paso explícito del contador); (2) el crédito por facturas se arrastra como **saldo a favor hasta agotarse**; (3) el asiento de retención de planilla queda como **asiento manual con la cifra del reporte** (documentado en pantalla) hasta que exista nómina; (4) la declaración es externa (portal SIN) — el ERP produce la máscara y la trazabilidad.
 
 > **Tamaño:** grande · **Prioridad:** alta · **Fundamento:** Ley 843 Título II: alícuota 13% (Art. 30), imputación **por lo percibido** (Art. 28), mínimo no imponible de **2 SMN** para dependientes (Art. 26), deducción de aportes a la seguridad social (Art. 25), compensación con el 13% de facturas de compras del dependiente (Art. 31 + DS 21529), Formulario 110 para el fisco y Form 110 de terceros (agentes de retención a profesionales/consultores independientes, Art. 19 inc. g).
 > **Dependencia parcial:** la parte de **dependientes** (planillas de sueldos) solapa con F6.6 Nómina (pendiente). Esta fase implementa el **motor RC-IVA + terceros** completo y deja la integración con planillas acotada a lo que ya existe en `Employee`.
@@ -285,7 +289,7 @@ Cerrado el año fiscal, el ERP calcula el IUE (25%) con sus ajustes, genera el a
 | T3b | **G9 — Asientos contables del POS** (hallazgo S35: el checkout no postea al mayor) | Mediano | **Alta** | ✅ Completada (2026-08-16, DT.48/S35) — bloqueo + backfill |
 | T4 | G4 — Exportaciones tasa cero (Arts. 11, 76-c) | Mediano | Media | ✅ Completada (2026-08-16, DT.49/S36) |
 | T5 | G5 — Prorrateo crédito fiscal (DS 21530 Art. 8-9) | Mediano | Media | ✅ Completada (2026-08-16, DT.50/S37) |
-| T6 | G3 — RC-IVA declarativo (Form 110) | Grande | Alta | Parcial F6.6 (nómina) |
+| T6 | G3 — RC-IVA declarativo (Form 110) | Grande | Alta | ✅ Completada (2026-08-16, DT.51/S38) — integración con nómina F6.6 pendiente |
 | T7 | G2 — IUE 25% + compensación IT (Arts. 50, 77) | Grande | Alta | T2 (UFV), F6.4 (períodos, ya hecho) |
 
 **Orden sugerido de ejecución:** T1 → T2 → T3 → **T3b (recomendada por materialidad fiscal)** → T4 → T5 → T6 → T7 (de menor a mayor riesgo; T2 antes que T7 es funcional, no solo cosmético).
