@@ -178,7 +178,11 @@ Una factura de exportación se contabiliza a tasa cero con IT exento, y el repor
 
 ---
 
-## Fase T5 — G5: Prorrateo del crédito fiscal (operaciones mixtas)
+## Fase T5 — G5: Prorrateo del crédito fiscal (operaciones mixtas) ✅ COMPLETADA (2026-08-16)
+
+> **✅ Resultado (ver ROADMAP DT.50 / AUDIT S37):** schema `PurchaseInvoice.creditUse` (TAXABLE/EXEMPT/MIXED, default TAXABLE) con SQL manual `prisma/manual/20260816_add_purchase_credit_use.sql` y persistencia en los 8 paths de compra; util `fiscal-credit-proration.util.ts` con la fórmula `gravadas / (gravadas + exentas + tasa cero)` del año en curso (provisional; en diciembre la definitiva); Form 200 con la sección `prorrataCreditoFiscal` (porcentaje, composición YTD, desglose directo/prorrateado/no computable/computable y **asiento de reclasificación propuesto** que el contador confirma); frontend: selector "Uso del crédito fiscal" en la factura de compra y sección en la pantalla del Form 200. Tests: 6 unitarios de la util + 2 del reporte; backend 139 suites/1370 tests, E2E 81/81, frontend en verde. Verificación en vivo: reporte con prorrata 100% (circuito todo gravado) y desglose coherente.
+>
+> **Decisiones de diseño:** (1) campo a nivel de **documento** (no por línea) — la clasificación del uso es una decisión de la compra; (2) la prorrata usa los **totales del año en curso** (YTD) — provisional mensual y definitiva en diciembre; (3) el crédito no computable NO se reclasifica automáticamente: el reporte **propone el asiento** (`Dr Gasto / Cr IVA Crédito Fiscal`) y el contador lo confirma (la cuenta del mayor se mantiene como fuente de verdad hasta la reclasificación).
 
 > **Tamaño:** mediano · **Prioridad:** media · **Fundamento:** Ley 843 Art. 8 inc. a (crédito solo de compras **vinculadas a operaciones gravadas**) y DS 21530 Arts. 8–9 / sección Crédito Fiscal (cuando las adquisiciones sirven indistintamente a operaciones gravadas y no gravadas/tasa cero, el crédito se apropia **en proporción** — determinación mensual provisional y definitiva anual).
 
@@ -280,7 +284,7 @@ Cerrado el año fiscal, el ERP calcula el IUE (25%) con sus ajustes, genera el a
 | T3 | G6 — Ventas menores POS (Art. 16) | Mediano | Media | ✅ Completada (2026-08-16, DT.47/S34) |
 | T3b | **G9 — Asientos contables del POS** (hallazgo S35: el checkout no postea al mayor) | Mediano | **Alta** | ✅ Completada (2026-08-16, DT.48/S35) — bloqueo + backfill |
 | T4 | G4 — Exportaciones tasa cero (Arts. 11, 76-c) | Mediano | Media | ✅ Completada (2026-08-16, DT.49/S36) |
-| T5 | G5 — Prorrateo crédito fiscal (DS 21530 Art. 8-9) | Mediano | Media | T4 (mezcla gravado/tasa cero) |
+| T5 | G5 — Prorrateo crédito fiscal (DS 21530 Art. 8-9) | Mediano | Media | ✅ Completada (2026-08-16, DT.50/S37) |
 | T6 | G3 — RC-IVA declarativo (Form 110) | Grande | Alta | Parcial F6.6 (nómina) |
 | T7 | G2 — IUE 25% + compensación IT (Arts. 50, 77) | Grande | Alta | T2 (UFV), F6.4 (períodos, ya hecho) |
 
