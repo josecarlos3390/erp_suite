@@ -247,7 +247,11 @@ El sistema produce el detalle del Form 110 por empleado y período, con arrastre
 
 ---
 
-## Fase T7 — G2: IUE anual (25%) y compensación mensual contra el IT
+## Fase T7 — G2: IUE anual (25%) y compensación mensual contra el IT ✅ COMPLETADA (2026-08-16)
+
+> **✅ Resultado (ver ROADMAP DT.52 / AUDIT S39):** schema `IueAdjustment` (ajustes fiscales configurables ADD/SUBTRACT), `IueDetermination` (resultado por gestión con pérdida arrastrable) y `ItCompensation` (compensación mensual) — SQL manual `prisma/manual/20260816_add_iue_compensacion.sql`; módulo `src/iue/` con la determinación **contable-primero** (Σ 4.x − Σ 5.x/6.x de asientos POSTED del ejercicio ± ajustes − pérdida arrastrable Art. 48 → utilidad imponible → **25%** Art. 50; pérdida a arrastrar si el resultado es negativo) y el asiento propuesto `Dr Gasto IUE / Cr IUE por Pagar`; compensación mensual (Art. 77): el IUE pagado se computa como pago a cuenta del IT hasta agotarse, con el saldo no compensado expuesto para asiento manual de baja al nuevo vencimiento; Form 200 con las casillas de compensación y pantalla `/reports/iue` en el menú de reportes. Tests: 6 unitarios; backend 141 suites/1381 tests, E2E 81/81, frontend en verde. Verificación en vivo: resultado 2425.95 + ajuste 1000 → 3425.95 → IUE 856.49; compensación agosto: IT 432 cubierto (saldo 1568).
+>
+> **Decisiones de diseño:** (1) la determinación es **contable-primero** con ajustes configurables (DS 24051) — el contador registra los ajustes y el motor calcula; (2) la compensación es **declarativa** (el gasto IT ya está devengado por documento): no re-asienta, solo alimenta el Form 200 y el control del saldo; (3) el asiento de la determinación y la baja del saldo consolidado son **propuestos** y los confirma el contador.
 
 > **Tamaño:** grande · **Prioridad:** alta · **Fundamento:** Ley 843 Título III: 25% sobre la **utilidad neta imponible** (Art. 50), pérdidas arrastrables (Art. 48), ajuste por inflación y mantenimiento de valor (DS 24051), y **Art. 77**: el IUE pagado se computa como **pago a cuenta del IT** mensual hasta su agotamiento; el saldo no compensado al nuevo vencimiento se consolida a favor del fisco (no hay devolución).
 > **Dependencia:** conviene ejecutarla **después de T2 (UFV)** — el IUE exige ajuste por inflación sobre partidas no monetarias (DS 24051), que usa la misma infraestructura de tasas. Reutiliza `FiscalYear`/`AccountingPeriod` (DT.36).
@@ -290,9 +294,18 @@ Cerrado el año fiscal, el ERP calcula el IUE (25%) con sus ajustes, genera el a
 | T4 | G4 — Exportaciones tasa cero (Arts. 11, 76-c) | Mediano | Media | ✅ Completada (2026-08-16, DT.49/S36) |
 | T5 | G5 — Prorrateo crédito fiscal (DS 21530 Art. 8-9) | Mediano | Media | ✅ Completada (2026-08-16, DT.50/S37) |
 | T6 | G3 — RC-IVA declarativo (Form 110) | Grande | Alta | ✅ Completada (2026-08-16, DT.51/S38) — integración con nómina F6.6 pendiente |
-| T7 | G2 — IUE 25% + compensación IT (Arts. 50, 77) | Grande | Alta | T2 (UFV), F6.4 (períodos, ya hecho) |
+| T7 | G2 — IUE 25% + compensación IT (Arts. 50, 77) | Grande | Alta | ✅ Completada (2026-08-16, DT.52/S39) |
 
 **Orden sugerido de ejecución:** T1 → T2 → T3 → **T3b (recomendada por materialidad fiscal)** → T4 → T5 → T6 → T7 (de menor a mayor riesgo; T2 antes que T7 es funcional, no solo cosmético).
+
+## 🎉 PLAN COMPLETADO (2026-08-16)
+
+Todas las fases del plan (T1 → T2 → T3 → T3b → T4 → T5 → T6 → T7) están
+**completadas, verificadas y publicadas** (DT.45-DT.52, S32-S39). G1
+(Facturación Electrónica SIN / F5.1) sigue como feature prioritario
+independiente del roadmap. Pendientes de integración futura: nómina F6.6
+(asiento de planilla con la cifra del RC-IVA) y el Form 500 (el reporte IUE
+produce la determinación; la declaración es externa).
 
 ## Criterios de aceptación globales del plan
 
