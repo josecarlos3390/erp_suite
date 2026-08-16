@@ -146,7 +146,11 @@ Un día de retail con 40 ventas < Bs 5 genera 40 registros internos + **1** fact
 
 ---
 
-## Fase T4 — G4: Exportaciones — tasa cero IVA y exención IT (Arts. 11 y 76 inc. c)
+## Fase T4 — G4: Exportaciones — tasa cero IVA y exención IT (Arts. 11 y 76 inc. c) ✅ COMPLETADA (2026-08-16)
+
+> **✅ Resultado (ver ROADMAP DT.49 / AUDIT S36):** schema `TaxIndicator.isZeroRated` (tasa cero CON crédito vs exento SIN crédito) + `SaleInvoice.isExport` (marca documental) con SQL manual `prisma/manual/20260816_add_export_tasa_cero.sql` y seed del indicador `TASA_CERO`; journal builder: documento `isExport` → sin TAX_OUTPUT (Art. 11) ni IT (Art. 76 inc. c), **ingreso íntegro** (el impuesto embebido se devuelve al neto de la línea) y `discountDebit` corregido para no generar SALES_DISCOUNT fantasma; la NC de una factura de exportación no revierte IT; `isExport` persistido en los 7 paths de FV (DTO común) y en el POS (false); Form 200: exportaciones **fuera de la base gravada interna** + sección `exportaciones` con total/base/cantidad, `creditoFiscalAtribuible` (crédito del período × `exportCreditAttributionPct`, setting del tenant) y `excedenteEstimadoReintegro` (el trámite CEDEIM es externo — asiento manual documentado); frontend: toggle "Exportación" en la factura de venta y sección en la pantalla del Form 200. Tests: 2 unitarios del reporte + 1 E2E; backend 138 suites/1362 tests, E2E 81/81, frontend build/lint + Karma en verde. Verificación en vivo: FV de exportación → asiento CxC = Ventas = total, sin IVA/IT/SALES_DISCOUNT, balanceado; reporte con la sección completa.
+>
+> **Decisión de diseño (documental vs por línea):** gate **documental** (`isExport`) para IVA/IT + indicador `TASA_CERO` para marcar las líneas (una factura mixta usa líneas TASA_CERO en la porción de exportación; el gate documental garantiza que el asiento nunca emita débito/IT aunque la línea use un indicador estándar).
 
 > **Tamaño:** mediano · **Prioridad:** media · **Fundamento:** Art. 11 (exportaciones liberadas del débito fiscal; crédito fiscal de insumos computable contra operaciones internas; el excedente se **reintegra** vía notas de crédito negociables); Art. 76 inc. c (IT: exportaciones **exentas**); DS 21530 Arts. 42–46 (procedimiento tasa cero).
 
@@ -275,7 +279,7 @@ Cerrado el año fiscal, el ERP calcula el IUE (25%) con sus ajustes, genera el a
 | T2 | G7 — UFV y actualización de saldos | Pequeño | Baja-media | ✅ Completada (2026-08-16, DT.46/S33) |
 | T3 | G6 — Ventas menores POS (Art. 16) | Mediano | Media | ✅ Completada (2026-08-16, DT.47/S34) |
 | T3b | **G9 — Asientos contables del POS** (hallazgo S35: el checkout no postea al mayor) | Mediano | **Alta** | ✅ Completada (2026-08-16, DT.48/S35) — bloqueo + backfill |
-| T4 | G4 — Exportaciones tasa cero (Arts. 11, 76-c) | Mediano | Media | — |
+| T4 | G4 — Exportaciones tasa cero (Arts. 11, 76-c) | Mediano | Media | ✅ Completada (2026-08-16, DT.49/S36) |
 | T5 | G5 — Prorrateo crédito fiscal (DS 21530 Art. 8-9) | Mediano | Media | T4 (mezcla gravado/tasa cero) |
 | T6 | G3 — RC-IVA declarativo (Form 110) | Grande | Alta | Parcial F6.6 (nómina) |
 | T7 | G2 — IUE 25% + compensación IT (Arts. 50, 77) | Grande | Alta | T2 (UFV), F6.4 (períodos, ya hecho) |
