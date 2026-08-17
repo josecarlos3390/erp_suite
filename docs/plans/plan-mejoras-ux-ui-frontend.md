@@ -242,6 +242,29 @@ Auditoría de explicabilidad (2026-08-09) detectó 4 hallazgos 🔴 que pueden c
 
 ---
 
+## Prioridad 8 — Recomendaciones de visual/UX del QA de flujos completos (2026-08-17) ✅ RESUELTO
+
+### Contexto
+Auditoría visual durante el QA "rol cliente" (flujos completos ventas/compras/stock, 2026-08-15/17) generó 5 recomendaciones priorizadas. Implementadas en orden:
+
+| # | Recomendación | Fix | Commit |
+|---|---------------|-----|--------|
+| 1 | **Editor de campos personalizados (UDF) en documentos** — las ND de venta/compra eran las únicas sin sección "Personalización" | Sección `app-document-customization-section` agregada a `sales-debit-notes` y `purchase-debit-notes` (los demás documentos ya la tenían) | `01feebd` |
+| 2 | **Saldo visible en listados** — columna Pagado en FRC + badge "Vencida" en FV y FRV | Columna Pagado con badge en FRC; `isOverdue()` + badge `variant="error"` en celdas de saldo de FV/FRV | `01feebd` |
+| 3 | **Estado de pagos en el detalle** — FV/FRV en modo ver muestran Total / Pagado / Saldo | Sección "Estado de pagos" (readonly-values) tras los totales, visible con `invoiceId && viewMode` | `01feebd` |
+| 4 | **Tooltip "¿Por qué este precio?"** — versión mínima frontend | Tooltip nativo en la celda de precio de `luna-document-lines-detail`: Precio (IVA incl.), descuento %, precio neto e IVA; `cursor: help` + subrayado punteado. La traza completa de resolución (qué acuerdo/lista ganó) queda pendiente de un endpoint de resolución en backend | `9ae9cc6` |
+| 5 | **Consistencia menor** | "Lead time" → "Plazo de entrega" (low-stock); botón de quitar opción vacío en udf-form → `action="close"`; indentación canónica del template de acciones en udf-list; `OnInit` en `udf-fields-editor` (warning eslint) | `9ae9cc6` |
+
+### Verificación
+- `npm run build` 0 errores, `npm run lint` 0/0, tests de componentes tocados 27/27 + 7/7 (spec de `luna-document-lines-detail` con 2 tests nuevos de `priceTooltip`).
+
+### Pendiente (fuera de este batch)
+- Tooltip con traza de resolución de precio (backend: endpoint que devuelva la cadena acuerdo → lista → escala → base).
+- Deuda de tokens de altura (~93 alturas crudas en `pages/`/`shared/`).
+- Auditoría visual de POS (`pos.component.scss`, 1,951 líneas — scope separado).
+
+---
+
 ## Explícitamente fuera de este plan
 - Todo lo relacionado a `src/app/pages/pos/**`, incluyendo su archivo `pos.component.scss` (1,951 líneas) — se aborda por separado.
 - Migración responsive en curso (ver `docs/archive/FRENTE-3-PLAN-VALIDACION-VISUAL.md`) — ya tiene su propio plan activo, no se duplica aquí.
