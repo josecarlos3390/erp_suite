@@ -50,7 +50,7 @@ En cotizaciones sin precio (el backend resuelve):
 
 ## Hallazgos — estado actualizado (2026-08-17, tras fixes)
 
-**H1, H2 y H3 RESUELTOS** (commit backend `6282125`): FV directa y FRC heredan el tracking de lote/serie del documento base; las series vendidas se re-ingresan por NC y DEV (check de almacén solo para AVAILABLE); el auto-descuento manual solo aplica sobre el precio base. La batería 01-10 + validación integral quedó **TODO EN VERDE** tras los fixes. **H4 queda como decisión de negocio pendiente** (ver abajo).
+**H1, H2 y H3 RESUELTOS** (commit backend `6282125`): FV directa y FRC heredan el tracking de lote/serie del documento base; las series vendidas se re-ingresan por NC y DEV (check de almacén solo para AVAILABLE); el auto-descuento manual solo aplica sobre el precio base. La batería 01-10 + validación integral quedó **TODO EN VERDE** tras los fixes. **H4: decisión tomada — se mantiene winner-takes-all** (el descuento de grupo gana al acuerdo de lista con breaks; comportamiento documentado del resolver, sin cambios).
 
 ## Hallazgos (originales)
 
