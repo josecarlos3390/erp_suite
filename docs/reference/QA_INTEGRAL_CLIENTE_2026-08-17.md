@@ -48,7 +48,11 @@ En cotizaciones sin precio (el backend resuelve):
 - Libro IVA = mayor (5632.41) ✓
 - Ecuación contable global: A 80900.92 = P+E 72870.98 + Resultado 8029.94 ✓
 
-## Hallazgos a corregir
+## Hallazgos — estado actualizado (2026-08-17, tras fixes)
+
+**H1, H2 y H3 RESUELTOS** (commit backend `6282125`): FV directa y FRC heredan el tracking de lote/serie del documento base; las series vendidas se re-ingresan por NC y DEV (check de almacén solo para AVAILABLE); el auto-descuento manual solo aplica sobre el precio base. La batería 01-10 + validación integral quedó **TODO EN VERDE** tras los fixes. **H4 queda como decisión de negocio pendiente** (ver abajo).
+
+## Hallazgos (originales)
 
 ### H1 (P1) — La factura no hereda la trazabilidad de lote/serie del documento base
 La FV directa desde DEL y la FRC desde REC tienen **0 registros** de `documentLineTracking` con el lote/serie, mientras que REC, DEL, NC y DEV sí lo registran. La trazabilidad documental se corta en la **factura fiscal** (no se puede demostrar con la FV/FRC qué lote/serie se facturó). El stock del lote sí se mueve correctamente — es un gap de trazabilidad documental, no de inventario.
