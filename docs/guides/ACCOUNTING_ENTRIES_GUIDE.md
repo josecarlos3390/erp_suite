@@ -685,6 +685,51 @@ Línea adicional:
   Descripción: "Diferencia de cambio — COB-001"
 ```
 
+### **11. BANK STATEMENT (Extracto Bancario) — cargos tipificados ITF**
+
+**Momento:** Al postear el extracto bancario (`POST /bank-statements/:id/post`)
+
+Cada línea del extracto con cuenta asignada genera un asiento de 2 líneas
+(lado banco + contrapartida). Desde 2026-08-16 (Fase T1 del plan tributario BO),
+una línea puede marcarse con `chargeType = 'ITF'` **sin cuenta contable**: la
+contrapartida se resuelve automáticamente desde el mapeo
+`BANK_STATEMENT / FINANCIAL_TRANSACTION_TAX` (cuenta por defecto BO:
+`6.2.1.01.013` "ITF — Impuesto a las Transacciones Financieras").
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  EXTRACTO: EXT-000001 | Cargo ITF (crédito en extracto): Bs 3.50 │
+├─────────────────────────────────────────────────────────────────┤
+│  ASIENTO CONTABLE:                                               │
+│  ─────────────────────────────────────────────────────────────── │
+│                                                                   │
+│  Línea 1 (lado banco):                                           │
+│    Crédito:  Banco (cuenta GL de la cuenta bancaria)    Bs 3.50  │
+│    Descripción: "ITF débitos/créditos — Banco"                   │
+│                                                                   │
+│  Línea 2 (contrapartida, resuelta por mapping):                  │
+│    Débito:   6.2.1.01.013 ITF (FINANCIAL_TRANSACTION_TAX) Bs 3.50│
+│    Descripción: "ITF débitos/créditos — Contrapartida"           │
+│                                                                   │
+│  TOTALES: Débitos: 3.50 = Créditos: 3.50 ✅                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Marco normativo:** Ley 3446 (08/08/2006) — el ITF grava los débitos y
+créditos en cuentas bancarias; el banco lo debita automáticamente del extracto.
+Es gasto deducible del IUE. El ITF pagado también es **compensable contra el IT**
+(Art. 77 Ley 843 — ver Fase T4 del plan tributario).
+
+**Reglas:**
+```
+1. Si la línea tiene chargeType='ITF' y accountId explícito, gana el accountId
+2. Si tiene chargeType='ITF' sin accountId y NO existe el mapping →
+   BadRequestException (configure el mapeo en Contabilidad → Mapeo de cuentas)
+3. El mapping por defecto se crea con POST /account-mappings/ensure-defaults
+   (idempotente; solo tenants con plan de cuentas BO tienen la cuenta 6.2.1.01.013)
+4. La tasa vigente se registra de forma informativa en BankAccount.itfRate
+```
+
 ---
 
 ## ✅ Validaciones y Reglas
