@@ -43,7 +43,7 @@ Campos propios de cada documento (Válida hasta, Fecha de entrega, Exportación,
 | Formulario | Estado |
 |------------|--------|
 | Componente `document-discount-mode` | ✅ Migrado (alineación A4) |
-| COT / PED / DEL / FV / FRV / NC / PO / FCP / FRC | 🔲 Pendiente (migración en iteración dedicada con verificación visual) |
+| COT / PED / FV / FRV / NC / PO / FCP / FRC | ✅ Migrados (commit `540d3f1`, verificado en browser) — DEL ya cumplía el canónico |
 | ND | ⏭️ Fuera de alcance (form especial) |
 
 *Creado como parte de la auditoría visual frontend 2026-08-17.*
