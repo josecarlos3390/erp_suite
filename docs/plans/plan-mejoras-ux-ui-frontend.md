@@ -253,14 +253,14 @@ Auditoría visual durante el QA "rol cliente" (flujos completos ventas/compras/s
 | 2 | **Saldo visible en listados** — columna Pagado en FRC + badge "Vencida" en FV y FRV | Columna Pagado con badge en FRC; `isOverdue()` + badge `variant="error"` en celdas de saldo de FV/FRV | `01feebd` |
 | 3 | **Estado de pagos en el detalle** — FV/FRV en modo ver muestran Total / Pagado / Saldo | Sección "Estado de pagos" (readonly-values) tras los totales, visible con `invoiceId && viewMode` | `01feebd` |
 | 4 | **Tooltip "¿Por qué este precio?"** — versión mínima frontend | Tooltip nativo en la celda de precio de `luna-document-lines-detail`: Precio (IVA incl.), descuento %, precio neto e IVA; `cursor: help` + subrayado punteado. La traza completa de resolución (qué acuerdo/lista ganó) queda pendiente de un endpoint de resolución en backend | `9ae9cc6` |
+| 4b | **Traza completa de resolución (backend + frontend)** | `POST /special-prices/resolve-trace` (`resolveItemPriceTrace` espeja `resolveItemPriceForPartner`: base → acuerdo partner fijo/descuento → grupo → acuerdo lista → lista del partner con escalas → fallback, con código/nombre del ganador). El tooltip de líneas la precarga con debounce + cache y muestra "Base → ✓ Acuerdo X — detalle: precio" cuando hay ganador distinto del fallback. Contexto bindeado en los 7 formularios de ventas | backend `757f081` / frontend `edafa59` |
 | 5 | **Consistencia menor** | "Lead time" → "Plazo de entrega" (low-stock); botón de quitar opción vacío en udf-form → `action="close"`; indentación canónica del template de acciones en udf-list; `OnInit` en `udf-fields-editor` (warning eslint) | `9ae9cc6` |
 
 ### Verificación
-- `npm run build` 0 errores, `npm run lint` 0/0, tests de componentes tocados 27/27 + 7/7 (spec de `luna-document-lines-detail` con 2 tests nuevos de `priceTooltip`).
+- `npm run build` 0 errores, `npm run lint` 0/0, tests de componentes tocados 27/27 + 7/7 (spec de `luna-document-lines-detail` con 2 tests nuevos de `priceTooltip`). Backend: suite completa 141 suites / 1,390 tests en verde (spec del resolver con 8 tests de traza).
 
 ### Pendiente (fuera de este batch)
-- Tooltip con traza de resolución de precio (backend: endpoint que devuelva la cadena acuerdo → lista → escala → base).
-- Deuda de tokens de altura (~93 alturas crudas en `pages/`/`shared/`).
+- Tokens de altura: migrados `luna-modal-close` (sm), `luna-tabs--md` (md) y `skeleton-button` (sm/md/lg) en `edafa59`. Quedan ~90 alturas crudas restantes, clasificadas en `plan-consistencia-visual-v2` Fase 2 como decorativas (avatares, iconos, progress bars — sin token que las represente) o de design system posterior (triggers compactos de 28px de selectores custom, filas de `luna-data-table` con densidad propia).
 - Auditoría visual de POS (`pos.component.scss`, 1,951 líneas — scope separado).
 
 ---
