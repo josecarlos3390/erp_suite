@@ -260,7 +260,7 @@ Auditoría visual durante el QA "rol cliente" (flujos completos ventas/compras/s
 - `npm run build` 0 errores, `npm run lint` 0/0, tests de componentes tocados 27/27 + 7/7 (spec de `luna-document-lines-detail` con 2 tests nuevos de `priceTooltip`). Backend: suite completa 141 suites / 1,390 tests en verde (spec del resolver con 8 tests de traza).
 
 ### Pendiente (fuera de este batch)
-- Tokens de altura: migrados `luna-modal-close` (sm), `luna-tabs--md` (md) y `skeleton-button` (sm/md/lg) en `edafa59`. Quedan ~90 alturas crudas restantes, clasificadas en `plan-consistencia-visual-v2` Fase 2 como decorativas (avatares, iconos, progress bars — sin token que las represente) o de design system posterior (triggers compactos de 28px de selectores custom, filas de `luna-data-table` con densidad propia).
+- Tokens de altura: migrados `luna-modal-close` (sm), `luna-tabs--md` (md) y `skeleton-button` (sm/md/lg) en `edafa59`, y en `e5225794` se creó el tier **xs=28px** (`--size-control-xs`) que formaliza el patrón de botones icon-only en celdas densas, triggers compactos y tabs base (8 controles migrados). Quedan **80 alturas reales** (censo 2026-08-17), todas decorativas (avatares, iconos, badges — sin token que las represente) o estructurales (filas de `luna-data-table` con densidad propia, containers de modales); 15 están en POS (scope separado) y 2 micro-botones de 26px en batch/serial-selector quedan como candidatos a subir a xs. Clasificación completa en `plan-consistencia-visual-v2` Fase 2.
 - Auditoría visual de POS (`pos.component.scss`, 1,951 líneas — scope separado).
 
 ---
