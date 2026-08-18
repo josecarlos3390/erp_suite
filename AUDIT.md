@@ -652,6 +652,13 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **H2 (P3) — cancelar factura con cuotas dejaba cuotas huérfanas:** **Fix:** `deleteMany` de cuotas en el cancel de FV, FRV y FPI/FRC.
    - **Cobertura:** batería 12 22/22 en verde + spec `payment-term.util.spec.ts` con 4 tests nuevos (H3 LIFO ×3, H6 revert) + suite completa + lint. Baterías 01-11 y validación integral re-corridas sin regresiones.
 
+37. **Flujo de abonos de NC y facturas canceladas — invariante mayor CxC = Σ saldos** (`backend / payments + accounting + POS`) — `✅ Resuelto` (2026-08-18)
+   - **Origen:** al integrar la batería 12 al runner, la validación integral detectó un gap en el invariante `mayor CxC = Σ saldos de facturas` (966 = 644 + 322 en el estado acumulado). El usuario pidió revisar el módulo POS (la consolidada diaria parecía la causa).
+   - **Diagnóstico (3 causas, ninguna del POS):** (a) la **factura de consolidación diaria de ventas menores** es DOCUMENTAL por diseño (sin asiento ni pagos — batería 07) y aporta 0 al gap; (b) **cancelar una factura (FV/FRV/FPI) no limpiaba `balanceDue`/`paidAmount`** → las facturas CANCELLED seguían contando en cualquier Σ saldos sin filtro de estado; (c) **el flujo de abono de NC no contabilizaba**: la NC sobre factura ya cobrada acreditaba CxC por el TOTAL (sobre-crédito por la parte reembolsable) y la APLICACIÓN del abono (`reconcileOne`) cerraba la factura sin asiento (Dr Anticipo / Cr CxC) ni `totalPaidAR` → la factura "pagada con abono" dejaba el mayor CxC abierto y el saldo del socio desfasado.
+   - **Fix:** (a) cancels de FV/FRV/FPI limpian `balanceDue/paidAmount/creditedAmount = 0` + guard que bloquea el cancel si hay `PaymentReconciliation` activa (abono aplicado); (b) el builder de NC de venta acepta `refundable`: acredita CxC por `total − refundable` y **Anticipo Clientes** por el refundable; `totalCreditedAR` del socio = `debtCovered` (la NC manual sin factura sigue acreditando el total); el cancel revierte `-(noteTotal - refunded)`; (c) `reconcileOne` postea el asiento de aplicación del anticipo (`ADVANCE_APPLICATION`: Dr Anticipo / Cr CxC) vía `createAdvanceApplicationJournalEntry` y actualiza `totalPaidAR`.
+   - **Resultado:** el invariante `mayor CxC = Σ saldos` (excl. CANCELLED) se cumple en todo el circuito (baterías 01-12 + validación integral 33/33), el Anticipo Clientes refleja los saldos a favor, y las facturas canceladas ya no muestran saldo.
+   - **Cobertura:** batería completa en verde + suite 141 suites / 1394 tests + lint 0/0. La batería 12 excluye CANCELLED del invariante (paridad con 04).
+
 ## 6. Métricas de referencia
 
 | Métrica | Valor | Fecha |
