@@ -173,6 +173,18 @@ Línea 5:
 > **FRC** — mezclar factura normal con documento logístico rompe el balance de inventario
 > (doble descarga) y deja GRIR con residual.
 
+> ⚠️ **NC sobre factura YA COBRADA (abono / saldo a favor) — split CxC + Anticipo (2026-08-18):**
+> cuando la NC de venta supera la deuda pendiente de la factura (`debtCovered =
+> min(total NC, balanceDue)`), la parte reembolsable NO sobre-acredita la CxC: el
+> asiento acredita **CxC por la deuda cubierta** y **Anticipo Clientes**
+> (`ADVANCE_RECEIVABLE`, 2.1.5.01.001) por el reembolsable. La NC genera un **abono**
+> (pago entrante `isAdvance`) por ese reembolsable; al **aplicarlo** a otra factura
+> (`/incoming-payments/reconcile`) se postea el asiento `ADVANCE_APPLICATION`:
+> **Dr Anticipo Clientes / Cr CxC** (el favor del cliente extingue su deuda). El saldo
+> del socio: `totalCreditedAR = debtCovered` (la NC manual sin factura acredita el
+> total) y `advanceAR = +refundable` al crear el abono, `−amount` al aplicarlo. El
+> Form 200/libros no cambian: la NC total sigue contando completa (Art. 8 inc. b).
+
 ---
 
 ### **3. DELIVERY ORDER (Remito de Entrega)**
@@ -548,6 +560,17 @@ cuentas es idéntico.
   Descuentos; el IVA se adiciona al débito fiscal (Art. 7 último párr.).
 
 ---
+
+> ⚠️ **NC de compra sobre factura YA PAGADA (abono proveedor) — split CxP + Anticipo Proveedores (2026-08-18):**
+> simetría con ventas: la parte reembolsable NO sobre-debita la CxP — el asiento debita
+> **CxP por la deuda cubierta** y **Anticipo Proveedores** (`ADVANCE_PAYABLE`, 1.1.2.05.001)
+> por el reembolsable (activo: el proveedor nos debe). El **abono saliente** (`isAdvance`)
+> al aplicarse (`/outgoing-payments/reconcile`) postea `ADVANCE_APPLICATION`:
+> **Dr CxP / Cr Anticipo Proveedores** (la deuda del proveedor a nuestro favor extingue
+> la nuestra). Saldo del socio: `totalCreditedAP = debtCovered`; `advanceAP = +refundable`
+> al crear el abono, `−amount` al aplicarlo. **Stock:** la devolución de mercadería sale al
+> **costo de la compra original** (la NC pasa `incomingUnitCost` al `upsertStock` con delta
+> negativo) para que el avgCost cuadre con el asiento (Cr INVENTORY por `lineCost`).
 
 ## 📦 Documentos de Stock
 

@@ -659,6 +659,14 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Resultado:** el invariante `mayor CxC = Σ saldos` (excl. CANCELLED) se cumple en todo el circuito (baterías 01-12 + validación integral 33/33), el Anticipo Clientes refleja los saldos a favor, y las facturas canceladas ya no muestran saldo.
    - **Cobertura:** batería completa en verde + suite 141 suites / 1394 tests + lint 0/0. La batería 12 excluye CANCELLED del invariante (paridad con 04).
 
+38. **Simetría de compras en el flujo de abonos + costeo neto en movimientos de stock** (`backend / payments + accounting + inventory`) — `✅ Resuelto` (2026-08-18)
+   - **Origen:** revisión post-item 37 — el lado COMPRAS tenía los mismos 3 defectos que el de ventas (sin detectar porque ninguna batería cubría el flujo de compras con abono aplicado) + un defecto de costeo en movimientos.
+   - **H9 (P2) — NC de compra sobre factura ya pagada:** el builder debitaba CxP por el TOTAL (sobre-débito por la parte reembolsable). **Fix:** split CxP (deuda cubierta) + **Anticipo Proveedores** (reembolsable); `totalCreditedAP = debtCovered` (NC manual = total); cancel revierte `-(noteTotal - refunded)`.
+   - **H10 (P2) — aplicación del abono proveedor (`reconcileOne` saliente):** cerraba la factura sin asiento ni `totalPaidAP`. **Fix:** asiento `ADVANCE_APPLICATION` **Dr CxP / Cr Anticipo Proveedores** (la dirección inicial estaba invertida — la inversa AUMENTABA la CxP) + `totalPaidAP` + consume `advanceAP`; el entrante ahora consume `advanceAR` al aplicar.
+   - **H11 (P2) — FPI manual: movimiento de stock con costo BRUTO:** `stockMovement.unitCost = line.price` (350, con IVA) mientras el asiento capitaliza el neto (304.5) → avgCost inflado vs cuenta Inventario (rompía el invariante). **Fix:** costo neto (NIC 2) en ambos bloques de movimientos.
+   - **H12 (P3) — NC de compra con returnsStock salía al promedio vigente:** el avgCost no cuadraba con el asiento (Cr INVENTORY por `lineCost`). **Fix:** `incomingUnitCost` (costo de la compra original) en el delta negativo del `upsertStock`.
+   - **Cobertura:** batería 12 sección H8 (compras con abono: split del asiento, aplicación y saldo proveedor vs mayor — 3 checks nuevos, 25/25); 04-validacion: `payOuts` excluye `isAdvance` (paridad con ventas) e invariante de stock cerrado (33/33); suite 141/1394; **E2E 13 archivos / 81 tests en verde** (el runner completo se colgaba por el test DB desincronizado — `prisma db push` sobre `erp_test` lo resolvió); lint 0/0. Guía contable actualizada (split en NC venta/compra + ADVANCE_APPLICATION + costeo de devoluciones).
+
 ## 6. Métricas de referencia
 
 | Métrica | Valor | Fecha |
