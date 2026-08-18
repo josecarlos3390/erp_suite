@@ -674,6 +674,12 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **H14 (P3) — cancel de un anticipo ya aplicado:** no estaba bloqueado ni revertía el `ADVANCE_APPLICATION`. **Fix:** rechazo en incoming/outgoing cancel cuando `isAdvance && advanceAllocatedAmount > 0` (la vía correcta es la NC vinculada, que ya valida el uso del abono).
    - **Cobertura:** batería 12 sección H13 (4 checks, 29/29); 04-validacion: `expectedAP` resta el DPP saliente (paridad con ventas; invariante cerrado 33/33); suite 141/1394; E2E clave (incoming-payments, returns, discount-propagation, sales/purchase-flow) 48 tests; lint 0/0.
 
+40. **Baterías QA 01-12 100% HTTP — cero escrituras directas de Prisma** (`qa`) — `✅ Resuelto` (2026-08-18)
+   - **Objetivo:** las baterías validan el flujo funcional por la API REST real; los últimos setups de datos maestros que se creaban directo en BD se migraron a endpoints.
+   - **APIs ampliadas (cambios backend):** `PUT /settings` acepta `posConsolidateMinorSales`/`posMinorSalesThreshold`/`posGenericPartnerId` (config de ventas menores del POS); `POST/PATCH /pos-terminals` aceptan `userIds` (asignación de usuarios de caja — crea/reemplaza `UserTerminal`); `PUT /special-prices` acepta `status` (reactivar acuerdos inactivados); `PUT /price-lists/:id` dejó de BORRAR items no enviados (upsert por item; antes un PUT con un subconjunto destruía la lista) y reemplaza las escalas de forma idempotente.
+   - **Baterías:** 03/10 (lotes y seriales por GET+POST/PATCH), 07 (cliente genérico, config POS, terminal con usuarios y cierre de sesiones por API), 09 (acuerdos por upsert GET+PUT/POST — el DELETE del ERP inactiva acuerdos con uso; escalas por PUT de lista), 11 (definiciones UDF por /udf), 12 (términos por upsert por nombre — el DELETE inactiva términos con plan de líneas).
+   - **Verificación:** auditoría final: **0 escrituras directas** en las 12 baterías (Prisma solo para lecturas de aserción); batería completa + validación integral 33/33; suite 141/1394; lint 0/0.
+
 ## 6. Métricas de referencia
 
 | Métrica | Valor | Fecha |
