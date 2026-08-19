@@ -64,6 +64,7 @@
 | ✅ 3.2 | **Números de serie** | Campo `serialNumberId` (1 unidad = 1 serie); validación de unicidad por almacén. | ✅ Modelo `SerialNumber` con `warehouseId` y `status`. |
 | ✅ 3.3 | **Kardex formal** | Reporte independiente: movimientos de un artículo con saldo acumulado por fecha. | ✅ Endpoint `GET /items/:id/kardex`. Frontend `/kardex/:itemId`. |
 | ✅ 3.4 | **Importación masiva** | Upload Excel (.xlsx/.xls) para artículos, partners y stock inicial; validación de errores. | ✅ Implementado para artículos, partners y stock. |
+| ✅ 3.5 | **Unidades de medida (núcleo)** | UoM por artículo (venta/compra/inventario), conversiones por factor, selector UOM editable en líneas de documento con recálculo de cantidad/precio, propagación de `uomId` en todos los flujos y códigos de barra múltiples en el dato maestro. | ✅ Completado (2026-08-18, AUDIT item 42 + batería 17). **Pendiente (fase posterior):** POS con UOM/escaneo de barcode y entidad `UoMGroup` (patrón SAP B1 de grupos con unidad base). |
 
 ---
 
