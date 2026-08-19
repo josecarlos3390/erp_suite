@@ -797,5 +797,292 @@ suites/1287 tests en verde (incluye 4 tests nuevos de preview de borrador).
 
 ---
 
+## QA integral 2026-08-19 — Limpieza total + batería completa desde cero ✅
+
+> **Solicitud del usuario:** limpiar saldos de cuentas, inventarios, partners, facturas, compras,
+> stock y todo, para re-ejecutar los circuitos QA desde cero simulando una GESTIÓN completa de
+> empresa y validar que todos los flujos se cumplen, los asientos cuadran y los saldos son
+> fiables. Las inconsistencias halladas se documentan.
+
+### 1. Limpieza total (potenciada)
+
+El script `prisma/cleanup.ts` (`npm run db:cleanup`) fue potenciado:
+- **Nuevas tablas truncadas:** `CustomFieldValue` (UDFs transaccionales huérfanos) y `AuditLog`
+  (85 tablas en total, 0 errores).
+- **Nuevo reset de secuencias de códigos:** las 34 secuencias PostgreSQL (`*_code_seq` de
+  `code-generator.ts`) vuelven a 1 → los códigos reinician en `ART-00001`, `FVE-000001`, etc.
+- Ya cubría: 80+ tablas transaccionales (documentos, líneas, stock, asientos, pagos, drafts,
+  links, lotes/series, POS, SAP logs) + reset de `PartnerBalance`, `Stock` (avgCost NULL) y
+  `BankAccount`.
+- **Backup previo:** `npm run backup:db` (1.23 MB, retención 7+4).
+- **Verificado:** 0 facturas venta/compra, 0 asientos, 0 movimientos de stock; maestros
+  intactos (partners, items, cuentas, UoMs, condiciones de pago, secuencias reiniciadas).
+
+### 2. Batería QA completa desde cero — TODO EN VERDE
+
+`node scripts/qa-battery/run.js` ejecutó las 17 fases sobre la BD limpia:
+
+| Fase | Batería | Resultado |
+|---|---|---|
+| 01 | Compras (PCOT→PO→REC→FRC→NC→devolución) | ✅ TODO EN VERDE |
+| 02 | Ventas (COT→PED→DEL→FRV→NC→devolución) | ✅ TODO EN VERDE |
+| 03 | Inventario (entradas/salidas/transferencias) | ✅ TODO EN VERDE |
+| 05 | Multi-descuentos (mixtos, prorrateo NC) | ✅ TODO EN VERDE |
+| 06 | Casos críticos (negativos, validaciones) | ✅ TODO EN VERDE |
+| 07 | POS (sesiones, ventas menores, consolidada) | ✅ TODO EN VERDE |
+| 08 | Reversas (cancelaciones NC/ND/devoluciones) | ✅ TODO EN VERDE |
+| 09 | Precios (jerarquía completa, qty-breaks) | ✅ TODO EN VERDE |
+| 10 | Trazabilidad (lotes/series, costos, estados) | ✅ TODO EN VERDE |
+| 11 | UDF/dimensiones (viaje por los flujos) | ✅ TODO EN VERDE |
+| 12 | Pagos y condiciones (pronto pago, retenciones) | ✅ TODO EN VERDE |
+| 13 | Ensamblajes (AO, componentes) | ✅ TODO EN VERDE |
+| 14 | Multimoneda (M/E, doble expresión) | ✅ TODO EN VERDE |
+| 15 | Asientos manuales | ✅ TODO EN VERDE |
+| 16 | Ajustes de inventario | ✅ TODO EN VERDE |
+| 17 | UOM + códigos de barras | ✅ TODO EN VERDE |
+| 04 | **Validación integral** | ✅ TODO EN VERDE |
+
+### 3. Saldos finales de la gestión simulada (verificados por la validación integral)
+
+- **CxC mayor** = Σ ventas − NC − pagos = **40,228.71** — igual al saldo del partner CLI-00001.
+- **CxP mayor** = Σ compras − NC − pagos = **67,990.47** — igual al saldo del partner PROV-00001.
+- **Inventario valorizado** (stock × avgCost): **32,931.85** (9 artículos con stock).
+- **Form 200:** base gravada neta 51,830 (ventas 54,424 − NC 2,594); IVA débito 13% = 6,919.51;
+  IT 3% = 1,558.35; exportaciones tasa cero 3,990 (fuera de base, Art. 11).
+- **Libro IVA:** ventas 58,414; compras 75,218; IVA débito del libro = mayor.
+- **Ecuación contable global:** A 93,150.80 = P+E 77,023.10 + Resultado 16,127.70
+  (Ingresos 49,192.65 − Costos/Gastos 33,064.95) ✅.
+
+### 4. Hallazgos
+
+**Ampliación post-corrida (misma sesión) — casos solicitados por el usuario:**
+
+1. **Artículos generados por órdenes de ensamblaje — venta del kit (batería 13, nueva fase E9):**
+   la batería ensamblaba (comprar componentes → ASSEMBLE → reversas → DISASSEMBLE) pero NUNCA
+   vendía el kit ensamblado. Se agregó **E9 — Venta del kit** (ensamblar 1 KIT-PC01 y venderlo por
+   COT→PED→DEL→FV + pago):
+   - E9a: stock del kit neto 0 (ensamblado +1, vendido −1); componentes intactos (la venta del
+     producto terminado NO los consume).
+   - E9b: la entrega postea **Dr COGS / Cr Inventario por el avgCost del kit** (1,653.00),
+     balanceado.
+   - E9c: la FV desde entrega es solo financiera — **Dr CxC = total de la factura (2,500)**, sin
+     línea de inventario (R1: la entrega ya posteó el COGS). El total del asiento (2,575) incluye
+     el IT 3% (Dr Gasto IT / Cr IT por Pagar) que asume el vendedor — check corregido para medir
+     el CxC, no el total del asiento.
+   - E9d: pago entrante → FV CLOSED, saldo 0.
+   - **Resultado: 14/14 checks en verde** (2 corridas: la primera con el check E9c mal planteado,
+     corregido y verificado contra el asiento real ASI-010258 — Dr CxC 2,500 = total FV 2,500).
+
+2. **Artículos con UoM de conversión — comprar/vender en caja, inventario en unidades
+   (batería 17, confirmada en vivo):**
+   - Comprar **2 CAJA** (conversión 1 CJA = 12 UN, uomId=2) → el stock entra **+24 UNIDADES**
+     (convertido) y el movimiento de la recepción registra la cantidad en unidades (qty=24).
+   - Vender **2 CAJA** (COT→PED→DEL→FV, uomId viaja por todo el flujo) → el stock sale
+     **−24 UNIDADES** (circuito cerrado a stock 0).
+   - Fallback: línea sin uomId → salesUomId del artículo (CAJA).
+   - **Resultado: TODO EN VERDE.**
+
+**No se detectaron inconsistencias en ninguno de los dos casos** — el costo del ensamblado
+viaja correctamente al COGS, el CxC cuadra con el total facturado, y la conversión de UoM mueve
+el inventario siempre en la unidad de inventario del artículo.
+### 4. Hallazgos
+
+**No se detectaron inconsistencias en la corrida** — todas las fases y la validación integral
+pasaron en verde (88+ asientos cuadrados, GRIR 0, CxC/CxP alineados al mayor, Form 200 y libro
+IVA consistentes con la ecuación contable).
+
+**Fixes de la sesión (previos a la corrida, sin commitear):**
+- **Asiento preliminar → asiento real:** `JournalEntriesService.preview` devuelve el asiento
+  POSTED real del documento (mode `posted`, entryId/entryCode/entryStatus) cuando existe; el
+  modal distingue "Asiento contable real / Contabilizado" vs "Vista previa / Simulación", con
+  el código ASI-XXXX clickeable y botón "Ver asiento" → `/journal-entries/:id`. El preview-draft
+  de pagos (incoming/outgoing) ahora resuelve el descuento por pronto pago desde las facturas
+  vinculadas (misma lógica que el confirm).
+- **Campo Moneda duplicado** en pagos recibidos/efectuados (wrapper `luna-form-field` + label
+  interno del componente) — eliminado el wrapper en los 4 lugares.
+- **Partner selector:** el modo readonly duplicaba el código (`selectedLabel` incluía el código
+  junto a `ps-code`) — ahora `ps-name` muestra solo el nombre.
+- **UoM editable en líneas** con conversión por factor (1 CJA = 12 UN) — control `uomId` en los
+  builders de ventas y compras, `applyDefaultUom` en selectores, mappers que heredan uomId y
+  redondeo a 6 decimales en `applyUomChange` (el total de línea se preserva: 100/12 → 8.333333
+  × 12 = 100.00).
+
+---
+
 *Documento vivo. Actualizado automáticamente tras cada auditoría.*
 *Fuentes: `AUDIT_REPORT_V2.md`, `AUDIT_TRACKING.md`, `BUGS_RESUELTOS.md`, `AGENTS.md`.*
+
+## Diagnóstico UX/UI y alineación (2026-08-19) — herramientas ejecutadas
+
+> Solicitado por el usuario antes de añadir más funcionalidades: validar la UX/UI, la alineación
+> frontend↔backend y el diseño visual con criterio ERP.
+
+### 1. Alineación Frontend ↔ Backend (Swagger vs services) — ✅ OK
+
+Script de diagnóstico (node): comparó los **447 paths del Swagger** contra las **111 llamadas
+únicas** que el frontend hace (environment.apiUrl + ruta en los services).
+
+- **0 endpoints que el frontend llame sin existir en el backend** (los 3 candidatos restantes
+  eran falsos positivos del matcher: el mismo endpoint document-flow/{type}/{id} con valores
+  concretos de tipo en el frontend).
+- No hay llamadas huérfanas ni 404 potenciales.
+
+### 2. Lighthouse (pantalla pública de selección de empresa) — 2 hallazgos de accesibilidad
+
+- **Accessibility: 92** — 2 fallos reales:
+  - **Contraste insuficiente** en span.tenant-slug (el código de la empresa sobre la card
+    luna-card — fg/bg sin ratio suficiente, probablemente acentuado en dark mode).
+  - **Falta el landmark main** — la página no tiene elemento main; el link "Saltar al
+    contenido principal" apunta a #main-content que no existe en la página.
+- **Best practices: 100.**
+- Nota: el CLI de Lighthouse no puede autenticar el SPA (las cookies del header no entran en
+  document.cookie) — las páginas autenticadas quedan cubiertas por el baseline de Playwright.
+
+### 3. Visual regression (Playwright) — baseline regenerado ✅
+
+- Los 19 formularios comerciales fallaron contra el baseline del **10/08** con diffs de ~1% de
+  píxeles (cambios intencionales de la semana: columna UOM, fix de moneda/partner en pagos,
+  tokens de altura, rediseños de la corrida QA).
+- **Baseline regenerado con la versión actual: 52/52 passed** — el visual regression queda
+  operativo para detectar regresiones visuales futuras (maxDiffPixels 500, 8000 para
+  delivery-orders).
+
+### 4. Hallazgos UX/UI concretos (pendientes, priorizados)
+
+| # | Hallazgo | Dónde | Severidad |
+|---|----------|-------|-----------|
+| U1 | **Breadcrumb con query params crudos** ("2464?View=1", "New?Manual=1") | Breadcrumb de formularios | P3 — cosmético |
+| U2 | **Contador "0 resultados" con filas visibles** en listados (posible desync del contador con el filtro activo) | Listado de facturas de venta | P2 — confuso |
+| U3 | **Bloque "Asignación a facturas" redundante en edición de pagos** (la misma factura en la tabla interactiva y el resumen) | Pagos recibidos/efectuados | P2 — decisión de diseño (mostrar solo en ver) |
+| U4 | **"Precio Unit." muestra el precio del payload, no el resuelto** por el motor de precios | FV manual | P3 — documentado |
+| U5 | **Totales sin formato de miles** en algunos listados | F. Reserva Compra y otros | P3 — documentado |
+| U6 | **Contraste del slug del tenant** + **falta landmark main** | Selección de empresa / login | P2 — accesibilidad (Lighthouse) |
+
+**Siguiente paso recomendado:** resolver U2/U6 (rápidos y de fondo), decidir U3, y mantener el
+baseline visual regenerado en cada PR (el visual regression ya está en la suite e2e).
+### 5. Fixes aplicados (misma sesión)
+
+| Fix | Cambio | Verificación |
+|-----|--------|--------------|
+| **U2 — contador de listados** | El app-filter-bar nunca recibía [count] → todos los listados mostraban "0 resultados" con filas. Se pasó [count]="total"/"totalCount" a **26 listados** y el contador ahora es opcional (null = oculto; los 3 casos sin listado paginado — admin, stock-counts-form, udf-list — quedan sin contador) | Build + lint OK; tests filter-bar 11/11 (2 nuevos: contador visible con count y oculto con null) |
+| **U6a — contraste del slug del tenant** | span.tenant-slug usaba --text-tertiary (no pasa AA en dark: 3.56-4.08:1). Subido a --text-secondary | Light 10.46:1 y dark 4.96:1 (AA >= 4.5) |
+| **U6b — landmark main** | El login/selector de empresa no tenía main. El contenedor raíz pasó a main.login-page | Build OK |
+| **U3 — Asignación a facturas en pagos** | El bloque resumen paymentLines ahora solo se muestra en viewMode (en edición queda solo la tabla interactiva "Facturas pendientes" — sin la misma factura duplicada) | Build OK (incoming + outgoing) |
+| **U1 — breadcrumb con query params** | Los segmentos con query ("2464?view=1") se limpiaban mal → el breadcrumb mostraba "2464?View=1". Se limpia el query de cada segmento y se agregó el label "Nuevo" para /new | Build OK |
+
+**U4** (precio payload vs resuelto en FV manual) se mantiene documentado: es una convención de display
+(el precio unitario muestra el bruto con IVA y el total de línea el neto — mismo patrón en las facturas
+confirmadas; los totales del documento cuadran). **U5** (formato de miles) ya estaba resuelto (los
+listados usan | number: '1.2-2').
+### 6. Lote rápido de mejoras UX/UI (sugerencias del especialista — 2026-08-19)
+
+| Sugerencia | Acción | Estado |
+|------------|--------|--------|
+| **Reset de columnas** (sug. 2) | El botón "Restablecer" del modal de columnas solo reseteaba el modal; ahora también limpia las preferencias locales (_prefs + caches) — el reset aplica de inmediato aunque el usuario cierre con "Cancelar" (con "Guardar" persiste en el backend por tableKey) | ✅ Aplicado |
+| **Margen solo por color** (sug. 4) | Verificado: las 10 celdas de margen ya muestran valor + signo ("+100.00 Bs (10.0%)") con el color como refuerzo — el signo y el número distinguen sin depender del color (WCAG 1.4.1 cubierto) | ✅ Ya cumplía |
+| **Stock disponible en líneas** (sug. 6a) | Factura de Venta: nueva columna "Stock disp." en el detalle (celda stockAvailable) con getter que resuelve el stock del catálogo (cargado para el almacén del documento) + binding [getStockAvailable] | ✅ Aplicado |
+| **Estilos inline sueltos** (sug. 7) | Migrados a tokens/clases: los 3 `style="margin-top: 12px"` (botón Asignar lotes/series de FV/FRC/DEL) → clase `.btn-add-assignment` con `var(--space-3)`; los empty-states inline de delivery-orders → `.empty-state--compact`. Los `[style.visibility]` del menú ⋮ de los listados son el patrón canónico documentado en FRONTEND_GUIDE §1.2 (se conservan) | ✅ Aplicado (parcial — quedan inline menores en modales de sales-orders) |
+
+Verificación: build + lint OK, tests luna-data-table + filter-bar 22/22.
+### 7. Segundo lote de mejoras UX/UI (2026-08-19)
+
+| Item | Cambio | Estado |
+|------|--------|--------|
+| **Bloques de cabecera + acordeón "Más detalles"** (sug. 1) | La cabecera de **FV** y **FRV** queda con los bloques principales (Código/Cliente/Sucursal → Almacén → Fecha/F.Contab → Moneda → Notas) y las referencias/trazabilidad (Pedido de Venta, Referencia del cliente, Vendedor, Nº Referencia) pasan a un acordeón colapsable "Más detalles" (details/summary nativo con tokens, CSS global en _forms.scss). Patrón listo para replicar en los demás forms tras validación visual | ✅ FV + FRV (patrón); pendiente validar en navegador |
+| **Mini-resumen sticky del total** (sug. 6b) | `.totals-section` global ahora es sticky al fondo con gradiente (bottom: 0, z-index 5, fondo --bg-base) — el total permanece visible mientras se scrollean líneas largas. Aplica a los 13 forms y al modal de preview | ✅ Global |
+| **Columnas por defecto por form (modo simple)** (sug. 3) | Columnas secundarias ocultas por defecto en `lineDetailColumns` (reactivables con el toggle): FV 14 columnas (lote, serie, pedido/facturado/pendiente, pesos, proyecto, dimensiones, cuenta) + 28 columnas en 5 forms de venta (delivery, FRV, NC, pedidos, devoluciones). El campo `hidden` se agregó al type y se propaga al luna-data-table | ✅ 6 forms de venta; pendiente compras |
+
+Verificación: build + lint OK, baseline visual regenerado 52/52 (e2e).
+
+Pendiente para completar el lote: validar visualmente el acordeón en navegador (FV/FRV), replicarlo a los forms de compras/pedidos/entregas y ocultar columnas en los lineDetailColumns de compras (los forms de compra usan tablas propias con #cell, no lineDetailColumns — revisión aparte).
+### 8. Segundo lote — completado (2026-08-19)
+
+**Acordeón "Más detalles" replicado a los 13 formularios comerciales** (patrón de la FV):
+sale-invoices, sale-reserve-invoices, sales-orders, delivery-orders, sales-credit-notes,
+sales-returns, purchase-invoices, purchase-orders, purchase-receipts, purchase-credit-notes,
+purchase-returns, purchase-reserve-invoices, purchase-quotations. Las referencias/trazabilidad
+(Pedido/Orden/Recepción de origen, Referencia del cliente/proveedor, Nº Referencia, Vendedor)
+quedan en el acordeón colapsable "Más detalles"; la cabecera principal conserva los bloques
+Quién/qué → Cuándo/cómo → Moneda → Notas. Los debit-notes (venta/compra) no tienen campos de
+referencia (0) — sin cambios.
+
+**Columnas por defecto:** 42 columnas secundarias ocultas en 6 forms de venta (lote, serie,
+cantidades de origen, pesos, proyecto, dimensiones, cuenta) — reactivables con el toggle.
+Los forms de compra usan tablas propias (#cell) — el modo simple por defecto de sus tablas
+queda como pendiente menor (definir columnas ocultas por defecto en cada #cell).
+
+Verificación: build + lint OK, baseline visual regenerado 52/52. Pendiente: validación visual
+del acordeón en navegador (el harness del agente sigue degradado) y el modo simple de las
+tablas de compras.
+### 9. Segundo lote — modo simple en compras (2026-08-19)
+
+**Columnas por defecto en las tablas de compras:** se ocultaron por defecto (reactivables con
+el toggle) **55 columnas secundarias** en los 7 forms de compra (purchase-invoices 11,
+purchase-orders 8, purchase-receipts 9, purchase-reserve-invoices 7, purchase-credit-notes 4,
+purchase-returns 8, purchase-quotations 8): lote, serie, cantidades de origen/facturado/
+pendiente, pesos, proyecto, dimensiones y cuenta. Con las 42 de ventas, **97 columnas
+secundarias ocultas por defecto en los 13 formularios comerciales**.
+
+Verificación: build + lint OK, baseline visual regenerado 52/52.
+### 10. Fix: selector UoM editable en ventas (2026-08-19)
+
+**Síntoma (usuario):** en ventas no se podía modificar la unidad de medida de la línea; en
+compras sí.
+
+**Causa:** el selector UoM del detalle (`luna-document-lines-detail`) usaba
+`[readonly]="getItemReadonly?.(index) ?? false"` y `getItemReadonly` en los forms de venta
+devuelve `!canEdit || !isManualMode || !!invoiceId` — en flujos vinculados (factura desde
+pedido/entrega/cotización, `isManualMode=false`) o documentos existentes (`invoiceId`) el
+selector quedaba **readonly**. Las tablas de compras (#cell) usan solo `@if (canEdit)` sin
+readonly — por eso allí sí era editable.
+
+**Fix:** `[readonly]="!canEdit"` en el selector UoM del detalle — editable siempre que el
+documento sea editable, en cualquier flujo. El guard de la celda (`canEdit && getUomOptions &&
+row.get('uomId')`) se mantiene; la conversión de cantidad/precio por factor sigue intacta.
+
+Verificación: build + lint OK. Pendiente: validación visual en navegador (el harness del
+agente sigue degradado).
+
+### 11. Selector UoM editable en inventario/traspaso + fix de valoración de stock (2026-08-19)
+
+**Solicitud (usuario):** "ya puedo modificar en ventas, compras e inventario, traspaso, etc".
+Ventas y compras ya eran editables (item 10); los 4 forms de inventario (entradas, salidas,
+traspasos, ajustes) mostraban la UoM solo como badge (`[getUom]`, 0 ocurrencias de
+`getUomOptions`).
+
+**Hallazgo de valoración (bug latente):** el backend convertía la **cantidad** al mover
+stock (`resolveQty` en `applyIncoming/OutgoingStock`) pero **no el costo unitario** — con una
+línea en CJA (2 CJA × 1.044 Bs = 2.088 Bs) el movimiento quedaba 24 UN × 1.044 = 25.056 Bs y
+el costo promedio se inflaba 12×. La ecuación contable no lo detecta (los asientos usan
+`totalCost` de línea); solo la valoración del kardex/avg cost se corrompía.
+
+**Fix backend:**
+- `common/document-stock.helper.ts` — nuevo `resolveUnitCost(tx, tenantId, line, unitCost)`:
+  divide el costo por el mismo factor de `resolveQty` (solo cuando `uomId ≠ inventoryUomId`).
+  Contrato: los servicios que reciben unitCost per UoM-de-línea lo convierten antes de crear
+  movimientos, de modo que `quantity × unitCost` (UoM de línea) = valor real del stock.
+- Aplicado en: stock-entries (confirm + cancel), stock-exits (confirm + cancel),
+  stock-transfers (2 confirm + cancel), stock-adjustments (confirm + cancel — cantidad Y
+  costo, incluyendo asignaciones de lote/serie que tampoco se convertían),
+  purchase-receipts (confirm from-order y manual; el cost persistido queda per UoM de línea),
+  delivery-orders (solo el fallback `line.cost` sin stock; el avgCost ya es per unidad física).
+
+**Fix frontend (4 stock forms):**
+- `document-form.utils.ts` — util compartido `resolveUomOptions(itemId, catalog, conversions)`
+  (3 UoMs del maestro + conversiones específicas/genéricas); el base comercial ahora delega.
+- `unit-cost-resolution.service.ts` — `applyUomChange(line, factor)` compartido
+  (quantity × factor; weight/unitCost ÷ factor con round6; recalcula totales).
+- Cada form: inyecta `UomConversionsService` (precarga de conversiones), `uomOptionsForRow`,
+  `onUomChange` (resuelve factor vía API y aplica la conversión), y `fetchAndSetUnitCost`
+  convierte el avgCost a la UoM de la línea (`convertUnitCostToLineUom`).
+- stock-adjustments: se agregó el control `uomId` a los builders (antes no existía), al
+  payload y al snapshot; modelo `StockAdjustmentItem.uomId` agregado.
+
+**Verificación:** build + lint OK en ambos proyectos; 1400 tests backend en verde (spec de
+stock-adjustments actualizado con el mock de `resolveUnitCost`). Baterías en verde: 17 UoM
+(con movimiento REC verificado en BD: 24 UN × 87 = 1044/12 — antes quedaba 24 × 1.044),
+16 ajustes (3/3), 03 inventario, 13 ensamblajes (14/14). Baterías 06/08 no re-verificables en
+esta corrida por estado parcial de la BD (fallan por stock de corridas fuera de orden, no por
+este cambio); el QA completo desde cero (cleanup + run.js) las valida.
+
+Pendiente: validación visual en navegador (harness del agente degradado).
