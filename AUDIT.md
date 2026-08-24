@@ -738,6 +738,13 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - La corrida con `npx jest --detectOpenHandles` (2026-08-23) terminó **142 suites / 1415 tests verdes con 0 avisos** "worker process has failed to exit gracefully". El leak real detectado en la Fase 10 (FIXME en `prisma.service.spec.ts` sin `module.close()`) sigue resuelto.
    - Veredicto: el aviso es intermitente del teardown de `jest-worker` en Windows (timing de salida de workers, no un leak reproducible). Si reaparece, correr `--detectOpenHandles` para identificar el spec que lo reintroduce. Cosmético — no bloquea el pipeline.
 
+47. **Journey de compras en la UI — 400 del pago saliente RESUELTO + 500 hardening** (`frontend+backend / UX, go-live item 8`) — `✅ Resuelto (2026-08-23)`
+   - **Estado del journey:** `e2e/purchase-full-journey-ui.spec.ts` pasa **6/6** (PCOT→PO→REC→FRC→Pago Saliente→NC→Devolución + verificación integral), igual que el journey de ventas (`sales-full-journey-ui.spec.ts`) y el `go-live-smoke` (13/13 en conjunto).
+   - **400 residual del pago saliente (FIXME 3): RESUELTO.** El 400 era `partnerId: null` → "Debe especificar un socio de negocio o una cuenta contable" (verificado por API); ya no ocurre con los fixes de la sesión — el pago se crea por UI con 201 y `balanceDue` 0.
+   - **500 hardening (hallazgo colateral):** `POST /outgoing-payments/batch` con `paymentMethod` vacío/desconocido explotaba con 500 en `createOne`. Guard agregado: validación contra el enum `PaymentMethod` (CASH, BANK_TRANSFER, CHECK, QR, CARD, CREDIT_NOTE) → `BadRequestException` accionable.
+   - **Navegación tras crear (FIXME 2): RESUELTA** (replaceUrl — REC/FRC/NC llevan a /:id; el spec conserva la validación por POST como workaround conservador).
+   - **Pendiente:** FIXME 1 — el botón "Crear Factura de Reserva" no se renderiza desde la recepción (la UI llega por navegación directa `?purchaseReceiptId=`).
+
 ## 6. Métricas de referencia
 
 | Métrica | Valor | Fecha |
