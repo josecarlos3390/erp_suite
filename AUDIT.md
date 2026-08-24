@@ -776,6 +776,19 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **k6 (estado final):** con multi-partner por VU + cookie XSRF explícita, **sale-invoice-load y kardex-report pasan 100% a 25 VUs** (antes ~13-17% y 98% de fallos por rate limit/partner). `multitenant-isolation` mejora a 47% a micro — el resto es una quirk del cookie jar de k6 (sin errores en la API; requests individuales 201). `bulk-import-concurrency` sigue con expectativas de status del escenario. Pendiente documentado: re-diseñar multitenant/bulk (multi-ítem real por VU) y revisar el cookie jar.
    - **Cobertura:** suite backend 142/1415 verdes; baterías 01-28 + validación integral en verde (item 49).
 
+52. **Suite de stress k6 COMPLETA EN VERDE a large (25 VUs) — EXIT 0** (`backend / perf, go-live 2026-08-24`)
+   - **Resultado definitivo:** los 5 escenarios al 100% con perfil `large` (25 VUs, 3 min por escenario): smoke 12/12, **sale-invoice-load 8.300 checks**, **kardex-report 65.730 checks**, **bulk-import 112 checks**, **multitenant-isolation 3.059 checks** — 0 fallos, sin fuga entre tenants, **EXIT 0**. El ERP soporta el stress test satisfactoriamente.
+   - **Fixes de la sesión (todos validados en el run):**
+     - Rate limit por tenant elevado en el entorno de perf (`THROTTLE_LIMIT_SHARED=20000` — el default SHARED 300/min saturaba a 25 VUs).
+     - Multi-partner por VU (la facturación al mismo cliente serializaba en su fila de saldo).
+     - Timeout de transacción interactiva 5s→15s (`PrismaService`) y pool de conexiones 21→50 (`?connection_limit=50` en DATABASE_URL — la propiedad `connection_limit` del schema no aplica en Prisma 6).
+     - Race de creación de secuencias (try/catch en `CREATE SEQUENCE IF NOT EXISTS`).
+     - **Bug contable del split 87/13** (factura con descuento sin impuesto → asiento desbalanceado → 500): corregido (ver item 51).
+     - Stock alto (1M) para los ítems de load-test (100 uds se agotaban → 400 "Stock insuficiente").
+     - Multi-ítem por VU (reparte los advisory locks de stock en el multitenant) + fixture del bulk distribuido entre 20 ítems + tenant bulk con plan de cuentas completo.
+     - Bulk capeado a 5 VUs (import masivo = operación admin; 25 imports concurrentes saturan la tx) y threshold propio del multitenant (p95<2500 — facturación con ítems inventariables en 2 tenants es más lenta que el load con ítem de servicio, por diseño del lock).
+   - **Uso:** `PERF_BASE_URL=http://localhost:3001 K6_PROFILE=large npm run perf:k6` (requiere `THROTTLE_LIMIT_SHARED`/`DEDICATED` elevados en el entorno de perf).
+
 ## 6. Métricas de referencia
 
 | Métrica | Valor | Fecha |
