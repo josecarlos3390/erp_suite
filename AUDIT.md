@@ -734,6 +734,10 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Lo que YA estaba bien (verificado):** dos facturas desde la misma entrega (`lockDocument 'do'`) y NCs serializadas — una se crea y la segunda se rechaza limpio, sin corrupción.
    - **Cobertura:** batería 28 (`28-concurrencia-documento.js`, integrada a `run.js`) con 11 checks en verde: cancel FV (1 OK + 1 rechazado + stock 20 exacto), cancel FPI, 2× from-delivery → 1 factura, 2× from-invoice → 1 NC. Suite completa 142 suites / 1415 tests verdes (mocks de NC alineados al dominio: `invoice.total` con IVA + `creditedAmount`).
 
+46. **Warning de worker en `npm test` (cosmético, checklist go-live item 9)** (`backend / tests`) — `✅ No reproducido (2026-08-23)`
+   - La corrida con `npx jest --detectOpenHandles` (2026-08-23) terminó **142 suites / 1415 tests verdes con 0 avisos** "worker process has failed to exit gracefully". El leak real detectado en la Fase 10 (FIXME en `prisma.service.spec.ts` sin `module.close()`) sigue resuelto.
+   - Veredicto: el aviso es intermitente del teardown de `jest-worker` en Windows (timing de salida de workers, no un leak reproducible). Si reaparece, correr `--detectOpenHandles` para identificar el spec que lo reintroduce. Cosmético — no bloquea el pipeline.
+
 ## 6. Métricas de referencia
 
 | Métrica | Valor | Fecha |
