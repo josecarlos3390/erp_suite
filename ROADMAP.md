@@ -123,7 +123,7 @@
 
 - ✅ Balance General (`/reports/balance-sheet`, 2026-08-24).
 - ✅ Estado de Resultados (`/reports/income-statement`, 2026-08-24).
-- ☐ Estado de Flujo de Efectivo (pendiente).
+- ✅ Estado de Flujo de Efectivo (`/reports/cash-flow`, 2026-08-24, método indirecto con verificación contra el mayor).
 
 ### Fase 6.4 — Cierre de Período (En progreso)
 
