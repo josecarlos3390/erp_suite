@@ -717,6 +717,16 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Fixes de la sesión:** `bank-statements` deriva `amount` firmado (debit − credit) cuando el payload no lo trae (fix del auto-match); `exchange-rate-adjustments` pide la tasa en la dirección correcta y revalúa solo líneas en la moneda del sistema; pricing de facturas date-aware (`resolveDocumentDate(payload.date)` en vez de "hoy"); zero `as any` en `purchase-receipts` (`Prisma.InputJsonValue`); frontend: `luna-button` reemplaza `[innerHTML]` por interpolación (higiene XSS), columna Precio Unit. visible en cotizaciones de compra (estaba `hidden:true`), navegación al detalle con `replaceUrl` tras crear (REC/FRC compra), headers SSR y `allowedHosts` en `angular.json`; journeys E2E UI de compras y ventas (`e2e/purchase-full-journey-ui.spec.ts` + `sales-full-journey-ui.spec.ts`) con FIXMEs documentados (botón "Crear Factura de Reserva" desde recepción, navegación tras crear, 400 residual en pago saliente).
    - **Cobertura:** pre-push backend 1415 tests en verde; frontend build AOT + lint 0/0 + baseline visual regenerado (52/52). **Pendiente:** corrida integral 18-25 desde cero (`db:cleanup` + `run.js`) para dejar la batería completa en un único reporte; los FIXMEs de UX del journey de compras (item 8 de la lista de go-live).
 
+44. **Auditoría XSS del frontend (go-live, seguridad profunda)** (`frontend / security`) — `✅ Cerrado (2026-08-23)`
+   - **Alcance:** los 4 call sites de `bypassSecurityTrustHtml` de la app + barrido de sinks `innerHTML` + cómo se renderiza el contenido de usuario (nombres, notas, UDFs).
+   - **Resultado (todos seguros):**
+     1. `help-panel.component.ts` — `bypassSecurityTrustHtml(highlightedContent(section.content))`: el contenido proviene de `help-content.data.ts` (**57 secciones estáticas definidas en la app**, sin interacción con datos del usuario); el query del buscador (entrada de usuario) se **escapa con `escapeHtml` (`& < >`)** antes de insertar el `<mark>` — el match insertado es texto ya escapado, no puede inyectar HTML.
+     2. `dashboard.component.ts:245` — `svg(raw)` recibe **strings SVG hardcodeados** (paths literales en el array de accesos rápidos).
+     3. `luna-action-icon.component.ts:62` — `ACTION_ICONS[this.action]`: mapa estático tipado por `ActionIconKey` (input de template con literales, no datos de usuario).
+     4. `luna-empty-state.component.ts:25` — `[innerHTML]="iconSvg"` **sin bypass** → Angular lo sanitiza automáticamente.
+   - **Contenido de usuario:** nombres de partners/artículos, notas y UDFs se renderizan con interpolación `{{ }}` (escapada por defecto por Angular); `SanitizeInterceptor` sanitiza la entrada en el backend. Barrido: **0 sinks `innerHTML` adicionales** en toda la app (9 ocurrencias totales = los 4 archivos auditados).
+   - **Veredicto:** sin bypasses sobre datos de usuario ni sinks crudos. Postura XSS sólida para go-live.
+
 ## 6. Métricas de referencia
 
 | Métrica | Valor | Fecha |
