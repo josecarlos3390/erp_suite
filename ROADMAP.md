@@ -117,7 +117,7 @@
 
 - ✅ Modelos `CostCenter` y `Project` creados; usados en documentos comerciales y asientos.
 - ✅ `projectId` y `costCenterId` disponibles en `JournalEntryLine`.
-- ⏳ `Dimension1` / `Dimension2` personalizables pendientes.
+- ✅ **`Dimension1` / `Dimension2` personalizables (2026-08-24):** el formulario de asientos (`journal-entries-form`) ahora consume `DimensionConfig` del tenant — columnas solo para las dimensiones habilitadas en `/settings/dimensions`, labels configurables y selector de centro de costo (valor = `code`, consistente con la persistencia string) cuando la dimensión tiene centros cargados; texto libre como fallback. Mismo patrón canónico de pagos/documentos. | ✅ Completado |
 
 ### Fase 6.3 — Estados Financieros
 
@@ -151,7 +151,7 @@
 | # | Módulo | Descripción | Estado |
 |---|--------|-------------|--------|
 | ✅ 7.1 | **Zona horaria parametrizable por tenant** | Campo `timeZone` en `Tenant`; helpers `toTenantDate`/`fromTenantDate`; formularios, reporting y PDFs migrados. | ✅ Completado |
-| ✅ 7.2 | **Moneda multi-divisa** | Soporte para USD, EUR además de BOB. Campo `currency` en documentos y tasa de cambio diaria. **Backend contable implementado:** `Account.currencyMode` (LOCAL/SYSTEM/MULTI/SPECIFIC), `Tenant.localCurrency`/`systemCurrency`, doble expresión en `JournalEntryLine`. **Frontend completo (2026-08-09):** account-form con `currencyMode`/`currency` + hint con monedas del tenant, columna Moneda legible en el listado de cuentas, journal-entries-form con moneda por línea y M/E editable/calculado, listado de asientos con totales M/N + M/E, ledger con las 4 expresiones. Pendiente: diferencia de cambio automática en asientos manuales (hoy el usuario agrega la línea a mano) y gain/loss accounts del settings sin consumo por builders. | ✅ Completado (UI) |
+| ✅ 7.2 | **Moneda multi-divisa** | Soporte para USD, EUR además de BOB. Campo `currency` en documentos y tasa de cambio diaria. **Backend contable implementado:** `Account.currencyMode` (LOCAL/SYSTEM/MULTI/SPECIFIC), `Tenant.localCurrency`/`systemCurrency`, doble expresión en `JournalEntryLine`. **Frontend completo (2026-08-09):** account-form con `currencyMode`/`currency` + hint con monedas del tenant, columna Moneda legible en el listado de cuentas, journal-entries-form con moneda por línea y M/E editable/calculado, listado de asientos con totales M/N + M/E, ledger con las 4 expresiones. **Revaluación por diferencia de cambio (2026-08-24):** pantalla `/reports/exchange-rate-revaluation` que previsualiza los saldos M/E a la tasa de la fecha y genera el asiento automático (`POST /exchange-rate-adjustments/preview` + `revaluate`) contra las cuentas de ganancia/pérdida del settings; y las cuentas gain/loss del settings ahora SON consumidas por los builders (cobros/pagos/compras postean la ganancia a la cuenta de ganancia y la pérdida a la de pérdida, con fallback al mapping `EXCHANGE_DIFFERENCE`). | ✅ Completado |
 | ☐ 7.3 | **Localización de reportes fiscales** | Plantillas de libro de compras/ventas adaptables a otros países (Chile, Perú, Argentina). | ☐ Pendiente |
 
 ---
