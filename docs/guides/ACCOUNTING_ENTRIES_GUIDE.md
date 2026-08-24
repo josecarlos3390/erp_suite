@@ -126,14 +126,14 @@ Línea 5:
 │  ─────────────────────────────────────────────────────────────── │
 │                                                                   │
 │  Línea 1:                                                        │
-│    Débito:  Cuenta de Ingreso por Venta (SALES_CREDIT) $200      │
+│    Débito:  Devolución sobre Ventas (SALES_CREDIT)  $200         │
 │    Descripción: "Reversa Ingreso — NC-001"                       │
 │    Partner: ABC Corp                                             │
 │    Referencia: SALES_CREDIT_NOTE #NC-001, ref: FV-001           │
 │                                                                   │
 │  Línea 2:                                                        │
-│    Débito:  IVA Débito Fiscal (TAX_OUTPUT)           $26           │
-│    Descripción: "Reversa IVA Débito — NC-001"                    │
+│    Débito:  IVA — Crédito Fiscal (TAX_INPUT)         $26           │
+│    Descripción: "Reversa IVA Crédito Fiscal — NC-001"            │
 │    Referencia: SALES_CREDIT_NOTE #NC-001, ref: FV-001           │
 │                                                                   │
 │  Línea 3:                                                        │
@@ -156,6 +156,24 @@ Línea 5:
   Crédito:  COGS                               $120
   Descripción: "Reversa COGS — NC-001"
 ```
+
+> ⚠️ **Convención Bolivia (countryCode BO) — NC de venta (2026-08-23):**
+> la NC de venta **debilita IVA — Crédito Fiscal** (`TAX_INPUT`, `1.1.6.01.001`)
+> en lugar de IVA — Débito Fiscal, y el ingreso revertido va contra
+> **"Devolución sobre Ventas"** (`6.2.1.01.006`, cuenta de **gasto** tipo 6) en
+> lugar de la cuenta de ingreso contra-rectora (`4.1.1.01.004`). El efecto
+> económico es idéntico (Art. 8 inc. b Ley 843: la NC resta del impuesto la
+> alícuota sobre el monto devuelto); el cambio es **solo de cuenta**, para
+> separar en el mayor el **débito fiscal que acumulan las ventas** del
+> **crédito fiscal que acumulan las notas de crédito de ventas**. Configuración:
+> `AccountMapping` BO `SALES_CREDIT_NOTE/TAX_INPUT → 1.1.6.01.001`,
+> `SALES_CREDIT_NOTE/SALES_CREDIT → 6.2.1.01.006`, `salesCreditAccountId` de los
+> maestros → `6.2.1.01.006`, y flag de localización `salesReversalTaxInput`
+> (BO = true). **Tenants existentes:** `npm run migrate:sales-credit-bo`
+> (script idempotente `backend-erp/scripts/migrate-sales-credit-bo.js`) alinea
+> mappings y maestros de los tenants con `countryCode = BO`; los tenants nuevos
+> ya nacen con esta configuración. Tenants de otros países NO se tocan (la NC
+> de venta revierte contra IVA — Débito Fiscal, forma clásica).
 
 > ⚠️ **Factura de RESERVA (FRV) vs factura NORMAL (FV) — quién mueve inventario**
 > (espejo del caso de compras, verificado 2026-08-13):
@@ -247,8 +265,8 @@ Línea 5:
 │    Referencia: SALES_RETURN #DEV-001                            │
 │                                                                   │
 │  Línea 2:                                                        │
-│    Débito:  IVA Débito Fiscal (TAX_OUTPUT)           $65           │
-│    Descripción: "Reversa IVA — DEV-001"                           │
+│    Débito:  IVA — Crédito Fiscal (TAX_INPUT)         $65           │
+│    Descripción: "Reversa IVA Crédito Fiscal — DEV-001"            │
 │    Referencia: SALES_RETURN #DEV-001                            │
 │                                                                   │
 │  Línea 3:                                                        │
@@ -273,6 +291,15 @@ Línea 5:
 │  TOTALES: Débitos: $1,230 = Créditos: $1,230 ✅                   │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+> ⚠️ **Convención Bolivia (countryCode BO) — Devolución de venta (2026-08-23):**
+> igual que la NC de venta, la devolución con reversa financiera revierte el
+> IVA contra **IVA — Crédito Fiscal** (`TAX_INPUT`, `1.1.6.01.001`) en lugar de
+> IVA — Débito Fiscal (`AccountMapping` BO `SALES_RETURN/TAX_INPUT →
+> 1.1.6.01.001`; misma separación débito ventas / crédito reversas). La cuenta
+> de ingreso revertido (`SALES_RETURN`) se determina por el maestro del
+> artículo (`returnAccountId`); fuera de Bolivia la reversa va contra IVA
+> Débito (forma clásica).
 
 ---
 
