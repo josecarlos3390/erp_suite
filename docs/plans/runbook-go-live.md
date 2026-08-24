@@ -198,9 +198,19 @@ alineación en producción → `npm run backup:db` y guardar el archivo.
 
 > ⚠️ **Tuning de rate limit (hallazgo k6 `large` 2026-08-23):** a 25 usuarios
 > concurrentes escribiendo, el límite SHARED (300 req/min/tenant) se satura en
-> segundos y los clientes reciben 429 (~98% de fallos en k6). Ajustar
-> `THROTTLE_LIMIT_SHARED` por env según la concurrencia esperada del go-live y
-> re-validar con `K6_PROFILE=large npm run perf:k6` (ver AUDIT item 48).
+> segundos y los clientes reciben 429 (~98% de fallos en k6). Valores sugeridos
+> por tier de concurrencia (env `THROTTLE_LIMIT_SHARED` / `THROTTLE_LIMIT_DEDICATED`):
+
+| Tier | Usuarios concurrentes esperados | SHARED (req/min) | DEDICADO (req/min) |
+|------|-------------------------------|-------------------|---------------------|
+| Startup | 1-5 | 600 | 2000 (default) |
+| PyME | 5-25 | 2000 | 5000 |
+| Empresa | 25-100 | 6000 | 15000 |
+
+> Los **entornos de perf/CI** deben correr con límites muy elevados (ej.
+> 20000) para que k6 mida la API y no el throttler (`THROTTLE_LIMIT_SHARED=20000`
+> en el `.env` del entorno de perf — no commitear). Re-validar con
+> `K6_PROFILE=large npm run perf:k6` tras cada ajuste (ver AUDIT item 48).
 | Backups | `npm run backup:db` (retención 7 diarios + 4 semanales) | éxito diario + restore de prueba mensual |
 | Logs | stdout del proceso (JSON-ish) | errores del engine contable, `ConflictException` de períodos |
 
