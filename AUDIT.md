@@ -727,6 +727,13 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Contenido de usuario:** nombres de partners/artículos, notas y UDFs se renderizan con interpolación `{{ }}` (escapada por defecto por Angular); `SanitizeInterceptor` sanitiza la entrada en el backend. Barrido: **0 sinks `innerHTML` adicionales** en toda la app (9 ocurrencias totales = los 4 archivos auditados).
    - **Veredicto:** sin bypasses sobre datos de usuario ni sinks crudos. Postura XSS sólida para go-live.
 
+45. **Concurrencia de NEGOCIO sobre el mismo documento — 2 bugs reales encontrados y corregidos (batería 28)** (`backend / concurrencia, go-live item 6`) — `✅ Resuelto (2026-08-23)`
+   - **Origen (item 6 del checklist de go-live):** "dos usuarios confirmando el mismo documento (¿el segundo se bloquea o corrompe?) y confirm+cancel concurrentes". La confirmación es atómica en la creación (no hay endpoints de confirm separados), así que el riesgo real es la **operación concurrente sobre el MISMO documento/fuente**.
+   - **Bug 1 — anulación concurrente doble (ventas y compras):** dos `cancel` simultáneos de la MISMA factura AMBOS tenían éxito: el stock se re-ingresaba DOS veces (20 → 18 → 22 en vez de volver a 20), con dobles movimientos/asientos. Causa: `findForAnnulment` leía el estado FUERA de la transacción y la tx no revalidaba — no había lock del documento. **Fix:** `lockDocument(tx, 'si'|'srv'|'pi'|'prv', invoiceId)` al inicio de la tx + re-lectura del estado DENTRO (el segundo cancel recibe "La factura ya está anulada"). Aplicado en `sale-invoices.cancel` y `purchase-invoices.cancel`.
+   - **Bug 2 — doble nota de crédito desde la misma factura:** dos `from-invoice` concurrentes AMBAS creaban la NC (la factura se acreditaba el doble; el check de estado solo rechazaba CANCELLED, no el monto ya acreditado). **Fix:** (a) el `create` principal ahora adquiere `lockDocument('si')` y re-lee `creditedAmount`; (b) ambos paths (`create` y `createFromInvoice`) validan `crédito ≤ total − creditedAmount` antes de crear la NC (rechazo "El crédito supera el saldo restante de la factura").
+   - **Lo que YA estaba bien (verificado):** dos facturas desde la misma entrega (`lockDocument 'do'`) y NCs serializadas — una se crea y la segunda se rechaza limpio, sin corrupción.
+   - **Cobertura:** batería 28 (`28-concurrencia-documento.js`, integrada a `run.js`) con 11 checks en verde: cancel FV (1 OK + 1 rechazado + stock 20 exacto), cancel FPI, 2× from-delivery → 1 factura, 2× from-invoice → 1 NC. Suite completa 142 suites / 1415 tests verdes (mocks de NC alineados al dominio: `invoice.total` con IVA + `creditedAmount`).
+
 ## 6. Métricas de referencia
 
 | Métrica | Valor | Fecha |
