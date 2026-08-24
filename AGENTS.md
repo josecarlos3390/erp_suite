@@ -422,6 +422,7 @@ Archivos complementarios que no requieren lectura obligatoria para tareas rutina
 | `backend-erp/docs/fixed-assets.md` | Documentación del módulo de Activos Fijos y depreciación. | Al trabajar en `backend-erp/src/fixed-assets/`. |
 | `docs/plans/plan-consistencia-visual-v2.md` | Plan validado de remediación visual frontend (7 fases). | Al planificar mejoras visuales o migraciones de tokens/spacing. |
 | `docs/plans/plan-mejoras-ux-ui-frontend.md` | Plan activo de mejoras UX/UI: accesibilidad, copy, colores, `!important`, tests. | Antes de trabajar mejoras de UX/UI fuera de POS. |
+| `docs/plans/runbook-go-live.md` | Runbook de go-live: despliegue backend + frontend SSR, migraciones (incluye SQL manuales por drift), alineación de tenants, QA previo al corte, rollback y checklist go/no-go. | Al desplegar a producción o preparar el corte. |
 | `docs/reference/ACCOUNTS_DETERMINATION_FIX.md` | Análisis y corrección de paridad de cuentas contables por nivel. | Como referencia del fix de paridad de cuentas. |
 | `docs/reference/SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md` | Análisis comparativo de determinación de cuentas: SAP B1 vs ERP. | Como referencia de arquitectura contable. |
 | `docs/archive/` | Informes históricos de frentes completados y cierres de fase. | Solo si se necesita trazabilidad histórica de una migración ya cerrada. |
