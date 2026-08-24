@@ -745,6 +745,13 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Navegación tras crear (FIXME 2): RESUELTA** (replaceUrl — REC/FRC/NC llevan a /:id; el spec conserva la validación por POST como workaround conservador).
    - **Pendiente:** FIXME 1 — el botón "Crear Factura de Reserva" no se renderiza desde la recepción (la UI llega por navegación directa `?purchaseReceiptId=`).
 
+48. **Performance con volumen real (go-live item 4): k6 `large` + 50k líneas + revisión de índices** (`backend / performance`) — `✅ Parcial con hallazgos (2026-08-23)`
+   - **Test de volumen 50k (nuevo `perf/volume-query-test.ts`):** tenant dedicado + 50.000 líneas de asiento (100 asientos × 500 balanceadas) + 50.000 movimientos de stock; medición real (3 corridas, dev):
+     - Mayor pág. 1: **35-52 ms** · Mayor última página (page 250): **267-281 ms** · Kardex: **455-567 ms** · Form 200 anual: **31-40 ms** · Dashboard: **14-16 ms**. Todo sub-segundo con 50k líneas.
+   - **Índices (revisión + fix):** `JournalEntryLine` solo tenía `@@index([accountId])` — en BD multitenant el mayor/Form 200/dashboard filtran `tenantId + accountId`. Agregado **`@@index([tenantId, accountId])`** (schema + `prisma/manual/20260823_add_jel_tenant_account_index.sql`, aplicado y verificado). `JournalEntry` (`tenantId+date`, `tenantId+status`) y `StockMovement` (`tenantId+itemId+batchId`, `tenantId+type+documentDate`) ya cubiertos.
+   - **k6 perfil `large` (25 VUs / 3 min por escenario) — HALLAZGO CRÍTICO:** solo `sale-invoice-smoke` pasó (100%). `sale-invoice-load`, `kardex-report` y `multitenant-isolation` fallaron con ~98-99% de requests con error — **es el rate limit por tenant (plan SHARED = 300 req/min) saturándose en segundos a 25 VUs**, NO un problema de latencia (respuestas ~80 ms). Confirmado con probe: 300 requests OK y 429 desde el #301. El aislamiento multitenant del escenario sí pasó (0 fugas).
+   - **Implicación de go-live:** con 25 usuarios concurrentes escribiendo (facturas/kardex), un tenant SHARED agota su presupuesto de 300 req/min casi de inmediato → los clientes recibirían 429. **Acción:** subir `THROTTLE_LIMIT_SHARED` (env) según la concurrencia esperada o asignar plan DEDICADO a tenants de alta concurrencia; re-correr k6 `large` tras el ajuste. Documentado en el runbook §8.
+
 ## 6. Métricas de referencia
 
 | Métrica | Valor | Fecha |

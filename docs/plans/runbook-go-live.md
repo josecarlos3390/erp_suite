@@ -194,7 +194,13 @@ alineación en producción → `npm run backup:db` y guardar el archivo.
 |------------|----------------------|-------------|
 | Health | `GET /health` | prisma up, memoria < 90%, disco < 90% |
 | Métricas | `GET /metrics` (Prometheus) | latencia p95, errores 5xx por tenant, `http_requests_total` |
-| Rate limit | headers `X-RateLimit-*` | tenant abusivos (SHARED 300/min, DEDICATED 2000/min) |
+| Rate limit | headers `X-RateLimit-*` | tenant abusivos (SHARED 300/min, DEDICADO 2000/min) |
+
+> ⚠️ **Tuning de rate limit (hallazgo k6 `large` 2026-08-23):** a 25 usuarios
+> concurrentes escribiendo, el límite SHARED (300 req/min/tenant) se satura en
+> segundos y los clientes reciben 429 (~98% de fallos en k6). Ajustar
+> `THROTTLE_LIMIT_SHARED` por env según la concurrencia esperada del go-live y
+> re-validar con `K6_PROFILE=large npm run perf:k6` (ver AUDIT item 48).
 | Backups | `npm run backup:db` (retención 7 diarios + 4 semanales) | éxito diario + restore de prueba mensual |
 | Logs | stdout del proceso (JSON-ish) | errores del engine contable, `ConflictException` de períodos |
 
