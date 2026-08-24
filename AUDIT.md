@@ -789,6 +789,12 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
      - Bulk capeado a 5 VUs (import masivo = operación admin; 25 imports concurrentes saturan la tx) y threshold propio del multitenant (p95<2500 — facturación con ítems inventariables en 2 tenants es más lenta que el load con ítem de servicio, por diseño del lock).
    - **Uso:** `PERF_BASE_URL=http://localhost:3001 K6_PROFILE=large npm run perf:k6` (requiere `THROTTLE_LIMIT_SHARED`/`DEDICATED` elevados en el entorno de perf).
 
+53. **Estados financieros (F6.4) — Balance General y Estado de Resultados** (`backend + frontend / contabilidad, 2026-08-24`)
+   - **Backend:** `GET /reports/balance-sheet` (date opcional) — saldos consolidados del plan de cuentas al corte (clases 1/2/3 con grupos nivel 2), **resultado del ejercicio acumulado como línea propia** (el plan no tiene cuenta de resultado en el patrimonio hasta el cierre anual) y **ecuación contable A = P + E + R verificada contra el mayor** (`equationOk`). `GET /reports/income-statement` (from/to opcionales) — ingresos (4) − costos (5) − gastos (6) del período con resultado neto. Helper `_computeStatementBalances` (espejo de `computeBalances` con filtro de fecha + solo POSTED).
+   - **Frontend:** páginas `/reports/balance-sheet` e `/reports/income-statement` (OnPush + markForCheck; el `@if (data)` con datos async no refrescaba en OnPush → template con safe-navigation siempre renderizado) + tarjetas en el menú de reportes. E2E `financial-statements.spec.ts` en verde.
+   - **Validación en vivo (baterías 01+02):** Activos **61.388,30** = Pasivos **51.522,90** + Patrimonio 0 + Resultado **9.865,40** (`equationOk true`); Estado de Resultados: Ingresos **24.461,50** − Costos **10.315,70** − Gastos **4.280,40** = **9.865,40**.
+   - **ROADMAP F6.4 cerrado** (queda pendiente el Estado de Flujo de Efectivo).
+
 ## 6. Métricas de referencia
 
 | Métrica | Valor | Fecha |

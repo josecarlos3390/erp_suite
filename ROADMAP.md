@@ -104,7 +104,7 @@
 | ✅ 6.1 | **Plan de cuentas** | CRUD de cuentas contables (activo, pasivo, patrimonio, ingreso, egreso). | ✅ Backend + frontend. Ruta `/accounts`. |
 | ✅ 6.2 | **Asientos contables** | Modelos `JournalEntry`/`JournalEntryLine`, CRUD + post/cancel. Doble expresión monetaria (`debitLocal`/`creditLocal`/`debitSystem`/`creditSystem`) + validación de moneda por cuenta. | ✅ Backend completo. Frontend pendiente (Fase 9). |
 | ✅ 6.3 | **Libro de compras/ventas** | Reportes fiscales bolivianos formateados. | ✅ Endpoints `GET /reports/sales-ledger` y `GET /reports/purchase-ledger`. |
-| ☐ 6.4 | **Estado de resultados y balance** | Reportes financieros estándar. | Pendiente (requiere F6.1 Accounting Engine primero) |
+| ✅ 6.4 | **Estado de resultados y balance** | Reportes financieros estándar. | ✅ Completado (2026-08-24): `GET /reports/balance-sheet` (ecuación A = P + E + R) + `GET /reports/income-statement` + páginas en /reports |
 
 ### Fase 6.1 — Accounting Engine Integrado (En progreso)
 
@@ -119,11 +119,11 @@
 - ✅ `projectId` y `costCenterId` disponibles en `JournalEntryLine`.
 - ⏳ `Dimension1` / `Dimension2` personalizables pendientes.
 
-### Fase 6.3 — Estados Financieros (Pendiente)
+### Fase 6.3 — Estados Financieros
 
-- Balance General.
-- Estado de Resultados.
-- Estado de Flujo de Efectivo.
+- ✅ Balance General (`/reports/balance-sheet`, 2026-08-24).
+- ✅ Estado de Resultados (`/reports/income-statement`, 2026-08-24).
+- ☐ Estado de Flujo de Efectivo (pendiente).
 
 ### Fase 6.4 — Cierre de Período (En progreso)
 
