@@ -111,7 +111,7 @@
 - ✅ Servicio `AccountingEngine` creado (`src/common/accounting-engine.service.ts`) con generación de asientos para ventas, compras, pagos y stock.
 - ✅ Validación de partida doble al postear asientos (`totalDebit === totalCredit`).
 - ✅ Saldos por cuenta en tiempo real vía `JournalEntryLine` POSTED.
-- ⏳ Falta refactorizar `AssemblyOrder` para usar `AccountingEngine` en lugar de su lógica propia.
+- ✅ `AssemblyOrder` refactorizado para usar `AccountingEngine` (2026-08-24) — la lógica contable propia fue reemplazada por `buildAssemblyJournalEntryLines` + facade `createAssemblyJournalEntry` (batería 13 TODO EN VERDE).
 
 ### Fase 6.2 — Dimensiones Contables (En progreso)
 
