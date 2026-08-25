@@ -857,7 +857,7 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
    - **Contexto:** Koyeb muerto (adquirido por Mistral, giró a IA), Render/Railway viejos expirados. Se eligió **Railway** (backend + Postgres, HTTPS incluido, git deploy) y **Vercel** (frontend, gratis). El backend se copió al repo `joseka3390-design/erp-backend` (copia squash — el origin `josecarlos3390/backend-erp` devuelve "not found", posiblemente privado/renombrado; el repo local es shallow por eso).
    - **Fixes del Dockerfile (3 iteraciones):** (1) `postinstall: prisma generate` fallaba en `npm ci` por schema no copiado → `npm ci --ignore-scripts` + `prisma generate` explícito tras `COPY . .`; (2) env de Prisma → placeholders `ENV` de build; (3) cache del builder no aplicaba el `ENV` → **env inline + `.env` de build con `process.loadEnvFile()`** (redundancia triple, funciona).
    - **Drift de schema (resuelto):** el schema tiene columnas/tipos que las migraciones (hasta 2026-07-20) y los SQL manuales NO cubrían (ej. `User.defaultPosTerminalId`, enums `CostCenterStatus`, `AssemblyOrderStatus`...) — el proyecto usa `db push` en dev y el drift nunca se capturó. Una BD fresca quedaba sin esas columnas → el seed fallaba. **Resuelto (2026-08-25):** el drift quedó capturado como **`prisma/manual/20260825_sync_schema_drift.sql`** (idempotente: CREATE TYPE/TABLE/UNIQUE INDEX IF NOT EXISTS, ADD COLUMN IF NOT EXISTS, ADD VALUE con check en `pg_enum`, conversiones a enum con `ALTER TYPE` + `DROP DEFAULT` primero, ADD CONSTRAINT con check en `pg_constraint`). El runner del entrypoint lo aplica solo en BDs frescas (tracking `_manual_migrations`). **Verificado en BD descartable:** migrate deploy → runner (14 SQL) → schema completo (defaultPosTerminalId, enums, AssemblyOrder.status como enum) → **seed completo** (el escenario exacto que fallaba). También aplicado (no-op idempotente) y registrado en la BD de Railway.
-   - **Seed de datos maestros:** completado (idempotente, corrido 3 veces por el largo del proceso): plan de cuentas (303 cuentas), 8 clientes + 6 proveedores, 30 artículos, 3 almacenes, 6 UoMs, 4 impuestos, retenciones, monedas (BOB/USD/UFV), TC, BOMs, asientos y facturas demo.
+   - **Seed de datos maestros:** completado (idempotente, corrido 3 veces por el largo del proceso): plan de cuentas (303 cuentas), 8 clientes + 6 proveedores, 30 artículos, 3 almacenes, 6 UoMs, 4 impuestos, retenciones, monedas (BOB/USD/UFV), BOMs. **Correcciones (2026-08-25):** (1) el seed ya NO crea transacciones demo (facturas FAC-DPP-001/FC-DPP-001/FAC-CUOTAS-001, orden de ensamblaje AO-SEED-001 con asiento, pagos) — inflaban los totales de ventas del dashboard (Bs. 8.000); `seed.ts` inicia con `cleanTransactions()` (purga global de documentos/pagos/asientos/stock/saldos, misma lógica de `scripts/clean-documents.js`) y solo carga configuraciones; (2) el seed ya NO siembra el tipo de cambio fijo (6.96): la tasa del día se ingresa manualmente en Tipos de Cambio y todas las transacciones usan la del día (guard `SystemExchangeRateGuard` / `assertTodayExchangeRate`); el seed no toca las tasas ya ingresadas. El resumen final verifica 0 transacciones.
    - **Verificado en producción:** `/health` 200 (prisma up), Swagger `/api` 200, login superadmin (`/super-admin/auth/login`), login tenant (`/auth/login`, admin/admin123 → JWT), endpoints de maestros responden. **Frontend:** `environment.prod.ts` apunta a `https://erp-backend-production-ae06.up.railway.app` (pusheado, Vercel redeploya).
    - **Pendientes operativos:** desactivar Public Network del Postgres (el seed ya corrió; el backend usa la red interna); revocar los tokens de GitHub usados (fine-grained + `ghp_`); actualizar el runbook (host de backend = Railway).
 
@@ -1248,3 +1248,76 @@ esta corrida por estado parcial de la BD (fallan por stock de corridas fuera de 
 este cambio); el QA completo desde cero (cleanup + run.js) las valida.
 
 Pendiente: validación visual en navegador (harness del agente degradado).
+
+### 12. Fix: selector "Almacén por defecto" del usuario vacío tras asignar sucursal (2026-08-25)
+
+**Síntoma:** al configurar un usuario, el selector de "Almacén por defecto" no mostraba ningún
+almacén, aunque el almacén tuviera una sucursal asignada manualmente.
+
+**Causa raíz (2 partes):**
+1. **Catálogo compartido stale** — el form de usuario filtra `warehousesForDefaultBranch`
+   (`w.branchId === form.defaultBranchId`) sobre `DocumentCatalogsService.warehouses$`, que
+   cachea con `shareReplay(1)` y solo se refresca vía `refreshWarehouses()`. El form de
+   almacén guardaba (create/update) sin invalidar el catálogo → el selector del usuario leía
+   el `branchId` viejo (null) de la caché. `refreshWarehouses()` existía pero nunca se usaba.
+2. **Seed incompleto** — el seed creaba los almacenes ALM-01/02/03 sin `branchId` (la sucursal
+   apuntaba al almacén vía `defaultWarehouseId`, pero no al revés) → violaba la integridad
+   branch↔warehouse desde el arranque.
+
+**Fixes:**
+- `warehouse-form.component.ts` — inyecta `DocumentCatalogsService` y llama
+  `refreshWarehouses()` tras un create/update exitoso (mismo patrón de
+  `tax-indicator-form.component.ts:238`).
+- `prisma/seed.ts` (sección 3.1) — `updateMany` asigna SUC-01 (`branchId`) a ALM-01/02/03
+  tras crear la sucursal; el admin ya tenía `defaultBranchId` asignado.
+
+**Verificación:** seed re-ejecutado → ALM-01/02/03 con `branchId=1` (SUC-01) y admin con
+`defaultBranchId=1`; spec de `warehouse-form` 6/6 en verde, eslint 0 errores. Con el seed
+fresco el selector de almacén del usuario lista los 3 almacenes; con asignación manual el
+catálogo se invalida al guardar y el selector refleja el cambio.
+
+### 13. Fix: mensaje del overlay de sección mostraba HTML crudo (`<strong>cliente</strong>`) (2026-08-25)
+
+**Síntoma:** en los formularios de documentos (ventas y compras), el overlay que pide elegir
+cliente/proveedor para agregar artículos mostraba el HTML literal:
+"Selecciona un `<strong>cliente</strong>` para poder agregar artículos".
+
+**Causa:** `section-lock-overlay.component.ts` renderiza `message` con interpolación
+(`{{ parsedMessage }}`), que escapa el HTML; el componente documenta (JSDoc) que el mensaje
+soporta `<strong>` y tiene el estilo `::ng-deep strong` para colorearlo. El getter
+`parsedMessage` tampoco parseaba nada.
+
+**Fix:** template → `<span [innerHTML]="parsedMessage"></span>` (Angular sanitiza
+automáticamente; `<strong>` es un tag seguro). Afecta a los ~10 forms que usan el overlay
+con mensaje HTML (delivery-orders, sale-invoices, purchase-*, etc.).
+
+**Verificación:** eslint 0 errores + `ng build` AOT exitoso (solo el warning de budget
+preexistente).
+
+### 14. Fix: asientos desbalanceados en USD por redondeo por línea + tasa del día manual (2026-08-25)
+
+**Síntoma:** la NC de venta NCR-000001 generaba un asiento balanceado en BOB pero con
+1 centavo de diferencia en la columna USD (60.65 vs 60.66).
+
+**Causa raíz:** `_applyDoubleExpression` (journal-entry-core.ts) redondea a 2 decimales la
+conversión USD de CADA línea (`round2(montoBOB / tasa)`); los totales exactos son idénticos
+(700/11.54 = 60.6586 por lado) pero la suma de los redondeos por línea puede desviarse un
+centavo. No era exclusivo de la NC: la factura original (ASI-000002) tenía +0.01. La causa
+de fondo: la tasa se ingresó manualmente (11.54 en BD) y el seed sembraba una tasa fija
+(6.96) que no refleja el día.
+
+**Decisiones:**
+1. **El seed ya NO siembra tipo de cambio** (se quitó la sección 15 + `SEED_EXCHANGE_RATE`):
+   la tasa del día se ingresa manualmente en Tipos de Cambio y todas las transacciones usan
+   la del día (guard `SystemExchangeRateGuard` / `assertTodayExchangeRate`). El seed no toca
+   las tasas ya ingresadas.
+2. **Absorción del centavo en el engine:** tras calcular las expresiones convertidas
+   (Local/System), si la suma de débitos ≠ créditos, el centavo se absorbe en la última línea
+   con valor de la expresión (regla de la línea de cierre, estándar SAP B1 — las tres columnas
+   de moneda deben cuadrar). NO se usa "diferencia de tipo de cambio" para redondeos: esa
+   cuenta es para exposición cambiaria real y el documento es 100% BOB con tasa 1 (el USD es
+   espejo analítico).
+
+**Verificación:** spec del engine 100/100 en verde (nuevo caso: factura 644 BOB @ 11.54 →
+columna system cuadrada en 55.81); suite completa backend en verde. Los asientos ya posteados
+antes del fix conservan el desbalance de 1 centavo; los nuevos quedan cuadrados.
