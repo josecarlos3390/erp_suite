@@ -1,9 +1,17 @@
 # Runbook de Go-Live — ERP Suite
 
-> **Última actualización:** 2026-08-23.
+> **Última actualización:** 2026-08-25.
 > Procedimiento operativo de despliegue, verificación, alineación de datos y
 > rollback para producción. Complementa `AGENTS.md` (estado del proyecto) y
 > `AUDIT.md` (QA de go-live: baterías 18-28, seguridad, SSR).
+>
+> **Hosts actuales (2026-08-25):** backend en **Railway**
+> (`https://erp-backend-production-ae06.up.railway.app`, Dockerfile + entrypoint
+> que migra solo; Postgres de Railway con red privada) y frontend en **Vercel**
+> (`https://erp-frontend.vercel.app`, SSR). El deploy del backend usa el repo
+> `joseka3390-design/erp-backend` (copia); el pipeline de SQL manuales incluye
+> `20260825_sync_schema_drift.sql` (drift de schema idempotente — BDs frescas
+> despliegan completas).
 
 ---
 
