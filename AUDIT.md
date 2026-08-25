@@ -1321,3 +1321,32 @@ de fondo: la tasa se ingresó manualmente (11.54 en BD) y el seed sembraba una t
 **Verificación:** spec del engine 100/100 en verde (nuevo caso: factura 644 BOB @ 11.54 →
 columna system cuadrada en 55.81); suite completa backend en verde. Los asientos ya posteados
 antes del fix conservan el desbalance de 1 centavo; los nuevos quedan cuadrados.
+
+### 15. Fix: cotización con validUntil = HOY se marcaba vencida + UoM no viajaba al pedido (2026-08-25)
+
+**Síntoma 1:** copiar COT-000002 (validUntil 25/08) a pedido el mismo 25/08 mostraba "La cotización
+venció el 25/08/2026. Los precios fueron actualizados…".
+
+**Causa:** los drafts comparaban `fromTenantDate(validUntil)` + `setHours(0,0,0,0)` (medianoche del
+SERVIDOR) contra `startOfTenantDay(hoy)` (medianoche del TENANT = 04:00Z). El validUntil de hoy se
+guarda como 04:00Z (medianoche Bolivia) y la comparación lo daba vencido horas antes. El patrón
+estaba en 9 servicios: sales-orders, sales-quotations, delivery-orders, sale-invoices,
+sale-reserve-invoices, purchase-orders, purchase-quotations, purchase-invoices, purchase-receipts.
+
+**Fix:** usar `isQuotationExpired(validUntil, timeZone)` (helper existente que compara contra el
+inicio del día del tenant): validUntil = hoy → vigente todo el día. Eliminados los
+`fromTenantDate`+`setHours` y los `today` muertos.
+
+**Síntoma 2:** la UoM de la cotización no viajaba al pedido de venta.
+
+**Causa:** el mapeo del draft en `sales-orders-form.component.ts` (2 handlers, líneas ~1680 y ~1811)
+no pasaba `uomId` a `buildLine` (el fix anterior de UoM solo cubrió el modo edición, línea 1572).
+El backend ya incluía `uomId` en el draft (`DraftQuotationItemSO`).
+
+**Fix:** `uomId: i.uomId ?? null` en ambos mapeos del draft.
+
+**Verificación:** helper probado (hoy→false, ayer→true, mañana→false, null→false); build+lint backend
+OK (0 errores, 1 warning preexistente de code-generator); suite completa 142 suites / 1419 tests;
+frontend spec sales-orders-form 7/7 + build OK. Pusheado: `josecarlos3390/erp-frontend` (89b9730d) y
+repo de deploy Railway (c8c0a7a). **Pendiente:** push `josecarlos3390/backend-erp` (f4cc239 seed
+timeout + f5d4b86 vencimiento) — credencial repo-específica bloqueada, requiere re-auth del usuario.
