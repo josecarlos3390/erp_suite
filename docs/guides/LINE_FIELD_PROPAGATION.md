@@ -1,6 +1,6 @@
 # Propagación de campos de línea entre documentos (flujos de copia)
 
-> **Última actualización:** 2026-08-22.
+> **Última actualización:** 2026-08-24.
 > **Ámbito:** flujos de conversión/copia de documentos comerciales (ventas, compras, inventario).
 > **Regla canónica:** *todo campo estándar de línea debe viajar por un flujo de la misma forma que lote/serie*: si un dato existe en la línea origen, debe llegar a la línea destino.
 
@@ -108,6 +108,7 @@ drafts; en devoluciones hay que completar `baseLineId`/`baseLineNum`/`baseQty` e
 | 5 | `weight`/`totalWeight` en NC venta/compra | Parcial | `src/sales-credit-notes.service.ts`, `src/purchase-credit-notes.service.ts` | ✅ **RESUELTO (2026-08-22)** |
 | 6 | `baseDoc*` en devoluciones: `sales-returns-form` no completa `baseLineId`/`baseLineNum`/`baseQty` | Mapper | `erp-frontend/src/app/pages/sales-returns/sales-returns-form.component.ts:561-665` | ✅ **RESUELTO (2026-08-23)**: venta y compra completan `baseLineId`/`baseLineNum`/`baseQty` |
 | 7 | `projectCode`/`dimension1`/`dimension2` en `SalesCreditNoteItem` y `PurchaseCreditNoteItem` | Schema | `backend-erp/prisma/schema.prisma` | ✅ **RESUELTO (2026-08-23)**: columnas + db push + creates de NC las persisten. Nota: `SaleReserveInvoiceItem`/`PurchaseReserveInvoiceItem` son modelos legacy (FRV/FRC viven en las tablas `SaleInvoice`/`PurchaseInvoice` con `isReserve='Y'`, que ya tienen los campos) |
+| 8 | Drafts de ventas no devolvían `uomId`/`acctCode`/`dimension3-5`/`customFields` por ítem → el form destino mostraba la UoM vacía | Draft | `sales-quotations.service.ts` (`convertToOrderDraft`), `delivery-orders.service.ts` (`getDraft`, `getDraftFromQuotation`, `getDraftMultiQuotation`, `getDraftMultiOrder`, `getDraftFromReserveInvoice`, `getDraftMultiReserveInvoice`), `sales-orders.service.ts` (`getDraft`, `createFromQuotation`) | ✅ **RESUELTO (2026-08-24)**: los 7 drafts agregan `uomId: origen.uomId ?? item.salesUomId ?? item.inventoryUomId ?? null`, `acctCode`, `dimension2-5`, `customFields` (y `projectCode`/`dimension1` donde faltaban). Verificado por API: cotización → draft pedido lleva uomId → pedido creado con la UoM de la cotización. El create ya tenía fallback (`line.uomId ?? qItem.uomId`), por eso el documento final salía bien aunque el form lo mostraba vacío |
 
 ---
 
