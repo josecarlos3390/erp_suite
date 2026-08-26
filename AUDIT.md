@@ -1594,3 +1594,32 @@ confuso (279.99 = lista VIP) sin el descuento.
 **Verificación:** build OK, specs POS 18/18. El modal ahora es el diagnóstico visual: si
 resolveRaw devuelve 0, el modal muestra 0% (y el log `[POS-diag]` en consola da el detalle).
 Commits: `347df6c3` (race) + `7da8772e` (modal) + `1e7cebb2` (newline).
+
+### 28b. POS: descuentos automáticos — causa raíz del 700 (2026-08-26)
+
+**Reporte (post-deploy del item 28):** con el fix desplegado, el modal ya muestra el precio
+base correcto (350 = `product.price` del Teclado ART-00009), pero el descuento seguía en 0%
+en el modal y el carrito totalizaba 700.
+
+**Causa raíz (2 bugs):**
+1. **El modal ignoraba la respuesta ASÍNCRONA de `resolveRaw`.** El POST
+   `/special-prices/resolve` llega ~300 ms después de abrir el modal; `autoDiscountPct`
+   cambia de 0 → 8 pero `ngOnChanges` solo pre-llenaba `discountPct` en la transición de
+   `open`, así que el cambio de `autoDiscountPct` se descartaba → el modal mostraba 0%
+   aunque el backend devolviera 8. Fix: `ngOnChanges` reacciona a `changes['autoDiscountPct']`
+   (cuando el modal está abierto y no es edición), con guard `manualDiscountEdited` para no
+   pisar lo que el usuario tecleó.
+2. **El carrito dependía 100% de la resolución async posterior al `addToCart`**
+   (`_resolveAutoDiscountForItem`). Si el usuario confirmaba antes de que la respuesta
+   llegara, la línea quedaba sin descuento. Fix: `onProductModalConfirm` hereda
+   `selectedProduct.resolvedDiscountPct` cuando el modal trae 0% → la línea se crea ya con
+   el 8% (644 para 2 × 350) sin esperar el segundo POST.
+
+**Dato de BD verificado (local = Railway):** la regla es `ItemGroupDiscount` global del grupo
+Informática (8%, vigente 2025-2030, sin partner); el acuerdo PROMO-VIP del cliente solo cubre
+ART-00026. El descuento del Teclado (ART-00009) sale de la vía grupo — misma vía que la
+factura web (56 bs en 2 uds). Si el modal sigue en 0% tras este fix, el log
+`[POS-diag] modal resolveRaw` en la consola muestra si el POST falló o devolvió vacío.
+
+**Verificación:** lint 0/0, build AOT OK, specs POS 15/15 (+1 nuevo:
+`onProductModalConfirm` hereda el descuento resuelto). Commit: `pos-modal-async-discount`.
