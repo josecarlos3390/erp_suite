@@ -1554,3 +1554,21 @@ push + `SaleInvoiceItem.uomId` en el modelo frontend.
 Railway:** FRV-000002 (creada hoy, post-fixes de UoM) tenía `uomId: null` en su línea — el fix
 aplica a FRVs nuevas. Commits: backend `3c00136` + deploy repo `9000195` (Railway); frontend
 `ef8bcd65` (Vercel).
+
+### 27. POS: descuentos automáticos verificados (2026-08-26)
+
+**Reporte:** el POS no mostraba los descuentos que la factura de venta sí aplica (caso:
+CLI-00007 + ART-00009 ×2 → web 644 con descuento 8% de grupo, POS mostraba 700).
+
+**Investigación:** el POS SÍ resuelve descuentos automáticos (grupo de artículos y acuerdos):
+`addToCart` → `_resolveAutoDiscountForItem` → `PriceResolutionService.resolveRaw` →
+`POST /special-prices/resolve` (que devuelve `totalDiscountPct`, verificado: 8 para el caso
+exacto, con y sin priceListId). El descuento se aplica a la línea vía `calcLineWithIndicator`
+y `calculateTotals` suma `lineTotal` (con descuento). La lógica está en el código desde mayo
+2026 y en el build desplegado.
+
+**Verificación:** spec nuevo de `PosComponent` — `addToCart` con cliente seleccionado +
+resolveRaw 8% → `discount=8`, `discountTotal=28`, `lineTotal=322` (14/14 en verde). El flujo
+correcto es **cliente primero, luego artículos** (confirmado por el usuario). Si el usuario
+sigue viendo 700 en un navegador, es un caché viejo de la página (hard-refresh) o un fallo
+transitorio del resolve — con un error de consola se puede profundizar. Commit `eaae211c`.
