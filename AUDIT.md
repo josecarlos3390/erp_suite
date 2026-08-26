@@ -1572,3 +1572,25 @@ resolveRaw 8% → `discount=8`, `discountTotal=28`, `lineTotal=322` (14/14 en ve
 correcto es **cliente primero, luego artículos** (confirmado por el usuario). Si el usuario
 sigue viendo 700 en un navegador, es un caché viejo de la página (hard-refresh) o un fallo
 transitorio del resolve — con un error de consola se puede profundizar. Commit `eaae211c`.
+
+### 28. POS: descuentos automáticos — fix del race + display en el modal (2026-08-26)
+
+**Reporte (continuación del item 27):** el carrito del POS seguía mostrando 700 sin el descuento
+de grupo (caso CLI-00007 + Teclado ×2 → web 644, POS 700), y el modal mostraba un precio
+confuso (279.99 = lista VIP) sin el descuento.
+
+**Causas:**
+1. **Race de `selectedPartner`:** si el cliente se elegía antes de que cargara la lista de
+   partners, `selectedPartner` quedaba null (solo se setea en `onPartnerChange` buscando en
+   `this.partners`), y `_resolveAutoDiscountForItem` retornaba sin resolver el descuento.
+   Fix: fallback a `this.partners.find(id)` en ambas resoluciones + `loadPartners` repuebla
+   `selectedPartner` y re-resuelve el carrito.
+2. **Modal inconsistente:** mostraba `resolvedPrice` (279.99, precio de lista del partner) que
+   ni la web ni el carrito usan, y no mostraba el descuento. Fix: el modal muestra el precio
+   base (`product.price` = 350), resuelve el descuento automático con el MISMO `resolveRaw`
+   que el carrito y lo pre-llena en el campo (visible en % e importe) — el confirm lo pasa al
+   carrito directamente.
+
+**Verificación:** build OK, specs POS 18/18. El modal ahora es el diagnóstico visual: si
+resolveRaw devuelve 0, el modal muestra 0% (y el log `[POS-diag]` en consola da el detalle).
+Commits: `347df6c3` (race) + `7da8772e` (modal) + `1e7cebb2` (newline).
