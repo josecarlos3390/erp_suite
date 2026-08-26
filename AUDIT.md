@@ -1411,3 +1411,17 @@ Además las filas peso/costo se mostraban aunque el valor fuera 0.
 
 **Verificación:** spec del componente 9/9 (nuevo caso: caja oculta con peso/costo 0) + build AOT OK
 + suite Karma completa 1327/1327. Commit `b8dd941c` pusheado a josecarlos3390/erp-frontend.
+
+### 19. Fix: suavizar el fade del sticky de totalizadores (2026-08-26)
+
+**Síntoma:** los totalizadores parecían tener un fondo oscuro con gradiente (más notorio en modo
+oscuro, donde `--bg-base` es casi negro).
+
+**Qué era:** el gradiente de `.totals-section` es un desvanecido funcional del sticky — las líneas
+se atenúan al pasar por debajo de los totales mientras se scrollea. El stop al 40% hacía que la
+banda oscura (o blanca en modo claro) fuera corta y evidente.
+
+**Fix (`_totals.scss`):** el gradiente pasa a `transparent 0% → var(--bg-base) 75%` — transición
+larga y gradual; el color pleno solo en el borde inferior, sin banda visible.
+
+**Verificación:** build AOT OK. Commit `f0664759` pusheado a josecarlos3390/erp-frontend.
