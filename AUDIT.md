@@ -1483,3 +1483,14 @@ izquierdo quedaba con ancho 0 y su `overflow: hidden` ocultaba el título.
 `flex-basis: 100%` → cada fila (título y zoom) ocupa el ancho completo, con wrap garantizado.
 
 **Verificación:** build AOT OK. Commit `aa52f73f` pusheado a josecarlos3390/erp-frontend.
+
+### 23b. Fix definitivo: título del mapa de trazabilidad en móvil — especificidad (2026-08-26)
+
+**Corrección del item 23:** el fix anterior (flex-basis 100% en `.dfm-header-left`) NO surtió
+efecto: las reglas base `.dfm-header { flex-wrap: nowrap }` y `.dfm-header-left { flex: 1 }`
+están declaradas DESPUÉS de la media query en el archivo y, con igual especificidad (0,1,0),
+ganaban por orden de aparición → el título seguía a ancho 0.
+
+**Fix:** las reglas móviles ahora usan especificidad elevada (0,2,0) — `.dfm-header.dfm-header`,
+`.dfm-header .dfm-header-left`, `.dfm-header .dfm-header-right` — verificada en el bundle
+compilado. Commit `b38c56c7` pusheado a josecarlos3390/erp-frontend.
