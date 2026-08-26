@@ -1455,3 +1455,17 @@ de 96dvh alineado abajo, así que su borde superior cae dentro del área del hea
 que el resto de modales de la app.
 
 **Verificación:** build AOT OK. Commit `729b11cc` pusheado a josecarlos3390/erp-frontend.
+
+### 22. Fix: botones de zoom del mapa de trazabilidad solapaban el título en móvil (2026-08-26)
+
+**Síntoma:** en móvil, en el mapa de trazabilidad, la barra de zoom se superponía al texto
+"Mapa de Trazabilidad".
+
+**Causa:** el header del modal usa `flex-wrap: nowrap` con la barra de zoom `flex-shrink: 0`;
+en pantallas angostas el título quedaba apretado y su texto se metía debajo de los botones.
+
+**Fix (`document-flow-map.component.ts`):** en ≤600px el header hace wrap y la barra de zoom
+pasa a su propia fila (`flex-basis: 100%`, alineada a la derecha) — el título conserva el
+ancho completo y no hay solape posible.
+
+**Verificación:** build AOT OK. Commit `e7c96d69` pusheado a josecarlos3390/erp-frontend.
