@@ -1535,3 +1535,22 @@ isLoading (true al inicio, false al completar).
 **Verificación:** spec nuevo (getOne retardado con Subject): isLoading=true mientras no resuelve,
 false al completar — 7/7. **Verificado en vivo con navegador:** el skeleton aparece ~150ms tras
 navegar y permanece ~650ms hasta revelar el form. Commits `cb083ce0` + `8557c590` pusheados.
+
+### 26. Skeleton estándar en TODOS los forms + fix UoM en NC desde factura de reserva (2026-08-26)
+
+**1) Gate de carga en los 10 forms restantes:** al verificar, los forms con gate (delivery-orders,
+sale-invoices, purchase-receipts, purchase-invoices, reserve invoices, stock-entries/exits/
+transfers/adjustments) activaban `isLoading = true` DESPUÉS del primer `await` (catálogos) — el
+skeleton nunca cubría la carga de catálogos. Fix: `isLoading = true` al inicio de ngOnInit
+(condición `!!idParam || <params de origen>`) en los 10 → el estándar queda en los 13 forms.
+
+**2) UoM en NC desde factura de reserva:** la FRV creada desde PEDIDO guardaba sus líneas sin
+`uomId` — `createFromOrder` en `sale-reserve-invoices.service.ts` no mapeaba `uomId` en
+`invoiceItems.push` (los otros 6 métodos de creación sí). La NC propaga lo que tiene la fuente
+(FRV) → perdía la UoM. Fix: `uomId: line.uomId ?? oi.uomId ?? oi.item.salesUomId ?? ...` en el
+push + `SaleInvoiceItem.uomId` en el modelo frontend.
+
+**Verificación:** build backend+frontend OK, lint OK, specs FRV 3/3. **Dato verificado en BD de
+Railway:** FRV-000002 (creada hoy, post-fixes de UoM) tenía `uomId: null` en su línea — el fix
+aplica a FRVs nuevas. Commits: backend `3c00136` + deploy repo `9000195` (Railway); frontend
+`ef8bcd65` (Vercel).
