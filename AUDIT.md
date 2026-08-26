@@ -1516,3 +1516,22 @@ resolver sus catálogos — mala UX (layout shift, clics sobre datos incompletos
   termina (patrón de entrega de mercadería que el usuario validó como buena práctica).
 
 **Verificación:** build AOT OK, lint "All files pass", specs de los 13 forms 39/39.
+
+### 25. Fix: el skeleton no aparecía — isLoading se activaba tarde (2026-08-26)
+
+**Síntoma:** tras el estándar de carga (item 24), la silueta esqueleto no aparecía; el form
+seguía igual.
+
+**Causa raíz:** `isLoading = true` se activaba en `loadQuotation`/`loadOrder`/`loadFrom*`, que se
+llaman al FINAL de ngOnInit — después de que los catálogos pesados (proyectos, almacenes,
+partners, items) ya cargaron y el form ya se renderizó. La ventana de isLoading=true solo cubría
+el `getOne` (rápido) y nunca llegaba a renderizarse el skeleton.
+
+**Fix:** en sales-quotations, sales-orders y purchase-orders, `isLoading = true` se activa al
+INICIO de ngOnInit (tras parsear los params, antes de los catálogos) — el skeleton cubre todo el
+tiempo de carga y el form se revela completo al terminar. El path de borrador ya gestionaba
+isLoading (true al inicio, false al completar).
+
+**Verificación:** spec nuevo (getOne retardado con Subject): isLoading=true mientras no resuelve,
+false al completar — 7/7. **Verificado en vivo con navegador:** el skeleton aparece ~150ms tras
+navegar y permanece ~650ms hasta revelar el form. Commits `cb083ce0` + `8557c590` pusheados.
