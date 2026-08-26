@@ -1350,3 +1350,26 @@ OK (0 errores, 1 warning preexistente de code-generator); suite completa 142 sui
 frontend spec sales-orders-form 7/7 + build OK. Pusheado: `josecarlos3390/erp-frontend` (89b9730d) y
 repo de deploy Railway (c8c0a7a). **Pendiente:** push `josecarlos3390/backend-erp` (f4cc239 seed
 timeout + f5d4b86 vencimiento) — credencial repo-específica bloqueada, requiere re-auth del usuario.
+
+### 16. Fix: propagación de UoM en TODOS los flujos "copiar a" (2026-08-25)
+
+**Contexto:** el fix anterior (item 15) cubrió solo cotización → pedido de venta. Una auditoría
+completa de los flujos de copia (single/multi/directo/manual/reserva) encontró que la UoM se
+perdía en varios puntos de la cadena.
+
+**Causa raíz (2 patrones):**
+1. **Mappers de facturas** (8 archivos en `purchase-invoices`, `sale-reserve-invoices`,
+   `purchase-reserve-invoices`) construían las líneas del draft sin `uomId` (0 ocurrencias).
+2. **Call sites de builders de línea** que aceptaban `uomId` pero no lo pasaban desde el draft
+   (los handlers de `loadDraft`/`loadDraftMulti*`/`loadIntoForm`/inline `fb.group`), más el
+   **picker de cotizaciones** (emitía sin uomId) y **purchase-returns** (el group no tenía el control).
+
+**Fixes aplicados (22 archivos):**
+- 8 mappers: `uomId: <src>.uomId ?? null` en cada línea mapeada.
+- Call sites: delivery-orders (6), purchase-orders (2 + interfaces), purchase-receipts (7 +
+  interfaces), purchase-invoices (4), purchase-reserve-invoices (3), sale-reserve-invoices (2 +
+  tipo), sales-orders picker (firma + call + picker emit + `SalesQuotationItemAvailable`),
+  purchase-returns (control uomId en el group).
+
+**Verificación:** build AOT OK (0 errores), lint "All files pass", specs de mappers 278/278.
+Commit `6f53a4e0` pusheado a josecarlos3390/erp-frontend → Vercel redeploya.
