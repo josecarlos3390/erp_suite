@@ -1393,3 +1393,21 @@ El botón Volver del header ya se ocultaba en móvil (la action-bar sticky prove
 CLOSED (`canCopyTo` exige OPEN); "Editar" en el header es el acceso a modo edición.
 
 **Verificación:** build AOT OK. Commit `6031453c` pusheado a josecarlos3390/erp-frontend.
+
+### 18. Fix: ocultar totalizadores secundarios vacíos (2026-08-26)
+
+**Síntoma:** en los formularios de ventas/compras había cuadros de totalizadores vacíos — uno
+siempre (la caja secundaria peso/costo con `showSecondaryDefaults` por defecto) y otro a veces
+(peso/costo en 0).
+
+**Causa:** la caja secundaria (`showSecondaryDefaults`) se renderizaba siempre, pero solo 4 forms
+(stock) pasan `showWeight`/`showCost` — el resto (15 forms de documentos) mostraba una caja vacía.
+Además las filas peso/costo se mostraban aunque el valor fuera 0.
+
+**Fix (`document-totals-section.component.html`):** la caja secundaria solo se renderiza si
+`(showWeight && totalWeight > 0) || (showCost && totalCost > 0)`; las filas también exigen valor
+> 0 (consistente con las cajas por pestaña que ya tenían ese guard). Ningún form usa la proyección
+`totalsSecondary`, así que no se pierde contenido.
+
+**Verificación:** spec del componente 9/9 (nuevo caso: caja oculta con peso/costo 0) + build AOT OK
++ suite Karma completa 1327/1327. Commit `b8dd941c` pusheado a josecarlos3390/erp-frontend.
