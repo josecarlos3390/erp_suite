@@ -1494,3 +1494,25 @@ ganaban por orden de aparición → el título seguía a ancho 0.
 **Fix:** las reglas móviles ahora usan especificidad elevada (0,2,0) — `.dfm-header.dfm-header`,
 `.dfm-header .dfm-header-left`, `.dfm-header .dfm-header-right` — verificada en el bundle
 compilado. Commit `b38c56c7` pusheado a josecarlos3390/erp-frontend.
+
+### 24. Estándar de carga del ERP: skeleton + gate completo en formularios (2026-08-26)
+
+**Contexto:** los formularios eran inconsistentes: unos mostraban un gate de carga completo
+(entrega de mercadería, entradas de stock: spinner → reveal) y otros (sales-orders,
+cotizaciones, purchase-orders) renderizaban al instante y los campos aparecían de a poco al
+resolver sus catálogos — mala UX (layout shift, clics sobre datos incompletos).
+
+**Decisión:** gate completo como estándar, con skeleton (mejor percepción que spinner).
+- **`SkeletonFormComponent`** (`app-skeleton-form`, en `shared/skeleton-loader/`): silueta de
+  formulario que compone los primitivos existentes del design system (heading, subheading,
+  bloques de sección, filas) con shimmer adaptado al tema y `prefers-reduced-motion`.
+- **`.loading-hidden`** (global en `_forms.scss`): oculta el cuerpo del formulario mientras
+  carga sin re-indentar el template.
+- **Aplicado a 13 forms de documentos**: sales-orders, sales-quotations, purchase-orders
+  (antes sin gate — ahora skeleton + cuerpo oculto) y delivery-orders, sale-invoices,
+  purchase-receipts, purchase-invoices, purchase-reserve-invoices, sale-reserve-invoices,
+  stock-entries/exits/transfers/adjustments (reemplazado su spinner ad-hoc por el skeleton).
+- El header/breadcrumb se muestra de inmediato; el cuerpo se revela completo cuando la carga
+  termina (patrón de entrega de mercadería que el usuario validó como buena práctica).
+
+**Verificación:** build AOT OK, lint "All files pass", specs de los 13 forms 39/39.
