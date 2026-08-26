@@ -1373,3 +1373,23 @@ perdía en varios puntos de la cadena.
 
 **Verificación:** build AOT OK (0 errores), lint "All files pass", specs de mappers 278/278.
 Commit `6f53a4e0` pusheado a josecarlos3390/erp-frontend → Vercel redeploya.
+
+### 17. Fix: form-header móvil solapaba el panel de trazabilidad (2026-08-25)
+
+**Síntoma:** en móvil, al ver un documento (p. ej. COT-000003 en modo VER), el header fijo
+("Editar" + título + estado) se sobreponía a los botones del panel de trazabilidad.
+
+**Causa:** `.form-header` es `position: fixed; top: 64px` con el padding superior de la página
+(`--form-page-padding-y: 100px`) calibrado para su altura de escritorio (~65px). En pantallas
+angostas el header hace wrap (título + toolbar + estado en 2 filas) y supera esa altura →
+el primer contenido (trazabilidad) quedaba debajo del header.
+
+**Fix (`_forms.scss`):** en ≤640px el header pasa a `position: static` (fluye con el contenido,
+sin solape posible sin importar su altura) y `--form-page-padding-y`/`padding-top` se reduce a
+12px (el header ya no es fijo). Aplica a todos los forms (`.form-page` y `.luna-form-page`).
+El botón Volver del header ya se ocultaba en móvil (la action-bar sticky provee la vuelta).
+
+**Nota:** "Copiar a" ausente y footer "Volver" en COT-000003 es correcto — la cotización está
+CLOSED (`canCopyTo` exige OPEN); "Editar" en el header es el acceso a modo edición.
+
+**Verificación:** build AOT OK. Commit `6031453c` pusheado a josecarlos3390/erp-frontend.
