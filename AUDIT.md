@@ -1441,3 +1441,17 @@ entrada del browser, NO `index.html`. El `vercel.json` tenía el rewrite SPA
 **Verificación:** tras el redeploy, `/login`, `/dashboard`, `/sales-quotations`, `/warehouses`,
 `/users` y rutas arbitrarias → **200** (shell SPA). Commit `cfcb6cee` pusheado a
 josecarlos3390/erp-frontend.
+
+### 21. Fix: mapa de trazabilidad se solapaba con el header en móvil (2026-08-26)
+
+**Síntoma:** en móvil, al abrir el mapa de trazabilidad (bottom sheet), la ventana no se veía
+completa — el app-header tapaba su parte superior (título y botones).
+
+**Causa:** el overlay del mapa (`document-flow-map.component.ts`) tenía `z-index: 1100`, por
+debajo del app-header (`z-index: var(--z-modal)` = 1200). En móvil el modal es un bottom sheet
+de 96dvh alineado abajo, así que su borde superior cae dentro del área del header fijo.
+
+**Fix:** `z-index: calc(var(--z-modal) + 1)` (1201) — el modal queda sobre el app-header, igual
+que el resto de modales de la app.
+
+**Verificación:** build AOT OK. Commit `729b11cc` pusheado a josecarlos3390/erp-frontend.
