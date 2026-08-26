@@ -1469,3 +1469,17 @@ pasa a su propia fila (`flex-basis: 100%`, alineada a la derecha) — el título
 ancho completo y no hay solape posible.
 
 **Verificación:** build AOT OK. Commit `e7c96d69` pusheado a josecarlos3390/erp-frontend.
+
+### 23. Fix: el título del mapa de trazabilidad desaparecía en móvil (2026-08-26)
+
+**Síntoma:** tras el fix del item 22 (zoom en fila propia), en móvil el texto "Mapa de
+Trazabilidad" y su subtítulo desaparecieron — solo se veían los botones de zoom.
+
+**Causa:** `.dfm-header-left` usa `flex: 1` = flex-basis **0%**. Con la barra de zoom a
+`flex-basis: 100%`, ambos cabían en la misma fila (0% + 100% = 100%) sin hacer wrap → el lado
+izquierdo quedaba con ancho 0 y su `overflow: hidden` ocultaba el título.
+
+**Fix (`document-flow-map.component.ts`):** en móvil `.dfm-header-left` también pasa a
+`flex-basis: 100%` → cada fila (título y zoom) ocupa el ancho completo, con wrap garantizado.
+
+**Verificación:** build AOT OK. Commit `aa52f73f` pusheado a josecarlos3390/erp-frontend.
