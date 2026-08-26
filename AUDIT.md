@@ -1425,3 +1425,19 @@ banda oscura (o blanca en modo claro) fuera corta y evidente.
 larga y gradual; el color pleno solo en el borde inferior, sin banda visible.
 
 **Verificación:** build AOT OK. Commit `f0664759` pusheado a josecarlos3390/erp-frontend.
+
+### 20. Fix: refresh en rutas profundas de Vercel daba 404 (2026-08-26)
+
+**Síntoma:** al refrescar cualquier ruta distinta de `/` en Vercel (p. ej. `/dashboard`,
+`/login`) aparecía el 404 NOT_FOUND de Vercel; había que volver a la raíz.
+
+**Causa raíz:** el build de Angular 19 con SSR genera **`index.csr.html`** (shell CSR) como
+entrada del browser, NO `index.html`. El `vercel.json` tenía el rewrite SPA
+`/(.*) → /index.html` apuntando a un archivo inexistente → las rutas profundas devolvían 404
+(el deploy estaba al día — `index.csr.html` existía, `index.html` no).
+
+**Fix (`vercel.json`):** rewrite `/(.*) → /index.csr.html`.
+
+**Verificación:** tras el redeploy, `/login`, `/dashboard`, `/sales-quotations`, `/warehouses`,
+`/users` y rutas arbitrarias → **200** (shell SPA). Commit `cfcb6cee` pusheado a
+josecarlos3390/erp-frontend.
