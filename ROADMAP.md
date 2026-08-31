@@ -230,6 +230,24 @@
 | ✅ DT.51 | **RC-IVA declarativo (Form 110) — Fase T6 del plan tributario BO (S38/G3)** | (2026-08-16) Gap G3: la retención se contabilizaba pero no existía el cálculo del dependiente ni el reporte declarativo. Implementación: (1) schema `WageParam` (SMN por gestión), `PayrollRcIva` (cálculo por empleado/período con arrastre de saldos) y `EmployeeTaxCreditInvoice` (facturas del dependiente) — SQL manual `20260816_add_rc_iva_declarativo.sql`; (2) módulo `src/rc-iva/` con el motor (sueldo − aportes 12.71% → neto − 2×SMN → 13% − crédito por facturas ± saldo anterior, Arts. 26-31/DS 21529) y endpoints (SMN upsert, CRUD facturas, calculate, listado dependientes, reporte de terceros consolidado por beneficiario); (3) frontend: `/reports/rc-iva-dependientes` (parámetros SMN, cálculo, máscara del Form 110, CRUD de facturas) y `/reports/rc-iva-terceros` (consolidado agente de retención) en el menú de reportes. Tests: 5 unitarios del motor; backend 140 suites/1375 tests, E2E 81/81, frontend build/lint + Karma en verde. Ver `AUDIT.md` S38. | ✅ Completado |
 
 | ✅ DT.52 | **IUE anual (25%) + compensación contra el IT — Fase T7 del plan tributario BO (S39/G2)** | (2026-08-16) Última fase del plan: no existía determinación del IUE ni la compensación mensual contra el IT. Implementación: (1) schema `IueAdjustment`/`IueDetermination`/`ItCompensation` + SQL manual `20260816_add_iue_compensacion.sql`; (2) módulo `src/iue/`: determinación contable-primero (Σ 4.x − Σ 5.x/6.x POSTED ± ajustes − pérdida arrastrable → 25%) con asiento propuesto; compensación mensual del IT con el pago a cuenta del IUE hasta agotarse (Art. 77) y saldo no compensado expuesto para baja manual; (3) Form 200 con casillas de compensación; (4) frontend `/reports/iue` + sección en el Form 200. Tests: 6 unitarios; backend 141 suites/1381 tests, E2E 81/81, frontend en verde. Ver `AUDIT.md` S39. | ✅ Completado |
+
+## Fase 3.x — Preparación integración bidireccional SAP B1 ✅ (2026-08-31)
+
+Capa de datos lista para el **conector bidireccional** con SAP B1. Los 11 modelos del flujo de ventas tienen identidad SAP (`sapDocEntry`/`sapDocNum`/`sapEtag`), ciclo de sincronización (`syncStatus`/`lastSyncedAt`/`lastSyncError`) e índice único `@@unique([tenantId, sapDocEntry])` para idempotencia (duplicado de DocEntry responde **409** vía `assertSapDocEntryAvailable`). Detalle técnico completo: `docs/reference/SAP_B1_INTEGRATION.md`.
+
+| Fase | Alcance | Estado |
+|------|---------|--------|
+| 3.1 | Cotizaciones + pedidos: campos SAP, ciclo sync, índice único, preservación condicional (editar desde UI no borra identidad), backorder sin herencia de identidad | ✅ |
+| 3.2 | Entregas: campos SAP + `shipDate`/`sapLineNum` en líneas; los 7 flujos de creación | ✅ |
+| 3.3 | Facturas (normal + reserva): campos SAP, `isReserve` (SAP `ReserveInvoice`), `sapLineNum`/`shipDate`; dualidad `SaleReserveInvoice` (legacy solo-lectura) documentada | ✅ |
+| 3.4 | Pagos recibidos: campos SAP + `sapLineNum` en la aplicación (`PaymentInvoices`); línea → factura por `sapDocEntry` | ✅ |
+| 3.5 | Devoluciones de venta: campos SAP, origen `BaseType 15` (entrega) → `deliveryOrderId` | ✅ |
+| 3.6 | Notas de crédito: campos SAP + `paidAmount`/`balanceDue` (abono parcial `PaidToDate`); abono existente (`IncomingPayment` CREDIT_NOTE) actualiza el saldo | ✅ |
+| 3.7 | **Enriquecimiento de datos nativos + UX/UI**: `reference2`/`docTime`/`sapSeries` (8 headers), `sapControlAccount` (factura/NC), `isConsignment` (entrega), `returnAction`/`returnReason`/`returnCost`/`enableReturnCost` (líneas NC/devolución); componente frontend `app-sap-integration-section` (identidad + badge sync + campos) en los formularios de documentos. **3.7c:** tabla maestra `ReturnReason` (Reason Codes SAP, kind ACTION/REASON, `sapCode`) con CRUD + UI en `/return-reasons`, FK `returnReasonId` en líneas de NC/devolución y selector del catálogo en las líneas | ✅ |
+
+**Mapeos SAP clave resueltos:** `BaseType 23`=cotización, `17`=pedido, `15`=entrega, `13`=factura; `ReserveInvoice: "tYES"`=factura reserva; `PaymentInvoices[].InvoiceType: "it_CreditMemo"`=NC (relación NC↔abono nativa, vive en el pago); UDF personalizados (`U_CXS_BREF` etc.) **no** se usan como fuente de verdad.
+
+**Pendiente:** el conector real a SAP Service Layer (F5.3), sincronización de estados (cerrar/cancelar), y replicar el mismo patrón en el flujo de **compras** (`Purchase*`).
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|
 | Alta | **F5.1 — Facturación Electrónica SIN Bolivia** | Firma digital, envío masivo, consulta de estado. *(siguiente feature prioritario)* |
@@ -238,7 +256,7 @@
 | Media | **F5.4 — CRM básico** | Oportunidades, actividades, pipeline. |
 | Media | **F7.2 — Multi-divisa** | USD, EUR además de BOB. |
 | Media | **F7.3 — Localización de reportes** | Para Chile, Perú, Argentina. |
-| Baja | **F5.3 — SAP Integration Real** | Reemplazar mock por conector real a SAP B1. |
+| Baja→Alta | **F5.3 — SAP Integration Real (conector)** | Implementar el conector contra el SAP Service Layer (REST/OData): push/pull de maestros (sapItemCode/sapCardCode), cotizaciones, pedidos, entregas, facturas, pagos, devoluciones y NC (resolución por `sapDocEntry`), sincronización de estados (cerrar/cancelar), cola de reintentos y sync del abono de NC (`it_CreditMemo`). **La capa de datos ya está lista (Fase 3.x completa — 11 modelos con identidad SAP + idempotencia 409).** |
 
 ## Mejoras contables identificadas (auditoría 2026-07-20)
 

@@ -132,11 +132,16 @@ persistieron para potenciar el ERP:
 | `sapControlAccount` | `ControlAccount` | `SaleInvoice`, `SalesCreditNote` | Cuenta de control (CxC) asignada por SAP |
 | `isConsignment` | `WareHouseUpdateType: dwh_Consignment` | `DeliveryOrder` | Venta en consignación (sin movimiento del almacén propio) |
 | `returnAction` / `returnReason` | `ReturnAction` / `ReturnReason` | `SalesReturnItem`, `SalesCreditNoteItem` | Motivo de la devolución/NC (Reason Codes de SAP) |
+| `returnReasonId` | — (maestro propio) | `SalesReturnItem`, `SalesCreditNoteItem` | FK al dato maestro `ReturnReason` (reportes de motivos) |
 | `returnCost` / `enableReturnCost` | `ReturnCost` / `EnableReturnCost` | `SalesReturnItem` | Costo del retorno |
 
-> `ReturnReason`/`ReturnAction` son datos maestros de SAP (Reason Codes); en el ERP
-> se guardan como referenciales (`Int?`) — si se desea reportes de motivos, crear la
-> tabla maestra `ReturnReason` con el catálogo de SAP.
+> `ReturnReason`/`ReturnAction` son datos maestros de SAP (Reason Codes). En el
+> ERP existe la **tabla maestra `ReturnReason`** (`kind` ACTION|REASON, `sapCode`
+> referencial, `isActive`, `sortOrder`) con CRUD en `GET/POST/PATCH/DELETE
+> /return-reasons`, UI en `/return-reasons` y seed del catálogo inicial.
+> `SalesReturnItem.returnReasonId` / `SalesCreditNoteItem.returnReasonId` (FK)
+> vinculan las líneas al maestro para **reportes de motivos**; el código SAP
+> crudo se conserva en `returnAction`/`returnReason` para el conector.
 
 ### UX/UI en el frontend (Fase 3.7b)
 
