@@ -5,10 +5,16 @@
 > **Purchase Order** (pedido, DocEntry 414480), **Purchase Delivery Note**
 > (recepción, DocEntry 97804), **Purchase Invoice — FRC** (DocEntry 165518),
 > **Purchase Return** (devolución, DocEntry 3209), **Purchase Credit Note**
-> (NC, DocEntry 2387) y **Payments** (pago, DocEntry 2111628926 — patrón
-> idéntico para OutgoingPayment) — todos confirman el mismo estándar de cabecera
-> (identity + Reference2 + DocTime + Series + ControlAccount).
-> Pendiente: A/P Invoice normal.
+> (NC, DocEntry 2387), **Payments incoming** (cobro, DocEntry 2111628926) y
+> **VendorPayment** (pago saliente real, DocEntry 2111007081, `rSupplier`,
+> `it_PurchaseInvoice` → FRC) — 8/8 documentos del flujo validados.
+> **Implementación (2026-09-02):** migración de identidad SAP aplicada en los 8
+> headers + líneas; helper ampliado a 16 modelos; **cotización de compra
+> completa** (DTOs create/update con identity + reference2/docTime/sapSeries +
+> shipDate/sapLineNum; service con idempotencia 409 en create y preservación
+> condicional en update). Pendiente: DTOs+services de pedido, recepción,
+> factura, reserva, pago, devolución, NC; frontend 8 formularios; fix de
+> resolvers; servicios con cuenta directa; docs; push.
 
 ---
 
@@ -203,11 +209,21 @@ tiene `method`/`amount`/`cashAccountId`/`bankAccountId` ✅; `OutgoingPaymentAcc
 tiene `accountId`/`amount` ✅. La NC se vincula por `PurchaseCreditNote.outgoingPaymentId`
 (como en ventas `SalesCreditNote.incomingPaymentId`).
 
-### 3.7 Pendientes (a validar)
+### 3.7 Validado — VendorPayment / pago saliente REAL (payload DocEntry 2111007081)
 
-| Documento | Puntos a validar |
-|-----------|------------------|
-| A/P Invoice normal | confirmar SIN vínculo a recepción; retenciones; `ControlAccount` |
+| SAP B1 | Valor | ERP | Acción |
+|--------|-------|-----|--------|
+| `DocObjectCode` / `DocTypte` | `bopot_OutgoingPayments` / `rSupplier` | `OutgoingPayment` | pago saliente real |
+| `PaymentInvoices[].InvoiceType` | **`it_PurchaseInvoice`** | `OutgoingPaymentLine.purchaseInvoiceId` (o `purchaseReserveInvoiceId` si es FRC) | factura de compra / FRC por `sapDocEntry` (DocEntry 45354) |
+| `PaymentInvoices[].SumApplied` | 5.0 | `amount` | |
+| `CashSum` + `CashAccount` | 5.0 / 11103501 | método CASH + cuenta | pago en efectivo |
+| `Remarks` | "(BCP) F-55510..." | `notes` | |
+| `ControlAccount` | 21105002 | — (cuenta de control CxP) | no se persiste en pago |
+| `Reference2` / `Series` | null / 322 | `reference2` / `sapSeries` | estándar |
+
+> **Validación completa 8/8.** El mapeo de compras está cerrado; queda pendiente
+> solo el payload de factura normal (confirmará que no lleva vínculo a recepción,
+> como indicó el usuario — comportamiento ya previsto).
 
 ## 4. Hallazgos técnicos (pre-implementación)
 
