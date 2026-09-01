@@ -95,10 +95,17 @@ resuelve a IDs del tenant. Los encabezados de la plantilla son **amigables en es
 
 ## 3. Siguientes fases (backlog)
 
-- **Fase 2 — PARTNERS:** plantilla oficial con las columnas de socio de negocio
-  (código, razón social, NIT, tipo cliente/proveedor, moneda, cuentas por defecto,
-  dirección, contactos) + resolución por códigos (grupo de partner, cuentas, lista de
-  precios). Reutilizar `partners.bulkImport` existente.
+- **Fase 2 — PARTNERS ✅ (implementada y verificada 2026-09-01):** plantilla oficial
+  `GET /partners/bulk-import/template` con 46 columnas (identificación, contacto,
+  operación comercial, fiscal Bolivia, catálogos por código, vigencia, 10 cuentas
+  contables por código) y hojas Instrucciones/Catálogos (grupos de socio, impuestos,
+  listas de precio, condiciones de pago, vendedores, almacenes, cuentas, monedas).
+  El importador resuelve códigos→IDs (`groupCode`, `defaultTaxIndicatorCode`,
+  `priceListCode`, `specialPriceListCode`, `defaultPaymentTermName`,
+  `defaultSalesPersonUsername`, `defaultWarehouseCode`, `*AccountCode`) + monedas
+  permitidas (BPCurrenciesCollection) + campos fiscal/SAP/vigencia. Verificado live:
+  import con headers amigables creó SUP-0004 (grupo GRP-PROV, IVA13SIN, SAP PL000212,
+  NIT, persona legal) y CLI-0016 (grupo GRP-RETAIL, backorder NO, monedas BOB,USD).
 - **Fase 3 — STOCK INICIAL:** plantilla con artículo (código), almacén (código),
   cantidad y costo unitario; reutilizar `items.bulkImportStock` con resolución de
   códigos.
