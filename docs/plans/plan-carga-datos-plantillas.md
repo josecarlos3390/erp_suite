@@ -1,6 +1,7 @@
 # Plan — Carga de datos masiva (plantillas Excel oficiales)
 
-> **Fecha:** 2026-09-01 · **Estado:** Fase 1 (ARTÍCULOS) implementada y verificada.
+> **Fecha:** 2026-09-01 · **Estado:** Fases 1–3 (ARTÍCULOS, PARTNERS, STOCK INICIAL)
+> implementadas y verificadas.
 > **Objetivo:** que el usuario pueda descargar una plantilla Excel oficial por entidad,
 > rellenarla con los datos necesarios e importantes, y cargarla con drag & drop
 > (ya existente) para crear registros en el ERP.
@@ -93,7 +94,65 @@ resuelve a IDs del tenant. Los encabezados de la plantilla son **amigables en es
 
 ---
 
-## 3. Siguientes fases (backlog)
+## 3. Fase 3 — STOCK INICIAL ✅ (implementada y verificada 2026-09-01)
+
+**Decisión de diseño (consultada con el usuario):** la carga de stock inicial crea
+**Entradas de Mercadería (StockEntry) reales** — por almacén — que al confirmarse
+generan **movimientos de kardex (MANUAL_IN)**, actualizan stock y costo promedio
+ponderado, y producen el **asiento contable automático**
+(Dr Inventario / Cr Contrapartida de Inventario). Es decir: **stock físico + asiento
+contable automático** (opción recomendada), no una simple carga de saldos.
+
+### Backend
+
+| Pieza | Archivo | Detalle |
+|-------|---------|---------|
+| Definición de columnas | `backend-erp/src/items/item-import-template.ts` | `STOCK_INITIAL_IMPORT_COLUMNS` (4 columnas: Código de artículo*, Código de almacén*, Cantidad*, Costo unitario), `STOCK_INITIAL_LABEL_TO_KEY`, `normalizeStockInitialImportRow()`, `buildStockInitialImportWorkbook()` (hoja "Stock inicial" con 2 filas de ejemplo `EJEMPLO:` + Instrucciones + Catálogos con artículos inventariables y almacenes del tenant). |
+| Endpoint plantilla | `GET /items/bulk-import-stock/template` (items.controller.ts) | Genera el .xlsx con las 3 hojas y catálogos; `plantilla-stock-inicial-<fecha>.xlsx`. |
+| Servicio plantilla | `items.service.ts → getBulkImportStockTemplate()` | Consulta artículos con `canBeInventoried=true` activos + almacenes activos. |
+| Importador | `items.service.ts → bulkImportStock()` | Normaliza filas (labels→keys) ANTES de resolver catálogos; resuelve `itemCode→itemId` (con fallback a ID numérico y validación `canBeInventoried`) y `warehouseCode→warehouseId`; omite filas `EJEMPLO:` y filas vacías; agrupa movimientos POR ALMACÉN y por cada almacén llama `StockEntriesService.createManual()` (que internamente confirma → kardex + asiento). |
+| Wiring | `items.module.ts` importa `StockEntriesModule`; `stock-entries.module.ts` exporta `StockEntriesService` | Dependencia inyectada en `ItemsService`. |
+
+**Nota de integración:** `StockEntriesService.createManual()` ya confirma la entrada
+internamente (movimientos MANUAL_IN + `createStockEntryJournalEntry`). El importador NO
+vuelve a llamar a `confirm()` (evita "Solo se puede confirmar una entrada abierta").
+`StockEntryReason` no tiene valor INITIAL → se usa `'OTHER'` con notas
+"Stock inicial por import masivo" (el motivo del movimiento queda "Entrada manual").
+
+### Frontend
+
+| Pieza | Archivo | Detalle |
+|-------|---------|---------|
+| Servicio | `erp-frontend/src/app/pages/items/items.service.ts` | `bulkImportStock()` (existente) + `downloadBulkImportStockTemplate()` → blob del endpoint. |
+| Página | `erp-frontend/src/app/pages/bulk-upload/stock-initial-bulk-upload.component.ts` | Columnas por código (itemCode/warehouseCode/quantity/unitCost) con hints + `downloadTemplateFn` + `templateFileName`. |
+
+### Verificación live (2026-09-01)
+
+- `GET /items/bulk-import-stock/template` → 200, .xlsx con hojas
+  **Stock inicial / Instrucciones / Catálogos**; filas 2 y 3 con prefijo `EJEMPLO:`
+  (el importador las omite); catálogos con artículos inventariables y almacenes.
+- Import con 2 filas `EJEMPLO:` + 1 fila real (ART-00016 / ALM-01 / 5 / 3.25) →
+  **`created:1, errors:[]`** (las filas de ejemplo NO crean registros).
+- Efectos verificados en BD:
+  - `StockEntry` **ENT-000051** (CONFIRMED, reason OTHER, totalCost 16.25).
+  - `StockMovement` **MANUAL_IN** qty 5 @ 3.25, motivo "Entrada manual ENT-000051".
+  - `JournalEntry` **ASI-000202** (POSTED, 16.25/16.25):
+    Dr **1.1.3.01.001 Inventario General** / Cr **5.1.2.01.001 Compensación de Inventario**.
+  - Stock físico del artículo 16/ALM-01 actualizado (216 uds, avgCost 5.575715 incluye
+    los dos imports de prueba).
+
+### Tests
+
+- Backend: `items.service.spec.ts` — describe `bulkImportStock` reescrito (StockEntry
+  consolidada por almacén vía `StockEntriesService.createManual` con mock, omisión de
+  filas `EJEMPLO:`, validación de campos requeridos) + `getBulkImportStockTemplate`.
+  **49/49 en verde.**
+- Frontend: `items.service.spec.ts` — test de `downloadBulkImportStockTemplate`
+  (GET blob). **18/18 en las suites de items + bulk-upload.**
+
+---
+
+## 4. Siguientes fases (backlog)
 
 - **Fase 2 — PARTNERS ✅ (implementada y verificada 2026-09-01):** plantilla oficial
   `GET /partners/bulk-import/template` con 46 columnas (identificación, contacto,
@@ -106,9 +165,10 @@ resuelve a IDs del tenant. Los encabezados de la plantilla son **amigables en es
   permitidas (BPCurrenciesCollection) + campos fiscal/SAP/vigencia. Verificado live:
   import con headers amigables creó SUP-0004 (grupo GRP-PROV, IVA13SIN, SAP PL000212,
   NIT, persona legal) y CLI-0016 (grupo GRP-RETAIL, backorder NO, monedas BOB,USD).
-- **Fase 3 — STOCK INICIAL:** plantilla con artículo (código), almacén (código),
-  cantidad y costo unitario; reutilizar `items.bulkImportStock` con resolución de
-  códigos.
+- **Fase 3 — STOCK INICIAL ✅ (implementada y verificada 2026-09-01):** ver sección 3
+  arriba. Plantilla con artículo (código), almacén (código), cantidad y costo unitario;
+  reutiliza `items.bulkImportStock` con resolución de códigos y crea Entradas de
+  Mercadería consolidadas por almacén (kardex + asiento contable automático).
 - **Fase 4 — Datos maestros adicionales:** cuentas contables, grupos, UoMs, impuestos
   (mismos patrones: plantilla + catálogos + resolución por código).
 - **Fase 5 — Importación documental (opcional):** precios de lista, terceros con
