@@ -238,23 +238,26 @@ tiene `accountId`/`amount` ✅. La NC se vincula por `PurchaseCreditNote.outgoin
    La NC (y factura) de compra de SERVICIOS llega con `ItemCode: null` + `AccountCode`
    (cuenta contable directa, p. ej. 11901001 póliza de seguro). **Decisión: soporte
    nativo** — extender el ERP para manejar líneas sin artículo con `acctCode` directo,
-   **tanto para ventas como para compras**. **Diseño propuesto (en validación): toggle
-   por LÍNEA "Artículo / Cuenta (servicio)"** en `luna-document-lines` (SAP permite
-   documentos mixtos).
-   Alcance técnico (sub-fase 3.8.5):
+   **tanto para ventas como para compras**. **Diseño (implementado 2026-09-02): toggle
+   por LÍNEA "Artículo / Cuenta (servicio)"** en `luna-document-lines-detail` (SAP
+   permite documentos mixtos).
+   Alcance técnico (sub-fase 3.8.5) — **IMPLEMENTADO Y VERIFICADO**:
    - Schema: `itemId` **nullable** en `SaleInvoiceItem` / `SalesCreditNoteItem` /
-     `PurchaseInvoiceItem` / `PurchaseCreditNoteItem` (+ relación opcional). Los 4
-     modelos verificados: hoy `itemId Int` obligatorio.
+     `PurchaseInvoiceItem` / `PurchaseCreditNoteItem` (+ relación opcional). Migración
+     `20260902160000_service_lines_no_item` (Drop FK + `itemId` DROP NOT NULL + re-FK
+     `ON DELETE SET NULL` en los 4 modelos).
    - DTOs: `itemId` opcional + `acctCode` (obligatorio si no hay ítem) + `description`.
-   - **Motor contable (verificado):** los builders ya usan `line.acctCode ??
-     resolveAccount(...)` (sales.journal-builder L126, purchases L174) — con guard
-     `itemId == null → acctCode obligatorio`; saltar ICE/COGS/inventario en líneas sin
-     ítem (`iceByItem.get(line.itemId)` L139 requiere guard).
+   - **Motor contable (verificado live):** los builders usan `line.acctCode ??
+     resolveAccount(...)` con guard `itemId == null → acctCode obligatorio`; se saltan
+     ICE/COGS/inventario en líneas sin ítem. Verificación: factura FVE-000032 con línea
+     de servicio (acctCode 265 "Publicidad y Promoción") generó el asiento ASI-000199
+     con Cr directo a la cuenta 265, balanceado 103/103.
    - Servicios/validaciones: sin movimiento de stock, almacén, batch/serial ni tracking;
-     `Quantity` puede ser 0 (monto puro); subtotal = monto directo.
-   - Frontend: toggle por línea en `luna-document-lines` — modo cuenta intercambia la
-     celda ítem por descripción + `app-account-selector` (reutiliza `manualAccount`).
-   - Tests: creación factura/NC de servicio sin ítem + asiento con cuenta directa.
+     cantidad fija 1; subtotal = monto directo. Validación 400 si la línea de servicio
+     no trae acctCode ("Las líneas de servicio requieren una cuenta contable (acctCode)").
+   - Frontend: toggle por línea en `luna-document-lines-detail` — modo cuenta intercambia
+     la celda ítem por descripción + `app-account-selector` (reutiliza `manualAccount`).
+     Implementado en facturas y NC de ventas y compras (4 formularios).
 3. `sapControlAccount` en compras → `PurchaseInvoice` + `PurchaseCreditNote` (cuenta de
    control CxP), no en cotización/pedido (aunque el payload de cotización lo traiga).
 4. `isConsignment` → `PurchaseReceipt` (WareHouseUpdateType dwh_Consignment).

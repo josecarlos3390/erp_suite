@@ -47,7 +47,7 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
 |---------|-----------|----------------|
 | `docs/guides/` | Guías canónicas de dominio específico | `ESTANDAR_LINEAS_DOCUMENTO.md`, `ACCOUNTING_ENTRIES_GUIDE.md` |
 | `docs/plans/` | Planes de trabajo activos | `plan-consistencia-visual-v2.md`, `plan-mejoras-ux-ui-frontend.md` |
-| `docs/reference/` | Análisis técnicos y referencias de arquitectura | `ACCOUNTS_DETERMINATION_FIX.md`, `SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md` |
+| `docs/reference/` | Análisis técnicos y referencias de arquitectura | `ACCOUNTS_DETERMINATION_FIX.md`, `SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md`, `SAP_B1_INTEGRATION.md` (capa de integración bidireccional SAP B1: modelos, mapeos, idempotencia, migraciones) |
 | `docs/archive/` | Informes históricos de migraciones completadas | Índice de frentes y cierres de fase |
 
 ---
@@ -425,6 +425,7 @@ Archivos complementarios que no requieren lectura obligatoria para tareas rutina
 | `docs/plans/runbook-go-live.md` | Runbook de go-live: despliegue backend + frontend SSR, migraciones (incluye SQL manuales por drift), alineación de tenants, QA previo al corte, rollback y checklist go/no-go. | Al desplegar a producción o preparar el corte. |
 | `docs/reference/ACCOUNTS_DETERMINATION_FIX.md` | Análisis y corrección de paridad de cuentas contables por nivel. | Como referencia del fix de paridad de cuentas. |
 | `docs/reference/SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md` | Análisis comparativo de determinación de cuentas: SAP B1 vs ERP. | Como referencia de arquitectura contable. |
+| `docs/reference/SAP_B1_INTEGRATION.md` | Capa de integración bidireccional SAP B1: 11 modelos con identidad SAP, mapeos por documento (BaseType 13/15/17/20/23, ReserveInvoice, PaymentInvoices it_CreditMemo), idempotencia 409, migraciones, abono de NC. | Antes de implementar el conector SAP (F5.3) o extender la integración al flujo de compras. |
 | `docs/archive/` | Informes históricos de frentes completados y cierres de fase. | Solo si se necesita trazabilidad histórica de una migración ya cerrada. |
 | `backend-erp/CHANGELOG.md` / `erp-frontend/CHANGELOG.md` | Historial de cambios por versión. | Para entender evolución reciente del proyecto. |
 | `backend-erp/load-tests/k6/README.md` | Documentación de la suite de carga k6. | Antes de ejecutar o modificar tests de carga. |

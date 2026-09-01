@@ -409,6 +409,31 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
 
 ---
 
+## 4b. Fase 7 — Preparación integración bidireccional SAP B1 (2026-08-31) ✅
+
+Capa de datos de integración SAP B1 para el flujo de ventas completo (11 modelos). Detalle técnico: `docs/reference/SAP_B1_INTEGRATION.md`.
+
+### Hallazgos y fixes aplicados durante la implementación
+
+| # | Hallazgo | Fix |
+|---|----------|-----|
+| 1 | **Update de cotización daba 500** cuando el payload omitía `partnerId` (el conector que sincroniza solo líneas/identidad): `resolveItemPriceForPartner` usaba `dto.partnerId` (undefined) → Prisma `id: undefined`. | Usar `effectivePartnerId` (`dto.partnerId ?? quotation.partnerId`) en `sales-quotations.service.ts`. |
+| 2 | **Editar un documento desde la UI borraba la identidad SAP** (`sapDocEntry ?? null` sobreescribía). | Preservación condicional: los campos SAP solo se persisten si el payload los trae explícitamente (`dto.sapDocEntry !== undefined`), en create y update de los 11 modelos. |
+| 3 | **El backorder heredaba la identidad SAP del pedido original** → colisionaba con el índice único `@@unique([tenantId, sapDocEntry])` (P2002). | El backorder es un documento NUEVO: inicia `sapDocEntry: null` + `syncStatus: PENDING`; el conector le asignará DocEntry propio. |
+| 4 | **`shipDate` string del payload no se convertía a DateTime** (Prisma "premature end of input") en los mapeos de líneas de entregas y facturas. | `fromTenantDate(line.shipDate, settings.timeZone)` en todos los puntos (8 en entregas, 8 en facturas, etc.). |
+| 5 | **`replace_all` de herencia en DTOs creó recursión** (`SaleInvoiceLineItemBaseDto extends SaleInvoiceLineItemBaseDto`) rompiendo la cadena de tipos. | Corregida la clase base. Lección: verificar replaces globales en jerarquías de DTOs. |
+| 6 | **Dualidad de modelos de factura reserva**: `SaleReserveInvoice` (modelo separado, solo-lectura legacy: movement checkers, métricas, document-flow) vs `SaleInvoice.isReserve='Y'` (flujo de escritura real de `sale-reserve-invoices`). | El conector apunta a `SaleInvoice` (con `isReserve`), como todo el ERP; ambos modelos recibieron campos SAP por coherencia de schema. |
+| 7 | **Test flaky en pre-push** (1 de 1467 falló una vez, pasó en reintento) — probablemente un test de integración afectado por el estado concurrente de la DB local con datos de prueba. | Documentado; reintento OK (1467/1467). |
+
+### Métricas
+
+- **11 modelos** con identidad SAP + índice único + ciclo de sync: `SalesQuotation(Item)`, `SalesOrder(Item)`, `DeliveryOrder(Item)`, `SaleInvoice(Item)`, `SaleReserveInvoice(Item)`, `IncomingPayment(Line)`, `SalesReturn(Item)`, `SalesCreditNote(Item)`.
+- **9 migraciones** aplicadas local + Railway (`20260901010000` → `20260902100000`).
+- **1467 tests PASS** en cada push (origin + deploy).
+- Verificación API con DocEntry reales de SAP: duplicados → **409** con mensaje claro en los 8 tipos.
+
+---
+
 ## 5. Base de conocimiento de bugs
 
 > Registro de bugs críticos y fixes aplicados. Ver `BUGS_RESUELTOS.md` para el registro completo con fechas, archivos y validación.
