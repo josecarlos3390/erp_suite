@@ -27,6 +27,14 @@ Preparar la capa de persistencia para la **integración bidireccional con SAP B1
 | `IncomingPayment` / `IncomingPaymentLine` | ídem | `sapLineNum` | ídem |
 | `SalesReturn` / `SalesReturnItem` | ídem | `shipDate` `sapLineNum` + **`returnAction` `returnReason` `returnCost` `enableReturnCost`** | ídem |
 | `SalesCreditNote` / `SalesCreditNoteItem` | ídem (+ `paidAmount`/`balanceDue`, **`sapControlAccount`**) | `shipDate` `sapLineNum` + **`returnAction` `returnReason`** | ídem |
+| `PurchaseQuotation` / `PurchaseQuotationItem` | ídem (Fase 3.8) | `shipDate` `sapLineNum` | ídem |
+| `PurchaseOrder` / `PurchaseOrderItem` | ídem (Fase 3.8) | `shipDate` `sapLineNum` | ídem |
+| `PurchaseReceipt` / `PurchaseReceiptItem` | ídem (+ **`isConsignment`**, Fase 3.8) | `shipDate` `sapLineNum` | ídem |
+| `PurchaseInvoice` / `PurchaseInvoiceItem` | ídem (+ `isReserve`, **`sapControlAccount`**, `paidAmount`, Fase 3.8) | `shipDate` `sapLineNum` | ídem |
+| `PurchaseReserveInvoice` / `PurchaseReserveInvoiceItem` | ídem (modelo legacy read-only, Fase 3.8) | `shipDate` `sapLineNum` | ídem |
+| `OutgoingPayment` / `OutgoingPaymentLine` | ídem (Fase 3.8) | `sapLineNum` | ídem |
+| `PurchaseReturn` / `PurchaseReturnItem` | ídem (Fase 3.8) | `shipDate` `sapLineNum` + **`returnAction` `returnReason`** | ídem |
+| `PurchaseCreditNote` / `PurchaseCreditNoteItem` | ídem (+ `paidAmount`/`balanceDue`, **`sapControlAccount`**, Fase 3.8) | `shipDate` `sapLineNum` + **`returnAction` `returnReason`** | ídem |
 
 Campos comunes:
 
@@ -51,7 +59,7 @@ consistente con SAP, `FAILED` = último intento falló (ver `lastSyncError`).
 await assertSapDocEntryAvailable(tx, tenantId, 'salesOrder', dto.sapDocEntry, excludeId?);
 ```
 
-- Soporta: `salesQuotation | salesOrder | deliveryOrder | saleInvoice | saleReserveInvoice | incomingPayment | salesReturn | salesCreditNote`.
+- Soporta: `salesQuotation | salesOrder | deliveryOrder | saleInvoice | saleReserveInvoice | incomingPayment | salesReturn | salesCreditNote` **+ compras (Fase 3.8):** `purchaseQuotation | purchaseOrder | purchaseReceipt | purchaseInvoice | purchaseReserveInvoice | outgoingPayment | purchaseReturn | purchaseCreditNote` (16 documentos).
 - Duplicado → `ConflictException` (HTTP 409) con mensaje claro:
   `Ya existe un pedido (PED-000035) con sapDocEntry 9100`.
 - El índice único `@@unique([tenantId, sapDocEntry])` queda como red contra carreras
