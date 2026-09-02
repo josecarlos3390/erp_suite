@@ -169,5 +169,23 @@ Los módulos importan `DocumentSeriesModule`. Specs de servicio actualizados con
     para no disparar HTTP; los forms comerciales ya usaban template override.
   - **CHANGELOGs** de backend y frontend documentan el módulo completo (Fases 1–4b + cierre
     de huecos).
+- **Política de gestión contable ✅ (2026-09-04, decisión de negocio):**
+  - **Modo libre:** si el tenant NO tiene años fiscales configurados, los documentos se
+    registran sin exigir período (compatibilidad con tenants nuevos / sin contabilidad por
+    gestión) — comportamiento previo intacto.
+  - **Modo estricto (al configurar gestión):** en cuanto el tenant tiene ≥1 año fiscal, los
+    asientos automáticos (`journal-entry-core._persist` — facturas, entregas, pagos, NC/ND,
+    etc.) deben caer en un período contable ACTIVO que cubra la fecha en la confirmación/
+    posteo: fuera de rango → 409 «No existe un período contable activo que cubra la fecha…»;
+    período cerrado/bloqueado/año cerrado → bloqueo (ya existente). El asiento se vincula al
+    período (fiscalYearId/periodId).
+  - **Series enmarcadas en la gestión:** al crear una serie con gestión configurada, su rango
+    debe estar contenido en un año fiscal abierto (auto-enmarca el fiscalYearId si hay una
+    única gestión que lo cubre; exige elegir si hay varias; bloquea si ninguna o si la gestión
+    indicada está cerrada). Sin gestión → modo libre (series sin año fiscal).
+  - **Bugs del form de series corregidos:** (1) al guardar, `hasChanges` se apaga antes de
+    navegar → el dirtyCheckGuard ya no pregunta «¿guardar cambios?» tras guardar; (2) en
+    edición, el docType (deshabilitado por ser identidad) se setea explícitamente con
+    `setValue` → el formulario muestra el tipo al cargar.
 - `prisma migrate dev` requiere `resolve --applied` de `20260826200731_rbac_roles` (drift
   histórico preexistente; la BD real ya está al día con el schema).

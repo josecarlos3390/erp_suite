@@ -301,7 +301,12 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
   (2026-09-04):** `doc-types` devuelve `{value,label}` como fuente única del catálogo (el
   modelo frontend dejó de duplicar array/labels; se conserva el union type); specs de forms
   con template real mockean `DocumentSeriesService`; CHANGELOGs backend/frontend
-  documentados.
+  documentados. **Política de gestión contable ✅ (2026-09-04):** modo libre sin años
+  fiscales (compatibilidad); al configurar gestión (≥1 año fiscal) los asientos automáticos
+  deben caer en un período ACTIVO que cubra la fecha (409 fuera de rango; vínculo
+  fiscalYearId/periodId) y las series deben enmarcarse en una gestión abierta; bugs del form
+  de series corregidos (guard sin «¿guardar cambios?» tras guardar + docType visible en
+  edición). Backend 1533/1533.
 
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|
