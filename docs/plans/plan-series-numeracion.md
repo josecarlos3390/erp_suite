@@ -1,6 +1,6 @@
 # Plan — Series de Numeración de Documentos (patrón SAP B1)
 
-> **Fecha:** 2026-09-02 · **Estado:** Fases 1–4 (VENTAS + COMPRAS + INVENTARIO) implementadas y verificadas.
+> **Fecha:** 2026-09-04 · **Estado:** Fases 1–4 (VENTAS + COMPRAS + INVENTARIO) + cierre de huecos implementados y verificados.
 > **Objetivo:** poder gestionar varias series de correlativo por tipo de documento, cada una
 > acotada a un rango de fechas (período/gestión). Ej.: gestión 2025 → serie COT-2025 con
 > COT-250000001…; gestión 2026 → serie COT-2026 con COT-260000001…; asignar una serie por
@@ -130,11 +130,20 @@ Los módulos importan `DocumentSeriesModule`. Specs de servicio actualizados con
   labels + sequence map (ENT/SAL/TRA/AJU/CON); `doc-types` expone **24 tipos** (9 ventas + 10
   compras + 5 inventario). Integrado en los 5 servicios de inventario (helper privado delega
   en `nextDocumentCode` con la fecha del documento y el usuario creador; `documentSeriesId`
-  en DTO de creación y persistido en el header). El ajuste derivado de una toma
-  (`stock-counts.adjust` → StockAdjustment) conserva la numeración clásica AJU (flujo interno
-  automático, igual que `convertToOrder` en compras). `_countUsages` ampliado a los 23
+  en DTO de creación y persistido en el header). `_countUsages` ampliado a los 23
   headers con `documentSeriesId` (ventas + compras + inventario). Frontend: modelo
   `DocumentSeriesDocType` ampliado a 24 y selector en los 5 formularios de inventario.
   Suite backend **1524/1524**, Karma **1421/1421**.
+- **Cierre de huecos ✅ (2026-09-04) — flujos derivados respetan la serie del tipo destino:**
+  los documentos que se generan AUTOMÁTICAMENTE desde otro flujo ya no usan numeración
+  clásica cuando el tipo destino tiene series configuradas: `purchase-requests.convertToOrder`
+  → PurchaseOrder (PURCHASE_ORDER), el abono de NC de venta → IncomingPayment
+  (INCOMING_PAYMENT), el abono de NC de compra → OutgoingPayment (OUTGOING_PAYMENT) y el
+  ajuste derivado de una toma (`stock-counts.adjust`) → StockAdjustment (STOCK_ADJUSTMENT).
+  Todos delegan en `nextDocumentCode` con la fecha del documento origen/confirmación y el
+  usuario que ejecuta la acción (resolución usuario → default → única que cubre; fallback
+  clásico si el tipo no tiene series; BadRequest claro si tiene series activas pero ninguna
+  cubre la fecha). `documentSeriesId` persistido en cada header derivado; imports del
+  generador clásico eliminados donde quedaron sin uso. Suite backend completa en verde.
 - `prisma migrate dev` requiere `resolve --applied` de `20260826200731_rbac_roles` (drift
   histórico preexistente; la BD real ya está al día con el schema).

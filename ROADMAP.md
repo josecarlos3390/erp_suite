@@ -287,9 +287,13 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
   headers de inventario (entradas StockEntry, salidas StockExit, traspasos StockTransfer,
   ajustes StockAdjustment, tomas StockCount — migración `20260904000000_document_series_inventory`);
   integrado en los 5 servicios de inventario con la fecha contable del documento + usuario
-  creador (el ajuste derivado de una toma conserva numeración clásica AJU, como convertToOrder);
-  `doc-types` = **24**; `_countUsages` cubre los 23 headers con series. Selector integrado en
-  los 5 formularios de inventario (ENT/SAL/TRA/AJU/CON).
+  creador; `doc-types` = **24**; `_countUsages` cubre los 23 headers con series. Selector
+  integrado en los 5 formularios de inventario (ENT/SAL/TRA/AJU/CON). **Cierre de huecos ✅
+  (2026-09-04):** los flujos automáticos que generan un documento de OTRO tipo ya respetan la
+  serie del tipo destino — `convertToOrder` → PO, abono NC venta → REC, abono NC compra →
+  PAG y ajuste derivado de toma → AJU — todos vía `nextDocumentCode` (fecha del origen +
+  usuario que ejecuta; fallback clásico si el tipo no tiene series; 400 claro si ninguna
+  cubre la fecha); `documentSeriesId` persistido en cada header derivado. Backend 1524/1524.
 
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|
