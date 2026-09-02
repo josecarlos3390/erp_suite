@@ -282,8 +282,14 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
   creación. **Fase 3 ✅ COMPRAS (10 tipos):** columna `documentSeriesId` en los 10 headers de
   compra, integrado en los 10 servicios de compra (dispatcher FCP/FRC) y selector en los 10
   formularios de compra; `doc-types` = 19. Verificado live: serie PO-2026 → pedido de compra
-  **PO-260000001**; backend 1521/1521, Karma 1421/1421. Pendiente Fase 4: inventario
-  (requiere ampliar el enum DocumentType).
+  **PO-260000001**; backend 1521/1521, Karma 1421/1421. **Fase 4 ✅ INVENTARIO (5 tipos,
+  2026-09-04):** enum `DocumentType` + `STOCK_COUNT` y columna `documentSeriesId` en los 5
+  headers de inventario (entradas StockEntry, salidas StockExit, traspasos StockTransfer,
+  ajustes StockAdjustment, tomas StockCount — migración `20260904000000_document_series_inventory`);
+  integrado en los 5 servicios de inventario con la fecha contable del documento + usuario
+  creador (el ajuste derivado de una toma conserva numeración clásica AJU, como convertToOrder);
+  `doc-types` = **24**; `_countUsages` cubre los 23 headers con series. Selector integrado en
+  los 5 formularios de inventario (ENT/SAL/TRA/AJU/CON).
 
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|

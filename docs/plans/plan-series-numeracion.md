@@ -1,6 +1,6 @@
 # Plan — Series de Numeración de Documentos (patrón SAP B1)
 
-> **Fecha:** 2026-09-02 · **Estado:** Fases 1–3 (VENTAS + COMPRAS) implementadas y verificadas.
+> **Fecha:** 2026-09-02 · **Estado:** Fases 1–4 (VENTAS + COMPRAS + INVENTARIO) implementadas y verificadas.
 > **Objetivo:** poder gestionar varias series de correlativo por tipo de documento, cada una
 > acotada a un rango de fechas (período/gestión). Ej.: gestión 2025 → serie COT-2025 con
 > COT-250000001…; gestión 2026 → serie COT-2026 con COT-260000001…; asignar una serie por
@@ -122,7 +122,19 @@ Los módulos importan `DocumentSeriesModule`. Specs de servicio actualizados con
   modelo `DocumentSeriesDocType` ampliado a 19 y selector en los 10 formularios de compra.
   Verificado live: serie PO-2026 → pedido de compra **PO-260000001**. Suite backend
   **1521/1521**, Karma **1421/1421**.
-- **Fase 4 (futuro):** extender a INVENTARIO (entradas, salidas, traspasos, ajustes, tomas)
-  — requiere ampliar el enum `DocumentType` (hoy no cubre STOCK_COUNT/TRANSPORT_GUIDE).
+- **Fase 4 ✅ (2026-09-04) — INVENTARIO (5 tipos):** entradas (StockEntry), salidas
+  (StockExit), traspasos (StockTransfer), ajustes (StockAdjustment) y tomas (StockCount).
+  Requirió ampliar el enum `DocumentType` con `STOCK_COUNT` (migración
+  `20260904000000_document_series_inventory`: `ALTER TYPE … ADD VALUE 'STOCK_COUNT'` +
+  columna `documentSeriesId Int?` en los 5 headers de inventario). `INVENTORY_DOC_TYPES` +
+  labels + sequence map (ENT/SAL/TRA/AJU/CON); `doc-types` expone **24 tipos** (9 ventas + 10
+  compras + 5 inventario). Integrado en los 5 servicios de inventario (helper privado delega
+  en `nextDocumentCode` con la fecha del documento y el usuario creador; `documentSeriesId`
+  en DTO de creación y persistido en el header). El ajuste derivado de una toma
+  (`stock-counts.adjust` → StockAdjustment) conserva la numeración clásica AJU (flujo interno
+  automático, igual que `convertToOrder` en compras). `_countUsages` ampliado a los 23
+  headers con `documentSeriesId` (ventas + compras + inventario). Frontend: modelo
+  `DocumentSeriesDocType` ampliado a 24 y selector en los 5 formularios de inventario.
+  Suite backend **1524/1524**, Karma **1421/1421**.
 - `prisma migrate dev` requiere `resolve --applied` de `20260826200731_rbac_roles` (drift
   histórico preexistente; la BD real ya está al día con el schema).
