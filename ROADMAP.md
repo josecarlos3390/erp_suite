@@ -272,11 +272,13 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
 - **Verificado live (2026-09-02):** COT-2025 → cotizaciones `COT-250000001`, `COT-250000002`;
   COT-2026 → `COT-260000001`; asignación usuario→serie OK; prioridad de resolución OK; fecha
   2024 fuera de rango → 400 «No existe una serie activa de SALES_QUOTATION que cubra la fecha…».
-- **Tests:** document-series.service.spec 20 + controller 5; suite backend 1515/1516 (1 flaky
-  preexistente de auth que pasa en aislamiento). Build + lint OK.
+- **Tests:** document-series.service.spec 29 + controller 5; suite backend **1520/1520**;
+  frontend página 35 + selector/forms 47; Karma **1421/1421**. Build + lint OK.
 - **Plan:** `docs/plans/plan-series-numeracion.md`.
-- **Frontend (en curso):** página `/document-series` (listado + form + asignación usuario) y
-  selector de serie opcional en formularios de venta.
+- **Frontend ✅ (2026-09-02):** página `/document-series` (listado + form + asignación usuario
+  por tipo) y selector `app-document-series-select` integrado en cotización, pedido, entrega,
+  factura de venta y factura de reserva (override `documentSeriesId` en el payload de
+  creación). Pendiente Fase 2: selector en devoluciones/NC/ND/pagos y extender a compras.
 
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|

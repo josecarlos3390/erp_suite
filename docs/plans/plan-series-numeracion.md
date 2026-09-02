@@ -1,6 +1,7 @@
 # Plan — Series de Numeración de Documentos (patrón SAP B1)
 
-> **Fecha:** 2026-09-02 · **Estado:** Backend Fase 1 (VENTAS) implementado y verificado en vivo.
+> **Fecha:** 2026-09-02 · **Estado:** Fase 1 (VENTAS) **completa** — backend + frontend
+> implementados y verificados (en vivo y con suites).
 > **Objetivo:** poder gestionar varias series de correlativo por tipo de documento, cada una
 > acotada a un rango de fechas (período/gestión). Ej.: gestión 2025 → serie COT-2025 con
 > COT-250000001…; gestión 2026 → serie COT-2026 con COT-260000001…; asignar una serie por
@@ -81,20 +82,36 @@ Los módulos importan `DocumentSeriesModule`. Specs de servicio actualizados con
 - Prioridad de resolución: serie asignada al usuario gana si cubre la fecha; si no cubre → default.
 - Exigencia: fecha **2024** (fuera de todo rango) → 400
   «No existe una serie activa de SALES_QUOTATION que cubra la fecha del documento (2024-05-05)…».
+- **Override (selector del form):** serie inexistente → 400 «La serie solicitada no existe, no
+  está activa o no corresponde…»; serie COT-2026 válida para fecha 2026 → `COT-260000001`.
+
+### Frontend (completado)
+
+- Página **`/document-series`** (Administración): listado con filtro por docType, badges
+  Default/Activa, Ver/Editar/Inactivar-Eliminar; form con rango de fechas, correlativo,
+  toggles, año fiscal y «Continuar correlativo de serie»; página `/document-series/assignments`
+  para asignar serie por defecto a cada usuario.
+- Selector compartido `app-document-series-select` (Automática = null / serie elegida) integrado
+  en cotización, pedido, entrega, factura de venta y factura de reserva (solo payload de
+  creación; serie fijada al crear; sale-invoices usa docType dinámico FRV si es rama
+  multi-entregas).
 
 ## 5. Tests
 
-- `document-series.service.spec.ts`: 20 tests (create/duplicado/herencia, resolve por
-  usuario/default/única/ambiguas/sin-series, nextDocumentCode atómico/agotada/exigir/fallback,
-  assignToUser/remove).
+- `document-series.service.spec.ts`: 29 tests (CRUD/herencia + resolve por usuario/default/
+  única/ambiguas/sin-series + nextDocumentCode atómico/agotada/exigir/fallback + override
+  válido/otro docType/inexistente/no cubre fecha + assignToUser/remove).
 - `document-series.controller.spec.ts`: 5 tests.
-- Suite backend: 1515/1516 (1 fallo flaky preexistente de auth que pasa en aislamiento).
-- Build OK, lint 0 errores (solo 2 warnings preexistentes).
+- Suite backend completa: **1520/1520**.
+- Frontend: página series **35 tests**; selector + 5 forms **47 tests**; Karma completo
+  **1421/1421**; build OK en ambos.
+- Build OK, lint 0 errores (solo warnings preexistentes).
 
 ## 6. Pendiente / notas
 
-- **Frontend (en curso):** página `/document-series` (listado + form + asignación usuario),
-  selector de serie opcional en los formularios de venta.
-- **Doc:** actualizar `ROADMAP.md` (nueva fila de fase) y este plan al cerrar frontend.
+- **Fase 2 (futuro):** integrar el selector de serie en devoluciones, NC, ND y pagos recibidos
+  (los 4 restantes del flujo de venta); y extender el módulo a compras/inventario.
+- `prisma migrate dev` requiere `resolve --applied` de `20260826200731_rbac_roles` (drift
+  histórico preexistente; la BD real ya está al día con el schema).
 - `prisma migrate dev` requiere `resolve --applied` de `20260826200731_rbac_roles` (drift
   histórico preexistente; la BD real ya está al día con el schema).
