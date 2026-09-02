@@ -249,6 +249,35 @@ Capa de datos lista para el **conector bidireccional** con SAP B1. Los 11 modelo
 **Mapeos SAP clave resueltos:** `BaseType 23`=cotización, `17`=pedido, `15`=entrega, `13`=factura; `ReserveInvoice: "tYES"`=factura reserva; `PaymentInvoices[].InvoiceType: "it_CreditMemo"`=NC (relación NC↔abono nativa, vive en el pago); UDF personalizados (`U_CXS_BREF` etc.) **no** se usan como fuente de verdad.
 
 **Pendiente:** el conector real a SAP Service Layer (F5.3), sincronización de estados (cerrar/cancelar).
+
+## Series de numeración de documentos (patrón SAP B1) — Fase 1 VENTAS ✅ (2026-09-02)
+
+Módulo para gestionar **series de correlativo por tipo de documento acotadas a un período**
+(gestión): cada serie define prefijo + número inicial + rango de fechas propio
+(+ referencia opcional a FiscalYear/AccountingPeriod). Ej.: serie COT-2025 (rango 2025) →
+`COT-250000001…`; serie COT-2026 (rango 2026) → `COT-260000001…`. Permite **asignar una serie
+por defecto a cada usuario** (por tipo de documento) y **heredar el correlativo** de una serie
+de la gestión anterior al crear la siguiente (`continueFromSeriesId`). Si un tipo NO tiene
+series configuradas → fallback al generador clásico (cero regresión); si las tiene → todo
+documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 claro si no).
+
+- **Backend:** modelos `DocumentSeries` + `UserDocumentSeries` (migraciones
+  `20260903000000_document_series`, `20260903010000_document_series_doc_links` con
+  `documentSeriesId` en los 8 headers de venta); módulo `src/document-series/` (CRUD +
+  asignación usuario + `resolveSeries` con prioridad usuario → default → única que cubre +
+  `nextDocumentCode` atómico `UPDATE…RETURNING nextNumber-1` dentro de la tx del documento);
+  integrado en los **9 servicios de venta** (32 call-sites: cotización 1, pedido 4, entrega 7,
+  factura 8 vía dispatcher FVE/FRV, FRV 7, devolución 1, NC 2, ND 1, pago recibido 1) con la
+  fecha contable del documento y el usuario creador; permiso `document-series` registrado.
+- **Verificado live (2026-09-02):** COT-2025 → cotizaciones `COT-250000001`, `COT-250000002`;
+  COT-2026 → `COT-260000001`; asignación usuario→serie OK; prioridad de resolución OK; fecha
+  2024 fuera de rango → 400 «No existe una serie activa de SALES_QUOTATION que cubra la fecha…».
+- **Tests:** document-series.service.spec 20 + controller 5; suite backend 1515/1516 (1 flaky
+  preexistente de auth que pasa en aislamiento). Build + lint OK.
+- **Plan:** `docs/plans/plan-series-numeracion.md`.
+- **Frontend (en curso):** página `/document-series` (listado + form + asignación usuario) y
+  selector de serie opcional en formularios de venta.
+
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|
 | Alta | **F5.1 — Facturación Electrónica SIN Bolivia** | Firma digital, envío masivo, consulta de estado. *(siguiente feature prioritario)* |
