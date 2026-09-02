@@ -1,7 +1,6 @@
 # Plan — Series de Numeración de Documentos (patrón SAP B1)
 
-> **Fecha:** 2026-09-02 · **Estado:** Fase 1 (VENTAS) **completa** — backend + frontend
-> implementados y verificados (en vivo y con suites).
+> **Fecha:** 2026-09-02 · **Estado:** Fases 1–3 (VENTAS + COMPRAS) implementadas y verificadas.
 > **Objetivo:** poder gestionar varias series de correlativo por tipo de documento, cada una
 > acotada a un rango de fechas (período/gestión). Ej.: gestión 2025 → serie COT-2025 con
 > COT-250000001…; gestión 2026 → serie COT-2026 con COT-260000001…; asignar una serie por
@@ -114,8 +113,16 @@ Los módulos importan `DocumentSeriesModule`. Specs de servicio actualizados con
 
 ## 6. Pendiente / notas
 
-- **Fase 3 (futuro):** extender el módulo a COMPRAS (cotización, pedido, recepción, factura,
-  FR compra, pago saliente, devolución, NC) e inventario (entradas, salidas, traspasos,
-  ajustes, tomas) — misma activación por configuración.
+- **Fase 3 ✅ (2026-09-02) — COMPRAS completo (10 tipos):** columna `documentSeriesId` en
+  los 10 headers de compra (migración `20260903020000_document_series_purchase`);
+  `PURCHASE_DOC_TYPES` + labels + sequence map (SOL/PCOT/PO/REC/FCP/FRC/PAG/DCP/NCP/NDC);
+  `doc-types` expone 19 tipos. Integrado en los 10 servicios de compra (dispatcher FCP/FRC
+  en facturas — la FRC vive en `PurchaseInvoice isReserve='Y'`, wrapper en
+  purchase-reserve-invoices) con override `documentSeriesId` en DTOs de creación. Frontend:
+  modelo `DocumentSeriesDocType` ampliado a 19 y selector en los 10 formularios de compra.
+  Verificado live: serie PO-2026 → pedido de compra **PO-260000001**. Suite backend
+  **1521/1521**, Karma **1421/1421**.
+- **Fase 4 (futuro):** extender a INVENTARIO (entradas, salidas, traspasos, ajustes, tomas)
+  — requiere ampliar el enum `DocumentType` (hoy no cubre STOCK_COUNT/TRANSPORT_GUIDE).
 - `prisma migrate dev` requiere `resolve --applied` de `20260826200731_rbac_roles` (drift
   histórico preexistente; la BD real ya está al día con el schema).

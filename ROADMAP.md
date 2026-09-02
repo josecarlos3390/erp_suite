@@ -279,7 +279,11 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
   por tipo) y selector `app-document-series-select` integrado en los **9 forms de venta**
   (cotización, pedido, entrega, factura de venta, factura de reserva en Fase 1; devoluciones,
   NC, ND y pagos recibidos en **Fase 2**) con override `documentSeriesId` en el payload de
-  creación. Flujo de VENTAS cubierto al 100%. Pendiente Fase 3: extender a compras/inventario.
+  creación. **Fase 3 ✅ COMPRAS (10 tipos):** columna `documentSeriesId` en los 10 headers de
+  compra, integrado en los 10 servicios de compra (dispatcher FCP/FRC) y selector en los 10
+  formularios de compra; `doc-types` = 19. Verificado live: serie PO-2026 → pedido de compra
+  **PO-260000001**; backend 1521/1521, Karma 1421/1421. Pendiente Fase 4: inventario
+  (requiere ampliar el enum DocumentType).
 
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|
