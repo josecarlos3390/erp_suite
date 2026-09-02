@@ -294,6 +294,10 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
   PAG y ajuste derivado de toma → AJU — todos vía `nextDocumentCode` (fecha del origen +
   usuario que ejecuta; fallback clásico si el tipo no tiene series; 400 claro si ninguna
   cubre la fecha); `documentSeriesId` persistido en cada header derivado. Backend 1524/1524.
+  **Fase 4b ✅ LOGÍSTICA/PRODUCCIÓN (2 tipos, 2026-09-04):** guías de remisión
+  (`TRANSPORT_GUIDE` — agregado al enum) y órdenes de ensamblaje (`ASSEMBLY_ORDER`) con
+  series (migración `20260904100000_document_series_logistics`); `doc-types` = **26**;
+  selector en los forms de guías y ensamblajes; `_countUsages` cubre 25 headers.
 
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|

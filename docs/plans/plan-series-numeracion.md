@@ -1,6 +1,6 @@
 # Plan — Series de Numeración de Documentos (patrón SAP B1)
 
-> **Fecha:** 2026-09-04 · **Estado:** Fases 1–4 (VENTAS + COMPRAS + INVENTARIO) + cierre de huecos implementados y verificados.
+> **Fecha:** 2026-09-04 · **Estado:** Fases 1–4b (VENTAS + COMPRAS + INVENTARIO + LOGÍSTICA) + cierre de huecos implementados y verificados.
 > **Objetivo:** poder gestionar varias series de correlativo por tipo de documento, cada una
 > acotada a un rango de fechas (período/gestión). Ej.: gestión 2025 → serie COT-2025 con
 > COT-250000001…; gestión 2026 → serie COT-2026 con COT-260000001…; asignar una serie por
@@ -145,5 +145,16 @@ Los módulos importan `DocumentSeriesModule`. Specs de servicio actualizados con
   clásico si el tipo no tiene series; BadRequest claro si tiene series activas pero ninguna
   cubre la fecha). `documentSeriesId` persistido en cada header derivado; imports del
   generador clásico eliminados donde quedaron sin uso. Suite backend completa en verde.
+- **Fase 4b ✅ (2026-09-04) — LOGÍSTICA / PRODUCCIÓN (2 tipos):** guías de remisión
+  (`TransportGuide` → `TRANSPORT_GUIDE`, agregado al enum `DocumentType`) y órdenes de
+  ensamblaje (`AssemblyOrder` → `ASSEMBLY_ORDER`, ya existía en el enum). Migración
+  `20260904100000_document_series_logistics` (`ALTER TYPE … ADD VALUE 'TRANSPORT_GUIDE'` +
+  columna `documentSeriesId Int?` en `TransportGuide` y `AssemblyOrder`).
+  `LOGISTICS_DOC_TYPES` + labels + sequence map (GRE/ENS); `doc-types` expone **26 tipos**
+  (9 ventas + 10 compras + 5 inventario + 2 logística). Integrado en los 2 servicios con
+  `nextDocumentCode` (fecha del documento + usuario creador + override en create; fallback
+  clásico si el tipo no tiene series). Frontend: `DocumentSeriesDocType` ampliado a 26 y
+  selector en los formularios de guías y ensamblajes. `_countUsages` cubre los 25 headers
+  con `documentSeriesId`. Suite backend y Karma en verde.
 - `prisma migrate dev` requiere `resolve --applied` de `20260826200731_rbac_roles` (drift
   histórico preexistente; la BD real ya está al día con el schema).
