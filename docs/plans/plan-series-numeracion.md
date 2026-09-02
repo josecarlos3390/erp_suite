@@ -95,6 +95,11 @@ Los módulos importan `DocumentSeriesModule`. Specs de servicio actualizados con
   en cotización, pedido, entrega, factura de venta y factura de reserva (solo payload de
   creación; serie fijada al crear; sale-invoices usa docType dinámico FRV si es rama
   multi-entregas).
+- **Fase 2 (2026-09-02):** selector integrado también en devoluciones, NC, ND y pagos recibidos
+  (los 4 forms restantes del flujo de venta, docTypes SALES_RETURN / SALES_CREDIT_NOTE /
+  SALES_DEBIT_NOTE / INCOMING_PAYMENT) — el flujo de VENTAS queda cubierto al 100% por el
+  selector. El backend ya soportaba el override para esos tipos desde Fase 1. Verificado:
+  specs de los 4 forms + selector 35/35, Karma 1421/1421, build OK.
 
 ## 5. Tests
 
@@ -109,9 +114,8 @@ Los módulos importan `DocumentSeriesModule`. Specs de servicio actualizados con
 
 ## 6. Pendiente / notas
 
-- **Fase 2 (futuro):** integrar el selector de serie en devoluciones, NC, ND y pagos recibidos
-  (los 4 restantes del flujo de venta); y extender el módulo a compras/inventario.
-- `prisma migrate dev` requiere `resolve --applied` de `20260826200731_rbac_roles` (drift
-  histórico preexistente; la BD real ya está al día con el schema).
+- **Fase 3 (futuro):** extender el módulo a COMPRAS (cotización, pedido, recepción, factura,
+  FR compra, pago saliente, devolución, NC) e inventario (entradas, salidas, traspasos,
+  ajustes, tomas) — misma activación por configuración.
 - `prisma migrate dev` requiere `resolve --applied` de `20260826200731_rbac_roles` (drift
   histórico preexistente; la BD real ya está al día con el schema).

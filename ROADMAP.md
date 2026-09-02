@@ -276,9 +276,10 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
   frontend página 35 + selector/forms 47; Karma **1421/1421**. Build + lint OK.
 - **Plan:** `docs/plans/plan-series-numeracion.md`.
 - **Frontend ✅ (2026-09-02):** página `/document-series` (listado + form + asignación usuario
-  por tipo) y selector `app-document-series-select` integrado en cotización, pedido, entrega,
-  factura de venta y factura de reserva (override `documentSeriesId` en el payload de
-  creación). Pendiente Fase 2: selector en devoluciones/NC/ND/pagos y extender a compras.
+  por tipo) y selector `app-document-series-select` integrado en los **9 forms de venta**
+  (cotización, pedido, entrega, factura de venta, factura de reserva en Fase 1; devoluciones,
+  NC, ND y pagos recibidos en **Fase 2**) con override `documentSeriesId` en el payload de
+  creación. Flujo de VENTAS cubierto al 100%. Pendiente Fase 3: extender a compras/inventario.
 
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|
