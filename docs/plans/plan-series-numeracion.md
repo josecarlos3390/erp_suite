@@ -1,6 +1,6 @@
 # Plan — Series de Numeración de Documentos (patrón SAP B1)
 
-> **Fecha:** 2026-09-04 · **Estado:** Fases 1–4b (VENTAS + COMPRAS + INVENTARIO + LOGÍSTICA) + cierre de huecos implementados y verificados.
+> **Fecha:** 2026-09-04 · **Estado:** Fases 1–4b + cierre de huecos + deuda D + política de gestión + rediseño serie→gestión (exigencia) implementados y verificados.
 > **Objetivo:** poder gestionar varias series de correlativo por tipo de documento, cada una
 > acotada a un rango de fechas (período/gestión). Ej.: gestión 2025 → serie COT-2025 con
 > COT-250000001…; gestión 2026 → serie COT-2026 con COT-260000001…; asignar una serie por
@@ -187,5 +187,22 @@ Los módulos importan `DocumentSeriesModule`. Specs de servicio actualizados con
     navegar → el dirtyCheckGuard ya no pregunta «¿guardar cambios?» tras guardar; (2) en
     edición, el docType (deshabilitado por ser identidad) se setea explícitamente con
     `setValue` → el formulario muestra el tipo al cargar.
+- **Rediseño: serie ligada a la gestión (año fiscal) + documentos exigen serie ✅
+  (2026-09-04, decisión de negocio):**
+  - **La serie NUEVA se liga OBLIGATORIAMENTE a un año fiscal (gestión):** al crearla se exige
+    `fiscalYearId` (400 claro «primero defina la gestión contable (año fiscal)…» si no hay
+    gestión). La vigencia (`startDate`/`endDate`) se **deriva** de la gestión
+    (startDate = fy.startDate, endDate = fy.endDate) — los subperíodos mensuales ya definen el
+    rango; el form ya no pide fechas. Series EXISTENTES sin gestión conservan su rango
+    (progresivo, sin migración de datos); al editar y cambiar la gestión se re-deriva.
+  - **Los documentos EXIGEN serie definida:** `nextDocumentCode` ya NO cae al generador
+    clásico cuando el tipo no tiene series activas → responde 400 «Defina primero una serie de
+    numeración para [tipo] (Administración → Series de numeración)…» en todos los flujos
+    (cotizaciones, pedidos, facturas, compras, inventario, logística — los 26 tipos delegan
+    en este servicio). El fallback clásico `DOC_TYPE_SEQUENCE_MAP` deja de numerar.
+  - **Asignación:** general (default del tenant) o específica por usuario — sin cambios.
+  - Verificado live: serie sin gestión → 400; cotización sin serie → 400 «Defina primero…»;
+    gestión 2026 + serie COT-2026 (sin fechas, vigencia derivada 2026-01-01→2026-12-31) →
+    cotización COT-260000001 con seriesId persistido.
 - `prisma migrate dev` requiere `resolve --applied` de `20260826200731_rbac_roles` (drift
   histórico preexistente; la BD real ya está al día con el schema).

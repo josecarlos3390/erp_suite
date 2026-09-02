@@ -306,7 +306,11 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
   deben caer en un período ACTIVO que cubra la fecha (409 fuera de rango; vínculo
   fiscalYearId/periodId) y las series deben enmarcarse en una gestión abierta; bugs del form
   de series corregidos (guard sin «¿guardar cambios?» tras guardar + docType visible en
-  edición). Backend 1533/1533.
+  edición). Backend 1533/1533. **Rediseño serie→gestión + exigencia ✅ (2026-09-04):** la
+  serie NUEVA exige año fiscal (vigencia derivada de la gestión, sin rango de fechas propio;
+  progresivo para series existentes) y los DOCUMENTOS exigen serie definida (sin fallback
+  clásico — 400 «Defina primero una serie de numeración…»). Backend 1532/1532, Karma
+  1423/1423.
 
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|
