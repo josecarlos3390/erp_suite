@@ -156,5 +156,18 @@ Los módulos importan `DocumentSeriesModule`. Specs de servicio actualizados con
   clásico si el tipo no tiene series). Frontend: `DocumentSeriesDocType` ampliado a 26 y
   selector en los formularios de guías y ensamblajes. `_countUsages` cubre los 25 headers
   con `documentSeriesId`. Suite backend y Karma en verde.
+- **Deuda técnica D ✅ (2026-09-04):**
+  - **Catálogo con una sola fuente:** `GET /document-series/doc-types` ahora devuelve
+    `[{ value, label }]` (backend = única fuente; labels es-ES). El frontend eliminó del
+    modelo el runtime duplicado (`DOCUMENT_SERIES_DOC_TYPES`, `DOC_TYPE_LABELS`,
+    `docTypeLabel()`); el union type `DocumentSeriesDocType` se conserva por type-safety en
+    los forms. Listado/form/asignaciones cargan opciones y labels desde el endpoint
+    (`DocumentSeriesDocTypeOption`).
+  - **Specs aislados del selector:** specs de forms que renderizan template real con
+    `app-document-series-select` (stock-entries/exits/transfers/adjustments/counts,
+    incoming/outgoing-payments) mockean `DocumentSeriesService` (getAll/getOne/getDocTypes)
+    para no disparar HTTP; los forms comerciales ya usaban template override.
+  - **CHANGELOGs** de backend y frontend documentan el módulo completo (Fases 1–4b + cierre
+    de huecos).
 - `prisma migrate dev` requiere `resolve --applied` de `20260826200731_rbac_roles` (drift
   histórico preexistente; la BD real ya está al día con el schema).

@@ -297,7 +297,11 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
   **Fase 4b ✅ LOGÍSTICA/PRODUCCIÓN (2 tipos, 2026-09-04):** guías de remisión
   (`TRANSPORT_GUIDE` — agregado al enum) y órdenes de ensamblaje (`ASSEMBLY_ORDER`) con
   series (migración `20260904100000_document_series_logistics`); `doc-types` = **26**;
-  selector en los forms de guías y ensamblajes; `_countUsages` cubre 25 headers.
+  selector en los forms de guías y ensamblajes; `_countUsages` cubre 25 headers. **Deuda D ✅
+  (2026-09-04):** `doc-types` devuelve `{value,label}` como fuente única del catálogo (el
+  modelo frontend dejó de duplicar array/labels; se conserva el union type); specs de forms
+  con template real mockean `DocumentSeriesService`; CHANGELOGs backend/frontend
+  documentados.
 
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|
