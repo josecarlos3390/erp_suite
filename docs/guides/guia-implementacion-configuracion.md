@@ -220,4 +220,18 @@ Qué valida (mismo orden que esta guía):
 > El validador es de solo lectura: cada ítem resuelve su acción en la pantalla de origen
 > (Parametrización, Años Fiscales, Series, maestros…). El backend de cada módulo sigue
 > siendo la autoridad final (400 serie, 409 período, 409 contabilidad deshabilitada).
+
+### Mejoras 2026-09-05 (segunda iteración)
+
+- **Mini-wizard "Resolver siguiente paso"** en `/setup`: botón en el encabezado que navega
+  directo a la pantalla que resuelve el **primer pendiente bloqueante en orden de la guía**
+  (MISSING required ordenado por `order`); al volver, la página re-verifica y avanza al
+  siguiente. Convierte el checklist en un onboarding guiado paso a paso.
+- **Vista agregada multi-tenant (superadmin)** — `GET /admin/setup-overview`
+  (SuperAdminOnly + `admin:view`) + pantalla `/super-admin/setup-overview` (botón
+  "Configuración de tenants" en el panel): audita **todos los tenants** con la misma lógica
+  del checklist (perfil, `requiredPending` y la lista de pendientes bloqueantes con su
+  etiqueta) para priorizar implementaciones y detectar clientes que no terminaron de
+  configurar. El `SetupService` lee los settings **por tenant sin cache global** (evita el
+  cache de `SettingsService`, que es de una sola entrada) vía `getChecklistForTenant`.
 | Stock con costo cero / sin matriz | Artículo sin costo o sin matriz artículo-almacén | Costear el artículo; crear matriz (pestaña Almacenes y cuentas) |
