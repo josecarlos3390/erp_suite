@@ -1,6 +1,6 @@
 # ROADMAP.md — ERP Suite
 
-> Hoja de ruta única y consolidada. Estado actualizado al 2026-08-08.
+> Hoja de ruta única y consolidada. Estado actualizado al 2026-09-05.
 
 ---
 
@@ -355,6 +355,33 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
 
 ---
 
+## Contabilidad opcional por tenant — "Habilitar Contabilización" + "Generar Plan de Cuentas" ✅ (2026-09-05)
+
+Patrón SAP B1: los módulos existen; la parametrización decide. Un tenant puede operar
+solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o con
+**contabilidad completa** (asientos automáticos + normativa de impuestos).
+
+- **Flag `accountingEnabled` por tenant** (`SystemSettings`, default true — cero regresión;
+  ausente = habilitado). Toggle en **Parametrización → Contabilidad** del tenant activo y
+  switch en la **creación de tenants** (panel superadmin, default ON). Desactivar solo se
+  permite sin asientos contables (409 backend + toggle inhabilitado en la UI).
+- **Motor apagado:** los 18 métodos de creación automática del `AccountingEngineService`
+  retornan sin efecto cuando el flag es false (el documento se confirma sin asiento y sin
+  consultar cuentas); previews, asientos manuales y asiento de apertura responden 409/400.
+- **Menú contable oculto:** Asientos Contables, Plan de Cuentas y Mapeos Contables se
+  ocultan del sidebar; **Años Fiscales permanece visible** (lo requieren las series de
+  numeración).
+- **"Generar Plan de Cuentas"** (`GET/POST settings/chart-of-accounts`, idempotente):
+  siembra el plan estándar **por país** (`resolveChartOfAccountsTemplate`: país →
+  `UNIVERSAL` fallback → error claro; hoy solo BO) + mappings + cuentas de mayor en los
+  maestros. Al habilitar sin plan, la UI pide generarlo explícitamente.
+- **Seed de tenant:** un tenant que nace sin contabilidad no recibe plan/mappings/cuentas
+  de mayor; `POST /tenants/:id/seed` respeta el flag actual.
+- Tests: backend **1547/1547** (spec flaky de auth pasa en aislamiento); frontend Karma en
+  verde + build AOT 0 errores. Plan: `docs/plans/plan-contabilidad-opcional.md`.
+
+---
+
 ## Notas técnicas
 
 - **Migraciones:** Cada fase requiere migración Prisma. En producción, usar `prisma migrate dev` con nombres descriptivos.
@@ -365,4 +392,4 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
 
 ---
 
-*Última actualización: 2026-08-08*
+*Última actualización: 2026-09-05*
