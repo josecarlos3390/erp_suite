@@ -310,7 +310,9 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
   serie NUEVA exige año fiscal (vigencia derivada de la gestión, sin rango de fechas propio;
   progresivo para series existentes) y los DOCUMENTOS exigen serie definida (sin fallback
   clásico — 400 «Defina primero una serie de numeración…»). Backend 1532/1532, Karma
-  1423/1423.
+  1423/1423. **Cierre de huecos ✅ (2026-09-04):** borrado de gestión protegido contra series
+  ligadas; selector avisa cuando el tipo no tiene series (evita el 400 sorpresa); código
+  muerto `DOC_TYPE_SEQUENCE_MAP` eliminado. Backend 1533/1533, Karma 1425/1425.
 
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|

@@ -204,5 +204,19 @@ Los módulos importan `DocumentSeriesModule`. Specs de servicio actualizados con
   - Verificado live: serie sin gestión → 400; cotización sin serie → 400 «Defina primero…»;
     gestión 2026 + serie COT-2026 (sin fechas, vigencia derivada 2026-01-01→2026-12-31) →
     cotización COT-260000001 con seriesId persistido.
+- **Cierre de huecos de consistencia ✅ (2026-09-04):**
+  - **Borrado de gestión protegido:** `fiscal-years.remove` ahora bloquea eliminar un año
+    fiscal que tenga series de numeración ligadas (`DocumentSeries.fiscalYearId`) — mensaje
+    «No se puede eliminar: hay N series de numeración ligadas a esta gestión. Inactive o
+    reasigne primero esas series.» (antes solo protegía contra asientos; las series quedaban
+    huérfanas). +1 test.
+  - **Selector con aviso de serie faltante:** `app-document-series-select` muestra advertencia
+    (error visible) «No hay series de numeración definidas para este tipo. Defínala primero en
+    Administración → Series de numeración.» cuando el docType no tiene series activas, y el
+    helper explica que sin serie el documento no podrá registrarse — evita el 400 sorpresa al
+    guardar. +2 tests.
+  - **Código muerto eliminado:** `DOC_TYPE_SEQUENCE_MAP` (fallback clásico) removido de
+    `document-series.constants` — quedó sin uso tras la exigencia de serie; `CODE_SEQUENCES`
+    sigue vivo para los generadores clásicos de otros módulos (POS, etc.).
 - `prisma migrate dev` requiere `resolve --applied` de `20260826200731_rbac_roles` (drift
   histórico preexistente; la BD real ya está al día con el schema).
