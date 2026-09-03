@@ -249,6 +249,12 @@ Qué valida (mismo orden que esta guía):
 - **Checks de consistencia (calidad)** — nuevos ítems recomendados (WARN) en el checklist:
   artículos inventariables sin costo, partners activos sin indicador de impuesto por
   defecto y tasa de cambio del día cuando hay moneda secundaria.
+- **Cuentas de mayor por nivel de determinación** — ítem `determinationAccounts`: según el
+  nivel (ITEM/ITEM_GROUP/WAREHOUSE) valida que los maestros que el motor consulta
+  (matriz artículo-almacén, grupo o almacén) tengan las cuentas de inventario/costo, para
+  evitar el 400 al confirmar el primer documento. Los hints de "Cuentas de mayor según" se
+  alinearon con el comportamiento real (fuente según nivel + fallback a mapping para
+  ciertos entry types — no es una cascada artículo→grupo→almacén).
 
 ---
 

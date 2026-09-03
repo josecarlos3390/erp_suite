@@ -384,7 +384,7 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
   sin plan, la UI pide generarlo explícitamente.
 - **Seed de tenant:** un tenant que nace sin contabilidad no recibe plan/mappings/cuentas
   de mayor; `POST /tenants/:id/seed` respeta el flag actual.
-- Tests: backend **1564/1564** (spec flaky de auth pasa en aislamiento); frontend Karma en
+- Tests: backend **1565/1565** (spec flaky de auth pasa en aislamiento); frontend Karma en
   verde + build AOT 0 errores. Plan: `docs/plans/plan-contabilidad-opcional.md`. **Guía de
   configuración paso a paso (por perfil, con/ sin contabilidad):**
   `docs/guides/guia-implementacion-configuracion.md`. **Centro de configuración ✅
@@ -395,8 +395,8 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
   `/super-admin/setup-overview`); **"Documentos que usaré"** (series solo para los tipos
   habilitados, `GET/PUT /setup/doc-types`); **badge proactivo** de bloqueantes en el menú
   (`GET /setup/status`); **checks de consistencia** (costos de artículos, impuesto por
-  defecto de partners, tasa del día); **prueba E2E guiada + gate go-live** (guía Anexo D +
-  runbook-go-live §6).
+  defecto de partners, tasa del día, **cuentas de mayor por nivel de determinación**);
+  **prueba E2E guiada + gate go-live** (guía Anexo D + runbook-go-live §6).
 
 ---
 
