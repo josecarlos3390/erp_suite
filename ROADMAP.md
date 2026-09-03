@@ -368,9 +368,13 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
 - **Motor apagado:** los 18 métodos de creación automática del `AccountingEngineService`
   retornan sin efecto cuando el flag es false (el documento se confirma sin asiento y sin
   consultar cuentas); previews, asientos manuales y asiento de apertura responden 409/400.
-- **Menú contable oculto:** Asientos Contables, Plan de Cuentas y Mapeos Contables se
-  ocultan del sidebar; **Años Fiscales permanece visible** (lo requieren las series de
-  numeración).
+- **Menú contable oculto:** con la contabilización deshabilitada el sidebar oculta los
+  módulos cuya función es generar asientos — Asientos Contables, Plan de Cuentas, Mapeos
+  Contables, **Activos Fijos** (categorías/activos/reporte, depreciación) y **Extractos /
+  Reconciliaciones Bancarias** (posteo y ajustes). **Pagos Recibidos/Efectuados, Bancos,
+  Monedas y Tipos de Cambio siguen visibles y operativos** (cobrar/pagar es operación
+  comercial: el gate del motor salta su asiento y el saldo del partner se actualiza
+  igual). **Años Fiscales permanece visible** (lo requieren las series de numeración).
 - **"Generar Plan de Cuentas"** (`GET/POST settings/chart-of-accounts`, idempotente):
   siembra el plan estándar **por país** (`resolveChartOfAccountsTemplate`: país →
   `UNIVERSAL` fallback → error). **Plantilla UNIVERSAL (2026-09-05):** estructura

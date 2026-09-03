@@ -109,9 +109,14 @@ Otros:
   (409/400) se muestran en el toast.
 - **Panel superadmin → creación de tenant** (`pages/admin`): switch "Contabilización"
   (default ON) incluido en el payload `CreateTenantPayload.accountingEnabled`.
-- **Sidebar** (`core/layout/sidebar`): `SidebarChild.accountingOnly` — Asientos Contables,
-  Plan de Cuentas y Mapeos Contables se ocultan cuando `accountingEnabled` es false;
-  Años Fiscales y el resto del menú se mantienen.
+- **Sidebar** (`core/layout/sidebar`): `SidebarChild.accountingOnly` — con la
+  contabilización deshabilitada se ocultan los módulos cuya función es generar asientos:
+  Asientos Contables, Plan de Cuentas, Mapeos Contables, **Activos Fijos** (categorías /
+  activos / reporte — depreciación) y **Extractos / Reconciliaciones Bancarias** (posteo y
+  ajustes). **Pagos Recibidos / Efectuados, Bancos, Monedas y Tipos de Cambio siguen
+  visibles y operativos** (registrar cobros/pagos es operación comercial; el gate del
+  motor salta su asiento y el saldo del partner se actualiza igual). Años Fiscales y el
+  resto del menú se mantienen.
 
 ## 5. Archivos tocados
 
@@ -140,7 +145,5 @@ Otros:
 - Planes oficiales por país (PE, CL, AR…) — la plantilla **UNIVERSAL** ya da cobertura
   estándar (estructura IFRS-like en español, mismos códigos que BO) para cualquier país;
   cuando se registre el plan oficial de un país, pasa a usarse automáticamente.
-- Decidir ocultamiento de otros módulos que generan asientos en tenants no contables
-  (activos fijos, tesorería/bancos) — hoy solo se ocultan los tres ítems acordados.
 - Guardas de ruta para URLs directas de módulos contables (hoy la ocultación es de menú y
-  el backend bloquea las operaciones).
+  el backend bloquea las operaciones con 409/400 claros).
