@@ -373,11 +373,14 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
   numeración).
 - **"Generar Plan de Cuentas"** (`GET/POST settings/chart-of-accounts`, idempotente):
   siembra el plan estándar **por país** (`resolveChartOfAccountsTemplate`: país →
-  `UNIVERSAL` fallback → error claro; hoy solo BO) + mappings + cuentas de mayor en los
-  maestros. Al habilitar sin plan, la UI pide generarlo explícitamente.
+  `UNIVERSAL` fallback → error). **Plantilla UNIVERSAL (2026-09-05):** estructura
+  estándar IFRS-like en español que comparte códigos con BO — PE/CL/AR y cualquier país
+  sin plan oficial generan plan + mappings + cuentas de mayor completos (antes 400);
+  cuando un país registre su plan oficial, pasa a usarse automáticamente. Al habilitar
+  sin plan, la UI pide generarlo explícitamente.
 - **Seed de tenant:** un tenant que nace sin contabilidad no recibe plan/mappings/cuentas
   de mayor; `POST /tenants/:id/seed` respeta el flag actual.
-- Tests: backend **1547/1547** (spec flaky de auth pasa en aislamiento); frontend Karma en
+- Tests: backend **1550/1550** (spec flaky de auth pasa en aislamiento); frontend Karma en
   verde + build AOT 0 errores. Plan: `docs/plans/plan-contabilidad-opcional.md`.
 
 ---

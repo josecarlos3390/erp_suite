@@ -22,9 +22,12 @@ Dos controles nuevos:
      oculta los ítems contables (Asientos, Plan de Cuentas, Mapeos); **Años Fiscales
      permanece visible** porque las series de numeración lo requieren.
 2. **Generar Plan de Cuentas** (acción idempotente): siembra/completa el plan estándar
-   **por país** del tenant (hoy solo Bolivia, BO) + mappings por defecto + cuentas de
-   mayor asignadas a los maestros. El mecanismo resuelve `país → plantilla universal
-   (fallback) → error claro` para incorporar más países o un plan `UNIVERSAL` en el futuro.
+   **por país** del tenant + mappings por defecto + cuentas de mayor asignadas a los
+   maestros. El mecanismo resuelve `país → plantilla universal (fallback) → error`: BO
+   usa su plan oficial; cualquier otro país cae a la plantilla **UNIVERSAL** (estructura
+   estándar IFRS-like en español que comparte códigos con BO, para que la determinación
+   de cuentas funcione en cualquier país). Cada plan oficial nuevo (PE, CL, AR…) se
+   registra y pasa a usarse automáticamente.
 
 ## 2. Decisiones validadas con el usuario (2026-09-05)
 
@@ -68,17 +71,22 @@ Otros:
 
 ### 3.3 "Generar Plan de Cuentas" (por país, idempotente)
 - Util `resolveChartOfAccountsTemplate(countryCode)` en
-  `src/common/chart-of-accounts.util.ts`: plantilla del país → `'UNIVERSAL'` (fallback,
-  aún no existe) → `null`.
+  `src/common/chart-of-accounts.util.ts`: plantilla del país → `'UNIVERSAL'` (fallback
+  registrado en `CHART_OF_ACCOUNTS_TEMPLATES`) → `null`.
+- **Plantilla UNIVERSAL (2026-09-05)**: `CHART_OF_ACCOUNTS_TEMPLATES['UNIVERSAL']`
+  reutiliza la estructura estándar (IFRS-like, 5 niveles, español) que comparte códigos
+  con BO; `ensureAccountMappingsForTenant` y `ensureMasterAccountsForTenant` caen a
+  UNIVERSAL/códigos estándar cuando el país no tiene entrada propia → la generación y el
+  seed funcionan para PE/CL/AR/… con plan + mappings + cuentas de mayor completos.
 - `SettingsService.getChartOfAccountsStatus(tenantId)` (GET `settings/chart-of-accounts`):
   estado SIN cache → `{ accountingEnabled, countryCode, templateCountry,
   templateAvailable, chartOfAccountsGenerated, accountCount, mappingsConfigured,
   journalEntryCount, canDisableAccounting }`.
 - `SettingsService.generateChartOfAccounts(tenantId)` (POST `settings/chart-of-accounts`,
   permiso `settings:edit`): valida flag habilitado (409) y plantilla disponible (400
-  «No existe plantilla… disponibles: BO»); en una transacción: siembra plan
-  (`seedChartOfAccountsForTenant`), mappings (`ensureAccountMappingsForTenant`) y cuentas
-  de mayor en maestros (`ensureMasterAccountsForTenant`). Upsert/updateMany → idempotente.
+  defensivo); en una transacción: siembra plan (`seedChartOfAccountsForTenant`), mappings
+  (`ensureAccountMappingsForTenant`) y cuentas de mayor en maestros
+  (`ensureMasterAccountsForTenant`). Upsert/updateMany → idempotente.
 
 ### 3.4 Creación de tenants
 - `CreateTenantDto.accountingEnabled?` (default true).
@@ -119,18 +127,19 @@ Otros:
 
 ## 6. Tests y verificación
 
-- Backend suite completa verde (1547 tests: +5 settings flag/status/generación, +1 fiscal
-  apertura bloqueada, +4 gates del engine; el spec `super-admin-auth.controller.spec.ts`
-  es el flaky conocido y pasa en aislamiento).
+- Backend suite completa verde (1550 tests: +5 settings flag/status/generación, +1 fiscal
+  apertura bloqueada, +4 gates del engine, +3 resolver de plantilla UNIVERSAL; el spec
+  `super-admin-auth.controller.spec.ts` es el flaky conocido y pasa en aislamiento).
 - Frontend build AOT 0 errores; Karma suite completa verde.
 - Verificación live: crear tenant con `accountingEnabled=false` → sin cuentas; habilitar →
-  `GET settings/chart-of-accounts` reporta plan pendiente; `POST` genera el plan BO;
-  desactivar con asientos → 409.
+  `GET settings/chart-of-accounts` reporta plan pendiente; `POST` genera el plan (BO →
+  plantilla Bolivia; otro país → UNIVERSAL); desactivar con asientos → 409.
 
 ## 7. Pendientes futuros (no bloqueantes)
 
-- Plantilla **universal** (`UNIVERSAL`) y planes por país (PE, CL, AR…) — el mecanismo ya
-  resuelve `país → universal → error`.
+- Planes oficiales por país (PE, CL, AR…) — la plantilla **UNIVERSAL** ya da cobertura
+  estándar (estructura IFRS-like en español, mismos códigos que BO) para cualquier país;
+  cuando se registre el plan oficial de un país, pasa a usarse automáticamente.
 - Decidir ocultamiento de otros módulos que generan asientos en tenants no contables
   (activos fijos, tesorería/bancos) — hoy solo se ocultan los tres ítems acordados.
 - Guardas de ruta para URLs directas de módulos contables (hoy la ocultación es de menú y
