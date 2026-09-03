@@ -3,6 +3,7 @@
 > Fecha: 2026-09-05 · Backend `src/settings` + `src/common/accounting*` + seed tenants · Frontend `settings` + `admin` + sidebar
 > Patrón SAP B1: los módulos existen; la parametrización decide. Un tenant puede operar
 > solo como **comercial/inventario** (sin asientos) o con **contabilidad completa**.
+> **Guía de configuración paso a paso (perfil A/B):** `docs/guides/guia-implementacion-configuracion.md`.
 
 ---
 
@@ -145,5 +146,11 @@ Otros:
 - Planes oficiales por país (PE, CL, AR…) — la plantilla **UNIVERSAL** ya da cobertura
   estándar (estructura IFRS-like en español, mismos códigos que BO) para cualquier país;
   cuando se registre el plan oficial de un país, pasa a usarse automáticamente.
+- **Extractos/reconciliaciones en modo comercial sin posteo (2026-09-05, anotado):**
+  un cliente "solo comercial" igual necesita control bancario (importar extracto, cotejar
+  con pagos/cobros) aunque no contabilice. Hoy "postear líneas" y "ajustar conciliación"
+  crean asientos → 409 con la contabilidad deshabilitada (y su menú está oculto). Diseño
+  futuro: desacoplar el posteo contable de esos flujos (estado sin asiento: marcar/conciliar
+  sin generar journal entry; el asiento se generaría al habilitar contabilidad o bajo demanda).
 - Guardas de ruta para URLs directas de módulos contables (hoy la ocultación es de menú y
   el backend bloquea las operaciones con 409/400 claros).

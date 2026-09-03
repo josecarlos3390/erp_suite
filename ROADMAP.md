@@ -385,7 +385,9 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
 - **Seed de tenant:** un tenant que nace sin contabilidad no recibe plan/mappings/cuentas
   de mayor; `POST /tenants/:id/seed` respeta el flag actual.
 - Tests: backend **1550/1550** (spec flaky de auth pasa en aislamiento); frontend Karma en
-  verde + build AOT 0 errores. Plan: `docs/plans/plan-contabilidad-opcional.md`.
+  verde + build AOT 0 errores. Plan: `docs/plans/plan-contabilidad-opcional.md`. **Guía de
+  configuración paso a paso (por perfil, con/ sin contabilidad):**
+  `docs/guides/guia-implementacion-configuracion.md`.
 
 ---
 
