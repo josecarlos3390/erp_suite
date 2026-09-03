@@ -278,6 +278,15 @@ indica. Para cerrar el ciclo, ejecuta la **prueba end-to-end por familia** (crea
 5. **Cierre:** verificar que **no aparecen errores** de los del Anexo B (400 serie,
    409 período, cuentas no encontradas) y que `/setup/checklist` sigue sin bloqueantes.
 
+**Cierre de ejercicio (perfil contable, 2026-09-05):** al terminar la gestión —
+1. Cerrar los períodos salvo el último (o dejar un período de ajuste) que cubra el 31/12.
+2. Finanzas → Años Fiscales → detalle de la gestión → **"Generar asiento de cierre"**:
+   pone en cero las cuentas de resultado y traslada el neto a Resultados Acumulados
+   (Utilidad `3.1.3.02.001` / Pérdida `3.1.3.02.002`); idempotente; resultado 0 crea
+   comprobación. Plan: `docs/plans/plan-cierre-ejercicio.md`.
+3. Cerrar el último período y la gestión. La **apertura** del año siguiente arrastra saldos
+   sin duplicar el resultado.
+
 > **Gate de go-live:** antes del corte (ver `docs/plans/runbook-go-live.md`), el checklist
 > del tenant debe quedar con `requiredPending = 0` y la prueba E2E de arriba aprobada — el
 > Centro de configuración es la evidencia objetiva de "configuración completa".

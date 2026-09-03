@@ -131,7 +131,12 @@
 - ✅ Modelos `FiscalYear` y `AccountingPeriod` creados en Prisma.
 - ✅ CRUD backend (`src/fiscal-years/`) + frontend (`src/app/pages/fiscal-years/`).
 - ✅ Estados `OPEN` / `LOCKED` para bloquear modificaciones en períodos cerrados.
-- ⏳ Asientos de cierre de ejercicio automáticos pendientes.
+- ✅ **Asientos de cierre de ejercicio automáticos (2026-09-05)** — `POST
+  /fiscal-years/:id/generate-closing-entry`: liquida las cuentas de resultado y traslada el
+  neto a Resultados Acumulados (Utilidad/Pérdida), idempotente y con asiento de comprobación
+  si el resultado es 0; botón en el detalle de la gestión. Plan:
+  `docs/plans/plan-cierre-ejercicio.md`.
+- ✅ Asiento de apertura del ejercicio (arrastre de saldos) — `generate-opening-entry`.
 
 ### Fase 6.5 — Activos Fijos (En progreso)
 
@@ -384,7 +389,7 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
   sin plan, la UI pide generarlo explícitamente.
 - **Seed de tenant:** un tenant que nace sin contabilidad no recibe plan/mappings/cuentas
   de mayor; `POST /tenants/:id/seed` respeta el flag actual.
-- Tests: backend **1565/1565** (spec flaky de auth pasa en aislamiento); frontend Karma en
+- Tests: backend **1568/1568** (spec flaky de auth pasa en aislamiento); frontend Karma en
   verde + build AOT 0 errores. Plan: `docs/plans/plan-contabilidad-opcional.md`. **Guía de
   configuración paso a paso (por perfil, con/ sin contabilidad):**
   `docs/guides/guia-implementacion-configuracion.md`. **Centro de configuración ✅

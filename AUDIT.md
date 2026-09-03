@@ -1662,7 +1662,7 @@ factura web (56 bs en 2 uds). Si el modal sigue en 0% tras este fix, el log
 | T2 | Tests | **Specs flaky bajo carga**: `super-admin-auth.controller` y `auth.service` (bcrypt cost 10 + ts-jest) superaban el timeout de 5 s en corridas paralelas; Karma con timeouts esporádicos en forms pesados | ✅ 2026-09-05: `jest.setTimeout(30s)` en ambos suites + `jasmine.timeoutInterval: 20s` en karma.conf | P2 |
 | T3 | Infra / tests | **Pruebas de carga/estrés multitenant** | 🔲 Pendiente (sin iniciar) — AUDIT §5.1 | P2 |
 | T4 | Frontend | **`special-prices`**: modelo/form sincronizados, faltan E2E | 🟡 Parcial — AUDIT §5.2 | P2 |
-| T5 | Contabilidad | **Asientos de cierre de ejercicio automáticos** (cierre del ciclo anual: resultado a utilidades acumuladas, relación con apertura) | 🔲 Pendiente — feature de negocio (requiere diseño; ver ROADMAP F6) | P1 |
+| T5 | Contabilidad | **Asientos de cierre de ejercicio automáticos** (cierre del ciclo anual: resultado a utilidades acumuladas, relación con apertura) | ✅ **RESUELTO (2026-09-05)** — `POST /fiscal-years/:id/generate-closing-entry` + botón en la gestión. Plan: `docs/plans/plan-cierre-ejercicio.md` | P1 |
 | T6 | Contabilidad | **Depreciación mensual automática** y **depreciación acelerada** (activos fijos) | 🔲 Pendiente — ROADMAP F6 | P2 |
 | T7 | Contabilidad | **F7.2**: diferencia de cambio automática en asientos manuales; cuentas gain/loss del settings sin consumo por todos los builders | 🔲 Pendiente — AUDIT §7 veredicto | P2 |
 | T8 | Contabilidad | **Refactor de `AssemblyOrder`** hacia `AccountingEngine` (lógica propia duplicada) | 🔲 Pendiente — AGENTS §5.7 #6 | P3 |
