@@ -402,6 +402,11 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
 
 ## Notas técnicas
 
+- **Deuda técnica consolidada (2026-09-05):** ver `AUDIT.md` §8 — foto única y priorizada
+  (T1–T14) de la deuda vigente (drift BD, specs flaky ✅, carga multitenant, special-prices,
+  cierre de ejercicio, depreciación automática, F7.2 contable, assembly refactor,
+  sourceDocumentType enum, cosmética UX, POS numeración, extractos modo comercial,
+  guardas de ruta, planes por país).
 - **Migraciones:** Cada fase requiere migración Prisma. En producción, usar `prisma migrate dev` con nombres descriptivos.
 - **Frontend types:** Actualizar `prisma-types.ts` y modelos en `src/app/models/` tras cada cambio de schema.
 - **Tests:** Mantener 118+ suites backend y 622+ tests frontend. Agregar tests para cada nuevo feature.

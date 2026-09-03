@@ -1646,5 +1646,29 @@ ART-00026. El descuento del Teclado (ART-00009) sale de la vía grupo — misma 
 factura web (56 bs en 2 uds). Si el modal sigue en 0% tras este fix, el log
 `[POS-diag] modal resolveRaw` en la consola muestra si el POST falló o devolvió vacío.
 
-**Verificación:** lint 0/0, build AOT OK, specs POS 15/15 (+1 nuevo:
-`onProductModalConfirm` hereda el descuento resuelto). Commit: `pos-modal-async-discount`.
+**Verificación:** lint 0/0, build AOT OK, specs POS 15/15 (+1 nuevo:`onProductModalConfirm` hereda el descuento resuelto). Commit: `pos-modal-async-discount`.
+
+---
+
+## 8. Deuda técnica consolidada (2026-09-05)
+
+> Foto única y priorizada de la deuda vigente. La deuda estructural priorizada (S1–S39) y
+> las auditorías UX están liquidadas (ver §7); esto es lo que **queda** al día de hoy.
+> Prioridad sugerida: P1 (alta) / P2 (media) / P3 (baja — cosmética o mejora).
+
+| ID | Área | Ítem | Estado / nota | Prioridad |
+|----|------|------|---------------|-----------|
+| T1 | Infra / BD | **Drift de Prisma vs `prisma/migrations`** en la BD de desarrollo: impide `migrate dev`/`db push`; se mitiga con SQL manuales (`prisma/manual/*` + `_manual_migrations`) siguiendo el runbook | 🟠 Mitigado con workflow establecido; arreglo completo (baseline limpio) es tarea de infraestructura con cuidado de datos | P2 |
+| T2 | Tests | **Specs flaky bajo carga**: `super-admin-auth.controller` y `auth.service` (bcrypt cost 10 + ts-jest) superaban el timeout de 5 s en corridas paralelas; Karma con timeouts esporádicos en forms pesados | ✅ 2026-09-05: `jest.setTimeout(30s)` en ambos suites + `jasmine.timeoutInterval: 20s` en karma.conf | P2 |
+| T3 | Infra / tests | **Pruebas de carga/estrés multitenant** | 🔲 Pendiente (sin iniciar) — AUDIT §5.1 | P2 |
+| T4 | Frontend | **`special-prices`**: modelo/form sincronizados, faltan E2E | 🟡 Parcial — AUDIT §5.2 | P2 |
+| T5 | Contabilidad | **Asientos de cierre de ejercicio automáticos** (cierre del ciclo anual: resultado a utilidades acumuladas, relación con apertura) | 🔲 Pendiente — feature de negocio (requiere diseño; ver ROADMAP F6) | P1 |
+| T6 | Contabilidad | **Depreciación mensual automática** y **depreciación acelerada** (activos fijos) | 🔲 Pendiente — ROADMAP F6 | P2 |
+| T7 | Contabilidad | **F7.2**: diferencia de cambio automática en asientos manuales; cuentas gain/loss del settings sin consumo por todos los builders | 🔲 Pendiente — AUDIT §7 veredicto | P2 |
+| T8 | Contabilidad | **Refactor de `AssemblyOrder`** hacia `AccountingEngine` (lógica propia duplicada) | 🔲 Pendiente — AGENTS §5.7 #6 | P3 |
+| T9 | Contabilidad | **`sourceDocumentType` String → enum** | 🔲 Diferido post-go-live por riesgo de datos — AGENTS §5.7 #7 | P3 |
+| T10 | UX | Alturas decorativas sin token + Fase 7 del plan visual (`::ng-deep`) | 🟡 Cosmética documentada (excepciones 28/38px intencionales) | P3 |
+| T11 | POS | Numeración: series del módulo vs numeración propia del POS | 🔲 Pendiente de diseño | P3 |
+| T12 | Contabilidad | **Extractos/Reconciliaciones en modo comercial sin posteo** (desacople del asiento) | 🔲 Anotado en `docs/plans/plan-contabilidad-opcional.md` §7 | P2 |
+| T13 | Frontend | **Guardas de ruta** para URLs directas de módulos contables cuando la contabilidad está deshabilitada | 🔲 Anotado en `docs/plans/plan-contabilidad-opcional.md` §7 | P3 |
+| T14 | Localización | **Planes de cuentas oficiales por país** (PE/CL/AR…) — hoy cubiertos por la plantilla universal | 🔲 Mejora futura | P3 |
