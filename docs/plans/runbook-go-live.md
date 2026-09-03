@@ -162,6 +162,7 @@ Los tenants creados **antes** de cada convención necesitan scripts de alineaci�
 | Pentest ligero | `cd backend-erp && npm run pentest:ligero` | 0 fallos críticos (auth, CSRF, DTOs, IDOR, SQLi, RBAC, rate) |
 | k6 | `npm run perf:k6` | 5/5 escenarios (perfil `small`); `large` para validación de volumen |
 | Backups | `npm run backup:db` | OK + validación de restore en `erp_test` |
+| **Gate de configuración por tenant** | Login en cada tenant → Administración → **Centro de configuración** (`GET /setup/checklist`) | `requiredPending = 0` y prueba E2E por familia aprobada (guía de implementación, Anexo D) |
 
 ---
 

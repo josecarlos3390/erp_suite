@@ -234,4 +234,44 @@ Qué valida (mismo orden que esta guía):
   etiqueta) para priorizar implementaciones y detectar clientes que no terminaron de
   configurar. El `SetupService` lee los settings **por tenant sin cache global** (evita el
   cache de `SettingsService`, que es de una sola entrada) vía `getChecklistForTenant`.
-| Stock con costo cero / sin matriz | Artículo sin costo o sin matriz artículo-almacén | Costear el artículo; crear matriz (pestaña Almacenes y cuentas) |
+
+### Mejoras 2026-09-05 (tercera iteración)
+
+- **Series por tipos en uso ("Documentos que usaré")** — en `/setup` se puede marcar qué
+  tipos de documento usará el tenant (agrupados por familia: Ventas, Compras, Inventario,
+  Logística/Producción; `GET/PUT /setup/doc-types`, guardado en SystemSettings
+  `setupDocTypes`; default = los 26). El ítem **series** del checklist exige numeración
+  **solo para los tipos habilitados** — un cliente que solo factura ventas ya no ve WARN por
+  no tener serie de ensamblaje.
+- **Aviso proactivo (badge)** — `GET /setup/status` (resumen liviano de bloqueantes) y
+  badge **"N"** en el menú (grupo Administración) cuando hay pasos bloqueantes; se
+  refresca al cargar/guardar settings y al volver del Centro de configuración.
+- **Checks de consistencia (calidad)** — nuevos ítems recomendados (WARN) en el checklist:
+  artículos inventariables sin costo, partners activos sin indicador de impuesto por
+  defecto y tasa de cambio del día cuando hay moneda secundaria.
+
+---
+
+## Anexo D — Prueba end-to-end guiada (validación de arranque)
+
+Cuando el checklist está completo (`requiredPending = 0`), el Centro de configuración lo
+indica. Para cerrar el ciclo, ejecuta la **prueba end-to-end por familia** (crear y
+**confirmar** 1 documento de cada tipo y validar el resultado):
+
+1. **Ventas:** crear y confirmar una **Factura de Venta** con serie + cliente + artículo.
+   - Validar: asiento automático POSTED (perfil contable) en Finanzas → Asientos; el saldo
+     del cliente (estado de cuenta) y el stock disminuyen.
+2. **Compras:** crear y confirmar una **Factura de Compra** (idealmente desde un pedido).
+   - Validar: asiento POSTED (perfil contable), saldo del proveedor y stock/costo.
+3. **Inventario:** confirmar una **Entrada de Mercadería** (o traspaso/ajuste) según el negocio.
+   - Validar: kardex actualizado y (perfil contable) asiento de inventario.
+4. **Pagos (ambos perfiles):** registrar un **Pago Recibido** del cliente y un **Pago
+   Efectuado** al proveedor.
+   - Validar: sin contabilidad → se registran sin asiento; con contabilidad → asiento del
+     cobro/pago y saldo del banco/caja.
+5. **Cierre:** verificar que **no aparecen errores** de los del Anexo B (400 serie,
+   409 período, cuentas no encontradas) y que `/setup/checklist` sigue sin bloqueantes.
+
+> **Gate de go-live:** antes del corte (ver `docs/plans/runbook-go-live.md`), el checklist
+> del tenant debe quedar con `requiredPending = 0` y la prueba E2E de arriba aprobada — el
+> Centro de configuración es la evidencia objetiva de "configuración completa".

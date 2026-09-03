@@ -384,15 +384,19 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
   sin plan, la UI pide generarlo explícitamente.
 - **Seed de tenant:** un tenant que nace sin contabilidad no recibe plan/mappings/cuentas
   de mayor; `POST /tenants/:id/seed` respeta el flag actual.
-- Tests: backend **1560/1560** (spec flaky de auth pasa en aislamiento); frontend Karma en
+- Tests: backend **1564/1564** (spec flaky de auth pasa en aislamiento); frontend Karma en
   verde + build AOT 0 errores. Plan: `docs/plans/plan-contabilidad-opcional.md`. **Guía de
   configuración paso a paso (por perfil, con/ sin contabilidad):**
   `docs/guides/guia-implementacion-configuracion.md`. **Centro de configuración ✅
   (2026-09-05):** pantalla `/setup` + `GET /setup/checklist` que valida automáticamente el
   checklist por perfil (qué falta y a qué pantalla ir) — Anexo C de la guía. **Mejoras ✅:
   mini-wizard "Resolver siguiente paso"** en `/setup` (navega al primer bloqueante en orden
-  de la guía) y **vista multi-tenant para superadmin** (`GET /admin/setup-overview` +
-  `/super-admin/setup-overview`) que lista los pendientes bloqueantes de todos los tenants.
+  de la guía); **vista multi-tenant para superadmin** (`GET /admin/setup-overview` +
+  `/super-admin/setup-overview`); **"Documentos que usaré"** (series solo para los tipos
+  habilitados, `GET/PUT /setup/doc-types`); **badge proactivo** de bloqueantes en el menú
+  (`GET /setup/status`); **checks de consistencia** (costos de artículos, impuesto por
+  defecto de partners, tasa del día); **prueba E2E guiada + gate go-live** (guía Anexo D +
+  runbook-go-live §6).
 
 ---
 
