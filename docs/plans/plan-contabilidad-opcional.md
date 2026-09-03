@@ -152,5 +152,7 @@ Otros:
   crean asientos → 409 con la contabilidad deshabilitada (y su menú está oculto). Diseño
   futuro: desacoplar el posteo contable de esos flujos (estado sin asiento: marcar/conciliar
   sin generar journal entry; el asiento se generaría al habilitar contabilidad o bajo demanda).
-- Guardas de ruta para URLs directas de módulos contables (hoy la ocultación es de menú y
-  el backend bloquea las operaciones con 409/400 claros).
+- **Guardas de ruta para URLs directas de módulos contables (2026-09-05, resuelto):**
+  `accountingEnabledGuard()` redirige al dashboard cuando la contabilización está
+  deshabilitada (asientos, plan de cuentas, mapeos, activos fijos, extractos y
+  reconciliaciones); el menú ya los oculta y el backend bloquea las operaciones.

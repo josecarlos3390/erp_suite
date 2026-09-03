@@ -401,6 +401,7 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
   habilitados, `GET/PUT /setup/doc-types`); **badge proactivo** de bloqueantes en el menú
   (`GET /setup/status`); **checks de consistencia** (costos de artículos, impuesto por
   defecto de partners, tasa del día, **cuentas de mayor por nivel de determinación**);
+  **guardas de ruta contables** (URLs directas redirigen al dashboard con contabilidad OFF);
   **prueba E2E guiada + gate go-live** (guía Anexo D + runbook-go-live §6).
 
 ---

@@ -1670,5 +1670,5 @@ factura web (56 bs en 2 uds). Si el modal sigue en 0% tras este fix, el log
 | T10 | UX | Alturas decorativas sin token + Fase 7 del plan visual (`::ng-deep`) | 🟡 Cosmética documentada (excepciones 28/38px intencionales) | P3 |
 | T11 | POS | Numeración: series del módulo vs numeración propia del POS | 🔲 Pendiente de diseño | P3 |
 | T12 | Contabilidad | **Extractos/Reconciliaciones en modo comercial sin posteo** (desacople del asiento) | 🔲 Anotado en `docs/plans/plan-contabilidad-opcional.md` §7 | P2 |
-| T13 | Frontend | **Guardas de ruta** para URLs directas de módulos contables cuando la contabilidad está deshabilitada | 🔲 Anotado en `docs/plans/plan-contabilidad-opcional.md` §7 | P3 |
+| T13 | Frontend | **Guardas de ruta** para URLs directas de módulos contables cuando la contabilidad está deshabilitada | ✅ **RESUELTO (2026-09-05)** — `accountingEnabledGuard()` en journal-entries, accounts, account-mappings, asset-categories, fixed-assets, bank-statements y bank-reconciliations (redirige al dashboard con contabilidad OFF) | P3 |
 | T14 | Localización | **Planes de cuentas oficiales por país** (PE/CL/AR…) — hoy cubiertos por la plantilla universal | 🔲 Mejora futura | P3 |
