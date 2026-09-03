@@ -1663,7 +1663,7 @@ factura web (56 bs en 2 uds). Si el modal sigue en 0% tras este fix, el log
 | T3 | Infra / tests | **Pruebas de carga/estrés multitenant** | 🔲 Pendiente (sin iniciar) — AUDIT §5.1 | P2 |
 | T4 | Frontend | **`special-prices`**: modelo/form sincronizados, faltan E2E | 🟡 Parcial — AUDIT §5.2 | P2 |
 | T5 | Contabilidad | **Asientos de cierre de ejercicio automáticos** (cierre del ciclo anual: resultado a utilidades acumuladas, relación con apertura) | ✅ **RESUELTO (2026-09-05)** — `POST /fiscal-years/:id/generate-closing-entry` + botón en la gestión. Plan: `docs/plans/plan-cierre-ejercicio.md` | P1 |
-| T6 | Contabilidad | **Depreciación mensual automática** y **depreciación acelerada** (activos fijos) | 🔲 Pendiente — ROADMAP F6 | P2 |
+| T6 | Contabilidad | **Depreciación mensual automática** y **depreciación acelerada** (activos fijos) | 🟡 **Mensual automática ✅ (2026-09-05)** — cron 1° de cada mes, parametrizable (`fixedAssetsAutoDepreciation`, default OFF) y coexistiendo con la opción manual (`POST /fixed-assets/execute-depreciation`). **Acelerada pendiente** | P2 |
 | T7 | Contabilidad | **F7.2**: diferencia de cambio automática en asientos manuales; cuentas gain/loss del settings sin consumo por todos los builders | 🔲 Pendiente — AUDIT §7 veredicto | P2 |
 | T8 | Contabilidad | **Refactor de `AssemblyOrder`** hacia `AccountingEngine` (lógica propia duplicada) | 🔲 Pendiente — AGENTS §5.7 #6 | P3 |
 | T9 | Contabilidad | **`sourceDocumentType` String → enum** | 🔲 Diferido post-go-live por riesgo de datos — AGENTS §5.7 #7 | P3 |
