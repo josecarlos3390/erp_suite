@@ -189,3 +189,35 @@ cuando se parte de cero o se replica en un cliente real:
 | PDF sin razón social/NIT | Perfil de empresa incompleto | Administración → Perfil de la empresa |
 | Usuario no ve documentos de su almacén | Restricción por almacén sin asignar sucursal/almacén al usuario | Usuarios → sucursal/almacén por defecto |
 | Stock con costo cero / sin matriz | Artículo sin costo o sin matriz artículo-almacén | Costear el artículo; crear matriz (pestaña Almacenes y cuentas) |
+
+---
+
+## Anexo C — Centro de configuración (validador automático) ✅ (2026-09-05)
+
+El checklist manual se puede **verificar automáticamente** desde el sistema:
+
+- **Pantalla:** Administración → **Centro de configuración** (`/setup`).
+- **API:** `GET /setup/checklist` (permiso `settings:view`) — audita el tenant según su
+  perfil y devuelve ítems agrupados con estado `OK` / `WARN` (revisar) / `MISSING` (falta)
+  / `NOT_REQUIRED` (no aplica), detalle de qué falta y la **acción con ruta** a la pantalla
+  que lo resuelve.
+
+Qué valida (mismo orden que esta guía):
+
+| Grupo | Ítems |
+|-------|-------|
+| Empresa | Perfil de la empresa (razón social + NIT); moneda base y secundaria en el catálogo |
+| Contabilidad *(perfil A)* | Plan de cuentas + mapeos generados; cuentas contables de los partners (recomendado) |
+| Gestión y series | Gestión (año fiscal) creada; períodos activos que cubren la fecha (solo perfil A); series por tipo de documento (26) |
+| Maestros | Sucursales, almacenes (+ por defecto), impuestos (+ por defecto), condiciones de pago, listas de precios (+ por defecto), grupos de artículos, UoMs, partners, artículos |
+| Usuarios y acceso | Sucursal/almacén por defecto del usuario |
+
+- Perfil **comercial**: el plan de cuentas y los períodos aparecen como "No aplica"; la
+  gestión y las series siguen siendo obligatorias (el validador lo refleja).
+- El resumen muestra contadores y el número de **pasos bloqueantes pendientes**; cuando el
+  tenant está listo, la pantalla lo indica y se puede hacer la prueba end-to-end del checklist.
+
+> El validador es de solo lectura: cada ítem resuelve su acción en la pantalla de origen
+> (Parametrización, Años Fiscales, Series, maestros…). El backend de cada módulo sigue
+> siendo la autoridad final (400 serie, 409 período, 409 contabilidad deshabilitada).
+| Stock con costo cero / sin matriz | Artículo sin costo o sin matriz artículo-almacén | Costear el artículo; crear matriz (pestaña Almacenes y cuentas) |
