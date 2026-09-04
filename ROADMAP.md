@@ -417,8 +417,8 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
 ## Notas técnicas
 
 - **Deuda técnica consolidada (2026-09-05):** ver `AUDIT.md` §8 — foto única y priorizada
-  (T1–T14) de la deuda vigente (drift BD, specs flaky ✅, carga multitenant, special-prices,
-  cierre de ejercicio ✅, depreciación automática ✅, F7.2 contable ✅, assembly refactor,
+  (T1–T14) de la deuda vigente (drift BD, specs flaky ✅, carga multitenant ✅, special-prices,
+  cierre de ejercicio ✅, depreciación automática ✅, F7.2 contable ✅, assembly refactor ✅,
   sourceDocumentType enum, cosmética UX, POS numeración, extractos modo comercial ✅,
   guardas de ruta ✅, planes por país).
 - **Migraciones:** Cada fase requiere migración Prisma. En producción, usar `prisma migrate dev` con nombres descriptivos.
@@ -429,4 +429,4 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
 
 ---
 
-*Última actualización: 2026-09-05 (T12 — extractos/reconciliaciones en modo comercial ✅)*
+*Última actualización: 2026-09-05 (T12 — extractos/reconciliaciones en modo comercial ✅; T3 carga multitenant y T8 AssemblyOrder ✅ como filas cerradas en AUDIT §8)*

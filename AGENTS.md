@@ -326,7 +326,7 @@ En el formulario de **Asientos Contables** (`journal-entries-form`):
 
 | # | Item | Razón |
 |---|------|-------|
-| 6 | Refactor `AssemblyOrder` para usar `AccountingEngine` | Tiene lógica propia `createJournalEntryForAssembly` que duplica código. Requiere rediseñar la interfaz de entrada del engine para soportar ensamblajes. |
+| ~~6~~ | ~~Refactor `AssemblyOrder` para usar `AccountingEngine`~~ | ✅ **Resuelto (2026-08-24)** — `assembly-orders.service.ts` delega el asiento a `AccountingEngineService.createAssemblyJournalEntry` (builder `buildAssemblyJournalEntryLines`); batería de ensamblaje en verde. Ver `AUDIT.md` §8 T8 |
 | 7 | Convertir `sourceDocumentType` a enum | Requiere migración de datos de `String` a `enum` en PostgreSQL con conversión de valores existentes. **Diferido post-go-live (2026-08-24):** ~17 tipos + patrón dinámico `REVERSAL_${tipo}` + drift de BD — riesgo de datos sin ganancia funcional. Revisar al escalar. |
 | 8 | Cierre de período contable (`AccountingPeriod`) | Feature completo: tabla, protección, reportes de cierre, apertura de nuevo período. |
 | 9 | Asientos de ajuste por diferencia de cambio | Requiere módulo de revaluación de saldos en moneda extranjera y generación automática de asientos de ajuste. |
