@@ -1,6 +1,6 @@
 # Runbook de Go-Live — ERP Suite
 
-> **Última actualización:** 2026-08-25.
+> **Última actualización:** 2026-09-05.
 > Procedimiento operativo de despliegue, verificación, alineación de datos y
 > rollback para producción. Complementa `AGENTS.md` (estado del proyecto) y
 > `AUDIT.md` (QA de go-live: baterías 18-28, seguridad, SSR).
@@ -99,6 +99,70 @@ curl -s https://api.tudominio.com/metrics | head -5   # Prometheus
 `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
 `Referrer-Policy: strict-origin-when-cross-origin`, `Strict-Transport-Security`
 (solo prod).
+
+### 3.1 Recuperación de migración fallida (P3009) — BD driftada (2026-09-05)
+
+**Síntoma:** `prisma migrate deploy` aborta con `P3009` ("migrate found failed
+migrations") y el entrypoint `start-prod.sh` (`set -euo pipefail`) deja la API
+caída en **cada** push. Causa: la BD de prod es la "BD driftada" que se mantuvo
+con SQL manuales (`prisma/manual/`); la migración `20260905000000_baseline_full_sync`
+(T1) codificó ese drift con DDL **no idempotente** (`CREATE TYPE`/`TABLE`/`INDEX`,
+`ADD COLUMN` sin guardas — se generó contra una BD limpia), choca con objetos que
+el drift ya creó en prod y queda registrada `failed` en `_prisma_migrations` →
+bloquea todas las migraciones posteriores.
+
+**Fix definitivo (BD de pruebas — reset total):** el replay desde cero de las 41
+migraciones es reproducible (validado localmente en BD descartable: deploy 41/41 +
+seed OK). Se replantea la BD y se marca el pipeline manual como superado — su
+contenido de schema ya lo aplican las migraciones y el `prisma db seed` (que
+también crea los roles RBAC; el archivo manual de roles es redundante en BD fresca).
+
+```bash
+cd backend-erp
+railway link          # proyecto/servicio backend correcto
+# 1) Verificar que apunta a la BD de Railway (host postgres.railway.internal)
+railway run -- node -e "console.log(process.env.DATABASE_URL)"
+# 2) Reset: dropea el schema y replantea las 41 migraciones (sin seed)
+railway run -- npx prisma migrate reset --force --skip-seed
+# 3) Marcar los SQL manuales como ya aplicados (superados por migraciones + seed).
+#    Sin este paso, apply-manual-migrations.mjs re-aplica DDL duplicado en el
+#    primer boot post-reset (p. ej. ADD COLUMN "isIndexUnit" ya existe) y cae.
+railway run -- npx prisma db execute --stdin <<'SQL'
+CREATE TABLE IF NOT EXISTS "_manual_migrations" (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now());
+INSERT INTO "_manual_migrations" (name) VALUES
+ ('20260816_add_itf_bank_charge_type.sql'),
+ ('20260816_add_currency_is_index_unit_ufv.sql'),
+ ('20260816_add_pos_minor_sales_consolidation.sql'),
+ ('20260816_add_export_tasa_cero.sql'),
+ ('20260816_add_purchase_credit_use.sql'),
+ ('20260816_add_rc_iva_declarativo.sql'),
+ ('20260816_add_iue_compensacion.sql'),
+ ('20260816_add_employee_monthly_salary.sql'),
+ ('20260817_add_partner_custom_fields.sql'),
+ ('20260818_add_debit_note_payments.sql'),
+ ('20260822_add_withholding_gross_up.sql'),
+ ('20260823_add_jel_tenant_account_index.sql'),
+ ('20260824_add_return_line_dimensions.sql'),
+ ('20260825_sync_schema_drift.sql'),
+ ('20260826_rbac_system_roles.sql')
+ON CONFLICT DO NOTHING;
+SQL
+# 4) Sembrar el tenant por defecto (admin/admin123 + roles + plan de cuentas)
+railway run -- npx prisma db seed
+# 5) Redesplegar (botón Redeploy o push a joseka3390-design/erp-backend) → boot verde
+```
+
+> En PowerShell (Windows) el paso 3 usa archivo: crear `reset-mark-manual.sql`
+> con el `CREATE TABLE` + `INSERT` de arriba y correr
+> `railway run -- npx prisma db execute --file reset-mark-manual.sql`.
+
+> **Si la BD SÍ tiene datos que conservar — NO resetear.** Verificar paridad y
+> resolver: `prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel
+> prisma/schema.prisma` (debe dar "no difference" — el drift ya está aplicado vía
+> SQL manuales) y luego `prisma migrate resolve --applied
+> 20260905000000_baseline_full_sync`; `prisma migrate deploy` aplicará las 2
+> pendientes (`20260905010000_bulk_import_lock_managed`,
+> `20260905020000_journal_source_type_enum`).
 
 ---
 
