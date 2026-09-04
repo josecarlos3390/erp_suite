@@ -105,7 +105,7 @@ Orden sugerido (coincide con `seedTenantData`):
 ### Paso A.5 — Parametrización fina y usuarios
 | # | Paso | Dónde |
 |---|------|-------|
-| A.5.1 | Nivel de determinación de cuentas (Artículo / Grupo / Almacén) y cuentas de diferencia de cambio | Parametrización → Contabilidad |
+| A.5.1 | Nivel de determinación de cuentas (Artículo / Grupo / Almacén) y cuentas de diferencia de cambio (+ opcional: **diferencia de cambio automática en asientos manuales**, default OFF) | Parametrización → Contabilidad |
 | A.5.2 | Roles y permisos (ADMIN, FINANCIERA, LOGISTICA…) | Administración → Roles / Permisos |
 | A.5.3 | Usuarios con sucursal/almacén por defecto y **serie por defecto por tipo** | Datos Maestros → Usuarios + Series → Asignaciones |
 | A.5.4 | **Prueba end-to-end**: crear 1 documento por familia (venta, compra, stock) y validar que confirma y genera su asiento | Pantallas de documentos + Finanzas → Asientos Contables |

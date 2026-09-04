@@ -142,8 +142,9 @@
 
 - ✅ Módulo `FixedAsset` creado en backend (`src/fixed-assets/`) y frontend (`src/app/pages/fixed-assets/`).
 - ✅ Depreciación lineal implementada.
+- ✅ **Depreciación mensual automática parametrizable (2026-09-05, T6)** — cron 1° de cada mes
+  con flag `fixedAssetsAutoDepreciation` (default OFF) + opción manual coexistente.
 - ⏳ Depreciación acelerada pendiente.
-- ⏳ Asientos de depreciación mensual automáticos pendientes.
 
 ### Fase 6.6 — Nómina (Pendiente)
 
@@ -157,7 +158,7 @@
 | # | Módulo | Descripción | Estado |
 |---|--------|-------------|--------|
 | ✅ 7.1 | **Zona horaria parametrizable por tenant** | Campo `timeZone` en `Tenant`; helpers `toTenantDate`/`fromTenantDate`; formularios, reporting y PDFs migrados. | ✅ Completado |
-| ✅ 7.2 | **Moneda multi-divisa** | Soporte para USD, EUR además de BOB. Campo `currency` en documentos y tasa de cambio diaria. **Backend contable implementado:** `Account.currencyMode` (LOCAL/SYSTEM/MULTI/SPECIFIC), `Tenant.localCurrency`/`systemCurrency`, doble expresión en `JournalEntryLine`. **Frontend completo (2026-08-09):** account-form con `currencyMode`/`currency` + hint con monedas del tenant, columna Moneda legible en el listado de cuentas, journal-entries-form con moneda por línea y M/E editable/calculado, listado de asientos con totales M/N + M/E, ledger con las 4 expresiones. **Revaluación por diferencia de cambio (2026-08-24):** pantalla `/reports/exchange-rate-revaluation` que previsualiza los saldos M/E a la tasa de la fecha y genera el asiento automático (`POST /exchange-rate-adjustments/preview` + `revaluate`) contra las cuentas de ganancia/pérdida del settings; y las cuentas gain/loss del settings ahora SON consumidas por los builders (cobros/pagos/compras postean la ganancia a la cuenta de ganancia y la pérdida a la de pérdida, con fallback al mapping `EXCHANGE_DIFFERENCE`). | ✅ Completado |
+| ✅ 7.2 | **Moneda multi-divisa** | Soporte para USD, EUR además de BOB. Campo `currency` en documentos y tasa de cambio diaria. **Backend contable implementado:** `Account.currencyMode` (LOCAL/SYSTEM/MULTI/SPECIFIC), `Tenant.localCurrency`/`systemCurrency`, doble expresión en `JournalEntryLine`. **Frontend completo (2026-08-09):** account-form con `currencyMode`/`currency` + hint con monedas del tenant, columna Moneda legible en el listado de cuentas, journal-entries-form con moneda por línea y M/E editable/calculado, listado de asientos con totales M/N + M/E, ledger con las 4 expresiones. **Revaluación por diferencia de cambio (2026-08-24):** pantalla `/reports/exchange-rate-revaluation` que previsualiza los saldos M/E a la tasa de la fecha y genera el asiento automático (`POST /exchange-rate-adjustments/preview` + `revaluate`) contra las cuentas de ganancia/pérdida del settings; y las cuentas gain/loss del settings ahora SON consumidas por los builders (cobros/pagos/compras postean la ganancia a la cuenta de ganancia y la pérdida a la de pérdida, con fallback al mapping `EXCHANGE_DIFFERENCE`). **F7.2 contable completo (2026-09-05, T7):** diferencia de cambio AUTOMÁTICA en asientos manuales multi-moneda (flag `journalEntryAutoExchangeDifference`, default OFF) + `post()` que cuadra en moneda base (habilita asientos multi-moneda balanceados) + preview de revaluación sin cuentas con fallback al confirmar. Plan: `docs/plans/plan-f7.2-contable.md`. | ✅ Completado |
 | ☐ 7.3 | **Localización de reportes fiscales** | Plantillas de libro de compras/ventas adaptables a otros países (Chile, Perú, Argentina). | ☐ Pendiente |
 
 ---
@@ -410,9 +411,9 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
 
 - **Deuda técnica consolidada (2026-09-05):** ver `AUDIT.md` §8 — foto única y priorizada
   (T1–T14) de la deuda vigente (drift BD, specs flaky ✅, carga multitenant, special-prices,
-  cierre de ejercicio, depreciación automática, F7.2 contable, assembly refactor,
+  cierre de ejercicio ✅, depreciación automática ✅, F7.2 contable ✅, assembly refactor,
   sourceDocumentType enum, cosmética UX, POS numeración, extractos modo comercial,
-  guardas de ruta, planes por país).
+  guardas de ruta ✅, planes por país).
 - **Migraciones:** Cada fase requiere migración Prisma. En producción, usar `prisma migrate dev` con nombres descriptivos.
 - **Frontend types:** Actualizar `prisma-types.ts` y modelos en `src/app/models/` tras cada cambio de schema.
 - **Tests:** Mantener 118+ suites backend y 622+ tests frontend. Agregar tests para cada nuevo feature.
@@ -421,4 +422,4 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
 
 ---
 
-*Última actualización: 2026-09-05*
+*Última actualización: 2026-09-05 (T7 — F7.2 contable ✅)*

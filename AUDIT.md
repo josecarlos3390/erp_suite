@@ -969,8 +969,9 @@ artículo y la trazabilidad SERIAL en tomas de inventario; F7.2 multi-divisa que
 completo en UI (columna moneda legible, totales M/E en asientos, warning SPECIFIC por línea).
 **La deuda estructural priorizada y las auditorías UX completas están liquidadas.** Quedan solo
 excepciones cosméticas documentadas (alturas 28px/38px intencionales y decorativas que no
-pertenecen al token de control) y pendientes de F7.2 contable (diferencia de cambio automática en
-asientos manuales; gain/loss accounts del settings sin consumo por builders).
+pertenecen al token de control) — los pendientes de F7.2 contable (diferencia de cambio automática
+en asientos manuales; gain/loss accounts del settings sin consumo por builders) fueron
+**resueltos (2026-09-05, T7)** — ver `docs/plans/plan-f7.2-contable.md`.
 
 **Deuda estructural del motor contable (2026-08-09):** el último monolito de la fachada —
 `previewJournalEntryFromDraft` (~1010 líneas, switch de 16 cases de preview de borradores) — fue
@@ -1664,7 +1665,7 @@ factura web (56 bs en 2 uds). Si el modal sigue en 0% tras este fix, el log
 | T4 | Frontend | **`special-prices`**: modelo/form sincronizados, faltan E2E | 🟡 Parcial — AUDIT §5.2 | P2 |
 | T5 | Contabilidad | **Asientos de cierre de ejercicio automáticos** (cierre del ciclo anual: resultado a utilidades acumuladas, relación con apertura) | ✅ **RESUELTO (2026-09-05)** — `POST /fiscal-years/:id/generate-closing-entry` + botón en la gestión. Plan: `docs/plans/plan-cierre-ejercicio.md` | P1 |
 | T6 | Contabilidad | **Depreciación mensual automática** y **depreciación acelerada** (activos fijos) | 🟡 **Mensual automática ✅ (2026-09-05)** — cron 1° de cada mes, parametrizable (`fixedAssetsAutoDepreciation`, default OFF) y coexistiendo con la opción manual (`POST /fixed-assets/execute-depreciation`). **Acelerada pendiente** | P2 |
-| T7 | Contabilidad | **F7.2**: diferencia de cambio automática en asientos manuales; cuentas gain/loss del settings sin consumo por todos los builders | 🔲 Pendiente — AUDIT §7 veredicto | P2 |
+| T7 | Contabilidad | **F7.2**: diferencia de cambio automática en asientos manuales; cuentas gain/loss del settings sin consumo por todos los builders | ✅ **RESUELTO (2026-09-05)** — ver AUDIT §7 veredicto + CHANGELOG: (1) `journalEntryAutoExchangeDifference` (default OFF, parametrizable) agrega la línea de diferencia al guardar asientos manuales multi-moneda desbalanceados en base por FX (settings gain/loss → mapping `EXCHANGE_DIFFERENCE`); los asientos uniformes desbalanceados siguen siendo error de captura; (2) `post()` cuadra en moneda base (habilita asientos multi-moneda balanceados en base que antes no posteaban); (3) preview de revaluación sin cuentas + fallback al confirmar; (4) los 3 productores reales de FX (cobros/pagos/compras) ya consumían gain/loss vía `resolveExchangeDifferenceAccount` (F7.2b, 2026-08-24) — auditado y documentado. Plan: `docs/plans/plan-f7.2-contable.md` | P2 |
 | T8 | Contabilidad | **Refactor de `AssemblyOrder`** hacia `AccountingEngine` (lógica propia duplicada) | 🔲 Pendiente — AGENTS §5.7 #6 | P3 |
 | T9 | Contabilidad | **`sourceDocumentType` String → enum** | 🔲 Diferido post-go-live por riesgo de datos — AGENTS §5.7 #7 | P3 |
 | T10 | UX | Alturas decorativas sin token + Fase 7 del plan visual (`::ng-deep`) | 🟡 Cosmética documentada (excepciones 28/38px intencionales) | P3 |
