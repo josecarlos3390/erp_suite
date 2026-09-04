@@ -54,11 +54,26 @@ ventana fija de ±3 días. F5.2 eleva el módulo al nivel de integración bancar
   `manualMatch`); el Match Manual y el Auto-Match siguen disponibles. Tests:
   `bank-reconciliation` 41 OK (+5), Karma 1447/1447.
 
-### Fase 3 — Cierre
-- E2E Playwright del flujo completo: crear extracto → importar CSV → registrar →
-  conciliar (auto + sugerencia manual) → finalizar, en modo contable y comercial.
-- Docs: `docs/guides/guia-implementacion-configuracion.md` (pasos de import) y
-  `backend-erp/CHANGELOG.md`.
+### Fase 3 — Cierre (✅ entregada 2026-09-05)
+- ✅ **E2E Playwright del flujo completo** — `erp-frontend/e2e/banking-reconciliation-flow.spec.ts`
+  (proyecto chromium): **crear extracto (UI)** → **importar CSV real (UI: preview +
+  importar)** → **conciliar (sugerencia manual asistida + auto-match)** → **finalizar**,
+  en modo **contable** y **comercial** (T12). Verificado en verde ambos modos (comercial en
+  tenant sin asientos; si el tenant ya tiene asientos el toggle da 409 T12 y el escenario se
+  salta con motivo — en CI la BD fresca lo ejecuta completo). Scaffolding (pagos
+  candidatos, gestión/serie, tasa del día, reconciliación) por API; la UI cubre import de
+  archivo y el matching.
+- ✅ **Bugs reales encontrados por el E2E y resueltos**: (1) ruta `GET /banks/accounts`
+  sombreada por `:id`; (2) DTOs bancarios sin `@Type(() => Number)` (selects nativos envían
+  string → 400 al crear extracto/reconciliación); (3) la ruta `new` de conciliación no
+  renderizaba (no hay param `:id`; ahora se detecta por segmento de URL).
+- ⚠️ **Hallazgos UX pendientes (documentados)**: la UI del detalle de una reconciliación
+  **sin extracto vinculado** no lista líneas (el backend sí matchea por banco+período); el
+  selector "Extracto" del form nuevo filtra `RECONCILING`, estado que ningún flujo produce
+  (el extracto nace DRAFT y el registro lo pasa a POSTED) → definir el ciclo
+  (p. ej. registrar → RECONCILING) o listar DRAFT/POSTED.
+- ✅ **Docs**: `docs/guides/guia-implementacion-configuracion.md` (Anexo B/C + 4ª iteración:
+  tasa del día bloqueante, cuentas bancarias → cuenta contable, fix ruta) y CHANGELOGs.
 
 ## 3. Criterios de aceptación
 - Import: el preview coincide con las líneas que se persisten; con errores → 400 sin
