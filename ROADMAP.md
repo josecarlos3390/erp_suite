@@ -144,7 +144,10 @@
 - ✅ Depreciación lineal implementada.
 - ✅ **Depreciación mensual automática parametrizable (2026-09-05, T6)** — cron 1° de cada mes
   con flag `fixedAssetsAutoDepreciation` (default OFF) + opción manual coexistente.
-- ⏳ Depreciación acelerada pendiente.
+- ✅ **Depreciación acelerada (saldo decreciente) completa (2026-09-05, T6)** — conmutación a
+  línea recta sobre el saldo restante: el activo se agota hasta el residual dentro de la vida
+  útil (antes convergía sin agotar); tasa anual en fracción (UI en %, default doble saldo
+  decreciente); cálculo puro en `depreciation-math.ts` con tests. Fila **T6 cerrada**.
 
 ### Fase 6.6 — Nómina (Pendiente)
 
