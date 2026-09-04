@@ -36,7 +36,7 @@ ventana fija de ±3 días. F5.2 eleva el módulo al nivel de integración bancar
   archivo → preview con tabla y errores → botón "Importar líneas del archivo"; refresca
   el extracto). `BankStatementsService.previewFileImport/importFile`.
 
-### Fase 2 — Matching avanzado (en curso)
+### Fase 2 — Matching avanzado (✅ entregada 2026-09-05)
 - ✅ **Settings parametrizables (2026-09-05):** `bankReconciliationMatchWindowDays`
   (default 3) + `bankReconciliationMatchTolerance` (default 0.01) en Parametrización
   (sección "Conciliación bancaria", visible en modo contable y comercial). El backend los
@@ -44,11 +44,15 @@ ventana fija de ±3 días. F5.2 eleva el módulo al nivel de integración bancar
   comparaciones de monto (tolerancia inclusiva; 0 = montos idénticos). Defaults preservan
   el comportamiento previo. Tests: `bank-reconciliation` 25 OK (+4), `settings` 13 OK,
   FE Karma en verde.
-- ⏳ **Endpoint de sugerencias** por línea sin conciliar
-  (`GET/POST /bank-reconciliations/:id/suggest`): candidatos pagos/asientos ordenados por
-  score (referencia exacta > monto+ventana > descripción similar), para el match manual
-  asistido. Anti-duplicados: una línea de extracto y un pago/asiento solo se sugieren una
-  vez. *(pendiente)*
+- ✅ **Endpoint de sugerencias (2026-09-05):** `GET /bank-reconciliations/:id/suggest` —
+  por cada línea sin conciliar devuelve los candidatos (pagos/asientos) aún no usados,
+  ordenados por score (referencia exacta > monto+ventana > descripción similar), máximo 5
+  por línea. Anti-duplicados: una línea de extracto y un pago/asiento solo se sugieren una
+  vez (sets compartidos con el auto-match vía `_loadMatchScope`). Respeta ventana/
+  tolerancia parametrizables y el modo comercial (T12). Frontend: botón "Sugerencias" →
+  modal con candidatos y botón "Conciliar" por candidato (match manual asistido vía
+  `manualMatch`); el Match Manual y el Auto-Match siguen disponibles. Tests:
+  `bank-reconciliation` 41 OK (+5), Karma 1447/1447.
 
 ### Fase 3 — Cierre
 - E2E Playwright del flujo completo: crear extracto → importar CSV → registrar →
