@@ -420,7 +420,7 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
   (T1–T14) de la deuda vigente (drift BD ✅ baseline limpio, specs flaky ✅, carga multitenant ✅,
   special-prices ✅, cierre de ejercicio ✅, depreciación automática ✅, F7.2 contable ✅,
   assembly refactor ✅, sourceDocumentType enum ✅, cosmética UX, POS numeración ✅,
-  extractos modo comercial ✅, guardas de ruta ✅, planes por país).
+  extractos modo comercial ✅, guardas de ruta ✅, planes por país ✅).
 - **Migraciones:** Cada fase requiere migración Prisma. En producción, usar `prisma migrate dev` con nombres descriptivos.
 - **Frontend types:** Actualizar `prisma-types.ts` y modelos en `src/app/models/` tras cada cambio de schema.
 - **Tests:** Mantener 118+ suites backend y 622+ tests frontend. Agregar tests para cada nuevo feature.
@@ -429,4 +429,4 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
 
 ---
 
-*Última actualización: 2026-09-05 (T9 ✅ sourceDocumentType → enum JournalSourceType; antes: T1 ✅ baseline Prisma, T11 ✅ POS series, T4 ✅, T12 ✅, T3 ✅, T8 ✅ cerradas en AUDIT §8)*
+*Última actualización: 2026-09-05 (T14 ✅ planes por país — arquitectura con guardas de integridad + guía de registro; antes: T9 ✅ sourceDocumentType enum, T1 ✅ baseline Prisma, T11 ✅ POS series, T4 ✅, T12 ✅, T3 ✅, T8 ✅ cerradas en AUDIT §8 — queda T10 cosmética UX documentada)*
