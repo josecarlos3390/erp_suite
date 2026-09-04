@@ -186,6 +186,8 @@ cuando se parte de cero o se replica en un cliente real:
 | Error al usar el ERP | Causa probable | Solución |
 |----------------------|----------------|----------|
 | 400 «Defina primero una serie de numeración para X» | Falta la serie del tipo X (o no cubre la fecha) | Administración → Series de numeración (ligada a la gestión vigente) |
+| 400 «No existe el tipo de cambio del día entre BOB y USD…» | Tenant con moneda secundaria sin la tasa **del día** (guard global impide registrar cobros/pagos y documentos) | Configuración → Tipos de cambio: registrar la tasa del día. El Centro de configuración lo marca como bloqueante |
+| 400 «La cuenta bancaria no tiene una cuenta contable asociada» | Cuenta bancaria sin cuenta de mayor (perfil contable: posteo de extractos / auto-match de conciliación) | Bancos → Cuenta bancaria: vincular su cuenta contable. Ítem «Cuentas bancarias → cuenta contable» del Centro |
 | 409 «No existe un período contable activo que cubra la fecha…» | Gestión sin períodos o documento fuera del rango | Generar períodos; ajustar fecha del documento |
 | «No se encontró cuenta…» al confirmar | Plan no generado o cuenta sin asignar (artículo/grupo/mapping) | Generar plan de cuentas; revisar pestaña contable del maestro |
 | 409 «La contabilización está deshabilitada…» | Operación contable en tenant sin contabilidad | Habilitar contabilidad (solo si el cliente la necesita) |
@@ -210,8 +212,8 @@ Qué valida (mismo orden que esta guía):
 
 | Grupo | Ítems |
 |-------|-------|
-| Empresa | Perfil de la empresa (razón social + NIT); moneda base y secundaria en el catálogo |
-| Contabilidad *(perfil A)* | Plan de cuentas + mapeos generados; cuentas contables de los partners (recomendado) |
+| Empresa | Perfil de la empresa (razón social + NIT); moneda base y secundaria en el catálogo; **tasa de cambio del día (requerido con moneda secundaria — bloquea registrar documentos si falta)** |
+| Contabilidad *(perfil A)* | Plan de cuentas + mapeos generados; cuentas contables de los partners (recomendado); **cuentas bancarias → cuenta contable (requerido — posteo de extractos y auto-match)** |
 | Gestión y series | Gestión (año fiscal) creada; períodos activos que cubren la fecha (solo perfil A); series por tipo de documento (26) |
 | Maestros | Sucursales, almacenes (+ por defecto), impuestos (+ por defecto), condiciones de pago, listas de precios (+ por defecto), grupos de artículos, UoMs, partners, artículos |
 | Usuarios y acceso | Sucursal/almacén por defecto del usuario |
@@ -251,14 +253,28 @@ Qué valida (mismo orden que esta guía):
   badge **"N"** en el menú (grupo Administración) cuando hay pasos bloqueantes; se
   refresca al cargar/guardar settings y al volver del Centro de configuración.
 - **Checks de consistencia (calidad)** — nuevos ítems recomendados (WARN) en el checklist:
-  artículos inventariables sin costo, partners activos sin indicador de impuesto por
-  defecto y tasa de cambio del día cuando hay moneda secundaria.
+  artículos inventariables sin costo y partners activos sin indicador de impuesto por
+  defecto (la tasa del día pasó a bloqueante — ver cuarta iteración).
 - **Cuentas de mayor por nivel de determinación** — ítem `determinationAccounts`: según el
   nivel (ITEM/ITEM_GROUP/WAREHOUSE) valida que los maestros que el motor consulta
   (matriz artículo-almacén, grupo o almacén) tengan las cuentas de inventario/costo, para
   evitar el 400 al confirmar el primer documento. Los hints de "Cuentas de mayor según" se
   alinearon con el comportamiento real (fuente según nivel + fallback a mapping para
   ciertos entry types — no es una cascada artículo→grupo→almacén).
+
+### Mejoras 2026-09-05 (cuarta iteración) — hallazgos del E2E F5.2
+
+- **`exchangeRateToday` pasa a bloqueante (MISSING required)** — el guard global
+  (`SystemExchangeRateGuard`) impide registrar documentos en tenants con moneda secundaria
+  si falta la tasa **del día**; antes figuraba solo como WARN recomendado y el operador
+  recibía el 400 «No existe el tipo de cambio del día…» sin aviso previo.
+- **Nuevo ítem `bankAccounts` (perfil A)** — valida que cada cuenta bancaria **activa**
+  tenga su cuenta contable: sin ella, el posteo de extractos y el auto-match de
+  conciliación fallan con 400. Acción directa a Bancos.
+- **Fix de ruta `GET /banks/accounts`** — quedaba sombreada por `GET /banks/:id`
+  (Nest/Express matchean por orden de declaración) y devolvía 400; los selectores de cuenta
+  bancaria de extractos/conciliaciones no cargaban. Rutas estáticas declaradas antes de
+  `:id` + cubierto por el E2E F5.2.
 
 ---
 
