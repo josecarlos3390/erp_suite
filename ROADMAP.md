@@ -379,11 +379,15 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
   consultar cuentas); previews, asientos manuales y asiento de apertura responden 409/400.
 - **Menú contable oculto:** con la contabilización deshabilitada el sidebar oculta los
   módulos cuya función es generar asientos — Asientos Contables, Plan de Cuentas, Mapeos
-  Contables, **Activos Fijos** (categorías/activos/reporte, depreciación) y **Extractos /
-  Reconciliaciones Bancarias** (posteo y ajustes). **Pagos Recibidos/Efectuados, Bancos,
-  Monedas y Tipos de Cambio siguen visibles y operativos** (cobrar/pagar es operación
-  comercial: el gate del motor salta su asiento y el saldo del partner se actualiza
-  igual). **Años Fiscales permanece visible** (lo requieren las series de numeración).
+  Contables y **Activos Fijos** (categorías/activos/reporte, depreciación). **Pagos
+  Recibidos/Efectuados, Bancos, Monedas, Tipos de Cambio, Extractos Bancarios y
+  Reconciliaciones siguen visibles y operativos** (cobrar/pagar y el **control bancario**
+  son operación comercial: el gate del motor salta su asiento y el saldo del partner se
+  actualiza igual). **Años Fiscales permanece visible** (lo requieren las series de
+  numeración). *Extractos/Reconciliaciones en modo comercial sin posteo (T12, 2026-09-05):
+  `post()` registra el extracto sin generar asientos, el auto-match concilia contra
+  pagos/cobros y el ajuste de diferencia (asiento) queda bloqueado con mensaje claro —
+  ver AUDIT §8 T12.*
 - **"Generar Plan de Cuentas"** (`GET/POST settings/chart-of-accounts`, idempotente):
   siembra el plan estándar **por país** (`resolveChartOfAccountsTemplate`: país →
   `UNIVERSAL` fallback → error). **Plantilla UNIVERSAL (2026-09-05):** estructura
@@ -415,7 +419,7 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
 - **Deuda técnica consolidada (2026-09-05):** ver `AUDIT.md` §8 — foto única y priorizada
   (T1–T14) de la deuda vigente (drift BD, specs flaky ✅, carga multitenant, special-prices,
   cierre de ejercicio ✅, depreciación automática ✅, F7.2 contable ✅, assembly refactor,
-  sourceDocumentType enum, cosmética UX, POS numeración, extractos modo comercial,
+  sourceDocumentType enum, cosmética UX, POS numeración, extractos modo comercial ✅,
   guardas de ruta ✅, planes por país).
 - **Migraciones:** Cada fase requiere migración Prisma. En producción, usar `prisma migrate dev` con nombres descriptivos.
 - **Frontend types:** Actualizar `prisma-types.ts` y modelos en `src/app/models/` tras cada cambio de schema.
@@ -425,4 +429,4 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
 
 ---
 
-*Última actualización: 2026-09-05 (T7 — F7.2 contable ✅)*
+*Última actualización: 2026-09-05 (T12 — extractos/reconciliaciones en modo comercial ✅)*

@@ -112,12 +112,13 @@ Otros:
   (default ON) incluido en el payload `CreateTenantPayload.accountingEnabled`.
 - **Sidebar** (`core/layout/sidebar`): `SidebarChild.accountingOnly` — con la
   contabilización deshabilitada se ocultan los módulos cuya función es generar asientos:
-  Asientos Contables, Plan de Cuentas, Mapeos Contables, **Activos Fijos** (categorías /
-  activos / reporte — depreciación) y **Extractos / Reconciliaciones Bancarias** (posteo y
-  ajustes). **Pagos Recibidos / Efectuados, Bancos, Monedas y Tipos de Cambio siguen
-  visibles y operativos** (registrar cobros/pagos es operación comercial; el gate del
-  motor salta su asiento y el saldo del partner se actualiza igual). Años Fiscales y el
-  resto del menú se mantienen.
+  Asientos Contables, Plan de Cuentas, Mapeos Contables y **Activos Fijos** (categorías /
+  activos / reporte — depreciación). **Pagos Recibidos / Efectuados, Bancos, Monedas,
+  Tipos de Cambio, Extractos Bancarios y Reconciliaciones siguen visibles y operativos**
+  (cobrar/pagar y el control bancario son operación comercial; el gate del motor salta el
+  asiento y el saldo del partner se actualiza igual). Años Fiscales y el resto del menú se
+  mantienen. *Los Extractos/Reconciliaciones volvieron a estar visibles en modo comercial
+  con el desacople del asiento (T12, 2026-09-05) — ver §7.*
 
 ## 5. Archivos tocados
 
@@ -146,13 +147,27 @@ Otros:
 - Planes oficiales por país (PE, CL, AR…) — la plantilla **UNIVERSAL** ya da cobertura
   estándar (estructura IFRS-like en español, mismos códigos que BO) para cualquier país;
   cuando se registre el plan oficial de un país, pasa a usarse automáticamente.
-- **Extractos/reconciliaciones en modo comercial sin posteo (2026-09-05, anotado):**
-  un cliente "solo comercial" igual necesita control bancario (importar extracto, cotejar
-  con pagos/cobros) aunque no contabilice. Hoy "postear líneas" y "ajustar conciliación"
-  crean asientos → 409 con la contabilidad deshabilitada (y su menú está oculto). Diseño
-  futuro: desacoplar el posteo contable de esos flujos (estado sin asiento: marcar/conciliar
-  sin generar journal entry; el asiento se generaría al habilitar contabilidad o bajo demanda).
+- **Extractos/reconciliaciones en modo comercial sin posteo ✅ (2026-09-05, T12 — resuelto):**
+  un cliente "solo comercial" necesita control bancario (importar extracto, cotejar
+  con pagos/cobros) aunque no contabilice. El desacople del asiento ya está hecho:
+  - `BankStatementsService.post()` con `accountingEnabled=false` **registra el extracto
+    sin generar journal entries** (status POSTED; valida que haya líneas con movimiento;
+    las líneas quedan UNRECONCILED para conciliar) y sin exigir cuenta contable del banco
+    ni cuentas por línea. En modo contable el flujo clásico (posteo a asientos + ITF)
+    no cambia.
+  - `BankReconciliationService`: `autoMatch()` en modo comercial omite el candidato de
+    asientos y no exige la cuenta de mayor del banco (match contra pagos/cobros);
+    `manualMatch()` rechaza conciliar contra líneas de asiento (400 accionable);
+    `generateAdjustment()` responde 409 (el ajuste genera un asiento — se habilita al
+    encender la contabilización, "bajo demanda").
+  - Frontend: Extractos y Reconciliaciones **salieron de `accountingOnly`** (sidebar +
+    rutas sin guard contable); el form de extracto muestra aviso de modo comercial y
+    botón "Registrar Extracto" (columna Cuenta Contable oculta); el listado etiqueta el
+    estado POSTED como "Registrado"; en la conciliación el botón "Generar Ajuste" se
+    reemplaza por una explicación de la diferencia sin asiento.
+  - Ver `backend-erp/CHANGELOG.md` (T12) y AUDIT §8 T12.
 - **Guardas de ruta para URLs directas de módulos contables (2026-09-05, resuelto):**
   `accountingEnabledGuard()` redirige al dashboard cuando la contabilización está
-  deshabilitada (asientos, plan de cuentas, mapeos, activos fijos, extractos y
-  reconciliaciones); el menú ya los oculta y el backend bloquea las operaciones.
+  deshabilitada (asientos, plan de cuentas, mapeos, activos fijos); el menú ya los oculta
+  y el backend bloquea las operaciones. *(Extractos/Reconciliaciones quedaron fuera de la
+  guarda con T12, 2026-09-05 — operan en modo comercial como control bancario.)*

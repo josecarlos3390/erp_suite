@@ -127,8 +127,11 @@ Orden sugerido (coincide con `seedTenantData`):
 **Qué NO se hace** (el menú ya lo oculta con el flag en OFF):
 - Plan de cuentas, mappings, cuentas de mayor (el motor no las pide).
 - Períodos contables (no hay asientos; la validación de período nunca corre).
-- Asientos Contables, Activos Fijos, Extractos/Reconciliaciones (ocultos en el menú;
-  sus endpoints responderían 409 si se invocan directo).
+- Asientos Contables y Activos Fijos (ocultos en el menú; sus endpoints responderían 409
+  si se invocan directo). **Extractos/Reconciliaciones SÍ están visibles** como control
+  bancario (T12, 2026-09-05): el extracto se registra sin generar asientos y la
+  conciliación matchea contra pagos/cobros; solo el ajuste de diferencia (asiento) queda
+  bloqueado con mensaje claro.
 
 **Qué SÍ se hace:**
 
@@ -140,9 +143,10 @@ Orden sugerido (coincide con `seedTenantData`):
 | B.4 | Parametrización: país, moneda, zona horaria, perfil de empresa, usuarios/roles | Igual que A.5.1–A.5.3 |
 | B.5 | **Prueba E2E comercial**: factura de venta/compra y movimientos de stock confirman **sin** pedir cuentas ni períodos | Pantallas de documentos |
 | B.6 | **Pagos**: cobros a clientes y pagos a proveedores se registran normal (saldo de partner actualizado; **sin asiento**) | Tesorería → Pagos Recibidos/Efectuados |
+| B.7 | **Control bancario**: importar el extracto y **Registrar** (sin asientos), luego Reconciliaciones → auto/match manual contra pagos/cobros del período (sin cuentas contables) | Tesorería → Extractos Bancarios / Reconciliaciones |
 
 ### Checklist B (verificación final)
-- [ ] Contabilidad OFF en Parametrización; menú sin Asientos/Plan de Cuentas/Activos Fijos/Extractos.
+- [ ] Contabilidad OFF en Parametrización; menú sin Asientos/Plan de Cuentas/Activos Fijos; Extractos/Reconciliaciones visibles como control bancario.
 - [ ] Año fiscal creado (basta la gestión; sin períodos) y series definidas.
 - [ ] Impuestos/condiciones/precios/UoMs/almacenes/partners/artículos creados.
 - [ ] Prueba E2E: documentos y pagos confirman sin errores de cuentas ni períodos.

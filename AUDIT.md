@@ -971,7 +971,10 @@ completo en UI (columna moneda legible, totales M/E en asientos, warning SPECIFI
 excepciones cosméticas documentadas (alturas 28px/38px intencionales y decorativas que no
 pertenecen al token de control) — los pendientes de F7.2 contable (diferencia de cambio automática
 en asientos manuales; gain/loss accounts del settings sin consumo por builders) fueron
-**resueltos (2026-09-05, T7)** — ver `docs/plans/plan-f7.2-contable.md`.
+**resueltos (2026-09-05, T7)** — ver `docs/plans/plan-f7.2-contable.md`. **T12 resuelto
+(2026-09-05):** extractos/reconciliaciones en modo comercial sin posteo (desacople del asiento) —
+un tenant con contabilidad deshabilitada registra extractos y concilia contra pagos/cobros sin
+generar asientos (ver AUDIT §8 T12 y plan-contabilidad-opcional §7).
 
 **Deuda estructural del motor contable (2026-08-09):** el último monolito de la fachada —
 `previewJournalEntryFromDraft` (~1010 líneas, switch de 16 cases de preview de borradores) — fue
@@ -1670,6 +1673,6 @@ factura web (56 bs en 2 uds). Si el modal sigue en 0% tras este fix, el log
 | T9 | Contabilidad | **`sourceDocumentType` String → enum** | 🔲 Diferido post-go-live por riesgo de datos — AGENTS §5.7 #7 | P3 |
 | T10 | UX | Alturas decorativas sin token + Fase 7 del plan visual (`::ng-deep`) | 🟡 Cosmética documentada (excepciones 28/38px intencionales) | P3 |
 | T11 | POS | Numeración: series del módulo vs numeración propia del POS | 🔲 Pendiente de diseño | P3 |
-| T12 | Contabilidad | **Extractos/Reconciliaciones en modo comercial sin posteo** (desacople del asiento) | 🔲 Anotado en `docs/plans/plan-contabilidad-opcional.md` §7 | P2 |
+| T12 | Contabilidad | **Extractos/Reconciliaciones en modo comercial sin posteo** (desacople del asiento) | ✅ **RESUELTO (2026-09-05)** — un tenant "solo comercial" (`accountingEnabled=false`) opera los extractos y conciliaciones como **control bancario sin asientos**: (1) `BankStatementsService.post()` registra el extracto (status POSTED) sin crear journal entries ni exigir cuenta contable del banco ni cuentas por línea (valida movimiento; líneas quedan UNRECONCILED para conciliar); (2) `autoMatch()` en modo comercial omite el candidato de asientos y no exige la cuenta de mayor del banco — match solo contra pagos/cobros; (3) `manualMatch()` rechaza conciliar contra `journalEntryLineId` en modo comercial (400 accionable; el match contra pagos y el manual de control siguen activos); (4) `generateAdjustment()` responde 409 (el ajuste genera un asiento; se habilita al encender la contabilización); (5) frontend: Extractos/Reconciliaciones salen de `accountingOnly` (sidebar + rutas sin guard contable), botón "Registrar Extracto" y aviso de modo comercial en el form de extracto (columna Cuenta Contable oculta), estado POSTED como "Registrado" en el listado, y en la conciliación el ajuste contable se explica/oculta en vez de ofrecerse. Fix adjunto: cache de `SettingsService` por tenant (antes global → un tenant comercial podía leer `accountingEnabled` de otro durante 5 min). Tests: +6 backend (5 T12 + 1 cache) y +3 Karma; suites backend/frontend en verde. Ver `backend-erp/CHANGELOG.md` y `docs/plans/plan-contabilidad-opcional.md` §7 | P2 |
 | T13 | Frontend | **Guardas de ruta** para URLs directas de módulos contables cuando la contabilidad está deshabilitada | ✅ **RESUELTO (2026-09-05)** — `accountingEnabledGuard()` en journal-entries, accounts, account-mappings, asset-categories, fixed-assets, bank-statements y bank-reconciliations (redirige al dashboard con contabilidad OFF) | P3 |
 | T14 | Localización | **Planes de cuentas oficiales por país** (PE/CL/AR…) — hoy cubiertos por la plantilla universal | 🔲 Mejora futura | P3 |
