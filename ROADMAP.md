@@ -327,7 +327,7 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
 |-----------|---------|-------------|
 | Alta | **F5.1 — Facturación Electrónica SIN Bolivia** | Firma digital, envío masivo, consulta de estado. *(siguiente feature prioritario)* |
 | Alta | **F5.5 — Cumplimiento tributario BO (G2–G5, G9)** | IUE 25% + compensación IT (Art. 77), RC-IVA declarativo (Form 110), exportaciones tasa cero, prorrateo de crédito fiscal, **asientos contables del POS** (G9 — el checkout no postea al mayor). ~~Ventas menores POS (Art. 16)~~ ✅ T3, ~~UFV~~ ✅ T2, ~~ITF~~ ✅ T1. Plan detallado: `docs/plans/plan-cumplimiento-tributario-bo.md`. |
-| Alta | **F5.2 — Integración Bancaria** | Conciliación automática de extractos, import CSV/Excel, matching de pagos. |
+| Alta | **F5.2 — Integración Bancaria** | Conciliación automática de extractos, import CSV/Excel, matching de pagos. **✅ Completado (2026-09-05):** Fase 1 (import por archivo CSV/XLSX con preview), Fase 2 (matching parametrizable — ventana ±días y tolerancia — + endpoint de sugerencias por línea + match manual asistido) y Fase 3 (E2E del flujo completo contable/comercial + UX: detalle con líneas sin extracto, selector de extractos conciliables, cierre del extracto al finalizar). Plan: `docs/plans/plan-f5.2-integracion-bancaria.md`. |
 | Media | **F5.4 — CRM básico** | Oportunidades, actividades, pipeline. |
 | Media | **F7.2 — Multi-divisa** | USD, EUR además de BOB. |
 | Media | **F7.3 — Localización de reportes** | Para Chile, Perú, Argentina. |
@@ -429,4 +429,4 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
 
 ---
 
-*Última actualización: 2026-09-05 (deuda T1–T14 100% cerrada ✅ — T10 cosmética UX convergido con residual interno documentado; F5.2 Integración Bancaria en curso — plan `docs/plans/plan-f5.2-integracion-bancaria.md`)*
+*Última actualización: 2026-09-05 (deuda T1–T14 100% cerrada ✅ — T10 cosmética UX convergido con residual interno documentado; F5.2 Integración Bancaria **completada** ✅ — plan `docs/plans/plan-f5.2-integracion-bancaria.md`; siguiente feature prioritario: F5.1 Facturación Electrónica SIN)*
