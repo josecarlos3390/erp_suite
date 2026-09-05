@@ -74,9 +74,9 @@ ventana fija de ±3 días. F5.2 eleva el módulo al nivel de integración bancar
   - El selector "Extracto Bancario" del form nuevo ofrece los extractos **conciliables**
     (DRAFT/POSTED/RECONCILING, filtrados por la cuenta bancaria elegida) — antes filtraba
     `RECONCILING`, estado que ningún flujo producía, y la lista salía siempre vacía.
-  - Pendiente menor (fuera de alcance): al **finalizar** una conciliación el extracto no se
-    marca `RECONCILED` (el estado existe en el enum pero nadie lo asigna); conviene
-    decidirlo al definir el cierre de extractos/periodos.
+  - Pendiente menor resuelto (2026-09-05): al **finalizar** una conciliación que cuadra con
+    extracto vinculado, las líneas pasan a `RECONCILED` y el extracto se marca `RECONCILED`
+    (sin pendientes); `unmatch` ya no permite desarmar una conciliación finalizada (409).
 - ✅ **Docs**: `docs/guides/guia-implementacion-configuracion.md` (Anexo B/C + 4ª iteración:
   tasa del día bloqueante, cuentas bancarias → cuenta contable, fix ruta) y CHANGELOGs.
 
