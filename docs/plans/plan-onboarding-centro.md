@@ -1,4 +1,6 @@
-# Plan — Onboarding guiado por el Centro de configuración (core vacío → flujo operativo)
+# Plan — Onboarding guiado por el Centro de configuración (core vacío → flujo operativo) ✅
+
+> **Estado: completado (2026-09-05).** Fases A–E entregadas y verificadas local y en Railway.
 
 > Fecha: 2026-09-05 · Backend `src/setup` + scripts · Frontend `pages/setup` · Docs guía.
 > **Objetivo:** partir de una BD **vacía (solo tenant + admin/roles)** y usar el **Centro de
@@ -105,4 +107,9 @@ Análisis por módulo de "lo que exige un flujo operativo" vs "lo que chequea el
   (`npm run walkthrough:config` → `requiredPending = 0`) y **validación de flujo por
   módulo OK** (venta, compra, inventario y tesorería con al menos un documento confirmado;
   los 4 ítems `flow*` del Centro en OK) partiendo del núcleo vacío.
-- **Fase E (pendiente):** replicar en Railway y cierre de docs.
+- **Fase E (2026-09-05, ✅ completada):** replicado en Railway — `reset:core` (migrate
+  reset + bootstrap-core) + SQL manuales marcados + redeploy, wizard y configuración
+  guiada vía `walkthrough:config` (con re-login tras el wizard por el claim estático del
+  JWT) → `requiredPending = 0`; validación de flujo por familia OK en Railway (checklist
+  `{ok:22, warn:4, missing:0, requiredPending:0}`, flujos venta/compra/inventario/
+  tesorería OK). Cierre documental en guía/ROADMAP/CHANGELOG.
