@@ -96,6 +96,10 @@ Análisis por módulo de "lo que exige un flujo operativo" vs "lo que chequea el
 - **Fase C (backend, 2026-09-05):** grupo **Parametrización** (`exchangeRateAccounts`,
   WARN recomendado con acción a `/settings`) y grupo **Validación operativa**
   (`flowSales/flowPurchases/flowInventory/flowTreasury`, MISSING recomendado hasta existir
-  documento por familia). Pendiente en Fase C: **wizard de maestros base por país**
-  (endpoint + acción en el Centro) y revisables recomendados adicionales si la auditoría lo
-  amerita (p. ej. ítem de bancos).
+  documento por familia). Verificado en vivo: checklist 25 ítems / 7 grupos sobre núcleo
+  vacío. Commit backend `d6a9391`.
+- **Fase C (wizard maestros base por país, en implementación):** `POST /setup/base-masters`
+  (idempotente; datos exactos del seed para BO: monedas, impuestos, UoMs, condiciones,
+  grupo/lista por defecto, sucursal/almacén, return reasons) + acción en el Centro.
+- **Fase D (pendiente):** caminata guiada local de vacío → flujo operativo completo.
+- **Fase E (pendiente):** replicar en Railway y cierre de docs.
