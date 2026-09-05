@@ -278,6 +278,27 @@ Qué valida (mismo orden que esta guía):
 
 ---
 
+## Anexo C.1 — Onboarding desde núcleo vacío (Centro de configuración) ✅ (2026-09-05)
+
+Para partir de cero y dejar que el **Centro de configuración** guíe toda la
+parametrización:
+
+1. `npm run reset:core` en `backend-erp` — deja el tenant con **solo** `admin/admin123` y
+   roles (sin cuentas, maestros, series, años fiscales ni settings): el Centro queda todo
+   en rojo y guía el orden.
+2. En `/setup`, botón **"Generar maestros base"** (wizard por país) o
+   `POST /setup/base-masters`: crea los maestros técnicos (monedas, impuestos BO, UoMs,
+   condiciones, grupo/lista por defecto, sucursal/almacén principal y return reasons) y
+   asigna al ejecutor la sucursal/almacén por defecto (requisito del guard de sucursal).
+3. Seguir el checklist: perfil → plan de cuentas → gestión + períodos → series por tipo →
+   tasa del día → maestros comerciales → **Validación operativa** (confirmar 1 documento
+   por familia: venta, compra, inventario, tesorería).
+4. Alternativa por API reproducible: `npm run walkthrough:config` (hasta `requiredPending =
+   0`; la validación por familia se hace con documentos reales).
+
+Verificado local y en Railway (`{ok:22, warn:4, missing:0, requiredPending:0}`). Plan:
+`docs/plans/plan-onboarding-centro.md`.
+
 ## Anexo D — Prueba end-to-end guiada (validación de arranque)
 
 Cuando el checklist está completo (`requiredPending = 0`), el Centro de configuración lo

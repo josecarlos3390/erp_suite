@@ -429,4 +429,22 @@ solo como **comercial/inventario** (sin asientos, sin exigencias de cuentas) o c
 
 ---
 
-*Última actualización: 2026-09-05 (deuda T1–T14 100% cerrada ✅ — T10 cosmética UX convergido con residual interno documentado; F5.2 Integración Bancaria **completada** ✅ — plan `docs/plans/plan-f5.2-integracion-bancaria.md`; siguiente feature prioritario: F5.1 Facturación Electrónica SIN)*
+## Onboarding por Centro de configuración ✅ (2026-09-05)
+
+El ERP puede partir de un **núcleo vacío** (solo tenant + admin) y configurarse/parametrizarse
+**paso a paso guiado por el Centro de configuración** hasta generar un flujo operativo
+completo (ventas, compras, inventario, tesorería):
+
+- `npm run reset:core` (backend-erp) — núcleo vacío reproducible (`scripts/bootstrap-core.ts`).
+- **Centro ampliado**: grupos Parametrización y **Validación operativa** (un documento
+  confirmado por módulo pasa los ítems `flow*` a OK).
+- **Wizard de maestros base por país**: `POST /setup/base-masters` + botón "Generar
+  maestros base" en `/setup`.
+- `npm run walkthrough:config` — réplica por API de los pasos guiados hasta
+  `requiredPending = 0`.
+- Verificado **local y en Railway** (checklist `{ok:22, warn:4, missing:0,
+  requiredPending:0}`). Plan: `docs/plans/plan-onboarding-centro.md`.
+
+---
+
+*Última actualización: 2026-09-05 (deuda T1–T14 100% cerrada ✅ — T10 cosmética UX convergido con residual interno documentado; F5.2 Integración Bancaria **completada** ✅ — plan `docs/plans/plan-f5.2-integracion-bancaria.md`; onboarding por Centro de configuración **completado** ✅ — plan `docs/plans/plan-onboarding-centro.md`; siguiente feature prioritario: F5.1 Facturación Electrónica SIN)*
