@@ -101,5 +101,8 @@ Análisis por módulo de "lo que exige un flujo operativo" vs "lo que chequea el
 - **Fase C (wizard maestros base por país, en implementación):** `POST /setup/base-masters`
   (idempotente; datos exactos del seed para BO: monedas, impuestos, UoMs, condiciones,
   grupo/lista por defecto, sucursal/almacén, return reasons) + acción en el Centro.
-- **Fase D (pendiente):** caminata guiada local de vacío → flujo operativo completo.
+- **Fase D (2026-09-05, ✅ completada localmente):** configuración guiada verificada
+  (`npm run walkthrough:config` → `requiredPending = 0`) y **validación de flujo por
+  módulo OK** (venta, compra, inventario y tesorería con al menos un documento confirmado;
+  los 4 ítems `flow*` del Centro en OK) partiendo del núcleo vacío.
 - **Fase E (pendiente):** replicar en Railway y cierre de docs.
