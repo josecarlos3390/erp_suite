@@ -67,11 +67,16 @@ ventana fija de ±3 días. F5.2 eleva el módulo al nivel de integración bancar
   sombreada por `:id`; (2) DTOs bancarios sin `@Type(() => Number)` (selects nativos envían
   string → 400 al crear extracto/reconciliación); (3) la ruta `new` de conciliación no
   renderizaba (no hay param `:id`; ahora se detecta por segmento de URL).
-- ⚠️ **Hallazgos UX pendientes (documentados)**: la UI del detalle de una reconciliación
-  **sin extracto vinculado** no lista líneas (el backend sí matchea por banco+período); el
-  selector "Extracto" del form nuevo filtra `RECONCILING`, estado que ningún flujo produce
-  (el extracto nace DRAFT y el registro lo pasa a POSTED) → definir el ciclo
-  (p. ej. registrar → RECONCILING) o listar DRAFT/POSTED.
+- ✅ **Hallazgos UX (resueltos 2026-09-05)**:
+  - El detalle de una reconciliación **sin extracto vinculado** ahora lista las líneas del
+    alcance: el backend devuelve `statementLines` en `findById` (extracto vinculado o
+    banco+período) y la UI las muestra (antes quedaba vacía).
+  - El selector "Extracto Bancario" del form nuevo ofrece los extractos **conciliables**
+    (DRAFT/POSTED/RECONCILING, filtrados por la cuenta bancaria elegida) — antes filtraba
+    `RECONCILING`, estado que ningún flujo producía, y la lista salía siempre vacía.
+  - Pendiente menor (fuera de alcance): al **finalizar** una conciliación el extracto no se
+    marca `RECONCILED` (el estado existe en el enum pero nadie lo asigna); conviene
+    decidirlo al definir el cierre de extractos/periodos.
 - ✅ **Docs**: `docs/guides/guia-implementacion-configuracion.md` (Anexo B/C + 4ª iteración:
   tasa del día bloqueante, cuentas bancarias → cuenta contable, fix ruta) y CHANGELOGs.
 
