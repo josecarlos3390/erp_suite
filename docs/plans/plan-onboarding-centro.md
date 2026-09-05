@@ -65,5 +65,37 @@
   local y en Railway).
 - Suite backend/Karma/E2E en verde; modo comercial (T12) y multi-tenant intactos.
 
-## 3. Registro de gaps del Centro (se completa en Fase B)
-- [ ] _(pendiente Fase B)_ tabla por módulo con ítems nuevos propuestos.
+## 3. Registro de gaps del Centro (auditoría Fase B ✅ 2026-09-05)
+
+Análisis por módulo de "lo que exige un flujo operativo" vs "lo que chequea el Centro"
+(los ítems marcados **nuevo** se implementan en Fase C):
+
+| Módulo / flujo | Parametrización que exige | Chequeo en el Centro | Estado |
+|---|---|---|---|
+| Transversal | Perfil (razón social/NIT) | `companyProfile` | ✅ |
+| Transversal | Moneda base (+ secundaria) en catálogo | `baseCurrency` / `foreignCurrency` | ✅ |
+| Transversal | Plan de cuentas + mapeos (perfil A) | `chartOfAccounts` | ✅ |
+| Transversal | Tasa de cambio del día (multi-moneda) | `exchangeRateToday` | ✅ (F5.2: ahora bloqueante) |
+| Transversal | País / idioma / zona horaria | — | ⚠️ informativo (viven en Tenant; no bloquean) |
+| Contabilidad | Gestión (año fiscal) + períodos | `fiscalYear` / `periods` | ✅ |
+| Contabilidad | Cuentas ganancia/pérdida por TC (revaluación, NC M/E) | **nuevo** `exchangeRateAccounts` (Parametrización) | ⏳ en Fase C ✅ backend |
+| Contabilidad | Cuentas bancarias → cuenta contable | `bankAccounts` | ✅ (F5.2) |
+| Numeración | Series por tipo de documento (26) | `series` (tipos "que usaré") | ✅ |
+| Ventas | Cliente + impuestos + condición + precio | `partners`, `taxIndicators`, `paymentTerms`, `priceLists`, `uoms`, `itemGroups` | ✅ |
+| Ventas | Cuenta de ingreso por artículo/grupo/matriz | `determinationAccounts` | ✅ |
+| Compras | Proveedor + impuestos + condición | idem Maestros | ✅ |
+| Compras | CxC/CxP de partners | `partnerAccounts` | ✅ (WARN) |
+| Inventario | Sucursal/almacén (+ default) | `branches`, `warehouses`, `defaultWarehouse` | ✅ |
+| Inventario | Costo de artículos / matriz | `itemCosts` | ✅ |
+| Tesorería | Bancos + cuentas bancarias | (maestro bancos) | ⚠️ no hay ítem propio de "bancos" (sí cuenta bancaria→GL) |
+| Parametrización global | Flags stock/POS/warehouse, conciliación, etc. | — | ⚠️ parcial: muchos viven solo en Parametrización (sin check) — se cubren como revisables recomendados en Fase C |
+| Maestros base por país | Impuestos BO, monedas, UoMs, condiciones, grupo/lista por defecto, sucursal/almacén (los creaba el seed) | — (no hay generador) | ⏳ **wizard `base-masters` por país (aprobado)** — Fase C |
+| **Flujo operativo** | ≥1 documento confirmado por familia (venta, compra, inventario, tesorería) | **nuevo** grupo `Validación operativa` (flowSales/flowPurchases/flowInventory/flowTreasury) | ⏳ en Fase C ✅ backend |
+
+### Avance
+- **Fase C (backend, 2026-09-05):** grupo **Parametrización** (`exchangeRateAccounts`,
+  WARN recomendado con acción a `/settings`) y grupo **Validación operativa**
+  (`flowSales/flowPurchases/flowInventory/flowTreasury`, MISSING recomendado hasta existir
+  documento por familia). Pendiente en Fase C: **wizard de maestros base por país**
+  (endpoint + acción en el Centro) y revisables recomendados adicionales si la auditoría lo
+  amerita (p. ej. ítem de bancos).
