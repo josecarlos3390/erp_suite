@@ -12,11 +12,14 @@
   `59320fa` (origin + Railway).
 - ✅ **Fase 2 frontend** — páginas `/reports/journal|trial-balance|general-ledger` +
   menú + Karma 3/3. FE `1d2879ec`, `09984e2f`, `07168637`.
-- ✅ **Fase 3 (parcial)** — verificado en vivo local la **cuadratura**: journal
+- ✅ **Fase 3 (completa)** — verificado en vivo local la **cuadratura**: journal
   Debe=Haber=trial=1830.41 y Deudor=Acreedor=1581; mayor cuadra con trial (11 cuentas
-  con movimiento). Pendiente: ejecución del ciclo destructivo cierre→apertura→2027
-  (requiere cerrar el ejercicio demo) y confirmación del deploy en Railway (API
-  inestable).
+  con movimiento). **Ciclo contable ejecutado y validado:** cierre de 2026 (períodos
+  12/12 + asiento `CIERRE-GEST-2026` + año CLOSED) → gestión 2027 con 12 períodos →
+  apertura `APERTURA-GEST-2027` cuadrada (1.525,59 = 1.525,59) → trial Enero 2027 con
+  saldos (7 cuentas). **Fix de borde:** asientos de apertura/cierre (00:00Z @db.Date)
+  incluidos por el filtro `from` (medianoche UTC del día) — backend `acecac3` (origin +
+  Railway). Pendiente menor: replicar el ciclo en Railway con datos de esa base.
 
 ## Alcance (a)
 
