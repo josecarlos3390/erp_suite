@@ -74,6 +74,8 @@ trazabilidad (serie/lote/UoM) funciona — sin huecos entre formularios.
 ## Notas de ejecución / ambiente
 - Backend local reiniciado con dist reconstruido; prep E2E reutilizable en
   `%TEMP%\erp-checklist-task\prep-e2e-env.mjs` (FY 2026 OPEN + 26 series).
+- **Baterías finales en verde:** backend completo 154 suites / 1635 tests; Karma
+  global frontend **1459/1459**; Karma POS 46/46; builds AOT backend y frontend OK.
 - La BD quedó en estado E2E (FY2026 abierto) y se RESTAURÓ al final al backup
   original `backend-erp/backups/erp-backup-2026-09-06_08-11-43.dump` (FY2026 cerrado
   con CIERRE-GEST-2026, FY2027 abierto con APERTURA-GEST-2027 y documentos 2027).
