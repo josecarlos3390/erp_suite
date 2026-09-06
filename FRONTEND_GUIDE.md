@@ -1124,7 +1124,38 @@ Reglas rápidas (detalle en el doc enlazado):
 
 ---
 
-## 12. Documentación adicional del frontend
+## 12. Densidad de interfaz (Compacta / Normal / Espaciosa) y auditoría
+
+La densidad global la aplica `DensityService` (clases `density-compact` /
+`density-spacious` en `<body>`, persistidas en localStorage `erp.uiDensity`; default
+`compact`). **Reglas para que una pantalla obedezca:**
+
+- Los componentes canónicos (`luna-form-page`, `luna-form-section`, `luna-data-table`,
+  controles) leen variables de densidad y obedecen por diseño.
+- **Los tokens base `--space-*` y `--text-*` son CONSTANTES** (no escalan con la
+  densidad). El único token que escala es `--text-base` (14px → 13px en Compacta).
+- Contenido custom (tarjetas, tablas propias, dashboards, POS, selectores): definir en
+  su SCSS variables de densidad con tres valores y overrides de extremos:
+
+  ```scss
+  :host { --sc-pad: 16px 20px; }                     // Normal (base)
+  :host-context(body.density-compact)  { --sc-pad: 12px 14px; }
+  :host-context(body.density-spacious) { --sc-pad: 20px 26px; }
+  ```
+
+- Nunca usar alias legacy inexistentes: `--fs-*` y `--font-size-*` **ya no existen**
+  (quedan `var(--x)` inválidos → heredan ~16px). Usar `--text-xs/sm/base/…` directo.
+- **Auditoría:** `npm run audit:density` (estático: px fuera de bloques de densidad,
+  tablas crudas y **variables CSS indefinidas**; baselines con `--write-baseline` /
+  `--baseline`, CI falla solo con hallazgos nuevos), `npm run audit:density:routes`
+  + `npm run audit:density:e2e` (dinámico: barrido de pantallas Compacta vs Espaciosa).
+  Marcadores manuales: `density-ok` en la línea/archivo (escapa el estático) y
+  `density-audit: off/on` en comentarios CSS. Detalle:
+  `docs/reference/densidad-interfaz-auditoria.md`.
+
+---
+
+## 13. Documentación adicional del frontend
 
 Estos documentos complementan a esta guía canónica. No son obligatorios para tareas rutinarias, pero deben consultarse antes de trabajar en los dominios que cubren.
 
