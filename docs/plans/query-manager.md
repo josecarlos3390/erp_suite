@@ -22,6 +22,10 @@ CSV/Excel).
 3. **Catálogo inicial:** conjunto **curado** de entidades/campos con etiquetas
    y tipos (no todas las tablas).
 
+## Modo SQL directo (implementado, T22)
+
+El Query Manager incluye una pestana **SQL directo** (solo lectura) para consultas que el constructor no cubre (LEFT/RIGHT/INNER JOIN, UNION, subconsultas, CTE): textarea + ejecutar + guardar {mode:sql} + toggle del flag. Seguridad: el flag query_manager_sql_enabled solo se puede activar con 1 tenant (instancia dedicada; con mas de uno se fuerza deshabilitado con mensaje); sql-guard.util permite una sola sentencia SELECT/WITH sin DML/DDL ni acceso a tablas sensibles (User/Tenant/SystemSettings/roles/…); ejecucion con statement_timeout 30 s y tope de 5000 filas.
+
 ## Fases futuras (fuera del MVP)
 
 - Fase 2: parámetros al ejecutar (fechas, textos) y consultas **compartidas
