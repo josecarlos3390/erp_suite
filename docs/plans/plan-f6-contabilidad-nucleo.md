@@ -5,6 +5,19 @@
 > asientos, engine con partida doble, dimensiones, estados financieros, cierre de
 > período con asiento de cierre/apertura, activos fijos, multi-divisa).
 
+## Estado de implementación (2026-09-05)
+
+- ✅ **Fase 1 backend** — `GET /reports/journal`, `GET /reports/trial-balance`,
+  `GET /reports/general-ledger` (specs 3/3 + regresión 13/13). Backend `a7be3e2` y
+  `59320fa` (origin + Railway).
+- ✅ **Fase 2 frontend** — páginas `/reports/journal|trial-balance|general-ledger` +
+  menú + Karma 3/3. FE `1d2879ec`, `09984e2f`, `07168637`.
+- ✅ **Fase 3 (parcial)** — verificado en vivo local la **cuadratura**: journal
+  Debe=Haber=trial=1830.41 y Deudor=Acreedor=1581; mayor cuadra con trial (11 cuentas
+  con movimiento). Pendiente: ejecución del ciclo destructivo cierre→apertura→2027
+  (requiere cerrar el ejercicio demo) y confirmación del deploy en Railway (API
+  inestable).
+
 ## Alcance (a)
 
 1. **Libro Diario** — asientos ordenados por fecha/código en un rango de fechas o
