@@ -578,7 +578,7 @@ El extracto bancario (`BankStatement`) no genera asientos contables automáticam
 ### Backend
 
 - **Unitarios:** Jest + ts-jest. Archivos `*.spec.ts` en `src/` (128 specs).
-- **E2E:** Jest con config `test/jest-e2e.json`, `maxWorkers: 1`, timeout 30s. Setup en `test/setup-e2e.ts` apunta a base de test local.
+- **E2E:** Jest con config `test/jest-e2e.json`, `maxWorkers: 1`, `workerIdleMemoryLimit: 1GB` (reinicia el worker entre suites si supera 1 GB de heap para evitar el OOM de la corrida completa), timeout 30s. `npm run test:e2e` lanza jest con `node --max-old-space-size=6144` (heap elevado, necesario al correr las 14 suites juntas). Setup en `test/setup-e2e.ts` apunta a base de test local.
 - **Mocks:** PrismaService mockeado como `as unknown as PrismaService` o `satisfies Partial<PrismaService>`.
 - **Flujos E2E cubiertos:** ventas, compras, stock, lotes/seriados, pagos, billing, devoluciones/NC, precios especiales con quantity breaks.
 
