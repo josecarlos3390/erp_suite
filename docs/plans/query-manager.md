@@ -115,14 +115,21 @@ Prefijo `query-manager` (permiso `query-manager: view/create/edit/delete/run`):
 
 ## UI (frontend)
 
-- Ruta lazy `/query-manager` bajo el menú **Reportes**.
-- Lista de consultas guardadas (nombre, descripción, favorita, editar/
-  ejecutar/eliminar) + botón "Nueva consulta".
-- Editor: 1) entidad, 2) campos (checkboxes + etiquetas), 3) filtros
-  (campo → operador → valor), 4) orden, 5) límite; botón **Ejecutar** y
-  **Guardar**.
-- Resultado: `luna-data-table` con columnas dinámicas (mapeo de tipos a
-  formato: fecha, moneda, booleano) + botones **CSV** / **Excel (CSV)**.
+### Dos vistas con submenú superior (T23, 2026-09-06)
+
+El módulo **Consultas personalizadas** se divide en dos vistas con URL
+propia (patrón SAP B1: Query Manager vs Query Generator), unidas por una
+subnavegación superior compartida (`app-query-manager-subnav` con
+`routerLinkActive`), visible en ambas páginas:
+
+| Vista | Ruta | Componente | Qué contiene |
+|---|---|---|---|
+| **Consultas guardadas** | `/reports/query-manager` | `QueryManagerListComponent` | `luna-data-table` de consultas personales (nombre, descripción, badge SQL/Constructor, actualizado) con filtro local, fila clic = ejecutar (resultado en la misma página), acciones: abrir en el editor, favorita, eliminar (ConfirmDialog); botón **Nueva consulta**. |
+| **Editor de Consultas** | `/reports/query-manager/editor` (+ `/editor/:id` para editar una guardada) | `QueryManagerEditorComponent` | Constructor (entidad → campos → filtros → orden → límite) o **SQL directo** (flag, textarea con hint); carga de existente por `:id`; **Ejecutar** y **Guardar** (create/update; tras crear se sigue editando el mismo id). |
+
+El panel de resultado (grilla dinámica con columnas formateadas por tipo +
+exportación CSV) vive en el componente compartido
+`app-query-manager-result`, usado por ambas vistas (sin duplicación).
 
 ## Validación
 
