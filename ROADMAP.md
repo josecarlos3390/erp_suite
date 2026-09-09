@@ -475,10 +475,10 @@ listado; quedan pendientes los grupos 1 y 2):
 
 | Item | Origen | Estado / dueño |
 |---|---|---|
-| **UoMGroup** (patrón SAP B1: grupos de unidades con unidad base; hoy existen conversiones por artículo `uomConversions`) | ROADMAP 3.5 | Feature a planificar (requiere decisión de semántica + schema/UI/integración) |
-| **Escaneo de barcode en el POS** | ROADMAP 3.5 | Feature a planificar (lookup por código → agregar al carrito) |
+| **UoMGroup** (patrón SAP B1: grupos de unidades con unidad base; hoy existen conversiones por artículo `uomConversions`) | ROADMAP 3.5 | ✅ Resuelto (2026-09-09, T45): plantilla `UomGroup` + `UomGroupConversion` y `Item.uomGroupId`; módulo backend `uom-groups` (CRUD + `applyToItem` que materializa las conversiones en el artículo) y página frontend `/uom-groups` (listado + editor inline + aplicar por código de artículo). Ver AUDIT T45 |
+| **Escaneo de barcode en el POS** | ROADMAP 3.5 | ✅ Resuelto (2026-09-09, T44): `GET /items/by-barcode/:code` + input de escaneo en el POS (Enter o 250 ms). Ver AUDIT T44 |
 | **Lógica de licencias sobre los roles** (plan/subscripción → roles/features habilitadas) | ROADMAP 3.6 / Fase 8.1 | Feature de negocio; requiere definir el modelo de licencias |
-| **Query Manager: parámetros al ejecutar y consultas compartidas por rol** | ROADMAP 5.7 (post-cierre T21–T23) | Backlog del plan `docs/plans/query-manager.md` |
+| **Query Manager: parámetros al ejecutar y consultas compartidas por rol** | ROADMAP 5.7 (post-cierre T21–T23) | ✅ Resuelto (2026-09-09, T43): `SavedQuery.visibility`/`sharedRoleIds`, prompts de parámetros en listado/editor y sustitución en `run`. Ver AUDIT T43 |
 | **Densidad visual** (valores `px` crudos en scss de `shared/` + 28 tablas HTML crudas en páginas) | plan-gaps D5 (T41) | Backlog del plan visual v2, Fase 2 (`audit:density`/baselines/`density-ok`, FRONTEND_GUIDE §12) |
 | **`::ng-deep`** | plan-gaps D5 (T41) | Backlog del plan visual v2, Fase 7 |
 | **Mocks `any` en specs backend** (producción ya en 0, T40) | BACKEND_GUIDE §2 | Tarea de tests dedicada (barrido mecánico) |

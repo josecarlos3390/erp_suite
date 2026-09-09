@@ -42,16 +42,22 @@
 - Aceptación: Karma de pos.component (mock de resolución), typecheck y build;
   verificación manual/live opcional.
 
-### T45 — UoMGroup (grupos de unidades, patrón SAP B1) 🔄 (backend ✅ 2026-09-09; frontend pendiente)
+### T45 — UoMGroup (grupos de unidades, patrón SAP B1) ✅ (2026-09-09, AUDIT T45)
 
-- Decisión de semántica (a validar en implementación): el grupo es una
+- Decisión de semántica (implementada 2026-09-09): el grupo es una
   **plantilla reutilizable** — master `UoMGroup` (código/nombre/unidad base +
-  conversiones del grupo) que al **asignarse a un artículo se materializa en
+  conversiones del grupo) que al **aplicarse a un artículo se materializa en
   sus `uomConversions`** (sin indirección en runtime ni cambios en el motor
-  transaccional). CRUD de grupos + selector en `item-form` (+ botón aplicar)
-  + lista en el catálogo de unidades.
+  transaccional). Implementación: página única `/uom-groups` (listado +
+  editor inline + acción **Aplicar** por código de artículo, match exacto) en
+  lugar del selector dentro de `item-form` previsto inicialmente — el aplicar
+  por código cubre la materialización sin tocar el formulario del artículo
+  (anotado como mejora futura: mostrar/asignar el grupo desde `item-form`).
 - Aceptación: schema + migración (+SQL manual si drift), specs backend/front
   de CRUD y de materialización, Karma + typecheck.
+- ✅ Cerrado (2026-09-09, AUDIT T45): backend `uom-groups` 6/6 + suite
+  completa en verde; frontend Karma `uom-groups.service.spec.ts` 11/11 y
+  build AOT OK; commits dual-push backend y push frontend/root.
 
 ### T46 — Lógica de licencias sobre los roles
 
