@@ -124,7 +124,7 @@
   `qa-document-drafts.spec.ts`) + prueba manual de borrador viejo (pre-fix)
   recuperado correctamente; ningún form con lógica de hidratación propia.
 
-### D2 — Costeo/validación de líneas duplicado entre servicios ☐ · Prioridad MEDIA
+### D2 — Costeo/validación de líneas duplicado entre servicios ✅ (2026-09-08, T36)
 
 - **Evidencia:** el patrón "recálculo de costo promedio por línea + validación
   de almacén de línea + propagación" se repite en delivery-orders,
@@ -136,6 +136,30 @@
   `assertWarehousesInBranch` y `discount-propagation.util.ts`.
 - **Aceptación:** mismo comportamiento observado (sin cambios de API) con
   tests de regresión de las suites de ventas/compras; sin `as any`.
+- **Cierre (2026-09-08, T36):** auditoría con subagente de los 8 servicios
+  grandes (sale-invoices, delivery-orders, sale-reserve-invoices,
+  purchase-invoices, purchase-receipts, sales-returns, purchase-returns,
+  sales-credit-notes, purchase-credit-notes). **Conclusión con evidencia:** la
+  centralización de primitivas YA es suficiente — `getAvgCost` (78
+  call-sites), `resolveUnitCost`, `validateDocumentLineTracking` +
+  `syncDocumentLineTracking` (los 8 servicios), `validateDocumentLinesWarehouseAssignment`
+  + `assertWarehousesInBranch` (~40 flujos), `calcLineWithIndicator`,
+  `prorateLineAmounts`, `resolveLineTaxIndicator`, `computeConditionalTotal`/
+  `recalcTotalsFromPersistedLines` (adoptados en sale-invoices, delivery,
+  reserves, purchase-invoices). Un `DocumentLineService` global transversal
+  sería refactor masivo de alto riesgo: los bloques repetidos (~582-634 y
+  equivalentes) se repiten DENTRO de servicios de 5-7k líneas a lo largo de 8
+  flujos legítimamente distintos, y la regla de costo difiere por familia
+  deliberadamente (ventas = promedio; compras = `priceNet` NIC 2; retornos =
+  copia del costo origen). **Acción ejecutada:** los únicos rezagados eran los
+  totales condicionales hand-rolled (`hasCost/hasWeight + reduce`) →
+  adoptados `recalcTotalsFromPersistedLines` + `computeConditionalTotal` en
+  sales-returns, purchase-returns y purchase-receipts (3 bloques). Mismo
+  resultado, cero API nueva. Unit 26/26 (3 suites) + typecheck/build OK.
+  **Mejora futura documentada (no bloqueante):** builder compartido de líneas
+  para el par de NC (sales/purchase-credit-notes ~170 líneas casi literales) y
+  retornos (P1/P2) con ~4 variaciones de negocio a parametrizar — requiere
+  tests de regresión de NC/retornos antes de tocar código.
 
 ### D3 — Auditoría de settings "huérfanos" ✅ (2026-09-08, T35)
 
@@ -242,7 +266,7 @@
 | 2 | **G1 Precios de Entrega / Landing Cost** | Negocio | El usuario lo pidió explícitamente (importaciones) |
 | 3 | **G2 Revalorización de artículos** | Negocio | El usuario lo pidió explícitamente; comparte motor con G1 |
 | ~~4~~ | ~~**G5 Doc canónica desactualizada**~~ | Mantenimiento | ✅ Cerrado (2026-09-08, T33) — AGENTS.md + ROADMAP.md al día |
-| 5 | **D2 costeo duplicado backend** | Deuda técnica | Reduce la clase de bugs de costos antes de tocar G1/G2 |
+| ~~5~~ | ~~**D2 costeo duplicado backend**~~ | Deuda técnica | ✅ Cerrado (2026-09-08, T36) — auditoría: primitivas ya centralizadas; totales hand-rolled adoptan helper compartido en returns/receipts |
 | ~~6~~ | ~~**D3 settings huérfanos**~~ | Deuda técnica | ✅ Cerrado (2026-09-08, T35) — matriz 27 flags + exportCreditAttributionPct parametrizable |
 | 7 | **G3 Producción / G4 Servicios** | Negocio | Requieren definición de alcance con el usuario |
 | ~~8~~ | ~~**D4 copy normalizado**~~ | Cosmético | ✅ Cerrado (2026-09-08, T34) — acentos + voseo normalizados |
