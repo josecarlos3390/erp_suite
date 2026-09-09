@@ -122,13 +122,22 @@
   el gate CI (solo hallazgos NUEVOS fallan). Build AOT OK; sin cambios de
   runtime.
 
-### T49 — `::ng-deep` (Fase 7 visual)
+### T49 — `::ng-deep` (Fase 7 visual) ✅ (2026-09-09, AUDIT T49)
 
 - Auditoría de usos: mantener solo los **justificados** (contenido proyectado
   en tablas LUNA/overlays donde no hay otra vía) documentándolos con marcador;
   migrar los evitables a selectores de componente o CSS global explícito.
 - Aceptación: informe de N→M usos con justificación; sin regresiones visuales
   (screenshots de referencia).
+- ✅ Cerrado (2026-09-09, AUDIT T49): auditoría N=60 líneas (31 archivos) →
+  M=9 reglas activas (9 archivos); las 51 restantes son comentarios del
+  refactor T10 que ya migró los evitables. Las 9 activas son contenido
+  proyectado/encapsulado sin vía alternativa y quedan **marcadas como
+  justificadas** (se añadió el marcador faltante en
+  `styles/_inventory-form-lines.scss`). Informe completo en
+  `docs/reference/ng-deep-audit-2026-09.md`. Cero cambios de reglas CSS →
+  sin regresiones visuales. Política: `::ng-deep` nuevo requiere marcador
+  justificado. Commit frontend + docs root.
 
 ---
 
