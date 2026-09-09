@@ -107,7 +107,9 @@ El schema (`prisma/schema.prisma`) tiene ~106 modelos. Los más relevantes:
 - **Cero tipos anónimos inline** en firmas de servicios que reciban datos de controllers o de otros servicios.
 - En archivos `.spec.ts` se permite `as unknown as T` para mocks parciales, pero nunca `as any`.
 
-> **Estado real (2026-07-25):** quedan `as any` justificados temporalmente en producción. Están documentados como deuda técnica activa en la lista de abajo y deben eliminarse en un refactor posterior.
+> **Estado real (2026-09-09):** **0 `as any` / `: any` en producción**
+> (verificado con grep sobre `src/**/*.ts` sin `.spec`, AUDIT T40). Las
+> excepciones históricas de la tabla de abajo quedaron eliminadas.
 
 ### Patrones seguros con `strictNullChecks: true`
 
@@ -157,14 +159,27 @@ El schema (`prisma/schema.prisma`) tiene ~106 modelos. Los más relevantes:
 
 ### Excepciones actuales en producción (deuda técnica)
 
-Los siguientes archivos aún usan `as any` y deben refactorizarse:
+**Ninguna (2026-09-09, AUDIT T40).** Se eliminaron los últimos `as any` de
+producción:
 
-| Archivo | Líneas | Motivo / Patrón a reemplazar |
-|---------|--------|------------------------------|
-| `src/fiscal-years/fiscal-years.controller.ts` | 27, 33, 39, 45, 51, 57, 63 | `undefined as any` usado como `tenantId`; el controller debería inyectar `tenantId` con `@CurrentUser()` y pasarlo al servicio. |
-| `src/payment-terms/payment-term-movement-checker.ts` | 18 | `prisma as any` para acceder a un cliente Prisma genérico; tipar con `PrismaClient` o el tipo de transacción correspondiente. |
-| `src/tax-indicators/tax-indicator-movement-checker.ts` | 17 | Idem `prisma as any`. |
-| `src/warehouses/warehouse-movement-checker.ts` | 19 | Idem `prisma as any`. |
+- `src/fiscal-years/fiscal-years.controller.ts` — la tabla histórica señalaba
+  7 casts `undefined as any` para `tenantId`; el controller YA inyecta
+  `@CurrentUser()` y pasa `user.tenantId` en todos los endpoints (tabla
+  obsoleta, sin cambios requeridos).
+- `src/payment-terms/payment-term-movement-checker.ts`,
+  `src/tax-indicators/tax-indicator-movement-checker.ts` y
+  `src/warehouses/warehouse-movement-checker.ts` — ya tipan el parámetro
+  `prisma: PrismaService | Prisma.TransactionClient` (tabla obsoleta).
+- Residuales reales detectados por grep y tipados (2026-09-09):
+  `src/common/accounting-engine.service.ts` (`let origInvoice` → payload
+  Prisma `PurchaseInvoiceGetPayload<{ include: { items: true } }>`) y
+  `src/items/items.service.ts` (`findAllForSelector` → `select` extraído a
+  `itemSelectorFields` con `satisfies Prisma.ItemSelect` y resultado tipado
+  con `Prisma.ItemGetPayload`).
+
+> Nota honesta: los archivos `.spec.ts` mantienen mocks `let mockPrisma: any` /
+> `as any` pese a la Fase 7 histórica — es deuda de TESTS (no producción),
+> documentada como backlog, no parte de este cierre.
 
 ### Checklist para nuevos flujos `createFrom*`
 

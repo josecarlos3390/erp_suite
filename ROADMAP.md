@@ -1,6 +1,6 @@
 # ROADMAP.md — ERP Suite
 
-> Hoja de ruta única y consolidada. Estado actualizado al 2026-09-05.
+> Hoja de ruta única y consolidada. Estado actualizado al 2026-09-09.
 
 ---
 
@@ -95,7 +95,7 @@
 | ✅ 5.4 | **POS / Punto de venta** | Terminales (`PosTerminal`), sesiones (`PosSession`), carrito, checkout y listado de facturas POS. | ✅ Backend (`src/pos/`, `src/pos-terminals/`, `src/pos-sessions/`) + frontend (`src/app/pages/pos/`). |
 | ✅ 5.5 | **Conciliación bancaria** | Extractos bancarios (`BankStatement`), importación CSV/Excel, asignación de cuentas/partner/proyecto, posting a asientos y reconciliación. | ✅ Backend (`src/bank-reconciliation/`, `src/banks/`) + frontend (`src/app/pages/bank-reconciliation/`). |
 | ☐ 5.6 | **CRM básico** | Oportunidades de venta, actividades/calendario por partner, pipeline. | Pendiente |
-| ☐ 5.7 | **Query Manager (constructor seguro, estilo SAP B1)** | Consultas personalizadas guardadas por usuario (personales) sobre un catálogo curado de entidades/campos: el usuario arma entidad → campos → filtros → orden y ejecuta; resultado en tabla dinámica + exportación CSV/Excel. El backend compila la definición a `findMany` Prisma **tipado** (sin SQL crudo → sin inyección y 100% aislado por tenant vía la extensión de aislamiento). Fases futuras: parámetros al ejecutar, consultas compartidas por rol, modo SQL (solo instancia dedicada, con guardarraíles). Plan: `docs/plans/query-manager.md`. | ☐ En curso (2026-09-06) — ver AUDIT T21/T22/T23 |
+| ✅ 5.7 | **Query Manager (constructor seguro, estilo SAP B1)** | Consultas personalizadas guardadas por usuario (personales) sobre un catálogo curado de entidades/campos: el usuario arma entidad → campos → filtros → orden y ejecuta; resultado en tabla dinámica + exportación CSV/Excel. El backend compila la definición a `findMany` Prisma **tipado** (sin SQL crudo → sin inyección y 100% aislado por tenant vía la extensión de aislamiento). Plan: `docs/plans/query-manager.md`. | ✅ Completado (2026-09-06, AUDIT T21–T23; validado 2026-09-09) — constructor por catálogo + modo SQL directo SOLO LECTURA con guardarraíles (instancia dedicada) + dos vistas (listado/editor). Backlog del plan: parámetros al ejecutar y consultas compartidas por rol |
 
 ---
 
