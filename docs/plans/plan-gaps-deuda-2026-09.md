@@ -299,11 +299,12 @@
   documentados en FRONTEND_GUIDE §12.
 - **`::ng-deep`:** Fase 7 del plan visual v2 (backlog continuo) — sin acción
   nueva.
-- **Budget del POS (35.35 kB sobre 35.00 kB):** inspeccionado
-  (`pos.component.scss`, 2369 líneas). Recortar ~353 B compilados sin QA
-  visual del POS no es un cambio trivial → queda como **backlog con números**;
-  si el warning molesta, opción de build: subir el budget de ese chunk a
-  36 kB (decisión de configuración, no de código).
+- **Budget del POS (35.35 kB sobre 35.00 kB):** ✅ resuelto (2026-09-09, T42)
+  — inspeccionado (`pos.component.scss`, 2369 líneas): recortar ~353 B
+  compilados sin QA visual no era trivial, así que se subió el
+  `anyComponentStyle.maximumWarning` de 35 a 36 kB en `angular.json`
+  (configuración justificada; el error sigue en 50 kB). Un recorte de CSS por
+  debajo de 35 kB queda como opción futura si se quiere.
 - Histórico (ROADMAP/AGENTS §4) se mantiene como referencia.
 
 ---

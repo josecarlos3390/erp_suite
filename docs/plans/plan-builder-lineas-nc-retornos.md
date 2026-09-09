@@ -233,10 +233,10 @@ P2 (retornos) repite 1–8 sobre los 2 forms de retornos.
   app OK. Backend sin cambios.
 - **Nota:** el shape del FormGroup es equivalente (controles/validators/
   disabled/redondeos por form). El refactor dejó parametrizado el min de
-  cantidad; por **decisión de producto (2026-09-09) el min de NC se unificó a
-  0.001** (ventas pasó de 1; permite NC fraccionadas de artículos por medida;
-  spec del util actualizado). Los builders de devoluciones conservan `min(1)`
-  en ambos lados (observación documentada en §10).
+  cantidad; por **decisión de producto (2026-09-09) el min se unificó a
+  0.001**: NC (T41) y **devoluciones (T42, `quantityMin` parametrizado en
+  `build-return-line.util`)** — permite fracciones de artículos por medida en
+  NC y devoluciones de venta y compra.
 
 ---
 
