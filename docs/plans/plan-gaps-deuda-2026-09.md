@@ -194,7 +194,8 @@
   para el par de NC (sales/purchase-credit-notes ~170 líneas casi literales) y
   retornos (P1/P2) con ~4 variaciones de negocio a parametrizar — requiere
   tests de regresión de NC/retornos antes de tocar código. **Plan de alcance
-  (T38):** `docs/plans/plan-builder-lineas-nc-retornos.md`.
+  (T38–T39, P1+P2 ejecutados 2026-09-09):**
+  `docs/plans/plan-builder-lineas-nc-retornos.md`.
 
 ### D3 — Auditoría de settings "huérfanos" ✅ (2026-09-08, T35)
 

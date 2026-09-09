@@ -7,8 +7,9 @@
 > con ~4 variaciones de negocio a parametrizar — requiere tests de regresión de
 > NC/retornos antes de tocar código"*.
 >
-> **Última actualización:** 2026-09-09. **Estado:** 🔄 — **P1 (par de NC) ✅
-> ejecutado (2026-09-09, AUDIT T38)**; P2 (retornos) ☐ pendiente.
+> **Última actualización:** 2026-09-09. **Estado:** ✅ — **P1 (par de NC)
+> ejecutado (2026-09-09, AUDIT T38)** y **P2 (retornos) ejecutado
+> (2026-09-09, AUDIT T39)**.
 
 ---
 
@@ -115,10 +116,15 @@ externa (métodos privados existentes) → el diff queda acotado al cuerpo.
 
 ### 3.3 Alcance
 
-- **P1 (NC):** `sales-credit-notes-form` + `purchase-credit-notes-form`.
-- **P2 (retornos):** `sales-returns-form` + `purchase-returns-form` (misma
-  mecánica; levantar su diff propio antes de migrar; pueden tener 1-2 flags
-  adicionales, p. ej. control `baseDocType`/`baseDocId`/`returnCost`).
+- **P1 (NC):** `sales-credit-notes-form` + `purchase-credit-notes-form` → ✅
+  ejecutado (T38).
+- **P2 (retornos):** `sales-returns-form` + `purchase-returns-form` → ✅
+  ejecutado (T39). **Nota de ejecución:** la devolución resultó una **familia
+  estructural distinta** (peso/`totalWeight`, `whsCode`, `subtotal` bruto,
+  costo disabled, sin modo cuenta/`lineSubtotal`; ventas con motivos+
+  `returnCost`, compras con `salePrice`+`baseLineId`) → se implementó con un
+  util PROPIO (`build-return-line.util.ts`) en lugar de forzar flags en el de
+  NC. Detalle en §10.
 
 ---
 
@@ -229,5 +235,29 @@ P2 (retornos) repite 1–8 sobre los 2 forms de retornos.
   disabled/redondeos por form); no se unificó comportamiento (p. ej. `min(1)`
   ventas vs `min(0.001)` compras queda parametrizado — decisión de producto
   pendiente si se quisiera alinear).
-- **Pendiente:** P2 (retornos) — repetir §4–§6 sobre `sales-returns-form` y
-  `purchase-returns-form` (levantar su diff propio antes).
+
+---
+
+## 10. Registro de ejecución — P2 (retornos) ✅ 2026-09-09 (AUDIT T39)
+
+- **Hallazgo de alcance:** los builders de devoluciones (`sales-returns` 827-916
+  y `purchase-returns` 769-858) comparten su propio núcleo pero NO la forma de
+  los de NC: llevan peso/`totalWeight` (fallback `round(weight×qty,3)`),
+  `whsCode`, `cost`/`totalCost` disabled, `subtotal` BRUTO calculado
+  (`price>0 ? round(price×qty,2) : 0`, ignora `l.subtotal` neto), `itemId`
+  siempre requerido y NO usan `isAccountLine`/`lineSubtotal`/`description`;
+  el almacén se resuelve con `defaultWarehouseId` del componente. → util
+  propio `shared/document-form/build-return-line.util.ts`.
+- **Variaciones parametrizadas (ventas vs compras):** motivos de devolución
+  (`returnAction/Reason/Id`) + `returnCost`/`enableReturnCost` solo ventas;
+  `salePrice` (`item.price ?? l.price`) + `baseLineId` solo compras; en la
+  línea vacía, `uomId` + motivos + costo solo ventas (shape actual de cada
+  form, sin unificar).
+- **Puerta de regresión:** baseline ANTES — Karma sales-returns 3/3 y
+  purchase-returns 3/3; backend returns 24/24 (`sales-returns.service.spec` +
+  `purchase-returns.service.spec`). DESPUÉS — spec del util 9/9 (ambos
+  conjuntos: bruto vs `l.subtotal`, fallback de `totalWeight`, `salePrice`
+  con/sin item, presencia por familia) y Karma de forms idéntico al baseline
+  (3/3 y 3/3); typecheck app OK. Backend sin cambios.
+- **Con esto el plan queda ✅ completo** (P1 NC + P2 retornos); la deuda de
+  duplicación D2 de estos 4 builders queda cerrada (AUDIT T38/T39).
