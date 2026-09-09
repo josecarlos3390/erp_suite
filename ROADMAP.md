@@ -469,7 +469,9 @@ completo (ventas, compras, inventario, tesorería):
 ## Backlog de features y deuda documentada (2026-09-09)
 
 Items "pendiente a futuro" y backlogs consolidados (con su estado/plan; se
-cierran con fila en `AUDIT.md`):
+cierran con fila en `AUDIT.md`). **Plan de cierre en curso (2026-09-09):
+`docs/plans/plan-cierre-backlog-2026-09.md` — T43–T52** (grupos 3, 4 y 5 del
+listado; quedan pendientes los grupos 1 y 2):
 
 | Item | Origen | Estado / dueño |
 |---|---|---|
