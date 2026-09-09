@@ -106,7 +106,7 @@
 
 ## 2. Deuda técnica / hallazgos de la sesión
 
-### D1 — Borradores: migrar a "foto completa" (snapshot) en vez de hidratación manual ☐ · Prioridad ALTA
+### D1 — Borradores: migrar a "foto completa" (snapshot) en vez de hidratación manual ✅ (2026-09-09, T37) · Prioridad ALTA
 
 - **Evidencia (T32, T32b, T32c):** cuatro bugs encadenados del ciclo
   guardar → listar → recuperar (cliente no restaurado, total con IVA
@@ -123,6 +123,32 @@
 - **Aceptación:** T32/T32b/T32c cubiertos por E2E (ya existen
   `qa-document-drafts.spec.ts`) + prueba manual de borrador viejo (pre-fix)
   recuperado correctamente; ningún form con lógica de hidratación propia.
+
+- **Cierre (2026-09-09, T37):** auditoría con evidencia — el patrón snapshot
+  ya está implementado de punta a punta (los fixes T32/T32b/T32c lo adoptaron):
+  (A) **frontend:** una sola base `CommercialDocumentFormBase.saveAsDraft`
+  persiste el payload serializado del documento (getRawValue + líneas + total
+  con la MISMA fórmula del form) y `hydrateFromDraft` restaura por un único
+  camino genérico (`restoreDraftParty` → `patchValue` → líneas vía un solo
+  `buildLineFromDraft` → `resolveItemIdentityOnHydrate` → price-check); 1 solo
+  override en los 14 forms (purchase-invoices `afterHydrateFromDraft`).
+  (B) **backend:** `DraftConversionService.convert` + mapa `CONVERTERS`
+  (14/14 docTypes, 1:1 con los docTypes de borrador del frontend) — un solo
+  camino de conversión por docType. (C) los 14 forms tienen ≥1 control
+  `itemCode` (base T32b). **Regresión en verde:** `qa-document-drafts.spec.ts`
+  4/4 + `qa-multitienda.spec.ts` 9/9 chromium (12/12). **Fix de
+  infraestructura E2E anexo (root cause de la regresión):** `auth.setup.ts`
+  acuñaba el JWT con `exchangeRateRequired=true` cuando el día cambió y la
+  tasa aún no se ingresaba (el seed no la crea por diseño y
+  `reuseExistingServer` evita re-seed); como GET /auth/me devuelve el payload
+  del JWT sin recalcular, el `exchangeRateGuard` redirigía TODA la suite a
+  /exchange-rates. Ahora el setup garantiza la tasa del día ANTES del login
+  (helper idempotente `ensureTodayExchangeRate`). **Deuda residual
+  documentada (no bloqueante):** `buildLineFromDraft(line as any)` en el
+  mapper de flujo de sale-reserve-invoices (copia pedido→factura reserva) —
+  el builder genérico acepta `Record<string, unknown>` y el mapper pasa
+  `DraftLineResult` tipado; no es ruta de borradores y unificarlo exige
+  alinear los tipos del mapper (fuera del alcance de D1).
 
 ### D2 — Costeo/validación de líneas duplicado entre servicios ✅ (2026-09-08, T36)
 
@@ -262,7 +288,7 @@
 
 | Orden | Ítem | Tipo | Justificación |
 |---|---|---|---|
-| 1 | **D1 borradores snapshot** | Deuda técnica | Es donde aparecen los bugs del día a día del usuario; desbloquea confianza en borradores |
+| ~~1~~ | ~~**D1 borradores snapshot**~~ | Deuda técnica | ✅ Cerrado (2026-09-09, T37) — el patrón snapshot ya estaba implementado (T32/T32b/T32c); auditoría con evidencia + regresión E2E 12/12 en verde; fix de orden en `auth.setup.ts` (tasa del día antes del login) |
 | 2 | **G1 Precios de Entrega / Landing Cost** | Negocio | El usuario lo pidió explícitamente (importaciones) |
 | 3 | **G2 Revalorización de artículos** | Negocio | El usuario lo pidió explícitamente; comparte motor con G1 |
 | ~~4~~ | ~~**G5 Doc canónica desactualizada**~~ | Mantenimiento | ✅ Cerrado (2026-09-08, T33) — AGENTS.md + ROADMAP.md al día |
@@ -285,4 +311,4 @@
 
 ---
 
-*Última actualización: 2026-09-08 (sesión T26–T32h).*
+*Última actualización: 2026-09-09 (cierre G5 y D1–D4 — T33–T37).*
