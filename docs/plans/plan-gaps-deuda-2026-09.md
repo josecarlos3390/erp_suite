@@ -144,11 +144,14 @@
   del JWT sin recalcular, el `exchangeRateGuard` redirigía TODA la suite a
   /exchange-rates. Ahora el setup garantiza la tasa del día ANTES del login
   (helper idempotente `ensureTodayExchangeRate`). **Deuda residual
-  documentada (no bloqueante):** `buildLineFromDraft(line as any)` en el
-  mapper de flujo de sale-reserve-invoices (copia pedido→factura reserva) —
-  el builder genérico acepta `Record<string, unknown>` y el mapper pasa
-  `DraftLineResult` tipado; no es ruta de borradores y unificarlo exige
-  alinear los tipos del mapper (fuera del alcance de D1).
+  documentada (no bloqueante):** quedan `buildDeliveryLine(line as any)` y
+  `buildQuotationLine(line as any)` en los mappers de flujo de
+  sale-reserve-invoices (copias entrega→reserva y cotización→reserva) — sus
+  tipos de parámetro exigen campos requeridos que `DraftLineResult` declara
+  opcionales; tiparlos exige mapeo explícito (fuera del alcance de D1). El
+  `buildLineFromDraft(line as any)` (pedido→reserva) se eliminó en drive-by
+  2026-09-09 (asignable a `Record<string, unknown>` vía la index signature de
+  `DraftLineResult`; typecheck OK, unit 10/10).
 
 ### D2 — Costeo/validación de líneas duplicado entre servicios ✅ (2026-09-08, T36)
 
