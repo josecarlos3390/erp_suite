@@ -12,7 +12,7 @@
 
 ## Ola 1 — Grupo 3: features del backlog de ROADMAP
 
-### T43 — Query Manager: parámetros al ejecutar + consultas compartidas por rol
+### T43 — Query Manager: parámetros al ejecutar + consultas compartidas por rol ✅ (2026-09-09, AUDIT T43)
 
 - **Parámetros:** el constructor permite declarar filtros con valor
   parametrizado (`:{nombre}`). Al ejecutar desde el listado/editor se pide el
