@@ -481,6 +481,6 @@ listado; quedan pendientes los grupos 1 y 2):
 | **Query Manager: parámetros al ejecutar y consultas compartidas por rol** | ROADMAP 5.7 (post-cierre T21–T23) | ✅ Resuelto (2026-09-09, T43): `SavedQuery.visibility`/`sharedRoleIds`, prompts de parámetros en listado/editor y sustitución en `run`. Ver AUDIT T43 |
 | **Densidad visual** (valores `px` crudos en scss de `shared/` + 28 tablas HTML crudas en páginas) | plan-gaps D5 (T41) | Backlog del plan visual v2, Fase 2 (`audit:density`/baselines/`density-ok`, FRONTEND_GUIDE §12) |
 | **`::ng-deep`** | plan-gaps D5 (T41) | Backlog del plan visual v2, Fase 7 |
-| **Mocks `any` en specs backend** (producción ya en 0, T40) | BACKEND_GUIDE §2 | Tarea de tests dedicada (barrido mecánico) |
+| **Mocks `any` en specs backend** (producción ya en 0, T40) | BACKEND_GUIDE §2 | ✅ Resuelto (2026-09-09, T47): 0 `any` en `src/**/*.spec.ts` (50 specs / 234 tokens migrados a mocks tipados) con gate eslint `no-explicit-any: 'error'` activo; suite 161/1719 en verde. Ver AUDIT T47 |
 | **Budget POS** (35.35 kB) | plan-gaps D5 | ✅ Resuelto (2026-09-09, T42): `anyComponentStyle` `maximumWarning` 35→36 kB; recorte de CSS opcional a futuro |
 | **Devoluciones `min(1)`** | plan-builder NC/retornos | ✅ Resuelto (2026-09-09, T42): `quantityMin` parametrizado y unificado a 0.001 |

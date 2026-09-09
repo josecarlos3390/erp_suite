@@ -84,7 +84,7 @@
 
 ## Ola 2 — Grupo 4: deuda
 
-### T47 — Mocks `any` en specs backend → 0 `any` en `.spec.ts`
+### T47 — Mocks `any` en specs backend → 0 `any` en `.spec.ts` ✅ (2026-09-09, AUDIT T47)
 
 - Barrido por módulo (workflow con subagentes por dominio): reemplazar
   `let mockPrisma: any`/`as any`/`(args: any)` por mocks tipados
@@ -92,6 +92,15 @@
   Criterio del BACKEND_GUIDE §2 (Fase 7) aplicado al estado real.
 - Aceptación: eslint `@typescript-eslint/no-explicit-any` en 0 en specs;
   `npm test` completo en verde (158 suites/1695).
+- ✅ Cerrado (2026-09-09, AUDIT T47): gate activado (`no-explicit-any:
+  'error'` para `src/**/*.spec.ts`) y barrido de los 50 specs con `any`
+  (234 tokens) → 0, con mocks tipados estructurales de solo `jest.Mock`,
+  casts `as unknown as T` y eliminación de `as any` donde el literal ya
+  satisfacía el DTO; `expect.any(...)` intacto. eslint `src/**/*.ts` 0
+  errores (1 warning informativo preexistente); `tsc` proyecto y specs en 0;
+  `npm test` 161 suites / 1719 tests. Además se autofijó con `--fix` deuda
+  prettier preexistente de commits con hooks desactivados (T43/T45). Commit
+  dual-push backend.
 
 ### T48 — Barrido de densidad visual (px crudos + tablas) — plan visual v2 F2
 

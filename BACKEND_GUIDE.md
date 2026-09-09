@@ -105,7 +105,7 @@ El schema (`prisma/schema.prisma`) tiene ~106 modelos. Los más relevantes:
 - **Objetivo: cero `as any` en producción** (`src/**/*.ts` sin `.spec`).
 - **Cero anotaciones `: any`** en parámetros, variables y propiedades de producción.
 - **Cero tipos anónimos inline** en firmas de servicios que reciban datos de controllers o de otros servicios.
-- En archivos `.spec.ts` se permite `as unknown as T` para mocks parciales, pero nunca `as any`.
+- En archivos `.spec.ts` se permite `as unknown as T` para mocks parciales, pero nunca `as any`. Desde 2026-09-09 (AUDIT T47) la regla ESLint `@typescript-eslint/no-explicit-any: 'error'` está activa para `src/**/*.spec.ts` en `eslint.config.mjs` — el gate es automático (0 `any` en specs), no solo criterio de PR.
 
 > **Estado real (2026-09-09):** **0 `as any` / `: any` en producción**
 > (verificado con grep sobre `src/**/*.ts` sin `.spec`, AUDIT T40). Las
@@ -177,9 +177,19 @@ producción:
   `itemSelectorFields` con `satisfies Prisma.ItemSelect` y resultado tipado
   con `Prisma.ItemGetPayload`).
 
-> Nota honesta: los archivos `.spec.ts` mantienen mocks `let mockPrisma: any` /
-> `as any` pese a la Fase 7 histórica — es deuda de TESTS (no producción),
-> documentada como backlog, no parte de este cierre.
+> **Specs en 0 `any` (2026-09-09, AUDIT T47):** barrido completo de los 50
+> `.spec.ts` que aún tenían `any` (234 tokens entre anotaciones `: any`,
+> casts `as any`, `(args: any)`, `let mockPrisma: any`) → migrados a mocks
+> tipados: tipos estructurales locales de solo `jest.Mock` (delegados Prisma
+> como `Record<string, jest.Mock>`), `jest.Mocked<PrismaService>` +
+> `(delegate.method as jest.Mock)` por sitio, `as unknown as PrismaService` /
+> `Prisma.TransactionClient` en providers, eliminación de `as any` donde el
+> literal ya satisfacía el DTO real, y parámetros de callbacks sin anotación
+> (`noImplicitAny: false`). Regla `no-explicit-any` activada como `error`
+> para `src/**/*.spec.ts` (gate eslint 0/0 en specs; quedan 2 warnings
+> informativos no-`any` preexistentes). Suite backend 161 suites / 1719
+> tests en verde; typechecks `tsconfig.json` y `tsconfig.spec.json` en 0.
+> `expect.any(...)` (matchers Jasmine) NO es `any` de tipo y quedó intacto.
 
 ### Checklist para nuevos flujos `createFrom*`
 
@@ -234,10 +244,11 @@ Antes de mergear un PR que agregue un flujo `createFrom*`, verificar:
 **Meta:** 9 `as any` en 4 controllers.  
 **Resultado:** 0 `as any` en controllers de producción. Solo quedan en `.spec.ts`.
 
-### Fase 7: Tests — ✅ COMPLETADA
+### Fase 7: Tests — ✅ COMPLETADA (cierre real 2026-09-09, AUDIT T47)
 
 **Meta:** ~128 `as any` en 20 specs (mocks).  
-**Resultado:** Todos los `as any` de `src/**/*.spec.ts` fueron migrados a tipos seguros (`as unknown as T`, `Parameters<typeof service.method>[0]`, tipos locales y `satisfies Partial<T>`). Build 0 errores, lint 0/0, 958 tests passed.
+**Resultado histórico:** migración a tipos seguros (`as unknown as T`, `Parameters<…>[0]`, tipos locales, `satisfies Partial<T>`); build 0 errores, 958 tests passed.  
+**Cierre real (T47, 2026-09-09):** un barrido posterior (grep + eslint) reveló que quedaban `any` en 50 `.spec.ts` (234 tokens) pese a la Fase 7 histórica — migrados a 0 con mocks tipados estructurales de solo `jest.Mock` y casts `as unknown as T`; regla `@typescript-eslint/no-explicit-any: 'error'` activada para `src/**/*.spec.ts` (gate automático). Suite 161/1719 en verde. Ver AUDIT T47.
 
 ### Fase 8: Extensión Prisma de aislamiento de tenant — ✅ COMPLETADA
 
