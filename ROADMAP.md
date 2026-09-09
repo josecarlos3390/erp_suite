@@ -449,3 +449,15 @@ completo (ventas, compras, inventario, tesorería):
 ---
 
 *Última actualización: 2026-09-05 (deuda T1–T14 100% cerrada ✅ — T10 cosmética UX convergido con residual interno documentado; F5.2 Integración Bancaria **completada** ✅ — plan `docs/plans/plan-f5.2-integracion-bancaria.md`; onboarding por Centro de configuración **completado** ✅ — plan `docs/plans/plan-onboarding-centro.md`; siguiente feature prioritario: F5.1 Facturación Electrónica SIN)*
+
+---
+
+## Gaps y deuda consolidados (2026-09-08)
+
+> **Plan formal:** `docs/plans/plan-gaps-deuda-2026-09.md` — brechas de negocio
+> (costeo de importación / "Precios de Entrega", revalorización de artículos,
+> producción, servicios) y deuda técnica detectada en la sesión T26–T32h
+> (borradores → snapshot en vez de hidratación manual, costeo duplicado por
+> servicio, settings huérfanos, documentación canónica desactualizada, copy).
+> Cada ítem tiene prioridad y criterio de aceptación; al implementarse se
+> registra en `AUDIT.md` como T33+.
