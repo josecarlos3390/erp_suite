@@ -85,7 +85,7 @@
   "producto sin stock" (ya soportado) o requiere ciclo de vida OT/contrato.
   En el segundo caso, plan propio con estado y facturación.
 
-### G5 — Documentación canónica desactualizada ☐ · Prioridad MEDIA (mantenimiento)
+### G5 — Documentación canónica desactualizada ✅ (2026-09-08)
 
 - **Hallazgo:** `AGENTS.md` y `ROADMAP.md` listan como **pendientes** módulos
   que **ya existen**: Activos Fijos (`fixed-assets`, con depreciación),
@@ -94,6 +94,13 @@
   (2026-09-05) y de AGENTS (2026-08-08) no reflejan el estado real.
 - **Aceptación:** revisar y marcar como ✅ los módulos existentes, actualizar
   las fechas y el bloque "Próximos pasos" de AGENTS.md.
+- **Cierre (2026-09-08, T33):** AGENTS.md — fecha a 2026-09-08, §5.7 filas
+  8–11 marcadas ✅ con referencias a los módulos (`fiscal-years`,
+  `exchange-rate-adjustments`, `bank-reconciliation`, `fixed-assets`), §8
+  "Próximos pasos" reescrito (apunta al plan de gaps; F5.2 integración →
+  conector SAP F5.3). ROADMAP.md — header intruso "Features de negocio
+  pendientes" reubicado sobre la tabla real, filas DT.51/DT.52 reintegradas a
+  la tabla de deuda, F7.2 marcada ✅ (ya completada) y pie con fecha 2026-09-08.
 
 ---
 
@@ -167,7 +174,7 @@
 | 1 | **D1 borradores snapshot** | Deuda técnica | Es donde aparecen los bugs del día a día del usuario; desbloquea confianza en borradores |
 | 2 | **G1 Precios de Entrega / Landing Cost** | Negocio | El usuario lo pidió explícitamente (importaciones) |
 | 3 | **G2 Revalorización de artículos** | Negocio | El usuario lo pidió explícitamente; comparte motor con G1 |
-| 4 | **G5 Doc canónica desactualizada** | Mantenimiento | Bajo esfuerzo, evita decisiones sobre datos falsos |
+| ~~4~~ | ~~**G5 Doc canónica desactualizada**~~ | Mantenimiento | ✅ Cerrado (2026-09-08, T33) — AGENTS.md + ROADMAP.md al día |
 | 5 | **D2 costeo duplicado backend** | Deuda técnica | Reduce la clase de bugs de costos antes de tocar G1/G2 |
 | 6 | **D3 settings huérfanos** | Deuda técnica | Preventivo, bajo riesgo |
 | 7 | **G3 Producción / G4 Servicios** | Negocio | Requieren definición de alcance con el usuario |

@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-08-08.  
+> **Última actualización:** 2026-09-08.  
 > **Versión canónica de restricciones transversales.**  
 > Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
@@ -184,7 +184,7 @@ npm run generate-types   # copia prisma-types.ts desde backend
 
 ---
 
-## 4. Estado real del proyecto (2026-08-08)
+## 4. Estado real del proyecto (2026-09-08)
 
 ### Backend (`backend-erp/`)
 
@@ -328,10 +328,10 @@ En el formulario de **Asientos Contables** (`journal-entries-form`):
 |---|------|-------|
 | ~~6~~ | ~~Refactor `AssemblyOrder` para usar `AccountingEngine`~~ | ✅ **Resuelto (2026-08-24)** — `assembly-orders.service.ts` delega el asiento a `AccountingEngineService.createAssemblyJournalEntry` (builder `buildAssemblyJournalEntryLines`); batería de ensamblaje en verde. Ver `AUDIT.md` §8 T8 |
 | ~~7~~ | ~~Convertir `sourceDocumentType` a enum~~ | ✅ **Resuelto (2026-09-05, T9)** — nuevo enum `JournalSourceType` (tipos de documento + especiales + `REVERSAL`); las reversas usan el miembro genérico `REVERSAL` (antes prefijo dinámico `REVERSAL_<tipo>`); migración `20260905020000_journal_source_type_enum`. Ver `AUDIT.md` §8 T9 |
-| 8 | Cierre de período contable (`AccountingPeriod`) | Feature completo: tabla, protección, reportes de cierre, apertura de nuevo período. |
-| 9 | Asientos de ajuste por diferencia de cambio | Requiere módulo de revaluación de saldos en moneda extranjera y generación automática de asientos de ajuste. |
-| 10 | Reconciliación bancaria | Módulo completo: import de extractos, matching de pagos, conciliación. |
-| 11 | Fixed Assets / depreciación | Módulo completo: master de activos, métodos de depreciación, asientos automáticos mensuales. |
+| ~~8~~ | ~~Cierre de período contable (`AccountingPeriod`)~~ | ✅ **Resuelto (2026-09-05)** — `FiscalYear`/`AccountingPeriod` con estados OPEN/LOCKED, protección en el motor (`JournalEntryCore._persist` bloquea asientos en períodos cerrados, DT.36), reportes de cierre, asientos de cierre/apertura de ejercicio (`generate-closing-entry`/`generate-opening-entry`). Ver `ROADMAP.md` Fase 6.4 y `AUDIT.md` |
+| ~~9~~ | ~~Asientos de ajuste por diferencia de cambio~~ | ✅ **Resuelto** — módulo `exchange-rate-adjustments`: revaluación de saldos en moneda extranjera con preview sin persistir y generación automática del asiento de ajuste (cuentas gain/loss configurables, neteo en moneda base). Ver `AUDIT.md` |
+| ~~10~~ | ~~Reconciliación bancaria~~ | ✅ **Resuelto** — módulo `bank-reconciliation`: import de extractos (CSV/Excel), matching de pagos, asignación cuenta/partner/proyecto, posteo a asientos y conciliación. Ver `ROADMAP.md` Fase 5.5 y `AUDIT.md` |
+| ~~11~~ | ~~Fixed Assets / depreciación~~ | ✅ **Resuelto (2026-09-05, T6)** — módulo `fixed-assets`: master de activos, depreciación lineal + acelerada (saldo decreciente con conmutación a línea recta, `depreciation-math.ts`), depreciación mensual automática parametrizable (`fixedAssetsAutoDepreciation`, cron) y opción manual. Ver `ROADMAP.md` Fase 6.5 y `AUDIT.md` |
 
 ---
 
@@ -395,9 +395,14 @@ Frontend: la URL de la API se configura en `src/environments/environment.ts` (de
 
 ### Features de negocio (alta prioridad)
 
-1. **Módulo contable completo (F6)** — estados financieros, cierre de período, activos fijos, nómina.
+1. **Gaps de producto priorizados (2026-09-08)** — ver `docs/plans/plan-gaps-deuda-2026-09.md`:
+   costeo de importación / "Precios de Entrega" (landed cost), revalorización de artículos,
+   producción (potenciar ensamblaje), servicios (OT/contratos). Módulos contables que AGENTS
+   listaba como pendientes (cierre de período, revaluación por TC, conciliación bancaria,
+   activos fijos) **ya están implementados** — ver §5.7 filas 8–11.
 2. **Facturación electrónica SIN Bolivia (F5.1)** — firma digital, envío masivo, consulta de estado. *(siguiente feature prioritario)*
-3. **Integración bancaria (F5.2)** — conciliación automática de extractos, import CSV/Excel, matching de pagos.
+3. **Conector SAP Service Layer (F5.3)** — la capa de datos bidireccional está lista (Fase 3.x);
+   falta el conector real + sincronización de estados (cerrar/cancelar).
 4. **Multi-divisa (F7.2)** y localización de reportes fiscales para otros países (F7.3).
 5. **CRM básico (F5.4)** — oportunidades, actividades, pipeline.
 
