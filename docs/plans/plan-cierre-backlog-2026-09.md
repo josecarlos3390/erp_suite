@@ -33,7 +33,7 @@
   (list/editor) + typecheck; E2E si el entorno lo permite.
 - Nota: **no** tocar el compilador SQL/guard (T22) ni el catálogo.
 
-### T44 — Escaneo de barcode en el POS
+### T44 — Escaneo de barcode en el POS ✅ (2026-09-09, AUDIT T44)
 
 - Input de escaneo en el checkout POS: al detectar un código (Enter o lectura
   rápida) se resuelve el artículo por barcode (`item-barcodes`; el backend ya
