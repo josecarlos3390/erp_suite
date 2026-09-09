@@ -149,7 +149,7 @@
 - **Aceptación:** documento/matriz con cada flag y su consumo real; cero
   switches en Ajustes sin efecto documentado.
 
-### D4 — Copy y textos sin normalizar ☐ · Prioridad BAJA
+### D4 — Copy y textos sin normalizar ✅ (2026-09-08, T34)
 
 - **Evidencia:** "Almacen" vs "Almacén", "Seleccionar almacen..." (sales-
   returns), encabezados con espacios que obligan a aserciones parciales en
@@ -158,6 +158,18 @@
   los E2E que dependen de texto exacto.
 - **Aceptación:** grep de acentos/typos conocidos en `pages/` y `shared/`;
   E2E con `toHaveText` donde hoy se usa `toContainText` por espacios.
+- **Cierre (2026-09-08, T34):** "Almacen" → "Almacén" (labels/placeholders/
+  titles) en assembly-orders, branch-form, item-form, item-detail, item-boms,
+  purchase-requests, purchase-returns, sales-returns, stock-entries/exits/
+  adjustments/counts y stock-transfers ("Almacén Origen/Destino");
+  "articulo"/"Fisico"/"Debito"/"Credito" → acentuados (item-boms,
+  uom-conversions, item-price-histories, dashboard, warehouses,
+  partner-detail); voseo rioplatense eliminado (incoming/outgoing-payments,
+  hint de retenciones de purchase-invoices) → tuteo neutral consistente con
+  el resto. Ningún E2E/spec dependía de los textos previos (verificado por
+  grep). Unit 7 forms en verde + build AOT OK. La parte de "headers con
+  espacios → toHaveText" se descarta como no-acción: son indentación normal
+  del template y los E2E ya usan `toContainText` con éxito.
 
 ### D5 — Estado de la deuda de UX/cosmética ya conocida (referencia) ✅/🔄
 
@@ -178,7 +190,7 @@
 | 5 | **D2 costeo duplicado backend** | Deuda técnica | Reduce la clase de bugs de costos antes de tocar G1/G2 |
 | 6 | **D3 settings huérfanos** | Deuda técnica | Preventivo, bajo riesgo |
 | 7 | **G3 Producción / G4 Servicios** | Negocio | Requieren definición de alcance con el usuario |
-| 8 | **D4 copy normalizado** | Cosmético | Puede intercalarse en cualquier tanda |
+| ~~8~~ | ~~**D4 copy normalizado**~~ | Cosmético | ✅ Cerrado (2026-09-08, T34) — acentos + voseo normalizados |
 
 ---
 
