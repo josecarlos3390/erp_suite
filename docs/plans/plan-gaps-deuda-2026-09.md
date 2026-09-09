@@ -137,7 +137,7 @@
 - **Aceptación:** mismo comportamiento observado (sin cambios de API) con
   tests de regresión de las suites de ventas/compras; sin `as any`.
 
-### D3 — Auditoría de settings "huérfanos" ☐ · Prioridad MEDIA
+### D3 — Auditoría de settings "huérfanos" ✅ (2026-09-08, T35)
 
 - **Evidencia:** `enableBranches` existía en Ajustes y en `AppSettings` sin
   gobernar ninguna UI hasta T32h (se conectó hoy). Sospecha fundada de más
@@ -148,6 +148,61 @@
   switch o eliminarlo.
 - **Aceptación:** documento/matriz con cada flag y su consumo real; cero
   switches en Ajustes sin efecto documentado.
+- **Cierre (2026-09-08, T35):** auditoría de los **27 flags** de `AppSettings`
+  (frontend + backend, con subagentes de grep y verificación cruzada). Matriz
+  completa documentada abajo. **Hallazgo accionable:** `exportCreditAttributionPct`
+  tenía efecto real (Form 200, exportaciones, `reports.service.ts:1438`) pero
+  NO era parametrizable — faltaba en el DTO del controller y en `saveAll`.
+  Resuelto: campo agregado al `UpdateSettingsDto` (`@IsNumber @Min(0) @Max(100)`)
+  + persistencia en `saveAll` + UI en Ajustes (sección Contabilidad) +
+  `AppSettings`/form/patch/payload del frontend. Unit backend 16/16 (2 suites)
+  y frontend settings.component 5/5; builds OK.
+  **Conclusión del resto de la matriz:** no hay switches de Ajustes sin
+  efecto real; los flags sin lectura en negocio frontend se consumen
+  server-side (`enableBatchTracking`/`enableSerialTracking` →
+  `document-stock.helper`; `allowStockOperationsWithoutCost` → stock-*;
+  `enableWarehouseRestriction` → `warehouse-restriction.service`;
+  `posConsolidateMinorSales`/`posMinorSalesThreshold`/`posGenericPartnerId` →
+  `pos.service`/`pos-sessions`; `bankReconciliationMatch*` →
+  `bank-reconciliation.service`; `fixedAssetsAutoDepreciation` → cron de
+  activos fijos vía fila SystemSettings) o en el frontend
+  (`enableBranches`/`enableSapIntegration`/`locale`/`posQuantityStep`).
+  `localizationBoliviaEnabled` es vestigial (derivado de `countryCode`,
+  deprecado en el código, sin lectores reales) — se documenta, no se elimina
+  por compatibilidad de contrato del GET.
+
+#### Matriz de consumo real (D3, 2026-09-08)
+
+| Flag | Frontend (UI/negocio) | Backend (negocio) | Veredicto |
+|---|---|---|---|
+| `baseCurrency` | ✅ decenas de forms/listados | ✅ ~40 archivos | OK |
+| `foreignCurrency` | ✅ cuentas/asientos/preview | ✅ asientos/rates/auth | OK |
+| `enableBatchTracking` | — | ✅ `document-stock.helper.ts:271` | OK (server) |
+| `enableSerialTracking` | — | ✅ `document-stock.helper.ts:336` | OK (server) |
+| `allowStockOperationsWithoutCost` | — | ✅ stock-entries/exits/transfers/adjustments | OK (server) |
+| `validateStockOnSalesOrder` | ✅ sales-orders-form:2301 | ✅ sales-orders.service:1734 | OK |
+| `enableSapIntegration` | ✅ sidebar + ~17 forms | — | OK (frontend UI) |
+| `enableBranches` | ✅ base comercial (T32h) | — (branchId siempre obligatorio, por diseño) | OK (frontend UI) |
+| `accountDeterminationLevel` | — (flag del tenant) | ✅ engine vía columna Tenant/Item | OK (server, otra vía) |
+| `timeZone` | ✅ tenant-date.service | ✅ ~30+ archivos | OK |
+| `countryCode` | ✅ forms compra (BO) | ✅ builders/reportes/pos | OK |
+| `locale` | ✅ tenant-date.service | — | OK (frontend) |
+| `localizationBoliviaEnabled` | — (derivan de countryCode) | — (derivado, deprecado) | Vestigial (documentado) |
+| `defaultCalculationMethod` | — | ✅ sale/purchase-invoices | OK (server) |
+| `enableWarehouseRestriction` | — | ✅ warehouse-restriction.service:28 | OK (server) |
+| `exchangeRateGainAccountId` | ✅ exchange-rate-revaluation | ✅ journal-entry-core/adjustments | OK |
+| `exchangeRateLossAccountId` | ✅ ídem | ✅ ídem | OK |
+| `posConsolidateMinorSales` | — | ✅ pos.service:500 / pos-sessions:173 | OK (server) |
+| `posMinorSalesThreshold` | — | ✅ pos.service:503 | OK (server) |
+| `posGenericPartnerId` | — | ✅ pos.service:501 / pos-sessions:179 | OK (server) |
+| `posQuantityStep` | ✅ pos.component:1021 | — | OK (frontend) |
+| `exportCreditAttributionPct` | ✅ (nuevo, Ajustes) | ✅ reports.service:1438 | **Resuelto en T35** (antes sin UI/DTO) |
+| `accountingEnabled` | ✅ guard/sidebar/conciliación | ✅ journal-entry-core:61 | OK |
+| `fixedAssetsAutoDepreciation` | — | ✅ cron activos fijos (fila SS) | OK (server) |
+| `journalEntryAutoExchangeDifference` | ✅ journal-entries-form:654 | ✅ journal-entries.service:474 | OK |
+| `bankReconciliationMatchWindowDays` | — | ✅ bank-reconciliation:327 | OK (server) |
+| `bankReconciliationMatchTolerance` | — | ✅ bank-reconciliation:328 | OK (server) |
+| `branding` | ✅ tenant-branding.service (bootstrap) | — | OK |
 
 ### D4 — Copy y textos sin normalizar ✅ (2026-09-08, T34)
 
@@ -188,7 +243,7 @@
 | 3 | **G2 Revalorización de artículos** | Negocio | El usuario lo pidió explícitamente; comparte motor con G1 |
 | ~~4~~ | ~~**G5 Doc canónica desactualizada**~~ | Mantenimiento | ✅ Cerrado (2026-09-08, T33) — AGENTS.md + ROADMAP.md al día |
 | 5 | **D2 costeo duplicado backend** | Deuda técnica | Reduce la clase de bugs de costos antes de tocar G1/G2 |
-| 6 | **D3 settings huérfanos** | Deuda técnica | Preventivo, bajo riesgo |
+| ~~6~~ | ~~**D3 settings huérfanos**~~ | Deuda técnica | ✅ Cerrado (2026-09-08, T35) — matriz 27 flags + exportCreditAttributionPct parametrizable |
 | 7 | **G3 Producción / G4 Servicios** | Negocio | Requieren definición de alcance con el usuario |
 | ~~8~~ | ~~**D4 copy normalizado**~~ | Cosmético | ✅ Cerrado (2026-09-08, T34) — acentos + voseo normalizados |
 
