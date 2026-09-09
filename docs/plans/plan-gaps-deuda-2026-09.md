@@ -143,15 +143,19 @@
   `reuseExistingServer` evita re-seed); como GET /auth/me devuelve el payload
   del JWT sin recalcular, el `exchangeRateGuard` redirigía TODA la suite a
   /exchange-rates. Ahora el setup garantiza la tasa del día ANTES del login
-  (helper idempotente `ensureTodayExchangeRate`). **Deuda residual
-  documentada (no bloqueante):** quedan `buildDeliveryLine(line as any)` y
-  `buildQuotationLine(line as any)` en los mappers de flujo de
-  sale-reserve-invoices (copias entrega→reserva y cotización→reserva) — sus
-  tipos de parámetro exigen campos requeridos que `DraftLineResult` declara
-  opcionales; tiparlos exige mapeo explícito (fuera del alcance de D1). El
-  `buildLineFromDraft(line as any)` (pedido→reserva) se eliminó en drive-by
-  2026-09-09 (asignable a `Record<string, unknown>` vía la index signature de
-  `DraftLineResult`; typecheck OK, unit 10/10).
+  (helper idempotente `ensureTodayExchangeRate`). **Residuales tipados
+  resueltos (2026-09-09):** los tres `as any` de los mappers de flujo de
+  sale-reserve-invoices se eliminaron sin cambio de comportamiento —
+  `buildLineFromDraft(line as any)` (pedido→reserva) sobraba porque
+  `DraftLineResult` (index signature `[extra: string]: unknown`) es asignable
+  a `Record<string, unknown>`; y `buildDeliveryLine(line as any)` /
+  `buildQuotationLine(line as any)` (entrega→reserva y cotización→reserva)
+  tenían parámetros anónimos con campos requeridos que el mapper genérico no
+  garantizaba → cada builder se tipó con la interfaz de línea de SU propio
+  mapper (`DeliveryReserveInvoiceDraftLine` / `QuotationReserveInvoiceDraftLine`),
+  cuerpo intacto, callback con downcast tipado. Cero `as any` en
+  `sale-reserve-invoices-form.component.ts`. Typecheck OK, unit 10/10, E2E
+  ventas→FRV en verde.
 
 ### D2 — Costeo/validación de líneas duplicado entre servicios ✅ (2026-09-08, T36)
 
@@ -221,8 +225,10 @@
   activos fijos vía fila SystemSettings) o en el frontend
   (`enableBranches`/`enableSapIntegration`/`locale`/`posQuantityStep`).
   `localizationBoliviaEnabled` es vestigial (derivado de `countryCode`,
-  deprecado en el código, sin lectores reales) — se documenta, no se elimina
-  por compatibilidad de contrato del GET.
+  deprecado en el código, sin lectores reales) — se documenta y se eliminó del
+  `UpdateSettingsDto` (2026-09-09: el PUT ya no anuncia un campo que `saveAll`
+  ignora); el GET sigue devolviéndolo derivado de `countryCode` (contrato de
+  lectura intacto).
 
 #### Matriz de consumo real (D3, 2026-09-08)
 
@@ -240,7 +246,7 @@
 | `timeZone` | ✅ tenant-date.service | ✅ ~30+ archivos | OK |
 | `countryCode` | ✅ forms compra (BO) | ✅ builders/reportes/pos | OK |
 | `locale` | ✅ tenant-date.service | — | OK (frontend) |
-| `localizationBoliviaEnabled` | — (derivan de countryCode) | — (derivado, deprecado) | Vestigial (documentado) |
+| `localizationBoliviaEnabled` | — (deriva de countryCode) | — (derivado, deprecado) | Vestigial — fuera del DTO de update (2026-09-09); GET lo sigue derivando |
 | `defaultCalculationMethod` | — | ✅ sale/purchase-invoices | OK (server) |
 | `enableWarehouseRestriction` | — | ✅ warehouse-restriction.service:28 | OK (server) |
 | `exchangeRateGainAccountId` | ✅ exchange-rate-revaluation | ✅ journal-entry-core/adjustments | OK |
