@@ -59,7 +59,7 @@
   completa en verde; frontend Karma `uom-groups.service.spec.ts` 11/11 y
   build AOT OK; commits dual-push backend y push frontend/root.
 
-### T46 — Lógica de licencias sobre los roles
+### T46 — Lógica de licencias sobre los roles ✅ (2026-09-09, AUDIT T46)
 
 - Infraestructura mínima y honesta (el modelo comercial se definirá con el
   usuario): `Tenant/Subscription.plan` ya existe (TRIAL/ACTIVE/…); se agrega
@@ -70,6 +70,15 @@
   funcionalidad existente (no romper operación).
 - Aceptación: specs de la matriz/util + endpoint; documentación de la
   decisión pendiente de producto (qué plan incluye qué) en el plan.
+- ✅ Cerrado (2026-09-09, AUDIT T46): `plan-capabilities.ts` (matriz
+  `2026-09-09.1` + `planIncludes`) + `GET /billing/capabilities`;
+  `plan-capabilities.spec.ts` 5/5 y billing service/controller ampliados
+  (29/29 en las 4 suites de billing); typecheck y eslint OK. Commit dual-push
+  backend. **Decisión de producto PENDIENTE (no bloqueante):** qué plan
+  comercial incluye qué feature del grupo 2 (SIN/SAP/CRM/Nómina/
+  localización) cuando se implementen — hoy ambas planes (SHARED/DEDICATED)
+  habilitan lo mismo y el gating se aplicará sobre esta matriz sin cambiar la
+  operación.
 
 ---
 
