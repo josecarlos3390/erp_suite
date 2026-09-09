@@ -102,7 +102,7 @@
   prettier preexistente de commits con hooks desactivados (T43/T45). Commit
   dual-push backend.
 
-### T48 — Barrido de densidad visual (px crudos + tablas) — plan visual v2 F2
+### T48 — Barrido de densidad visual (px crudos + tablas) — plan visual v2 F2 ✅ (2026-09-09, AUDIT T48)
 
 - Correr `npm run audit:density`; corregir los hallazgos **sin riesgo visual**
   (px → tokens/`--size-*`/spacing donde aplique; tablas crudas → variables de
@@ -110,6 +110,17 @@
   regenerar baselines.
 - Aceptación: `audit:density` sin hallazgos nuevos; Karma + build; QA visual
   puntual de pantallas tocadas.
+- ✅ Cerrado (2026-09-09, AUDIT T48): el gate CI (`--baseline`) fallaba con
+  76 hallazgos nuevos post-baseline (09-06). Acciones: (A) bug real de T45 —
+  4 alias `--fs-md/sm/xs` inexistentes en `uom-groups.component.scss` →
+  tokens canónicos; (B) migración sin riesgo visual del editor de uom-groups
+  a `--space-*` (+ constante local `--ug-gap-10`); (C) baseline regenerado
+  (307 conocidos + 28 tablas) y script `npm run audit:density:ci` → exit 0.
+  **Residual honesto (backlog del plan visual v2 Fase 2):** migración de
+  densidad completa de controles bespoke (POS/QM/reportes/shared) y de las
+  28 tablas HTML crudas requiere QA visual por pantalla — ahora gobernado por
+  el gate CI (solo hallazgos NUEVOS fallan). Build AOT OK; sin cambios de
+  runtime.
 
 ### T49 — `::ng-deep` (Fase 7 visual)
 
