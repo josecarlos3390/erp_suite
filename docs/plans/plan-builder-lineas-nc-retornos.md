@@ -232,9 +232,11 @@ P2 (retornos) repite 1–8 sobre los 2 forms de retornos.
   Karma forms NC idéntico al baseline (ventas 12/12, compras 9/9); typecheck
   app OK. Backend sin cambios.
 - **Nota:** el shape del FormGroup es equivalente (controles/validators/
-  disabled/redondeos por form); no se unificó comportamiento (p. ej. `min(1)`
-  ventas vs `min(0.001)` compras queda parametrizado — decisión de producto
-  pendiente si se quisiera alinear).
+  disabled/redondeos por form). El refactor dejó parametrizado el min de
+  cantidad; por **decisión de producto (2026-09-09) el min de NC se unificó a
+  0.001** (ventas pasó de 1; permite NC fraccionadas de artículos por medida;
+  spec del util actualizado). Los builders de devoluciones conservan `min(1)`
+  en ambos lados (observación documentada en §10).
 
 ---
 

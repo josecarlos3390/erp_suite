@@ -288,11 +288,23 @@
   espacios → toHaveText" se descarta como no-acción: son indentación normal
   del template y los E2E ya usan `toContainText` con éxito.
 
-### D5 — Estado de la deuda de UX/cosmética ya conocida (referencia) ✅/🔄
+### D5 — Deuda de UX/cosmética conocida ✅ (2026-09-09, T41 — disposición)
 
-- Residual ya documentado en ROADMAP (tokens de altura, `::ng-deep`,
-  budget del POS 35.35 kB sobre 35.00 kB) — se deja constancia aquí para no
-  perderlo; no requiere acción nueva.
+- **Alturas crudas / densidad:** dimensionado con `npm run audit:density`
+  (estático, 2026-09-09): quedan valores `px` crudos en scss de `shared/` y
+  **28 tablas HTML crudas** en páginas (candidatas a densidad manual).
+  **Decisión:** NO se barre en bloque; queda como **backlog del plan visual v2**
+  (`docs/plans/plan-consistencia-visual-v2.md`, Fase 2 tokens/densidad), con la
+  herramienta `audit:density`, los baselines y el marcador `density-ok`
+  documentados en FRONTEND_GUIDE §12.
+- **`::ng-deep`:** Fase 7 del plan visual v2 (backlog continuo) — sin acción
+  nueva.
+- **Budget del POS (35.35 kB sobre 35.00 kB):** inspeccionado
+  (`pos.component.scss`, 2369 líneas). Recortar ~353 B compilados sin QA
+  visual del POS no es un cambio trivial → queda como **backlog con números**;
+  si el warning molesta, opción de build: subir el budget de ese chunk a
+  36 kB (decisión de configuración, no de código).
+- Histórico (ROADMAP/AGENTS §4) se mantiene como referencia.
 
 ---
 
