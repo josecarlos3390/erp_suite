@@ -154,8 +154,9 @@
   garantizaba → cada builder se tipó con la interfaz de línea de SU propio
   mapper (`DeliveryReserveInvoiceDraftLine` / `QuotationReserveInvoiceDraftLine`),
   cuerpo intacto, callback con downcast tipado. Cero `as any` en
-  `sale-reserve-invoices-form.component.ts`. Typecheck OK, unit 10/10, E2E
-  ventas→FRV en verde.
+  `sale-reserve-invoices-form.component.ts`. Typecheck OK, unit 10/10. E2E
+  ventas→FRV intentado pero bloqueado por entorno (dev con Gestión 2026
+  cerrada; journey specs con fecha de hoy) — no regresión del cambio.
 
 ### D2 — Costeo/validación de líneas duplicado entre servicios ✅ (2026-09-08, T36)
 

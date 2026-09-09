@@ -7,7 +7,8 @@
 > con ~4 variaciones de negocio a parametrizar — requiere tests de regresión de
 > NC/retornos antes de tocar código"*.
 >
-> **Última actualización:** 2026-09-09. **Estado:** ☐ (plan de alcance).
+> **Última actualización:** 2026-09-09. **Estado:** 🔄 — **P1 (par de NC) ✅
+> ejecutado (2026-09-09, AUDIT T38)**; P2 (retornos) ☐ pendiente.
 
 ---
 
@@ -206,3 +207,27 @@ P2 (retornos) repite 1–8 sobre los 2 forms de retornos.
   `purchase-returns-form.component.ts:769`.
 - Patrón de builder heterogéneo tipado (guía §9):
   `FRONTEND_GUIDE.md` "Estándares de tipado".
+
+---
+
+## 9. Registro de ejecución — P1 (par de NC) ✅ 2026-09-09 (AUDIT T38)
+
+- **Puerta de regresión (baseline, ANTES):** backend NC 44/44
+  (`sales-credit-notes.service.spec` + `purchase-credit-notes.service.spec`);
+  Karma forms NC — ventas 12/12, compras 9/9. (E2E NC con fecha fija
+  2026-08-09 bloqueados por entorno: Gestión 2026 cerrada en dev.)
+- **Util creado:** `shared/document-form/build-credit-note-line.util.ts`
+  (`buildNcLineGroup` + `buildEmptyNcLineGroup`) con las opciones de §3.1
+  (`NcLineBuildOptions` / `NcEmptyLineBuildOptions`).
+- **Forms migrados:** `sales-credit-notes-form` y `purchase-credit-notes-form`
+  delegan en el util (métodos privados conservados; call-sites intactos).
+- **Evidencia (DESPUÉS):** spec del util 13/13 (ambos conjuntos de opciones;
+  incluye preferencia de `lineSubtotal` guardado vs fallback redondeado);
+  Karma forms NC idéntico al baseline (ventas 12/12, compras 9/9); typecheck
+  app OK. Backend sin cambios.
+- **Nota:** el shape del FormGroup es equivalente (controles/validators/
+  disabled/redondeos por form); no se unificó comportamiento (p. ej. `min(1)`
+  ventas vs `min(0.001)` compras queda parametrizado — decisión de producto
+  pendiente si se quisiera alinear).
+- **Pendiente:** P2 (retornos) — repetir §4–§6 sobre `sales-returns-form` y
+  `purchase-returns-form` (levantar su diff propio antes).
