@@ -42,7 +42,7 @@
 - Aceptación: Karma de pos.component (mock de resolución), typecheck y build;
   verificación manual/live opcional.
 
-### T45 — UoMGroup (grupos de unidades, patrón SAP B1)
+### T45 — UoMGroup (grupos de unidades, patrón SAP B1) 🔄 (backend ✅ 2026-09-09; frontend pendiente)
 
 - Decisión de semántica (a validar en implementación): el grupo es una
   **plantilla reutilizable** — master `UoMGroup` (código/nombre/unidad base +
