@@ -1145,6 +1145,24 @@ La densidad global la aplica `DensityService` (clases `density-compact` /
 
 - Nunca usar alias legacy inexistentes: `--fs-*` y `--font-size-*` **ya no existen**
   (quedan `var(--x)` inválidos → heredan ~16px). Usar `--text-xs/sm/base/…` directo.
+- **Convención de migración (T48, 2026-09-09):** para componentes/reskin
+  existentes, el valor ACTUAL es el look de **Comfortable y Compacta**, y solo
+  **Espaciosa** relaja. Se implementa con variables locales por componente:
+
+  ```scss
+  :host { --x-cell-py: 6px; --x-cell-px: 8px; }              // = look actual
+  :host-context(body.density-spacious) {                      // solo relaja
+    --x-cell-py: 10px; --x-cell-px: 12px;                     // Δ ≥ 2px por eje
+  }
+  ```
+
+  En componentes con `ViewEncapsulation.None` (p. ej. POS) `:host`/`:host-context`
+  NO aplican: declarar las variables sobre el selector real del host
+  (`app-pos { … }` / `body.density-spacious app-pos { … }`). Para estilos
+  globales (`_modals.scss`, `_lists.scss`) usar `:root, body.density-compact`
+  como base y `body.density-spacious` para relajar. Este patrón asegura
+  **cero regresión visual** en el look por defecto y respuesta real en Espaciosa
+  (lo que verifica `npm run audit:density:e2e`).
 - **Auditoría:** `npm run audit:density` (estático: px fuera de bloques de densidad,
   tablas crudas y **variables CSS indefinidas**; baselines con `--write-baseline` /
   `--baseline`, CI falla solo con hallazgos nuevos), `npm run audit:density:routes`

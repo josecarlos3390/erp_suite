@@ -55,19 +55,22 @@
 | Localización multi-país (F7.3) | `localization-multi` | — | ✅ | Requiere mantenimiento normativo por país. |
 | Multi-divisa (F7.2) | `multi-currency` | ✅ | ✅ | **Ya implementada** (Fase 7.2): pasa a piso común, no se gatea. |
 
-### 2.3 Diferenciación por volumetría (opcional, requiere extensión de modelo)
+### 2.3 Diferenciación por volumetría (D3 — ✅ aprobada 2026-09-09)
 
-Hoy la matriz es booleana. Si querés diferenciar por tamaño, la propuesta es
-extenderla a `{ included: boolean; limit?: number | null }` y definir cupos —
-**sugerencia de arranque** (a validar comercialmente):
+Cupos definidos e implementados de forma **informativa** (sin enforcement, por
+el principio D1) en `PLAN_LIMITS` (`plan-capabilities.ts`), expuestos por
+`GET /billing/capabilities` en `limits`:
 
 | Recurso | SHARED | DEDICATED |
 |---|---|---|
-| Usuarios activos | hasta 15 | sin límite |
-| Almacenes | hasta 5 | sin límite |
-| Terminales POS | hasta 3 | sin límite |
-| Base de datos | compartida (aislamiento lógico) | **propia** (`Tenant.dbUrl`) |
-| Backup/restauración | diario administrado | a demanda + ventana propia |
+| Usuarios activos (`users`) | 15 | sin límite (`null`) |
+| Almacenes (`warehouses`) | 5 | sin límite (`null`) |
+| Terminales POS (`posTerminals`) | 3 | sin límite (`null`) |
+| Base de datos (`ownDatabase`) | compartida (`false`) | **propia** (`true`, `Tenant.dbUrl`) |
+| Backup (`managedBackup`) | diario administrado (`true`) | a demanda (`false`) |
+
+Helper disponible para un enforcement futuro: `planLimit(plan, resource)`
+(número, `null` = sin límite, `undefined` si plan/recurso desconocido).
 
 ## 3. Cómo se implementaría (una vez aprobado)
 
@@ -87,10 +90,13 @@ extenderla a `{ included: boolean; limit?: number | null }` y definir cupos —
   diferenciación aplica a capacidades nuevas y tenants nuevos.
 - **D2 — ✅ Aceptado tal cual.** SIN y CRM en ambos; SAP, nómina avanzada y
   localización multi-país solo en DEDICATED; multi-divisa en piso común.
-- **D3 — ✅ Diferida.** La volumetría por plan se definirá en una fase
-  comercial posterior; la matriz permanece booleana.
+- **D3 — ✅ Aprobada e implementada.** Límites: SHARED 15 usuarios / 5
+  almacenes / 3 terminales POS, BD compartida y backup diario administrado;
+  DEDICATED sin límite y BD propia. Matriz **`2026-09-09.3`** con
+  `PLAN_LIMITS` + `planLimit()` y `limits` en el endpoint (informativo).
 
 *Implementado: `PLAN_CORE_MODULES` / `PLAN_FEATURE_MODULES`, matriz
-`2026-09-09.2`, `PLANNED_CAPABILITIES` y `planned` en el endpoint. Tests:
-`plan-capabilities.spec.ts` (D1/D2/planned) + `billing.service.spec` (SHARED vs
-DEDICATED) → billing 4 suites / 30 tests en verde.*
+`2026-09-09.3`, `PLANNED_CAPABILITIES`, `PLAN_LIMITS` y `planned`/`limits` en el
+endpoint. Tests: `plan-capabilities.spec.ts` (D1/D2/planned/volumetría) +
+`billing.service.spec` (SHARED vs DEDICATED + límites) → billing 4 suites /
+34 tests en verde.*

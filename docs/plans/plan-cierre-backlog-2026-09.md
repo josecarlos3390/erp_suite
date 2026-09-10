@@ -121,14 +121,19 @@
   28 tablas HTML crudas requiere QA visual por pantalla — ahora gobernado por
   el gate CI (solo hallazgos NUEVOS fallan). Build AOT OK; sin cambios de
   runtime.
-- ➕ **Fase 1 ejecutada (2026-09-09, ampliación acordada con el usuario):**
-  swaps **exactos** px→tokens en las áreas objetivo — 59 valores en 17
-  archivos (spacing → `--space-*`; `font-size` → tokens no escalables, se
-  excluye 14 px = `--text-base`), hallazgos **307 → 276**, baseline
-  regenerado (276 + 28 tablas) y `audit:density:ci` ✓; verificado con
-  `e2e:visual` 52/52 (identidad visual). Pendiente (Fase 2): variables de
-  densidad Compacta/Espaciosa en controles bespoke y conversión de las 28
-  tablas crudas.
+- ➕ **Fase 2 — incremento 1 (2026-09-09, acordado con el usuario):** convención
+  "Comfortable/Compacta = look actual; solo Espaciosa relaja" (documentada en
+  FRONTEND_GUIDE §12). Convertidas a variables de densidad: **8 archivos de
+  tablas crudas** (bank-reconciliation ×3 tablas, bank-statement ×2,
+  price-list con guard mobile, anticipos en purchase/sale-invoices,
+  quotation-items-picker, transport-guides, parcial `report-tables.scss`) +
+  `shared/payment-term-installments-preview` (14 formularios) + global
+  `.modal-table` (8 formularios) + **Query Manager** (editor/list/result).
+  Hallazgos **276 → 252**; baseline regenerado y `audit:density:ci` ✓;
+  `ng build` OK; Karma QM 8/8 + 8/8; `e2e:visual` 52/52 (sin regresión).
+  Residual: POS (27), selectores `shared/` y tablas `fiscal-years`/
+  `permissions`/`item-detail`; la verificación dinámica de tablas crudas
+  requiere datos (la BD dev recién seedeada no renderiza filas).
 
 ### T49 — `::ng-deep` (Fase 7 visual) ✅ (2026-09-09, AUDIT T49)
 
