@@ -117,6 +117,24 @@ seed OK). Se replantea la BD y se marca el pipeline manual como superado — su
 contenido de schema ya lo aplican las migraciones y el `prisma db seed` (que
 también crea los roles RBAC; el archivo manual de roles es redundante en BD fresca).
 
+> **Entorno LOCAL de desarrollo (2026-09-10, T53):** el mismo procedimiento está
+> empaquetado en un solo comando reproducible:
+>
+> ```bash
+> cd backend-erp
+> npm run db:recreate   # migrate reset --skip-seed + db push + SQL manuales (best-effort) + seed
+> ```
+>
+> `prisma db push` sincroniza el schema declarado (incluye lo que solo vivía en
+> SQL manual: `DocumentSeries.branchId`, `Item.uomGroupId`, `UomGroup*`,
+> `SavedQuery.visibility/sharedRoleIds`), `scripts/apply-manual-migrations.mjs
+> --best-effort` aplica los SQL históricos que aún no estén y registra todos en
+> `_manual_migrations` (los "ya existe" se registran sin abortar), y el seed deja
+> los maestros. Verificación: `npx prisma migrate diff --from-url "$DATABASE_URL"
+> --to-schema-datamodel prisma/schema.prisma --script` → *"This is an empty
+> migration"*. Los specs E2E se autoabastecen del contexto fiscal (ver
+> `e2e/auth.setup.ts` + `e2e/helpers/ensure-fiscal-year.ts`).
+
 ```bash
 cd backend-erp
 railway link          # proyecto/servicio backend correcto

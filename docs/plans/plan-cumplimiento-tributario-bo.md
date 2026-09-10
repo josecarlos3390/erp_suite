@@ -1,5 +1,8 @@
 # Plan de cumplimiento tributario Bolivia (G2–G8) — Ley N° 843, T.O. SIN al 31/07/2026
 
+> **Estado (2026-09-10):** **T1 (ITF) y T2 (UFV) están ✅ COMPLETADAS** — implementadas en `banks`/`bank-statements` (ITF) y `currencies`/`exchange-rates`/reportes (UFV), y el ROADMAP Fase 5.5 las da por cerradas;
+> > las fases **T3, T3b, T4, T5, T6 y T7 ya estaban ✅ COMPLETADAS (2026-08-16)**. Queda fuera de este plan **G1 / F5.1 — Facturación electrónica SIN**, que sigue como feature prioritario independiente.
+
 > **Versión:** 1.0 — 2026-08-16
 > **Origen:** Análisis de cumplimiento de la localización `BO` contra la Ley N° 843 y Decretos Reglamentarios (PDF oficial SIN, copiado a `docs/reference/LEY-843.pdf`, texto en `LEY-843.txt`).
 > **Alcance:** brechas G2 a G8 identificadas en el análisis. **G1 (Facturación Electrónica SIN / F5.1) queda explícitamente FUERA de este plan** y sigue como feature prioritario independiente del roadmap.
@@ -39,7 +42,7 @@ Lo que **ya cumple** y NO se toca (salvo integración):
 
 ---
 
-## Fase T1 — G8: ITF (Impuesto a las Transacciones Financieras) en pagos bancarios
+## Fase T1 — G8: ITF (Impuesto a las Transacciones Financieras) en pagos bancarios ✅ COMPLETADA
 
 > **Tamaño:** pequeño · **Prioridad:** baja · **Fundamento:** Ley N° 3446 (incluida en el T.O., sección ITF): grava con alícuota sobre débitos/créditos en cuentas bancarias; lo **percibe la entidad financiera**, pero el contribuyente debe **contabilizar el gasto** para cuadrar sus extractos.
 
@@ -71,7 +74,7 @@ Un cargo ITF importado del extracto queda contabilizado con su cuenta propia y e
 
 ---
 
-## Fase T2 — G7: Actualización de valores por UFV (saldos a favor)
+## Fase T2 — G7: Actualización de valores por UFV (saldos a favor) ✅ COMPLETADA
 
 > **Tamaño:** pequeño · **Prioridad:** baja-media · **Fundamento:** Ley 843 Art. 9 (el saldo a favor del contribuyente en IVA se compensa **"con actualización de valor"**); CTB Arts. 45–47 (mantenimiento de valor por variación UFV).
 

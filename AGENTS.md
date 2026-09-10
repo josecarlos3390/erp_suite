@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-09-09.  
+> **Última actualización:** 2026-09-10.  
 > **Versión canónica de restricciones transversales.**  
 > Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
@@ -149,13 +149,14 @@ npm run start:dev        # watch mode
 npm run start:prod       # node dist/main.js
 npm run format           # prettier --write
 npm run lint             # eslint — 0 errores, 0 warnings
-npm test                 # jest — 129 suites / 1249 tests
+npm test                 # jest — 162 suites / 1747 tests
 npm run test:watch       # jest --watch
 npm run test:cov         # jest --coverage
 npm run test:e2e         # jest --config ./test/jest-e2e.json — 11 suites / 57 tests
 npx prisma generate
 npx prisma migrate dev --name <migration-name>
 npx prisma db seed
+npm run db:recreate      # BD dev reproducible: migrate reset + db push + marcar SQL manuales + seed
 ```
 
 ### Frontend
@@ -169,11 +170,15 @@ npm run watch            # ng build --watch --configuration development
 npm run serve:ssr:erp-frontend   # SSR local
 npm run format           # prettier --write
 npm run lint             # ng lint — 0 errores, ~44 warnings preexistentes
-npm test                 # Karma + Jasmine — 1172 tests
-npm run e2e              # playwright test — 184 passed
+npm test                 # Karma + Jasmine — 1527 tests
+npm run e2e              # playwright test — suite completa (funcional + visual)
+npm run e2e:visual       # regresión visual de los 52 formularios (baselines propios)
+npm run e2e:baseline     # regenera los 52 baselines de referencia
 npm run e2e:ui           # playwright test --ui
 npm run e2e:report       # playwright show-report
 npm run generate-types   # copia prisma-types.ts desde backend
+npm run audit:density:ci # gate de densidad: estático (px crudos + tablas) + calidad de bloques
+npm run audit:density:e2e# auditoría dinámica Compacta vs Espaciosa (bajo demanda)
 ```
 
 ### Git hooks
@@ -184,7 +189,7 @@ npm run generate-types   # copia prisma-types.ts desde backend
 
 ---
 
-## 4. Estado real del proyecto (2026-09-08)
+## 4. Estado real del proyecto (2026-09-10)
 
 ### Backend (`backend-erp/`)
 
@@ -192,24 +197,29 @@ npm run generate-types   # copia prisma-types.ts desde backend
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npm test` | ✅ **OK** | **130 suites / 1258 tests passed** (incluye `permissions-coverage.spec.ts`, helper `warehouse-branch.util.spec.ts` con 8 tests) |
+| `npm test` | ✅ **OK** | **162 suites / 1747 tests passed** (incluye `plan-limits.service.spec.ts`, `permissions-coverage.spec.ts`, `warehouse-branch.util.spec.ts`) |
+| `npx tsc --noEmit` (proyecto y specs) | ✅ **OK** | 0 errores |
 | `npm run test:e2e` | ✅ **OK** | 11 suites / 57 tests passed |
 | `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`)|
+| `npm run db:recreate` | ✅ **OK** | BD dev reproducible: `migrate reset` + `db push` + SQL manuales + seed; `prisma migrate diff` sin diferencias |
 
 ### Frontend (`erp-frontend/`)
 
 | Comando | Estado | Evidencia |
 |---------|--------|-----------|
-| `npm run build` | ✅ **OK** | 0 errores (bundle inicial 1.27 MB, +70 kB sobre budget warning — preexistente) |
-| `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npx ng test --watch=false --browsers=ChromeHeadless` | ✅ **OK** | Suites de formularios comerciales y catálogos en verde (55/55 tras migración Fase 5 + limpieza base); total histórico ~1054 tests |
-| `npm run e2e` | ✅ **OK** | 184/184 passed (Chromium) |
+| `npm run build` | ✅ **OK** | 0 errores (bundle inicial ~1.27 MB) |
+| `npm run lint` | ✅ **OK** | 0 errores, ~44 warnings preexistentes |
+| `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1527 / 1527 tests** |
+| `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (dos corridas consecutivas) |
+| `npm run audit:density:ci` | ✅ **OK** | 0 hallazgos estáticos + 0 de calidad de bloques |
+| `npx playwright test density-raw-tables.spec.ts` | ✅ **OK** | tablas crudas medidas con datos reales (1px → 4px) |
 
-> **Notas de deuda técnica activa (2026-08-08):**
+> **Notas de deuda técnica activa (2026-09-10):**
 > - **Integridad branch↔warehouse completada (2026-08-08):** `assertWarehousesInBranch` en 22 servicios + POS (create/update), herencia de branchId en flujos de copia del frontend (`applyBranchFromSource`), matriz artículo-almacén optimizada a 3 `findMany` en paralelo, stock-transfers con destino libre de sucursal. Ver `AUDIT.md` §7 y `ROADMAP.md` DT.11-14.
-> - **Tokens de altura creados** (`--size-control-sm/md/lg` en `_07-sizing.scss`); los componentes LUNA ya los consumen. Quedan ~93 alturas crudas en `pages/`/`shared/`, la mayoría decorativas (deuda de design system posterior).
+> - **Densidad visual (T48) y `::ng-deep` (T49) cerrados:** auditoría estática y de calidad de bloques en 0. Quedan como deuda de design system **66 alturas `px` crudas** en `pages/`+`shared/` (antes ~93) y **121 `!important` en 19 archivos** (Prioridad 5 de `docs/plans/plan-mejoras-ux-ui-frontend.md`).
 > - **Patrón `openDialog` eliminado completamente.** Todos los formularios y catálogos usan `ConfirmDialogService.ask()`. `document-form.base.ts` limpiada.
-> - **Plan visual v2**: Fases 0, 1, 3, 4, 5, 6 resueltas. Fase 2 (tokens) parcialmente resuelta. Fase 7 (`::ng-deep`) es backlog continuo.
+> - **Plan visual v2**: Fases 0, 1, 3, 4, 5, 6 resueltas; Fase 2 cerrada en su parte de densidad (T48) y Fase 7 auditada (T49, 9 reglas justificadas). Sigue como tracking continuo (`docs/plans/plan-consistencia-visual-v2.md`).
+> - **Entorno E2E determinista (T53, 2026-09-10):** tipografías self-hosted (sin CDNs externos) y `e2e/auth.setup.ts` garantiza gestión fiscal abierta + series antes de cada corrida (el seed NO las crea). BD dev reproducible con `npm run db:recreate`.
 > - **Deuda estructural priorizada:** ver `AUDIT.md` §7 (S1 refactor del accounting engine es la única recomendada antes de F6; S2-S6 mantenimiento normal).
 
 ---
@@ -420,6 +430,8 @@ Archivos complementarios que no requieren lectura obligatoria para tareas rutina
 
 | Archivo | Contenido | Cuándo leer |
 |---------|-----------|-------------|
+| `.agents/skills/angular-solid-frontend/` | **Receta de generación de pantallas Angular + LUNA**: `SKILL.md` (tokens, patrones de listado y formulario, formularios con líneas, tabs, selectores modales), `references/module-template.md` (boilerplate copiable de servicio/listado/formulario + registro de ruta), `references/shared-patterns.md` y `references/testing-recipes.md`. | Al **crear** una página, formulario, listado o servicio nuevo en `erp-frontend` (o al mantener los existentes). |
+| `.agents/skills/nestjs-solid-backend/` | Receta equivalente para el backend (módulo NestJS + Prisma, flujo de documentos, testing). | Al crear un módulo/servicio/DTO nuevo en `backend-erp`. |
 | `erp-frontend/docs/monorepo/DESIGN.md` | Design System LUNA completo: tokens, componentes, layouts, dark mode, animaciones. | Cuando se diseñe un componente nuevo o se modifique el design system. |
 | `erp-frontend/docs/components/form-sizes.md` | Estándar de alturas unificado (`sm`/`md`/`lg`) para componentes de formulario LUNA. | Al agregar o estandarizar inputs, selectores o botones. |
 | `erp-frontend/docs/components/luna-entity-select.md` | Guía del selector genérico: modos memory/server-side, API y plantillas. | Al crear o modificar selectores de entidades. |

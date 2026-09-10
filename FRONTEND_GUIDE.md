@@ -1098,6 +1098,13 @@ Reglas rápidas (detalle en el doc enlazado):
 
 ### Checklist para nuevo formulario
 
+> **Receta de generación (boilerplate exacto + carpetas + registro de ruta):**
+> `.agents/skills/angular-solid-frontend/SKILL.md` (§5 patrones de listado, §6 patrones
+> de formulario, §7 formularios con líneas) y su anexo
+> `references/module-template.md` (plantillas copiables de servicio, listado y
+> formulario) + `references/testing-recipes.md`. Para documentos comerciales, el
+> estándar de líneas vive en `docs/guides/ESTANDAR_LINEAS_DOCUMENTO.md`.
+
 - [ ] ¿Usa `<luna-form-page>` como raíz?
 - [ ] ¿Usa `DocumentFormHeader` con `lunaFormHeader`?
 - [ ] ¿Usa `DocumentActionBar` con `lunaFormActions`?

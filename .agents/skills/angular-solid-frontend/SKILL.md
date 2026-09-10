@@ -490,20 +490,33 @@ Uses `luna-form-page` + `DocumentFormHeaderComponent` + `DocumentActionBarCompon
       </luna-form-row>
     </luna-form-section>
 
-    <!-- Lines section -->
-    <luna-form-section title="Lineas">
-      <luna-button
-        lunaFormSectionActions
-        variant="secondary"
-        size="sm"
-        (lunaClick)="addLine()"
-      >
-        <luna-action-icon action="plus" lunaButtonIcon></luna-action-icon>
-        Agregar linea
-      </luna-button>
-
-      <app-document-lines-table [lines]="itemsArray" ...></app-document-lines-table>
-    </luna-form-section>
+    <!-- Líneas: en documentos comerciales usar SIEMPRE <luna-document-lines>
+         con un <ng-template lunaDocumentLineTab="..."> por pestaña
+         (detail / discounts / costs / taxes / udf). Estándar canónico:
+         docs/guides/ESTANDAR_LINEAS_DOCUMENTO.md (celdas por column.key,
+         pestañas fijas, totalizadores y trazabilidad). Ejemplo real:
+         pages/purchase-orders/purchase-orders-form.component.html -->
+    <luna-document-lines
+      [itemsArray]="itemsArray"
+      [taxIndicators]="taxIndicators"
+      [lineUdfFields]="lineUdfFields"
+      [canEdit]="canEdit"
+      [documentId]="orderId"
+      [(activeTab)]="lineActiveTab"
+      udfTableName="PurchaseOrderItem"
+      (itemSelected)="selectManualItem($event.index, $event.item)"
+      (taxChange)="onLineTaxChange($event.index, $event.taxId)"
+    >
+      <ng-template lunaDocumentLineTab="detail">
+        <luna-data-table
+          [formArray]="itemsArray"
+          [columns]="detailColumns"
+          tableKey="purchase-orders-form-detail"
+          [columnReorderable]="true"
+          [columnVisibilityToggle]="true"
+        ></luna-data-table>
+      </ng-template>
+    </luna-document-lines>
   </form>
 
   <app-document-action-bar lunaFormActions (back)="goBack()">
@@ -1255,9 +1268,11 @@ Native tabs (`.tab-bar > .tab-switcher > .tab-btn`) **MUST NOT overflow horizont
 
 ## 7. Form with Lines (FormArray + luna-data-table)
 
-Used for BOMs, document lines, price-list items, payment-term lines, etc.
+Used for BOMs, payment-term lines, price-list items and any editable array that is NOT a commercial document.
 
-> **NEVER** use raw HTML `<table>` for editable form lines. Always use `<luna-data-table [formArray]="linesArray">`. Raw tables bypass the design system, break responsive behaviour, and require manual styling that drifts from the canonical look.
+> **Documentos comerciales** (cotizaciones, pedidos, entregas, facturas, NC/ND, devoluciones, movimientos de stock, pagos): usar **`<luna-document-lines>`** con pestañas `lunaDocumentLineTab` — es el estándar canónico (`docs/guides/ESTANDAR_LINEAS_DOCUMENTO.md`, FRONTEND_GUIDE §10). `luna-data-table [formArray]` se usa *dentro* de cada pestaña, no como contenedor de las líneas.
+
+> **NEVER** use raw HTML `<table>` for editable form lines. Always use `<luna-data-table [formArray]="linesArray">` (o `<luna-document-lines>` en documentos). Raw tables bypass the design system, break responsive behaviour, and require manual styling that drifts from the canonical look; si no puedes evitarlas, deben obedecer la densidad (ver §12 del FRONTEND_GUIDE: base 1px → 4px en Espaciosa).
 
 **TS pattern:**
 

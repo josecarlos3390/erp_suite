@@ -1,5 +1,12 @@
 # Plan de remediación — consistencia visual del frontend (v2, validado)
 
+> **Actualización de estado (2026-09-10):** las fases **0, 1, 3, 4, 5 y 6 están ✅ resueltas** (detalle histórico más abajo).
+> > **Fase 2 (alturas):** ✅ cerrada en su parte de **densidad** con **T48** — auditoría estática y de calidad de bloques en 0 (ver `AUDIT.md` T48 y `docs/reference/densidad-interfaz-auditoria.md`);
+> > quedan **66 alturas `px` crudas** en `pages/`+`shared/` (decorativas/estructurales: requieren tokens decorativos nuevos, decisión de design system) y **121 `!important` en 19 archivos**
+> > (Prioridad 5 de `docs/plans/plan-mejoras-ux-ui-frontend.md`, aún sin cerrar).
+> > **Fase 7 (`::ng-deep`):** ✅ auditada en **T49** — N=60 menciones (31 archivos) → **9 reglas activas justificadas** con marcador (`docs/reference/ng-deep-audit-2026-09.md`);
+> > migrar esas 9 a customization points LUNA queda como backlog continuo (no bloquea).
+
 > **Versión:** 2.0 — 2026-07-22
 > **Estado:** Validado al 100% contra el código real de `erp-frontend` (cada archivo, línea y valor verificado por inspección estática).
 > **Actualización de avance (2026-08-04):**
@@ -40,7 +47,7 @@
 
 ---
 
-## Fase 0 — Bug confirmado: dropdowns de lote/serie detrás del modal (RIESGO FUNCIONAL ALTO)
+## Fase 0 — Bug confirmado: dropdowns de lote/serie detrás del modal (RIESGO FUNCIONAL ALTO) ✅ RESUELTA
 
 **Estado: CONFIRMADO por inspección de código — no requiere verificación en navegador para proceder.**
 
@@ -76,7 +83,7 @@ Subir los 4 comboboxes a un tier nuevo `--z-dropdown-in-modal: 1250` (por encima
 
 ---
 
-## Fase 1 — Reconciliar la escala de z-index (1-2 días)
+## Fase 1 — Reconciliar la escala de z-index (1-2 días) ✅ RESUELTA
 
 ### Diagnóstico validado
 
@@ -172,7 +179,7 @@ grep -rnE 'z-index:\s*[0-9]' --include="*.scss" erp-frontend/src
 
 ---
 
-## Fase 2 — Estandarizar alturas de botones/inputs (1-2 días, más trabajo del estimado en v1)
+## Fase 2 — Estandarizar alturas de botones/inputs (1-2 días, más trabajo del estimado en v1) ◐ PARCIAL (densidad ✅ T48; quedan 66 alturas px)
 
 ### Diagnóstico validado
 
@@ -203,7 +210,7 @@ grep -rnE 'z-index:\s*[0-9]' --include="*.scss" erp-frontend/src
 
 ---
 
-## Fase 3 — Estandarizar breakpoints (1 día, más volumen del estimado en v1)
+## Fase 3 — Estandarizar breakpoints (1 día, más volumen del estimado en v1) ✅ RESUELTA
 
 ### Diagnóstico validado
 
@@ -240,7 +247,7 @@ grep -rnE 'z-index:\s*[0-9]' --include="*.scss" erp-frontend/src
 
 ---
 
-## Fase 4 — Terminar la migración a `<luna-icon-button>` (medio día)
+## Fase 4 — Terminar la migración a `<luna-icon-button>` (medio día) ✅ RESUELTA
 
 ### Estado validado
 
@@ -279,7 +286,7 @@ Por cada uno: confirmar `variant`/`size` actual → migrar a `<luna-icon-button>
 
 ---
 
-## Fase 5 — Eliminar `openDialog()` y consolidar en `ConfirmDialogService.ask()` (2-3 días — RE-SCOPED, v1 subestimaba ×6)
+## Fase 5 — Eliminar `openDialog()` y consolidar en `ConfirmDialogService.ask()` (2-3 días — RE-SCOPED, v1 subestimaba ×6) ✅ RESUELTA
 
 ### Diagnóstico validado
 
@@ -326,7 +333,7 @@ if (await this.confirmSvc.ask({ title: '...', message: '...' })) {
 
 ---
 
-## Fase 6 — Consolidar paneles custom a `<luna-modal>` (1-2 días)
+## Fase 6 — Consolidar paneles custom a `<luna-modal>` (1-2 días) ✅ RESUELTA
 
 ### Diagnóstico validado (son los ÚNICOS 3 backdrops custom del proyecto)
 
@@ -352,7 +359,7 @@ Por cada uno de los 3: reemplazar backdrop/panel por `<luna-modal [open]="..." (
 
 ---
 
-## Fase 7 — Auditoría de `::ng-deep` restantes (continua, no bloquea)
+## Fase 7 — Auditoría de `::ng-deep` restantes (continua, no bloquea) ✅ AUDITADA (T49; 9 reglas justificadas)
 
 ### Conteo real validado: **44 archivos** (v1 decía 45/42)
 
