@@ -1163,13 +1163,40 @@ La densidad global la aplica `DensityService` (clases `density-compact` /
   como base y `body.density-spacious` para relajar. Este patrón asegura
   **cero regresión visual** en el look por defecto y respuesta real en Espaciosa
   (lo que verifica `npm run audit:density:e2e`).
+- **Método del codemod (T48 Fase 2, 51 páginas):** (1) *swaps exactos* — cada
+  `padding`/`gap`/`font-size` en px pasa a `var(--<prefijo>-sp-<base>px)` /
+  `var(--<prefijo>-fs-<base>px)`, con prefijo = iniciales del archivo (`accounts`
+  → `--acc-`) y sufijo = **valor base**, de modo que el nombre autodocumenta el
+  look actual (`--pos-padding-3: 3px`); (2) *bloques de densidad* insertados al
+  inicio del SCSS, después del último `@use`/`@forward`:
+  `:host { …base… }` + `:host-context(body.density-spacious) { …Δ ≥ 2px… }`
+  (selector real del host si la encapsulación es `None`); (3) *verificación*:
+  `npm run audit:density` → 0, `npm run build`, `npm run e2e:visual` (52
+  baselines) para probar cero regresión del look por defecto.
 - **Auditoría:** `npm run audit:density` (estático: px fuera de bloques de densidad,
   tablas crudas y **variables CSS indefinidas**; baselines con `--write-baseline` /
-  `--baseline`, CI falla solo con hallazgos nuevos), `npm run audit:density:routes`
-  + `npm run audit:density:e2e` (dinámico: barrido de pantallas Compacta vs Espaciosa).
-  Marcadores manuales: `density-ok` en la línea/archivo (escapa el estático) y
-  `density-audit: off/on` en comentarios CSS. Detalle:
-  `docs/reference/densidad-interfaz-auditoria.md`.
+  `--baseline`, CI falla solo con hallazgos nuevos), `npm run audit:density:vars`
+  (**calidad de los bloques**: huérfanas, var usada sin base, Δ < 2px en
+  espaciado, `--x: var(--x)` cíclico, bloques duplicados, nombre-vs-valor; exit 1
+  con cualquier hallazgo; `npm run audit:density:fix` aplica la corrección
+  mecánica con `--dry-run`), `npm run audit:density:routes`
+  + `npm run audit:density:e2e` (dinámico: barrido de pantallas Compacta vs
+  Espaciosa) y `npx playwright test density-raw-tables.spec.ts` (tablas crudas
+  con datos reales: 1px en Compacta → 4px en Espaciosa). Gate de CI:
+  `npm run audit:density:ci` (estático + calidad). Marcadores manuales:
+  `density-ok` en la línea/archivo (escapa el estático) y
+  `density-audit: off/on` en comentarios CSS. Detalle y matriz de cobertura de
+  las 28 tablas crudas: `docs/reference/densidad-interfaz-auditoria.md`.
+- **Tablas crudas (`<table>` fuera de `luna-data-table`):** si no tienen regla de
+  celda propia heredan el padding por defecto del navegador (1px) y **no
+  obedecen**; declarar la variable de densidad y aplicarla, con 1px como base
+  (= cero cambio visual) y 4px en Espaciosa:
+
+  ```scss
+  :host { --x-cell-1: 1px; }
+  :host-context(body.density-spacious) { --x-cell-1: 4px; }
+  .mi-tabla tbody td { padding: var(--x-cell-1); }
+  ```
 
 ---
 

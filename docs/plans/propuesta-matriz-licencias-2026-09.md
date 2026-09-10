@@ -55,11 +55,11 @@
 | Localización multi-país (F7.3) | `localization-multi` | — | ✅ | Requiere mantenimiento normativo por país. |
 | Multi-divisa (F7.2) | `multi-currency` | ✅ | ✅ | **Ya implementada** (Fase 7.2): pasa a piso común, no se gatea. |
 
-### 2.3 Diferenciación por volumetría (D3 — ✅ aprobada 2026-09-09)
+### 2.3 Diferenciación por volumetría (D3 — ✅ aprobada y **con enforcement** 2026-09-09)
 
-Cupos definidos e implementados de forma **informativa** (sin enforcement, por
-el principio D1) en `PLAN_LIMITS` (`plan-capabilities.ts`), expuestos por
-`GET /billing/capabilities` en `limits`:
+Cupos definidos en `PLAN_LIMITS` (`plan-capabilities.ts`), expuestos por
+`GET /billing/capabilities` y `GET /billing/limits` en `limits`, y **aplicados al
+alta** de recursos (`PlanLimitsService.assertCanAdd`):
 
 | Recurso | SHARED | DEDICATED |
 |---|---|---|
@@ -69,8 +69,24 @@ el principio D1) en `PLAN_LIMITS` (`plan-capabilities.ts`), expuestos por
 | Base de datos (`ownDatabase`) | compartida (`false`) | **propia** (`true`, `Tenant.dbUrl`) |
 | Backup (`managedBackup`) | diario administrado (`true`) | a demanda (`false`) |
 
-Helper disponible para un enforcement futuro: `planLimit(plan, resource)`
-(número, `null` = sin límite, `undefined` si plan/recurso desconocido).
+**Enforcement (decisión del usuario 2026-09-09): bloquear el alta, nunca la
+operación.** `PlanLimitsService.assertCanAdd(tenantId, resource, { countsTowardLimit? })`
+lanza **403** con mensaje explícito (`El plan SHARED permite 3 terminales POS
+activas y el cupo está completo (3/3). Desactive o elimine un registro existente
+o cambie a un plan DEDICATED para continuar.`) y está cableado en:
+
+| Alta | Servicio | Consumo medido |
+|---|---|---|
+| Usuarios | `UsersService.create` | `User.status = ACTIVE` (un alta INACTIVE no consume cupo) |
+| Almacenes | `WarehousesService.create` | `Warehouse.status = ACTIVE` (el alta nace ACTIVE) |
+| Terminales POS | `PosTerminalsService.create` | `PosTerminal.isActive = true` |
+
+Reglas de seguridad (D1 — no regresión): `planLimit()` `null` (DEDICATED) o
+`undefined` (plan/recurso desconocido) **permiten** la creación; nada existente se
+bloquea y los tenants que ya superaron el cupo siguen operando (solo no pueden
+crear más). `GET /billing/limits` (permiso `billing:view`) devuelve consumo real vs
+cupo (`resources[]` con `used/limit/remaining/exceeded` y `canAdd` por recurso)
+para que la UI pueda avisar antes del 403.
 
 ## 3. Cómo se implementaría (una vez aprobado)
 
@@ -90,10 +106,22 @@ Helper disponible para un enforcement futuro: `planLimit(plan, resource)`
   diferenciación aplica a capacidades nuevas y tenants nuevos.
 - **D2 — ✅ Aceptado tal cual.** SIN y CRM en ambos; SAP, nómina avanzada y
   localización multi-país solo en DEDICATED; multi-divisa en piso común.
-- **D3 — ✅ Aprobada e implementada.** Límites: SHARED 15 usuarios / 5
-  almacenes / 3 terminales POS, BD compartida y backup diario administrado;
-  DEDICATED sin límite y BD propia. Matriz **`2026-09-09.3`** con
-  `PLAN_LIMITS` + `planLimit()` y `limits` en el endpoint (informativo).
+- **D3 — ✅ Aprobada e implementada con enforcement (2026-09-09).** Límites:
+  SHARED 15 usuarios / 5 almacenes / 3 terminales POS, BD compartida y backup
+  diario administrado; DEDICATED sin límite y BD propia. Matriz **`2026-09-09.3`**
+  con `PLAN_LIMITS` + `planLimit()`, `limits` en `/billing/capabilities`, consumo en
+  `/billing/limits` y **403 al crear** (usuarios/almacenes/terminales POS) cuando el
+  cupo está completo.
+
+## 5. Plan de implementación del enforcement (cerrado 2026-09-09)
+
+| Paso | Estado | Evidencia |
+|---|---|---|
+| `PlanLimitsService` (`getUsage`, `getLimitsReport`, `assertCanAdd`) | ✅ | `backend-erp/src/billing/plan-limits.service.ts` — 10 tests en `plan-limits.service.spec.ts` |
+| `GET /billing/limits` (`billing:view`) | ✅ | `billing.controller.ts` + `dto/limits-response.dto.ts` (test en `billing.controller.spec.ts`) |
+| Cableado en altas de usuarios/almacenes/terminales POS | ✅ | `users.service.ts`, `warehouses.service.ts`, `pos-terminals.service.ts` (+ `BillingModule` importado en los 3 módulos); tests en las 3 suites |
+| Sin enforcement sobre operación existente (D1) | ✅ | `planLimit()` `null`/`undefined` → permite; solo se valida en `create()` |
+| Docs | ✅ | esta sección + `AUDIT.md` (T46 ampliación), `ROADMAP.md`, `CHANGELOG.md` backend |
 
 *Implementado: `PLAN_CORE_MODULES` / `PLAN_FEATURE_MODULES`, matriz
 `2026-09-09.3`, `PLANNED_CAPABILITIES`, `PLAN_LIMITS` y `planned`/`limits` en el

@@ -79,6 +79,18 @@
   localización) cuando se implementen — hoy ambas planes (SHARED/DEDICATED)
   habilitan lo mismo y el gating se aplicará sobre esta matriz sin cambiar la
   operación.
+- ➕ **Decisiones de producto aplicadas y D3 con enforcement (2026-09-09,
+  acordado con el usuario):** D1 (piso común, sin gating de módulos actuales),
+  D2 (SIN/CRM/divisa en ambos; SAP/nómina avanzada/localización solo DEDICATED)
+  y D3 (volumetría) aprobadas e implementadas en la matriz `2026-09-09.3`.
+  Aprobada además la ampliación de D3: **bloquear el alta, nunca la operación** —
+  `PlanLimitsService.assertCanAdd` (403 con mensaje accionable) cableado en los
+  `create()` de usuarios/almacenes/terminales POS (un alta inactiva no consume
+  cupo; `planLimit()` `null`/`undefined` permiten), y `GET /billing/limits`
+  (consumo vs cupo) para que la UI avise antes del 403. Backend 162 suites /
+  1747 tests; ver AUDIT T46 (ampliación 2) y `docs/plans/propuesta-matriz-licencias-2026-09.md` §2.3/§5.
+  Queda **pendiente de producto** (no bloqueante): gating real de las capacidades
+  nuevas del grupo 2 y su superficie en la UI cuando se implementen.
 
 ---
 
@@ -150,6 +162,27 @@
   medidas (`/fiscal-years/1`, `/permissions`) y `audit:density:e2e` oficial con
   **0 problemas nuevos** en esas rutas. **Fase 2 cerrada** (28 tablas crudas
   quedan en seguimiento del gate CI).
+- ➕ **Cierre de los 3 pendientes del frente (2026-09-09, acordado con el usuario):**
+  (1) **Calidad de bloques**: nuevas herramientas `npm run audit:density:vars`
+  (audita construcción: huérfanas, sin base, Δ<2px en espaciado, `--x: var(--x)`,
+  bloques duplicados, nombre-vs-valor, llaves) y `npm run audit:density:fix`
+  (corrección mecánica) integradas en `audit:density:ci` → **0 hallazgos** tras
+  eliminar 66 vars huérfanas y fusionar 17 bloques duplicados en 19 archivos;
+  además se corrigieron **3 referencias cíclicas** (`--det-gap` en
+  item/partner-detail, `--rep-opt-gap` en revaluación) que dejaban el espaciado
+  en 0 en densidad Normal y 4 deltas POS <2px. Método documentado en
+  `FRONTEND_GUIDE` §12 y `docs/reference/densidad-interfaz-auditoria.md`.
+  (2) **28 tablas crudas**: clasificadas por familia (15 `.modal-table` global,
+  13 `.group-table` compartido, 11 con vars locales, 2 de `item-detail` con
+  **regla nueva 1px→4px** = cero cambio visual en Compacta/Comfortable, 3
+  tablas-pie dentro de `luna-data-table` excluidas por diseño).
+  (3) **Cobertura dinámica**: manifiesto 152 → **163 URLs** (11 rutas
+  `/reports/*` que antes quedaban fuera del barrido) y nueva spec
+  `e2e/density-raw-tables.spec.ts` con datos reales (kit `KIT-PC01` del seed):
+  BOM 1px/1px en Compacta → 4px/4px en Espaciosa; corrida conjunta QA
+  (ventas/compras/stock) + audit `/reports` → **19/19 passed**, 7 reportes con
+  `.group-table` medidos con datos y **0 offenders**. Estado: estático 0, calidad
+  0, `ng build` 0 errores, `e2e:visual` 52/52.
 
 ### T49 — `::ng-deep` (Fase 7 visual) ✅ (2026-09-09, AUDIT T49)
 
