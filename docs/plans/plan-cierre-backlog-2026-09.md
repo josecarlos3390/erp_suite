@@ -134,6 +134,13 @@
   Residual: POS (27), selectores `shared/` y tablas `fiscal-years`/
   `permissions`/`item-detail`; la verificación dinámica de tablas crudas
   requiere datos (la BD dev recién seedeada no renderiza filas).
+- ➕ **Fase 2 — incremento 2 (2026-09-09):** POS (31 valores px →
+  `--pos-padding-*`, nueva `--pos-padding-3`; `pos-density.spec` 2/2) y los
+  **13 selectores de `shared/`** (47 reglas; `combobox-base` es mixin y arrastra
+  a item/batch/serial-combobox). Hallazgos **252 → 186**; baseline regenerado y
+  `audit:density:ci` ✓; `ng build` OK; `e2e:visual` 52/52. Residual: páginas de
+  reportes y otras páginas (186), tablas `fiscal-years`/`permissions`/
+  `item-detail`, y verificación dinámica con datos.
 
 ### T49 — `::ng-deep` (Fase 7 visual) ✅ (2026-09-09, AUDIT T49)
 
