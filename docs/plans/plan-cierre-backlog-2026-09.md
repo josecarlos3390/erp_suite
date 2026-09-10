@@ -121,6 +121,14 @@
   28 tablas HTML crudas requiere QA visual por pantalla — ahora gobernado por
   el gate CI (solo hallazgos NUEVOS fallan). Build AOT OK; sin cambios de
   runtime.
+- ➕ **Fase 1 ejecutada (2026-09-09, ampliación acordada con el usuario):**
+  swaps **exactos** px→tokens en las áreas objetivo — 59 valores en 17
+  archivos (spacing → `--space-*`; `font-size` → tokens no escalables, se
+  excluye 14 px = `--text-base`), hallazgos **307 → 276**, baseline
+  regenerado (276 + 28 tablas) y `audit:density:ci` ✓; verificado con
+  `e2e:visual` 52/52 (identidad visual). Pendiente (Fase 2): variables de
+  densidad Compacta/Espaciosa en controles bespoke y conversión de las 28
+  tablas crudas.
 
 ### T49 — `::ng-deep` (Fase 7 visual) ✅ (2026-09-09, AUDIT T49)
 
