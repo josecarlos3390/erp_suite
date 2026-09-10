@@ -143,7 +143,7 @@
 
 ## Ola 3 — Grupo 5: QA / serie por sucursal
 
-### T50 — Serie de numeración por sucursal
+### T50 — Serie de numeración por sucursal ✅ (2026-09-09, AUDIT T50)
 
 - Correlativos independientes por tienda: `DocumentSeries`/asignación por
   sucursal (diseño acotado: serie opcionalmente ligada a `branchId`; al crear
@@ -153,6 +153,15 @@
   del doc tiene serie propia se prioriza.
 - Aceptación: migración + backend (resolución de serie por sucursal) +
   frontend (selector/auto) + specs/E2E.
+- ✅ Cerrado (2026-09-09, AUDIT T50) con la decisión default aplicada: serie
+  con `branchId` opcional (varias series por docType permitidas, códigos
+  distintos), resolución con prioridad sucursal→global y exclusión de series
+  de otras sucursales; threading en los 28 servicios de documentos; UI
+  (columna + campo Sucursal). Migración aplicada por SQL manual (drift).
+  Evidencia: document-series 49/49, suite 161/1726, eslint 0, tsc 0, karma
+  form 9/9 + list 8/8, builds AOT. **Nota E2E:** el escenario crear-serie-de-
+  sucursal → documento-usa-su-serie requiere entorno dev (backend+frontend) y
+  FY abiertos; se ejecuta en la ola **T52**.
 
 ### T51 — Baseline visual consolidado
 
