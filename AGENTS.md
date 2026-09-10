@@ -152,7 +152,8 @@ npm run lint             # eslint — 0 errores, 0 warnings
 npm test                 # jest — 162 suites / 1747 tests
 npm run test:watch       # jest --watch
 npm run test:cov         # jest --coverage
-npm run test:e2e         # jest --config ./test/jest-e2e.json — 11 suites / 57 tests
+npm run test:e2e         # jest E2E — 14 suites / 93 tests (sincroniza antes la BD de tests)
+npm run test:e2e:prepare # solo sincroniza el esquema de erp_test (prisma db push)
 npx prisma generate
 npx prisma migrate dev --name <migration-name>
 npx prisma db seed
@@ -199,7 +200,7 @@ npm run audit:density:e2e# auditoría dinámica Compacta vs Espaciosa (bajo dema
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
 | `npm test` | ✅ **OK** | **162 suites / 1747 tests passed** (incluye `plan-limits.service.spec.ts`, `permissions-coverage.spec.ts`, `warehouse-branch.util.spec.ts`) |
 | `npx tsc --noEmit` (proyecto y specs) | ✅ **OK** | 0 errores |
-| `npm run test:e2e` | ✅ **OK** | 11 suites / 57 tests passed |
+| `npm run test:e2e` | ✅ **OK** | **14 suites / 93 tests passed** (2026-09-10; el script sincroniza antes el esquema de `erp_test` con `prisma db push` — ver nota de entorno) |
 | `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`)|
 | `npm run db:recreate` | ✅ **OK** | BD dev reproducible: `migrate reset` + `db push` + SQL manuales + seed; `prisma migrate diff` sin diferencias |
 
@@ -219,7 +220,7 @@ npm run audit:density:e2e# auditoría dinámica Compacta vs Espaciosa (bajo dema
 > - **Densidad visual (T48) y `::ng-deep` (T49) cerrados:** auditoría estática y de calidad de bloques en 0. Quedan como deuda de design system **66 alturas `px` crudas** en `pages/`+`shared/` (antes ~93) y **121 `!important` en 19 archivos** (Prioridad 5 de `docs/plans/plan-mejoras-ux-ui-frontend.md`).
 > - **Patrón `openDialog` eliminado completamente.** Todos los formularios y catálogos usan `ConfirmDialogService.ask()`. `document-form.base.ts` limpiada.
 > - **Plan visual v2**: Fases 0, 1, 3, 4, 5, 6 resueltas; Fase 2 cerrada en su parte de densidad (T48) y Fase 7 auditada (T49, 9 reglas justificadas). Sigue como tracking continuo (`docs/plans/plan-consistencia-visual-v2.md`).
-> - **Entorno E2E determinista (T53, 2026-09-10):** tipografías self-hosted (sin CDNs externos) y `e2e/auth.setup.ts` garantiza gestión fiscal abierta + series antes de cada corrida (el seed NO las crea). BD dev reproducible con `npm run db:recreate`.
+> - **Entorno E2E determinista (T53, 2026-09-10):** tipografías self-hosted (sin CDNs externos) y `e2e/auth.setup.ts` garantiza gestión fiscal abierta + series antes de cada corrida (el seed NO las crea). BD dev reproducible con `npm run db:recreate` y BD de tests E2E con `npm run test:e2e:prepare` (sincroniza `erp_test` con `prisma db push`; sin ese paso **13 de 14 suites fallaban** por esquema desactualizado).
 > - **Deuda estructural priorizada:** ver `AUDIT.md` §7 (S1 refactor del accounting engine es la única recomendada antes de F6; S2-S6 mantenimiento normal).
 
 ---
