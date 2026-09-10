@@ -163,12 +163,19 @@
   sucursal → documento-usa-su-serie requiere entorno dev (backend+frontend) y
   FY abiertos; se ejecuta en la ola **T52**.
 
-### T51 — Baseline visual consolidado
+### T51 — Baseline visual consolidado ✅ (2026-09-09, AUDIT T51)
 
 - Ejecutar/ajustar `e2e/forms-reference-screenshots.spec.ts` + `forms-visual-
   regression.spec.ts`: generar baselines y dejar la suite con verificación.
 - Nota entorno: algunas rutas de formularios necesitan FY abierto/serie
   (documentado; elegir fechas fijas 2031 donde aplique).
+- ✅ Cerrado (2026-09-09, AUDIT T51): (A) fix de infra E2E en el seed del
+  backend (orden de borrado de cabeceras de anulación → P2003 que rompía el
+  `webServer` de Playwright); (B) `npm run e2e:baseline` → **52/52** y
+  baselines de `e2e/screenshots/` regenerados (51 PNG actualizados);
+  (C) `npm run e2e:visual` → **52/52 passed** contra los baselines nuevos
+  (chromium, backend+frontend levantados por Playwright). Pendiente de la ola
+  E2E (T52): el caso de serie por sucursal y los flujos críticos restantes.
 
 ### T52 — Completar flujos críticos E2E
 
