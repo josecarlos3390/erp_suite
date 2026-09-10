@@ -141,6 +141,15 @@
   `audit:density:ci` ✓; `ng build` OK; `e2e:visual` 52/52. Residual: páginas de
   reportes y otras páginas (186), tablas `fiscal-years`/`permissions`/
   `item-detail`, y verificación dinámica con datos.
+- ➕ **Fase 2 — incremento 3 y cierre (2026-09-09):** codemod determinista sobre
+  el JSON del audit → **230 conversiones en 51 archivos** + **7 `density-ok`
+  justificados**; **audit estático 307 → 0**; baseline regenerado (0 + 28
+  tablas) y `audit:density:ci` ✓; `maximumWarning` de estilos 36→37 kB (los
+  `var()` pesan más). Verificación: build AOT sin warnings, `e2e:visual` 52/52,
+  Karma en el push; **dinámica con datos**: 0 offenders en las tablas crudas
+  medidas (`/fiscal-years/1`, `/permissions`) y `audit:density:e2e` oficial con
+  **0 problemas nuevos** en esas rutas. **Fase 2 cerrada** (28 tablas crudas
+  quedan en seguimiento del gate CI).
 
 ### T49 — `::ng-deep` (Fase 7 visual) ✅ (2026-09-09, AUDIT T49)
 
