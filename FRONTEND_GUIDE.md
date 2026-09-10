@@ -1187,6 +1187,15 @@ La densidad global la aplica `DensityService` (clases `density-compact` /
   `density-ok` en la línea/archivo (escapa el estático) y
   `density-audit: off/on` en comentarios CSS. Detalle y matriz de cobertura de
   las 28 tablas crudas: `docs/reference/densidad-interfaz-auditoria.md`.
+- **Tipografías: self-hosted, nunca por CDN (T53).** Inter y JetBrains Mono se
+  sirven desde `public/assets/fonts/` con los `@font-face` de
+  `src/styles/_fonts.scss` (generado por `scripts/fetch-webfonts.mjs`). No
+  volver a cargarlas con `<link>` a Google Fonts: cuando la descarga tardaba o
+  fallaba, las métricas de texto cambiaban y `npm run e2e:visual` fallaba con
+  diferencias de altura en un subconjunto rotativo de formularios (falsos
+  positivos, nunca regresiones reales). Material Icons se eliminó: los iconos
+  son SVGs de `luna-action-icon`. Font Awesome (solo POS) sigue por CDN y queda
+  fuera de los baselines.
 - **Tablas crudas (`<table>` fuera de `luna-data-table`):** si no tienen regla de
   celda propia heredan el padding por defecto del navegador (1px) y **no
   obedecen**; declarar la variable de densidad y aplicarla, con 1px como base
