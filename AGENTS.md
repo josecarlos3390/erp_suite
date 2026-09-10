@@ -408,8 +408,8 @@ Frontend: la URL de la API se configura en `src/environments/environment.ts` (de
 
 ### QA / E2E
 
-6. **Generar baseline visual consolidado** con Playwright (`e2e/forms-reference-screenshots.spec.ts`).
-7. **Completar flujos críticos en E2E** — ventas, compras, stock, pagos parciales, devoluciones y conciliación.
+6. ✅ **Baseline visual consolidado** con Playwright (`e2e/forms-reference-screenshots.spec.ts`) — cerrado 2026-09-09 (T51): 52 baselines regenerados + `npm run e2e:visual` 52/52; de paso se corrigió el seed que rompía el `webServer` (P2003 en `StockTransfer`). Ver AUDIT T51.
+7. ✅ **Flujos críticos en E2E** — ventas, compras, stock, pagos parciales, devoluciones y conciliación — cerrado 2026-09-09 (T52): QA crítica 31/31 + resto de la ola QA en verde, más el caso E2E de serie por sucursal (T50). Ver AUDIT T52.
 
 ---
 

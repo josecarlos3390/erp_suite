@@ -177,21 +177,35 @@
   (chromium, backend+frontend levantados por Playwright). Pendiente de la ola
   E2E (T52): el caso de serie por sucursal y los flujos críticos restantes.
 
-### T52 — Completar flujos críticos E2E
+### T52 — Completar flujos críticos E2E ✅ (2026-09-09, AUDIT T52)
 
 - Cobertura faltante según AGENTS §8: pagos parciales, devoluciones,
   conciliación y (si el entorno lo permite) ventas/compras/stock end-to-end
   con fecha fija en FY abierto; documentar bloqueos de entorno si persisten.
+- ✅ Cerrado (2026-09-09, AUDIT T52): (A) flujos críticos **31/31** en verde
+  (pagos parciales + devoluciones, conciliación/anticipos, ventas end-to-end
+  API+UI, compras, stock, recepción→factura→pago); (B) resto de la ola QA
+  verde y **`banking-reconciliation-flow` corregido** (fechas en la gestión
+  abierta 2027 + selección de gestión abierta; antes 409 por GEST-2026
+  cerrada) → 2 passed / 1 skipped condicional documentado; (C) **caso E2E de
+  serie por sucursal (T50)** agregado a `qa-document-series.spec.ts` → 3/3.
+  Cierre transversal en el plan: marcas ✅ en ROADMAP (tabla de backlog) y
+  AGENTS §8 QA; quedan abiertos SOLO los grupos 1 y 2.
 
 ---
 
-## Cierre transversal
+## Cierre transversal ✅ (2026-09-09)
 
-- [ ] AUDIT.md T43–T52 con evidencia; CHANGELOGs backend/frontend por ola.
-- [ ] ROADMAP: sección backlog → marcas ✅ por ítem (T43–T52) y puntero a
-      este plan; AGENTS §8 QA actualizado.
-- [ ] Verificación final: builds AOT (backend+frontend), Karma total,
-      `npm test` backend, lint.
-- [ ] Estado: quedan abiertos SOLO grupo 1 (G1–G4) y grupo 2 (features 2).
+- [x] AUDIT.md T43–T52 con evidencia (10 filas); CHANGELOGs backend/frontend
+      por ola (T43–T52).
+- [x] ROADMAP: sección backlog → filas ✅ por ítem (UoMGroup, barcode POS,
+      licencias, QM, densidad, `::ng-deep`, mocks `any`, budget POS,
+      devoluciones + serie por sucursal, baseline visual, flujos E2E) y
+      puntero a este plan; **AGENTS §8 QA** actualizado (ítems 6 y 7 ✅).
+- [x] Verificación final: backend `npm test` **161 suites / 1726 tests**;
+      frontend Karma **1525/1525**; builds AOT backend y frontend OK;
+      `npm run audit:density:ci` ✓; eslint backend 0 errores.
+- [x] Estado: quedan abiertos SOLO el grupo 1 (gaps G1–G4) y el grupo 2
+      (features SIN/SAP/CRM/Nómina/localización).
 
 *Última actualización: 2026-09-09.*

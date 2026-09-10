@@ -469,12 +469,16 @@ completo (ventas, compras, inventario, tesorería):
 ## Backlog de features y deuda documentada (2026-09-09)
 
 Items "pendiente a futuro" y backlogs consolidados (con su estado/plan; se
-cierran con fila en `AUDIT.md`). **Plan de cierre en curso (2026-09-09):
-`docs/plans/plan-cierre-backlog-2026-09.md` — T43–T52** (grupos 3, 4 y 5 del
-listado; quedan pendientes los grupos 1 y 2):
+cierran con fila en `AUDIT.md`). **Plan de cierre 2026-09-09:
+`docs/plans/plan-cierre-backlog-2026-09.md` — T43–T52 ✅ CERRADO (grupos 3, 4
+y 5 del listado); quedan abiertos SOLO el grupo 1 (gaps G1–G4) y el grupo 2
+(features SIN/SAP/CRM/Nómina/localización):**
 
 | Item | Origen | Estado / dueño |
 |---|---|---|
+| **Serie de numeración por sucursal** (correlativos por tienda) | AUDIT T32e (mejora de modelo) / grupo 5 | ✅ Resuelto (2026-09-09, T50): `DocumentSeries.branchId` + resolución sucursal→global con exclusión de otras sucursales, threading en los 28 servicios de documentos, UI (columna + campo Sucursal) y E2E del caso (T52). Ver AUDIT T50 |
+| **Baseline visual consolidado** (`e2e/forms-reference-screenshots.spec.ts`) | AGENTS §8 QA | ✅ Resuelto (2026-09-09, T51): fix del seed que rompía el `webServer` de Playwright (P2003) + 52 baselines regenerados y `e2e:visual` 52/52. Ver AUDIT T51 |
+| **Flujos críticos E2E** (ventas, compras, stock, pagos parciales, devoluciones, conciliación) | AGENTS §8 QA | ✅ Resuelto (2026-09-09, T52): QA crítica 31/31 + resto de la ola QA en verde; nuevo caso E2E de serie por sucursal. Ver AUDIT T52 |
 | **UoMGroup** (patrón SAP B1: grupos de unidades con unidad base; hoy existen conversiones por artículo `uomConversions`) | ROADMAP 3.5 | ✅ Resuelto (2026-09-09, T45): plantilla `UomGroup` + `UomGroupConversion` y `Item.uomGroupId`; módulo backend `uom-groups` (CRUD + `applyToItem` que materializa las conversiones en el artículo) y página frontend `/uom-groups` (listado + editor inline + aplicar por código de artículo). Ver AUDIT T45 |
 | **Escaneo de barcode en el POS** | ROADMAP 3.5 | ✅ Resuelto (2026-09-09, T44): `GET /items/by-barcode/:code` + input de escaneo en el POS (Enter o 250 ms). Ver AUDIT T44 |
 | **Lógica de licencias sobre los roles** (plan/subscripción → roles/features habilitadas) | ROADMAP 3.6 / Fase 8.1 | ✅ Infraestructura (2026-09-09, T46): matriz plan→capacidades (`plan-capabilities.ts`, default SHARED/DEDICATED = módulos actuales) + util `planIncludes` + endpoint informativo `GET /billing/capabilities`; sin gating aún. **Decisión de producto pendiente:** qué plan incluye qué feature del grupo 2 (SIN/SAP/CRM/Nómina/localización) — documentada en el plan-cierre T46 |
