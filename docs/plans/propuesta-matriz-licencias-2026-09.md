@@ -96,7 +96,11 @@ para que la UI pueda avisar antes del 403.
 2. Guard/util: `planIncludes(plan, key)` en los módulos nuevos (nunca en los
    actuales, por el principio 1).
 3. UI: consumir `GET /billing/capabilities` para mostrar/ocultar módulos y
-   mensajes de upgrade (sin bloquear rutas existentes de SHARED).
+   mensajes de upgrade (sin bloquear rutas existentes de SHARED). ✅ **Primera
+   parte hecha (2026-09-09)**: la página `/billing` ya consume
+   `GET /billing/limits` y muestra el consumo vs cupo por recurso (chip "Cupo
+   completo", cupos de BD/backup y nota de validación al crear); queda pendiente
+   el gating visual de las capacidades del grupo 2 para cuando se implementen.
 4. Docs: actualizar esta matriz + `ROADMAP` Fase 8.1 y registrar la decisión en
    `AUDIT` (fila T46, ampliación "decisión de producto").
 
@@ -121,7 +125,8 @@ para que la UI pueda avisar antes del 403.
 | `GET /billing/limits` (`billing:view`) | ✅ | `billing.controller.ts` + `dto/limits-response.dto.ts` (test en `billing.controller.spec.ts`) |
 | Cableado en altas de usuarios/almacenes/terminales POS | ✅ | `users.service.ts`, `warehouses.service.ts`, `pos-terminals.service.ts` (+ `BillingModule` importado en los 3 módulos); tests en las 3 suites |
 | Sin enforcement sobre operación existente (D1) | ✅ | `planLimit()` `null`/`undefined` → permite; solo se valida en `create()` |
-| Docs | ✅ | esta sección + `AUDIT.md` (T46 ampliación), `ROADMAP.md`, `CHANGELOG.md` backend |
+| Superficie de UI (consumo vs cupo) | ✅ | `/billing` consume `GET /billing/limits` (chip "Cupo completo", BD/backup y nota de validación al crear); Karma 3/3 |
+| Docs | ✅ | esta sección + `AUDIT.md` (T46 ampliación), `ROADMAP.md`, `CHANGELOG.md` backend/frontend |
 
 *Implementado: `PLAN_CORE_MODULES` / `PLAN_FEATURE_MODULES`, matriz
 `2026-09-09.3`, `PLANNED_CAPABILITIES`, `PLAN_LIMITS` y `planned`/`limits` en el
