@@ -1,11 +1,15 @@
 # Propuesta — Matriz de licencias plan→capacidades (T46, 2026-09-09)
 
-> Estado: **propuesta para aprobación del usuario**. No cambia código todavía.
-> Base técnica ya implementada: `backend-erp/src/billing/plan-capabilities.ts`
-> (matriz `2026-09-09.1`, 10 áreas, hoy **sin gating**), util
-> `planIncludes(plan, module)` y endpoint informativo
-> `GET /billing/capabilities`. Decisión de producto pendiente: **qué incluye
-> cada plan**.
+> **Estado: APROBADA e IMPLEMENTADA (2026-09-09).** Decisiones del usuario:
+> **D1** no regresión aceptada · **D2** destino por plan aceptado tal cual ·
+> **D3** volumetría diferida. Implementación: matriz `2026-09-09.2` en
+> `backend-erp/src/billing/plan-capabilities.ts` (módulos core = piso común;
+> capacidades del grupo 2 con su plan + marca `planned` para las no
+> implementadas) y `GET /billing/capabilities` expone `planned` por módulo.
+> **Sin gating** de módulos actuales (principio D1).
+>
+> Base técnica previa: matriz `2026-09-09.1` (10 áreas, sin gating), util
+> `planIncludes(plan, module)` y endpoint informativo.
 
 ## 1. Principios propuestos
 
@@ -77,15 +81,16 @@ extenderla a `{ included: boolean; limit?: number | null }` y definir cupos —
 4. Docs: actualizar esta matriz + `ROADMAP` Fase 8.1 y registrar la decisión en
    `AUDIT` (fila T46, ampliación "decisión de producto").
 
-## 4. Decisiones que necesito de tu parte
+## 4. Decisiones (aprobadas 2026-09-09)
 
-- **D1** — ¿Aceptás el principio de **no regresión** (SHARED mantiene los
-  módulos actuales; la diferenciación aplica a capacidades nuevas y tenants
-  nuevos)?
-- **D2** — ¿Aceptás el destino de la §2.2 (SIN y CRM en ambos; SAP, nómina
-  avanzada y localización solo en DEDICATED; multi-divisa pasa a piso común)?
-- **D3** — ¿Querés además **volumetría** por plan (§2.3) o lo dejamos para una
-  fase comercial posterior?
+- **D1 — ✅ Aceptado.** SHARED conserva los módulos actuales (piso común); la
+  diferenciación aplica a capacidades nuevas y tenants nuevos.
+- **D2 — ✅ Aceptado tal cual.** SIN y CRM en ambos; SAP, nómina avanzada y
+  localización multi-país solo en DEDICATED; multi-divisa en piso común.
+- **D3 — ✅ Diferida.** La volumetría por plan se definirá en una fase
+  comercial posterior; la matriz permanece booleana.
 
-*Con D1–D3 aprobadas (o ajustadas) implemento la matriz y el registro de la
-decisión, sin tocar todavía el gating de módulos actuales.*
+*Implementado: `PLAN_CORE_MODULES` / `PLAN_FEATURE_MODULES`, matriz
+`2026-09-09.2`, `PLANNED_CAPABILITIES` y `planned` en el endpoint. Tests:
+`plan-capabilities.spec.ts` (D1/D2/planned) + `billing.service.spec` (SHARED vs
+DEDICATED) → billing 4 suites / 30 tests en verde.*
