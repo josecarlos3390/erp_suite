@@ -470,9 +470,9 @@ Capa de datos de integración SAP B1 para el flujo de ventas completo (11 modelo
 
 ### Issues activos / pendientes destacados
 
-1. **Pruebas de carga y estrés multitenant** (`backend / infrastructure`) — `🔲 Pendiente` (sin iniciar)
-2. **Reconstrucción frontend de `special-prices`** (`frontend+backend / special-prices`) — `🔄 Parcial` (modelo y formulario sincronizados, faltan E2E)
-3. **Karma frontend hangs** (`frontend / tests`) — `🔲 Pendiente` (problema recurrente del runner)
+1. **Pruebas de carga y estrés multitenant** (`backend / infrastructure`) — `✅ Resuelto` (AUDIT §8 T3): la suite k6 existe y está en verde (`backend-erp/load-tests/k6/`, 5 escenarios orquestados por `run.ts`, 5/5 en perfil `small`) y el job `load-tests` la corre en CI. En local `npm run perf:k6` **no se puede ejecutar** porque k6 no está instalado en la máquina (limitación de entorno, no deuda de código).
+2. **Reconstrucción frontend de `special-prices`** (`frontend+backend / special-prices`) — `✅ Resuelto` (AUDIT §8 T4): el formulario expone y persiste el nombre del acuerdo, el listado muestra la columna Nombre y hay E2E del alta desde la UI (`special-price-agreement-create.spec.ts`, `special-price-quantity-breaks.spec.ts`), verdes en la corrida funcional completa de T54.
+3. **Karma frontend hangs** (`frontend / tests`) — `🔲 Pendiente` (problema recurrente del runner; en las corridas de 2026-09-10/11 el suite completo pasó 1527/1527, pero el riesgo de cuelgue sigue documentado)
 4. **Consistencia de `subtotal`/`lineTotal`** (`backend / document flows`) — `✅ Resuelto` (purchase-invoices fixeado, cobertura E2E agregada)
 5. **Race condition en `upsertStock`** (`backend / stock`) — `✅ Resuelto` (`pg_advisory_xact_lock` implementado)
 6. **Entrega creada pese a artículo no habilitado en almacén** (`backend / document flows`) — `✅ Resuelto`
