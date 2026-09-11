@@ -172,8 +172,9 @@ npm run serve:ssr:erp-frontend   # SSR local
 npm run format           # prettier --write
 npm run lint             # ng lint — 0 errores, 0 warnings
 npm test                 # Karma + Jasmine — 1527 tests
-npm run e2e              # playwright test — suite completa (funcional + visual)
-npm run e2e:functional   # solo la suite funcional (sin regresión visual)
+npm run e2e              # playwright test — suite completa (incluye capturas y diagnósticos)
+npm run e2e:functional   # gate funcional (187 tests de regresión) en una sola pasada — config propia
+npm run e2e:captures     # capturas de formularios mobile/desktop (herramienta, no gate)
 npm run e2e:visual       # regresión visual de los 52 formularios (baselines propios)
 npm run e2e:baseline     # regenera los 52 baselines de referencia
 npm run e2e:ui           # playwright test --ui
@@ -213,6 +214,7 @@ npm run audit:important  # gate de `!important`: falla ante usos sin justificar 
 | `npm run build` | ✅ **OK** | 0 errores (bundle inicial ~1.27 MB) |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
 | `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1527 / 1527 tests** |
+| `npm run e2e:functional` | ✅ **OK** | **187 tests en una sola pasada: 177 passed / 0 failed / 10 skipped** (~26 min) tras T54 — mismo escenario que CI (BD recién sembrada) |
 | `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (entorno determinista tras T56) |
 | `npm run audit:density:ci` | ✅ **OK** | 0 hallazgos estáticos + 0 de calidad de bloques |
 | `npm run audit:important` | ✅ **OK** | 107 usos de `!important`, 100 % justificados con `!important-ok` (gate en CI) |
@@ -425,6 +427,7 @@ Frontend: la URL de la API se configura en `src/environments/environment.ts` (de
 6. ✅ **Baseline visual consolidado** con Playwright (`e2e/forms-reference-screenshots.spec.ts`) — cerrado 2026-09-09 (T51): 52 baselines regenerados + `npm run e2e:visual` 52/52; de paso se corrigió el seed que rompía el `webServer` (P2003 en `StockTransfer`). Ver AUDIT T51.
 7. ✅ **Flujos críticos en E2E** — ventas, compras, stock, pagos parciales, devoluciones y conciliación — cerrado 2026-09-09 (T52): QA crítica 31/31 + resto de la ola QA en verde, más el caso E2E de serie por sucursal (T50). Ver AUDIT T52.
 8. ✅ **Densidad visual (T48) cerrada del todo** — estático en 0, **calidad de bloques en 0** (`npm run audit:density:vars` dentro de `audit:density:ci`), 28 tablas crudas clasificadas con regla propia donde faltaba (1px → 4px en Espaciosa) y cobertura dinámica con datos (`e2e/density-raw-tables.spec.ts` + manifiesto 163 URLs). Convención, método del codemod y matriz de tablas en `FRONTEND_GUIDE.md` §12 y `docs/reference/densidad-interfaz-auditoria.md`. Ver AUDIT T48.
+9. ✅ **Suite funcional de Playwright en una sola pasada (T54, 2026-09-11)** — de 17 fallos a **177 passed / 0 failed** en una corrida completa: se eliminaron las dependencias de orden/datos entre specs (helpers de matriz artículo-almacén con merge preservador, resolución de maestros por código, mayor/anticipos paginados, snapshot/restore de settings, specs autocontenidos) y se definió el **gate funcional explícito** (`playwright.functional.config.ts` + `npm run e2e:captures`). Detalle en AUDIT T54 y `erp-frontend/CHANGELOG.md`.
 
 ---
 
