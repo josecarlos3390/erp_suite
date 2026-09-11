@@ -131,6 +131,46 @@ Resultado: **0 coincidencias**.
 
 ## Prioridad 5 — Reducción de `!important`
 
+### Estado (2026-09-10) — primera pasada + gate
+
+Medición con `npm run audit:important` (cuenta solo usos en **código**, ignora
+menciones en comentarios): **118 usos en 19 archivos → 107 en 15**, con
+**100 % justificados** con el marcador `!important-ok: <razón>` (o el comentario
+en línea `!important justificado: …`).
+
+Eliminados en esta pasada (11 usos, todos sin cambio visual):
+
+| Archivo | Qué se eliminó | Por qué era innecesario |
+|---|---|---|
+| `pages/pos/pos.component.scss` | `i, .fas { color … !important }` y `i, .fas, .fa { color/fs … !important }` | **CSS muerto**: el POS ya no usa `<i>` ni clases de Font Awesome (los iconos son `luna-action-icon`); Font Awesome se eliminó del CDN |
+| `styles.scss` + `styles/_forms-additions.scss` | `> app-section-lock-overlay { opacity: 1 !important }` (×2) | Empata en especificidad con `> *:not(app-section-lock-overlay)` y ya gana por orden de aparición |
+| `core/layout/sidebar/sidebar.component.scss` | `border/background/border-radius/box-shadow: … !important` (×5) | La encapsulación del componente (`.search-input[_ngcontent-x]`) ya supera al `.search-input` global de `styles.scss` |
+| `pages/warehouses/…` y `pages/stock-transfers/…` | reglas `.hidden { display: none !important }` | **CSS muerto**: la clase `.hidden` no se usa en ninguna plantilla y no hay regla competidora |
+
+Sigue como deuda **el resto (107)**, todos ellos peleas de especificidad con
+componentes LUNA encapsulados (`_forms.scss` 22, `_mixins.scss` 15,
+`_modals.scss` 15, `_tables.scss` 12, POS móvil 8, `_lists.scss` 4 …). El arreglo
+correcto para la mayoría es la opción **(b)**: exponer en LUNA la variante/prop
+que hoy se fuerza desde fuera —
+`luna-input/luna-select` (alturas y estados `:disabled`),
+`luna-entity-select`/comboboxes (altura del trigger),
+`luna-button` (segmented control de descuento),
+`luna-data-table` (anchos/truncado de celda)— o la opción **(c)** documentada
+(overrides de Angular Material/CDK en `_modals.scss`, autofill de WebKit en
+`luna-input`, `prefers-reduced-motion` en `_reset.scss`, utilidades `*-mobile`).
+
+**Gate nuevo:** `npm run audit:important` (falla si aparece un `!important` sin
+justificar) agregado al job `lint-test-build` de `erp-frontend/.github/workflows/ci.yml`.
+
+**Verificación de la pasada (2026-09-10):** `ng build` OK · Karma **1527/1527** ·
+`npm run lint` **0 errores / 0 warnings** (se corrigieron los 2 preexistentes de
+POS y `return-reasons`) · `audit:density:ci` y `audit:important` en verde ·
+`npm run e2e:visual` **52/52**. La primera corrida del gate visual dio 51/52: el
+único fallo era el baseline de `/users/new`, que crecía 94 px según existieran o
+no terminales POS (dato que crea otro spec) — no lo causaron estas eliminaciones.
+Se corrigió el entorno (helper `ensurePosTerminal` en `e2e/auth.setup.ts` +
+baseline regenerado) y quedó documentado en `AUDIT.md` T56.
+
 ### Contexto
 139 usos de `!important` en 36 archivos (excluyendo POS) generalmente indican que un estilo de componente está peleando por especificidad contra Luna en lugar de extenderlo correctamente (por ejemplo, sobreescribiendo un estilo de `luna-input` desde el componente contenedor en lugar de exponer una variante o input en el propio componente Luna).
 

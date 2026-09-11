@@ -170,9 +170,10 @@ npm run build            # ng build — 0 errores
 npm run watch            # ng build --watch --configuration development
 npm run serve:ssr:erp-frontend   # SSR local
 npm run format           # prettier --write
-npm run lint             # ng lint — 0 errores, ~44 warnings preexistentes
+npm run lint             # ng lint — 0 errores, 0 warnings
 npm test                 # Karma + Jasmine — 1527 tests
 npm run e2e              # playwright test — suite completa (funcional + visual)
+npm run e2e:functional   # solo la suite funcional (sin regresión visual)
 npm run e2e:visual       # regresión visual de los 52 formularios (baselines propios)
 npm run e2e:baseline     # regenera los 52 baselines de referencia
 npm run e2e:ui           # playwright test --ui
@@ -180,6 +181,7 @@ npm run e2e:report       # playwright show-report
 npm run generate-types   # copia prisma-types.ts desde backend
 npm run audit:density:ci # gate de densidad: estático (px crudos + tablas) + calidad de bloques
 npm run audit:density:e2e# auditoría dinámica Compacta vs Espaciosa (bajo demanda)
+npm run audit:important  # gate de `!important`: falla ante usos sin justificar (!important-ok)
 ```
 
 ### Git hooks
@@ -209,18 +211,19 @@ npm run audit:density:e2e# auditoría dinámica Compacta vs Espaciosa (bajo dema
 | Comando | Estado | Evidencia |
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores (bundle inicial ~1.27 MB) |
-| `npm run lint` | ✅ **OK** | 0 errores, ~44 warnings preexistentes |
+| `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
 | `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1527 / 1527 tests** |
-| `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (dos corridas consecutivas) |
+| `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (entorno determinista tras T56) |
 | `npm run audit:density:ci` | ✅ **OK** | 0 hallazgos estáticos + 0 de calidad de bloques |
+| `npm run audit:important` | ✅ **OK** | 107 usos de `!important`, 100 % justificados con `!important-ok` (gate en CI) |
 | `npx playwright test density-raw-tables.spec.ts` | ✅ **OK** | tablas crudas medidas con datos reales (1px → 4px) |
 
 > **Notas de deuda técnica activa (2026-09-10):**
 > - **Integridad branch↔warehouse completada (2026-08-08):** `assertWarehousesInBranch` en 22 servicios + POS (create/update), herencia de branchId en flujos de copia del frontend (`applyBranchFromSource`), matriz artículo-almacén optimizada a 3 `findMany` en paralelo, stock-transfers con destino libre de sucursal. Ver `AUDIT.md` §7 y `ROADMAP.md` DT.11-14.
-> - **Densidad visual (T48) y `::ng-deep` (T49) cerrados:** auditoría estática y de calidad de bloques en 0. Quedan como deuda de design system **66 alturas `px` crudas** en `pages/`+`shared/` (antes ~93) y **121 `!important` en 19 archivos** (Prioridad 5 de `docs/plans/plan-mejoras-ux-ui-frontend.md`).
+> - **Densidad visual (T48) y `::ng-deep` (T49) cerrados:** auditoría estática y de calidad de bloques en 0. Quedan como deuda de design system **66 alturas `px` crudas** en `pages/`+`shared/` (antes ~93) y **107 `!important` en 15 archivos, 100 % justificados** con el gate `npm run audit:important` (Prioridad 5 de `docs/plans/plan-mejoras-ux-ui-frontend.md`; ver AUDIT T55).
 > - **Patrón `openDialog` eliminado completamente.** Todos los formularios y catálogos usan `ConfirmDialogService.ask()`. `document-form.base.ts` limpiada.
 > - **Plan visual v2**: Fases 0, 1, 3, 4, 5, 6 resueltas; Fase 2 cerrada en su parte de densidad (T48) y Fase 7 auditada (T49, 9 reglas justificadas). Sigue como tracking continuo (`docs/plans/plan-consistencia-visual-v2.md`).
-> - **Entorno E2E determinista (T53, 2026-09-10):** tipografías self-hosted (sin CDNs externos) y `e2e/auth.setup.ts` garantiza gestión fiscal abierta + series antes de cada corrida (el seed NO las crea). BD dev reproducible con `npm run db:recreate` y BD de tests E2E con `npm run test:e2e:prepare` (sincroniza `erp_test` con `prisma db push`; sin ese paso **13 de 14 suites fallaban** por esquema desactualizado).
+> - **Entorno E2E determinista (T53, 2026-09-10):** tipografías self-hosted (sin CDNs externos) y `e2e/auth.setup.ts` garantiza gestión fiscal abierta + series antes de cada corrida (el seed NO las crea). BD dev reproducible con `npm run db:recreate` y BD de tests E2E con `npm run test:e2e:prepare` (sincroniza `erp_test` con `prisma db push`; sin ese paso **13 de 14 suites fallaban** por esquema desactualizado). El mismo `setup` garantiza la terminal POS de E2E (`ensurePosTerminal`) porque el formulario de usuarios cambia de alto según existan terminales (T56: era la causa de un baseline visual que dependía del orden de los specs).
 > - **Deuda estructural priorizada:** ver `AUDIT.md` §7 (S1 refactor del accounting engine es la única recomendada antes de F6; S2-S6 mantenimiento normal).
 
 ---
