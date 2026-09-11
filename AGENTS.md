@@ -226,7 +226,7 @@ npm run audit:important  # gate de `!important`: falla ante usos sin justificar 
 | `npm run build` | ✅ **OK** | 0 errores (bundle inicial ~1.27 MB) |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
 | `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1527 / 1527 tests** |
-| `npm run e2e:functional` | ✅ **OK** | **187 tests en una sola pasada: 177 passed / 0 failed / 10 skipped** (~26 min) tras T54 — mismo escenario que CI (BD recién sembrada) |
+| `npm run e2e:functional` | ✅ **OK** | **187 tests en una sola pasada: 177 passed / 0 failed / 10 skipped** (~25 min; chromium, con el proyecto fijado desde T60) — mismo escenario que CI (BD recién sembrada). Los 10 skips son condicionales con motivo (inventario en AUDIT T61) |
 | `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (deterministas desde T59: fecha fija `VISUAL_REFERENCE_TIME` + correlativos normalizados en `e2e/forms-screenshot.helper.ts`) |
 | `npm run typecheck:e2e` | ✅ **OK** | 0 errores (`tsconfig.e2e.json`, 55 archivos de `e2e/`) tras T60 |
 | `npm run format:check` | ✅ **OK** | prettier limpio en todo `e2e/` (gate en CI); `src/` legacy no se reformatea en masa |
