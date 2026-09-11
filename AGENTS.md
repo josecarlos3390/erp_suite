@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-09-10.  
+> **Última actualización:** 2026-09-11.  
 > **Versión canónica de restricciones transversales.**  
 > Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
@@ -179,11 +179,21 @@ npm run e2e:visual       # regresión visual de los 52 formularios (baselines pr
 npm run e2e:baseline     # regenera los 52 baselines de referencia
 npm run e2e:ui           # playwright test --ui
 npm run e2e:report       # playwright show-report
+npm run typecheck:e2e    # tsc del suite E2E (tsconfig.e2e.json) — 0 errores
+npm run format:e2e       # prettier --write e2e (55 archivos)
+npm run format:check     # gate: prettier --check e2e (CI)
+npm run format:check:touched  # ratchet: exige formato solo en archivos tocados vs origin/main
 npm run generate-types   # copia prisma-types.ts desde backend
 npm run audit:density:ci # gate de densidad: estático (px crudos + tablas) + calidad de bloques
 npm run audit:density:e2e# auditoría dinámica Compacta vs Espaciosa (bajo demanda)
 npm run audit:important  # gate de `!important`: falla ante usos sin justificar (!important-ok)
 ```
+
+> **Regla de estilo (T58):** todo override de un primitivo LUNA se resuelve por
+> **especificidad** (repetir la clase propia: `.form-field.form-field …`), no con
+> `!important`. La política completa, los 4 casos en que `!important` sí es
+> legítimo y el método de verificación están en
+> `erp-frontend/src/styles/CSS-ARCHITECTURE.md`.
 
 ### Git hooks
 
@@ -193,7 +203,7 @@ npm run audit:important  # gate de `!important`: falla ante usos sin justificar 
 
 ---
 
-## 4. Estado real del proyecto (2026-09-10)
+## 4. Estado real del proyecto (2026-09-11)
 
 ### Backend (`backend-erp/`)
 
@@ -204,7 +214,8 @@ npm run audit:important  # gate de `!important`: falla ante usos sin justificar 
 | `npm test` | ✅ **OK** | **162 suites / 1747 tests passed** (incluye `plan-limits.service.spec.ts`, `permissions-coverage.spec.ts`, `warehouse-branch.util.spec.ts`) |
 | `npx tsc --noEmit` (proyecto y specs) | ✅ **OK** | 0 errores |
 | `npm run test:e2e` | ✅ **OK** | **14 suites / 93 tests passed** (2026-09-10; el script sincroniza antes el esquema de `erp_test` con `prisma db push` — ver nota de entorno) |
-| `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`)|
+| `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`) |
+| `npm run perf:k6:check` | ✅ **OK** | diagnóstico de entorno + aviso de que el suite resetea el tenant `default` + receta con BD desechable (T60) |
 | `npm run db:recreate` | ✅ **OK** | BD dev reproducible: `migrate reset` + `db push` + SQL manuales + seed; `prisma migrate diff` sin diferencias |
 
 ### Frontend (`erp-frontend/`)
@@ -215,14 +226,16 @@ npm run audit:important  # gate de `!important`: falla ante usos sin justificar 
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
 | `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1527 / 1527 tests** |
 | `npm run e2e:functional` | ✅ **OK** | **187 tests en una sola pasada: 177 passed / 0 failed / 10 skipped** (~26 min) tras T54 — mismo escenario que CI (BD recién sembrada) |
-| `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (entorno determinista tras T56) |
+| `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (deterministas desde T59: fecha fija `VISUAL_REFERENCE_TIME` + correlativos normalizados en `e2e/forms-screenshot.helper.ts`) |
+| `npm run typecheck:e2e` | ✅ **OK** | 0 errores (`tsconfig.e2e.json`, 55 archivos de `e2e/`) tras T60 |
+| `npm run format:check` | ✅ **OK** | prettier limpio en todo `e2e/` (gate en CI); `src/` legacy no se reformatea en masa |
 | `npm run audit:density:ci` | ✅ **OK** | 0 hallazgos estáticos + 0 de calidad de bloques |
-| `npm run audit:important` | ✅ **OK** | 107 usos de `!important`, 100 % justificados con `!important-ok` (gate en CI) |
+| `npm run audit:important` | ✅ **OK** | **9 usos de `!important` en 4 archivos**, todos compitiendo con algo fuera del control propio (librería, estilos inline, autofill, `prefers-reduced-motion`) o gates funcionales — desde T58 (antes 105) |
 | `npx playwright test density-raw-tables.spec.ts` | ✅ **OK** | tablas crudas medidas con datos reales (1px → 4px) |
 
 > **Notas de deuda técnica activa (2026-09-10):**
 > - **Integridad branch↔warehouse completada (2026-08-08):** `assertWarehousesInBranch` en 22 servicios + POS (create/update), herencia de branchId en flujos de copia del frontend (`applyBranchFromSource`), matriz artículo-almacén optimizada a 3 `findMany` en paralelo, stock-transfers con destino libre de sucursal. Ver `AUDIT.md` §7 y `ROADMAP.md` DT.11-14.
-> - **Densidad visual (T48) y `::ng-deep` (T49) cerrados:** auditoría estática y de calidad de bloques en 0. Quedan como deuda de design system **66 alturas `px` crudas** en `pages/`+`shared/` (antes ~93) y **107 `!important` en 15 archivos, 100 % justificados** con el gate `npm run audit:important` (Prioridad 5 de `docs/plans/plan-mejoras-ux-ui-frontend.md`; ver AUDIT T55).
+> - **Densidad visual (T48) y `::ng-deep` (T49) cerrados:** auditoría estática y de calidad de bloques en 0. Los **`!important` bajaron de 105 a 9 en 4 archivos** (T58, 2026-09-11): los que quedan compiten con algo que el CSS del proyecto no controla (stylesheet de librería, estilos inline del template, autofill del motor, `prefers-reduced-motion`) o son gates funcionales — política completa en `erp-frontend/src/styles/CSS-ARCHITECTURE.md`. Sigue como deuda de design system la migración de alturas `px` crudas en `pages/`+`shared/` (Prioridad 5 de `docs/plans/plan-mejoras-ux-ui-frontend.md`; ver AUDIT T55/T58).
 > - **Patrón `openDialog` eliminado completamente.** Todos los formularios y catálogos usan `ConfirmDialogService.ask()`. `document-form.base.ts` limpiada.
 > - **Plan visual v2**: Fases 0, 1, 3, 4, 5, 6 resueltas; Fase 2 cerrada en su parte de densidad (T48) y Fase 7 auditada (T49, 9 reglas justificadas). Sigue como tracking continuo (`docs/plans/plan-consistencia-visual-v2.md`).
 > - **Entorno E2E determinista (T53, 2026-09-10):** tipografías self-hosted (sin CDNs externos) y `e2e/auth.setup.ts` garantiza gestión fiscal abierta + series antes de cada corrida (el seed NO las crea). BD dev reproducible con `npm run db:recreate` y BD de tests E2E con `npm run test:e2e:prepare` (sincroniza `erp_test` con `prisma db push`; sin ese paso **13 de 14 suites fallaban** por esquema desactualizado). El mismo `setup` garantiza la terminal POS de E2E (`ensurePosTerminal`) porque el formulario de usuarios cambia de alto según existan terminales (T56: era la causa de un baseline visual que dependía del orden de los specs).
@@ -428,6 +441,9 @@ Frontend: la URL de la API se configura en `src/environments/environment.ts` (de
 7. ✅ **Flujos críticos en E2E** — ventas, compras, stock, pagos parciales, devoluciones y conciliación — cerrado 2026-09-09 (T52): QA crítica 31/31 + resto de la ola QA en verde, más el caso E2E de serie por sucursal (T50). Ver AUDIT T52.
 8. ✅ **Densidad visual (T48) cerrada del todo** — estático en 0, **calidad de bloques en 0** (`npm run audit:density:vars` dentro de `audit:density:ci`), 28 tablas crudas clasificadas con regla propia donde faltaba (1px → 4px en Espaciosa) y cobertura dinámica con datos (`e2e/density-raw-tables.spec.ts` + manifiesto 163 URLs). Convención, método del codemod y matriz de tablas en `FRONTEND_GUIDE.md` §12 y `docs/reference/densidad-interfaz-auditoria.md`. Ver AUDIT T48.
 9. ✅ **Suite funcional de Playwright en una sola pasada (T54, 2026-09-11)** — de 17 fallos a **177 passed / 0 failed** en una corrida completa: se eliminaron las dependencias de orden/datos entre specs (helpers de matriz artículo-almacén con merge preservador, resolución de maestros por código, mayor/anticipos paginados, snapshot/restore de settings, specs autocontenidos) y se definió el **gate funcional explícito** (`playwright.functional.config.ts` + `npm run e2e:captures`). Detalle en AUDIT T54 y `erp-frontend/CHANGELOG.md`.
+10. ✅ **Prioridad 5 UX cerrada — `!important` de 105 a 9 (T58, 2026-09-11)** — overrides por especificidad (repetir la clase propia) + eliminación de CSS muerto (bloque de Angular Material/CDK, overrides móviles del POS, utilidades responsive y selectores obsoletos de LUNA) + métrica del gate corregida (`stripComments`). Política en `erp-frontend/src/styles/CSS-ARCHITECTURE.md`. Evidencia: Karma 1527/1527, `e2e:visual` 52/52 pixel-idéntico, sonda de 9 capturas antes/después con 0 píxeles distintos. Ver AUDIT T58.
+11. ✅ **Gate visual determinista (T59, 2026-09-11)** — el gate fallaba en 18 formularios por datos volátiles (fecha del día y correlativo del chip `Nº <serie>`), no por CSS; se fijó el reloj (`page.clock.setFixedTime`) y se normalizan los correlativos en `e2e/forms-screenshot.helper.ts` → 52/52 repetible. Ver AUDIT T59.
+12. ✅ **Higiene del suite E2E y de los tests de carga (T60, 2026-09-11)** — `tsconfig.e2e.json` + `npm run typecheck:e2e` (de 130 errores a 0) y prettier con ratchet (`format:check` en CI + `format:check:touched`), más `npm run perf:k6:check` con el aviso de que el suite de carga resetea el tenant `default`. Ver AUDIT T60.
 
 ---
 
@@ -441,6 +457,7 @@ Archivos complementarios que no requieren lectura obligatoria para tareas rutina
 | `.agents/skills/nestjs-solid-backend/` | Receta equivalente para el backend (módulo NestJS + Prisma, flujo de documentos, testing). | Al crear un módulo/servicio/DTO nuevo en `backend-erp`. |
 | `erp-frontend/docs/monorepo/DESIGN.md` | Design System LUNA completo: tokens, componentes, layouts, dark mode, animaciones. | Cuando se diseñe un componente nuevo o se modifique el design system. |
 | `erp-frontend/docs/components/form-sizes.md` | Estándar de alturas unificado (`sm`/`md`/`lg`) para componentes de formulario LUNA. | Al agregar o estandarizar inputs, selectores o botones. |
+| `erp-frontend/src/styles/CSS-ARCHITECTURE.md` | Arquitectura CSS del frontend: capas, orden de emisión de los parciales, receta de especificidad para ganar sin `!important`, casos legítimos de `!important`, política de `::ng-deep`, gates de densidad y método de verificación visual. | **Antes de escribir o modificar SCSS global** (`src/styles/**`, `styles.scss`) o al pelear una especificidad con un componente LUNA. |
 | `erp-frontend/docs/components/luna-entity-select.md` | Guía del selector genérico: modos memory/server-side, API y plantillas. | Al crear o modificar selectores de entidades. |
 | `docs/guides/ESTANDAR_LINEAS_DOCUMENTO.md` | Estándar de líneas de documento (`luna-document-lines` Fase 2): celdas canónicas/custom, checklist, estado por formulario. | Antes de migrar o crear formularios de documentos (compras, inventario). Referenciado desde FRONTEND_GUIDE.md §10. |
 | `docs/guides/ACCOUNTING_ENTRIES_GUIDE.md` | Guía de asientos contables por tipo de documento. | Al trabajar contabilidad, asientos automáticos o determinación de cuentas. |
