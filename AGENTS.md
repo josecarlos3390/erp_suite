@@ -177,6 +177,7 @@ npm run e2e:functional   # gate funcional (187 tests de regresión) en una sola 
 npm run e2e:captures     # capturas de formularios mobile/desktop (herramienta, no gate)
 npm run e2e:visual       # regresión visual de los 52 formularios (baselines propios)
 npm run e2e:baseline     # regenera los 52 baselines de referencia
+npm run e2e:ssr          # smoke del build SSR de producción (build + server :4000 + spec)
 npm run e2e:ui           # playwright test --ui
 npm run e2e:report       # playwright show-report
 npm run typecheck:e2e    # tsc del suite E2E (tsconfig.e2e.json) — 0 errores
@@ -229,6 +230,7 @@ npm run audit:important  # gate de `!important`: falla ante usos sin justificar 
 | `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (deterministas desde T59: fecha fija `VISUAL_REFERENCE_TIME` + correlativos normalizados en `e2e/forms-screenshot.helper.ts`) |
 | `npm run typecheck:e2e` | ✅ **OK** | 0 errores (`tsconfig.e2e.json`, 55 archivos de `e2e/`) tras T60 |
 | `npm run format:check` | ✅ **OK** | prettier limpio en todo `e2e/` (gate en CI); `src/` legacy no se reformatea en masa |
+| `npm run e2e:ssr` | ✅ **OK** | **3 passed** (setup + render SSR con headers de hardening + rutas protegidas sin fuga de datos) — antes el spec se **skipeaba siempre** por falta de un server SSR levantado (T61) |
 | `npm run audit:density:ci` | ✅ **OK** | 0 hallazgos estáticos + 0 de calidad de bloques |
 | `npm run audit:important` | ✅ **OK** | **9 usos de `!important` en 4 archivos**, todos compitiendo con algo fuera del control propio (librería, estilos inline, autofill, `prefers-reduced-motion`) o gates funcionales — desde T58 (antes 105) |
 | `npx playwright test density-raw-tables.spec.ts` | ✅ **OK** | tablas crudas medidas con datos reales (1px → 4px) |
@@ -444,6 +446,7 @@ Frontend: la URL de la API se configura en `src/environments/environment.ts` (de
 10. ✅ **Prioridad 5 UX cerrada — `!important` de 105 a 9 (T58, 2026-09-11)** — overrides por especificidad (repetir la clase propia) + eliminación de CSS muerto (bloque de Angular Material/CDK, overrides móviles del POS, utilidades responsive y selectores obsoletos de LUNA) + métrica del gate corregida (`stripComments`). Política en `erp-frontend/src/styles/CSS-ARCHITECTURE.md`. Evidencia: Karma 1527/1527, `e2e:visual` 52/52 pixel-idéntico, sonda de 9 capturas antes/después con 0 píxeles distintos. Ver AUDIT T58.
 11. ✅ **Gate visual determinista (T59, 2026-09-11)** — el gate fallaba en 18 formularios por datos volátiles (fecha del día y correlativo del chip `Nº <serie>`), no por CSS; se fijó el reloj (`page.clock.setFixedTime`) y se normalizan los correlativos en `e2e/forms-screenshot.helper.ts` → 52/52 repetible. Ver AUDIT T59.
 12. ✅ **Higiene del suite E2E y de los tests de carga (T60, 2026-09-11)** — `tsconfig.e2e.json` + `npm run typecheck:e2e` (de 130 errores a 0) y prettier con ratchet (`format:check` en CI + `format:check:touched`), más `npm run perf:k6:check` con el aviso de que el suite de carga resetea el tenant `default`. Ver AUDIT T60.
+13. ✅ **Dos verificaciones que nunca se ejecutaban (T61, 2026-09-11)** — `npm run e2e:ssr` levanta el build SSR de producción y corre el smoke (3 passed: render server-side, headers de hardening y rutas protegidas sin fuga de datos; antes el spec se skipeaba siempre) y `qa-tax-calculations` resuelve los indicadores con paginación completa + creación idempotente de `E2E-IVAINC`/`E2E-IVAEXC` (6 passed / 0 skipped; los 4 tests de cálculo inclusivo/exclusivo se skipeaban siempre por la ventana `?limit=20`). Inventario de los skips que quedan, con motivo: en AUDIT T61.
 
 ---
 
