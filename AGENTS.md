@@ -177,12 +177,15 @@ npm run e2e:functional   # gate funcional (187 tests de regresión) en una sola 
 npm run e2e:captures     # capturas de formularios mobile/desktop (herramienta, no gate)
 npm run e2e:visual       # regresión visual de los 52 formularios (baselines propios)
 npm run e2e:baseline     # regenera los 52 baselines de referencia
-npm run e2e:ssr          # smoke del build SSR de producción (build + server :4000 + spec)
+npm run e2e:ssr          # smoke del build SSR (config smoke, server :4000 + spec; job de CI)
+npm run migrate:heights  # migra alturas px de pages/shared a variables de densidad (--apply/--check)
+npm run migrate:heights:check  # gate: falla si quedan alturas px crudas
 npm run e2e:ui           # playwright test --ui
 npm run e2e:report       # playwright show-report
 npm run typecheck:e2e    # tsc del suite E2E (tsconfig.e2e.json) — 0 errores
+npm run format:scss      # prettier --write de todo el SCSS de src/
 npm run format:e2e       # prettier --write e2e (55 archivos)
-npm run format:check     # gate: prettier --check e2e (CI)
+npm run format:check     # gate: prettier --check e2e + src/**/*.scss (CI)
 npm run format:check:touched  # ratchet: exige formato solo en archivos tocados vs origin/main
 npm run generate-types   # copia prisma-types.ts desde backend
 npm run audit:density:ci # gate de densidad: estático (px crudos + tablas) + calidad de bloques
@@ -229,18 +232,20 @@ npm run audit:important  # gate de `!important`: falla ante usos sin justificar 
 | `npm run e2e:functional` | ✅ **OK** | **187 tests en una sola pasada: 177 passed / 0 failed / 10 skipped** (~25 min; chromium, con el proyecto fijado desde T60) — mismo escenario que CI (BD recién sembrada). Los 10 skips son condicionales con motivo (inventario en AUDIT T61) |
 | `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (deterministas desde T59: fecha fija `VISUAL_REFERENCE_TIME` + correlativos normalizados en `e2e/forms-screenshot.helper.ts`) |
 | `npm run typecheck:e2e` | ✅ **OK** | 0 errores (`tsconfig.e2e.json`, 55 archivos de `e2e/`) tras T60 |
-| `npm run format:check` | ✅ **OK** | prettier limpio en todo `e2e/` (gate en CI); `src/` legacy no se reformatea en masa |
-| `npm run e2e:ssr` | ✅ **OK** | **3 passed** (setup + render SSR con headers de hardening + rutas protegidas sin fuga de datos) — antes el spec se **skipeaba siempre** por falta de un server SSR levantado (T61) |
+| `npm run format:check` | ✅ **OK** | prettier limpio en **todo `e2e/` y todo el SCSS de `src/`** (T62 cerró los 67 SCSS que faltaban); el TS/HTML legacy se gestiona con `format:check:touched` |
+| `npm run migrate:heights:check` | ✅ **OK** | **0 alturas en px crudas** en `pages/`+`shared/` (65 migradas a variables de densidad en T62; el audit estático ya las vigila) |
+| `npm run e2e:ssr` | ✅ **OK** | **3 passed** con la configuración `smoke` (backend local) y **job `ssr-smoke` en CI** — antes el spec se **skipeaba siempre** por falta de un server SSR levantado (T61/T63) |
 | `npm run audit:density:ci` | ✅ **OK** | 0 hallazgos estáticos + 0 de calidad de bloques |
 | `npm run audit:important` | ✅ **OK** | **9 usos de `!important` en 4 archivos**, todos compitiendo con algo fuera del control propio (librería, estilos inline, autofill, `prefers-reduced-motion`) o gates funcionales — desde T58 (antes 105) |
 | `npx playwright test density-raw-tables.spec.ts` | ✅ **OK** | tablas crudas medidas con datos reales (1px → 4px) |
 
 > **Notas de deuda técnica activa (2026-09-10):**
 > - **Integridad branch↔warehouse completada (2026-08-08):** `assertWarehousesInBranch` en 22 servicios + POS (create/update), herencia de branchId en flujos de copia del frontend (`applyBranchFromSource`), matriz artículo-almacén optimizada a 3 `findMany` en paralelo, stock-transfers con destino libre de sucursal. Ver `AUDIT.md` §7 y `ROADMAP.md` DT.11-14.
-> - **Densidad visual (T48) y `::ng-deep` (T49) cerrados:** auditoría estática y de calidad de bloques en 0. Los **`!important` bajaron de 105 a 9 en 4 archivos** (T58, 2026-09-11): los que quedan compiten con algo que el CSS del proyecto no controla (stylesheet de librería, estilos inline del template, autofill del motor, `prefers-reduced-motion`) o son gates funcionales — política completa en `erp-frontend/src/styles/CSS-ARCHITECTURE.md`. Sigue como deuda de design system la migración de alturas `px` crudas en `pages/`+`shared/` (Prioridad 5 de `docs/plans/plan-mejoras-ux-ui-frontend.md`; ver AUDIT T55/T58).
+> - **Densidad visual (T48) y `::ng-deep` (T49) cerrados:** auditoría estática y de calidad de bloques en 0. Los **`!important` bajaron de 105 a 9 en 4 archivos** (T58, 2026-09-11): los que quedan compiten con algo que el CSS del proyecto no controla (stylesheet de librería, estilos inline del template, autofill del motor, `prefers-reduced-motion`) o son gates funcionales — política completa en `erp-frontend/src/styles/CSS-ARCHITECTURE.md`. Las **65 alturas px crudas** de `pages/`+`shared/` quedaron como variables de densidad (T62) y el audit estático ya las vigila; los **`::ng-deep`** activos son **6**, todos sobre elementos internos de un child sin input equivalente (qué API haría falta para cada uno, en `CSS-ARCHITECTURE.md` §5).
 > - **Patrón `openDialog` eliminado completamente.** Todos los formularios y catálogos usan `ConfirmDialogService.ask()`. `document-form.base.ts` limpiada.
 > - **Plan visual v2**: Fases 0, 1, 3, 4, 5, 6 resueltas; Fase 2 cerrada en su parte de densidad (T48) y Fase 7 auditada (T49, 9 reglas justificadas). Sigue como tracking continuo (`docs/plans/plan-consistencia-visual-v2.md`).
 > - **Entorno E2E determinista (T53, 2026-09-10):** tipografías self-hosted (sin CDNs externos) y `e2e/auth.setup.ts` garantiza gestión fiscal abierta + series antes de cada corrida (el seed NO las crea). BD dev reproducible con `npm run db:recreate` y BD de tests E2E con `npm run test:e2e:prepare` (sincroniza `erp_test` con `prisma db push`; sin ese paso **13 de 14 suites fallaban** por esquema desactualizado). El mismo `setup` garantiza la terminal POS de E2E (`ensurePosTerminal`) porque el formulario de usuarios cambia de alto según existan terminales (T56: era la causa de un baseline visual que dependía del orden de los specs).
+> - **Karma estable (T62):** la config ya endurecida (`browserNoActivityTimeout: 300000`, `browserDisconnectTolerance: 5`, `timeoutInterval: 20000`, `--no-sandbox --disable-dev-shm-usage`) da **1527/1527 en ~3,5-4 min** de forma repetida (4 corridas verdes el 2026-09-11, incluida la del hook de pre-push); el "hang" histórico **no se reproduce** y cualquier fallo nuevo debe tratarse como regresión, no como flakiness de infraestructura.
 > - **Deuda estructural priorizada:** ver `AUDIT.md` §7 (S1 refactor del accounting engine es la única recomendada antes de F6; S2-S6 mantenimiento normal).
 
 ---

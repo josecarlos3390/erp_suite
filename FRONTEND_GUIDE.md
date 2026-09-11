@@ -1180,9 +1180,10 @@ La densidad global la aplica `DensityService` (clases `density-compact` /
   (selector real del host si la encapsulación es `None`); (3) *verificación*:
   `npm run audit:density` → 0, `npm run build`, `npm run e2e:visual` (52
   baselines) para probar cero regresión del look por defecto.
-- **Auditoría:** `npm run audit:density` (estático: px fuera de bloques de densidad,
-  tablas crudas y **variables CSS indefinidas**; baselines con `--write-baseline` /
-  `--baseline`, CI falla solo con hallazgos nuevos), `npm run audit:density:vars`
+- **Auditoría:** `npm run audit:density` (estático: px fuera de bloques de densidad
+  en paddings, gaps, font-size **y alturas** —height/min-height/max-height, desde
+  T62—, tablas crudas y **variables CSS indefinidas**; baselines con
+  `--write-baseline` / `--baseline`, CI falla solo con hallazgos nuevos), `npm run audit:density:vars`
   (**calidad de los bloques**: huérfanas, var usada sin base, Δ < 2px en
   espaciado, `--x: var(--x)` cíclico, bloques duplicados, nombre-vs-valor; exit 1
   con cualquier hallazgo; `npm run audit:density:fix` aplica la corrección
