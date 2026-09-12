@@ -99,35 +99,35 @@
 
 ---
 
-## Fase 6 — Contabilidad 🔄
+## Fase 6 — Contabilidad 🟡 (núcleo completo; queda 6.6 Nómina)
 
 | # | Módulo | Descripción | Estado |
 |---|--------|-------------|--------|
 | ✅ 6.1 | **Plan de cuentas** | CRUD de cuentas contables (activo, pasivo, patrimonio, ingreso, egreso). | ✅ Backend + frontend. Ruta `/accounts`. |
-| ✅ 6.2 | **Asientos contables** | Modelos `JournalEntry`/`JournalEntryLine`, CRUD + post/cancel. Doble expresión monetaria (`debitLocal`/`creditLocal`/`debitSystem`/`creditSystem`) + validación de moneda por cuenta. | ✅ Backend completo. Frontend pendiente (Fase 9). |
+| ✅ 6.2 | **Asientos contables** | Modelos `JournalEntry`/`JournalEntryLine`, CRUD + post/cancel. Doble expresión monetaria (`debitLocal`/`creditLocal`/`debitSystem`/`creditSystem`) + validación de moneda por cuenta. | ✅ Backend + **frontend** (`/journal-entries`: formulario con dimensiones, partner por línea y navegación al documento origen; listado con montos M/N). |
 | ✅ 6.3 | **Libro de compras/ventas** | Reportes fiscales bolivianos formateados. | ✅ Endpoints `GET /reports/sales-ledger` y `GET /reports/purchase-ledger`. |
 | ✅ 6.4 | **Estado de resultados y balance** | Reportes financieros estándar. | ✅ Completado (2026-08-24): `GET /reports/balance-sheet` (ecuación A = P + E + R) + `GET /reports/income-statement` + páginas en /reports |
 
-### Fase 6.1 — Accounting Engine Integrado (En progreso)
+### Fase 6.1 — Accounting Engine Integrado ✅ (2026-08-08)
 
 - ✅ Servicio `AccountingEngine` creado (`src/common/accounting-engine.service.ts`) con generación de asientos para ventas, compras, pagos y stock.
 - ✅ Validación de partida doble al postear asientos (`totalDebit === totalCredit`).
 - ✅ Saldos por cuenta en tiempo real vía `JournalEntryLine` POSTED.
 - ✅ `AssemblyOrder` refactorizado para usar `AccountingEngine` (2026-08-24) — la lógica contable propia fue reemplazada por `buildAssemblyJournalEntryLines` + facade `createAssemblyJournalEntry` (batería 13 TODO EN VERDE).
 
-### Fase 6.2 — Dimensiones Contables (En progreso)
+### Fase 6.2 — Dimensiones Contables ✅ (2026-08-24)
 
 - ✅ Modelos `CostCenter` y `Project` creados; usados en documentos comerciales y asientos.
 - ✅ `projectId` y `costCenterId` disponibles en `JournalEntryLine`.
 - ✅ **`Dimension1` / `Dimension2` personalizables (2026-08-24):** el formulario de asientos (`journal-entries-form`) ahora consume `DimensionConfig` del tenant — columnas solo para las dimensiones habilitadas en `/settings/dimensions`, labels configurables y selector de centro de costo (valor = `code`, consistente con la persistencia string) cuando la dimensión tiene centros cargados; texto libre como fallback. Mismo patrón canónico de pagos/documentos. | ✅ Completado |
 
-### Fase 6.3 — Estados Financieros
+### Fase 6.3 — Estados Financieros ✅ (2026-08-24)
 
 - ✅ Balance General (`/reports/balance-sheet`, 2026-08-24).
 - ✅ Estado de Resultados (`/reports/income-statement`, 2026-08-24).
 - ✅ Estado de Flujo de Efectivo (`/reports/cash-flow`, 2026-08-24, método indirecto con verificación contra el mayor).
 
-### Fase 6.4 — Cierre de Período (En progreso)
+### Fase 6.4 — Cierre de Período ✅ (2026-09-05)
 
 - ✅ Modelos `FiscalYear` y `AccountingPeriod` creados en Prisma.
 - ✅ CRUD backend (`src/fiscal-years/`) + frontend (`src/app/pages/fiscal-years/`).
@@ -139,7 +139,7 @@
   `docs/plans/plan-cierre-ejercicio.md`.
 - ✅ Asiento de apertura del ejercicio (arrastre de saldos) — `generate-opening-entry`.
 
-### Fase 6.5 — Activos Fijos (En progreso)
+### Fase 6.5 — Activos Fijos ✅ (2026-09-05)
 
 - ✅ Módulo `FixedAsset` creado en backend (`src/fixed-assets/`) y frontend (`src/app/pages/fixed-assets/`).
 - ✅ Depreciación lineal implementada.
@@ -329,7 +329,7 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
 | Prioridad | Feature | Descripción |
 |-----------|---------|-------------|
 | Alta | **F5.1 — Facturación Electrónica SIN Bolivia** | Firma digital, envío masivo, consulta de estado. *(siguiente feature prioritario)* |
-| Alta | **F5.5 — Cumplimiento tributario BO (G2–G5, G9)** | IUE 25% + compensación IT (Art. 77), RC-IVA declarativo (Form 110), exportaciones tasa cero, prorrateo de crédito fiscal, **asientos contables del POS** (G9 — el checkout no postea al mayor). ~~Ventas menores POS (Art. 16)~~ ✅ T3, ~~UFV~~ ✅ T2, ~~ITF~~ ✅ T1. Plan detallado: `docs/plans/plan-cumplimiento-tributario-bo.md`. |
+| ~~Alta~~ | ~~**F5.5 — Cumplimiento tributario BO (G2–G5, G9)**~~ | ✅ **COMPLETADO (2026-08-16)** — las 8 fases del plan están cerradas: ~~ITF (T1/S32)~~, ~~UFV (T2/S33)~~, ~~Ventas menores POS Art. 16 (T3/S34)~~, ~~**Asientos contables del POS** — G9 (T3b/S35)~~, ~~Exportaciones tasa cero (T4/S36)~~, ~~Prorrateo del crédito fiscal (T5/S37)~~, ~~RC-IVA declarativo Form 110 (T6/S38)~~, ~~IUE 25% + compensación IT (T7/S39)~~. Plan: `docs/plans/plan-cumplimiento-tributario-bo.md` (✅ PLAN COMPLETADO). Único resto anotado: la integración RC-IVA ↔ **nómina** (F6.6). |
 | Alta | **F5.2 — Integración Bancaria** | Conciliación automática de extractos, import CSV/Excel, matching de pagos. **✅ Completado (2026-09-05):** Fase 1 (import por archivo CSV/XLSX con preview), Fase 2 (matching parametrizable — ventana ±días y tolerancia — + endpoint de sugerencias por línea + match manual asistido) y Fase 3 (E2E del flujo completo contable/comercial + UX: detalle con líneas sin extracto, selector de extractos conciliables, cierre del extracto al finalizar). Plan: `docs/plans/plan-f5.2-integracion-bancaria.md`. |
 | Media | **F5.4 — CRM básico** | Oportunidades, actividades, pipeline. |
 | ~~F7.2~~ | ~~Multi-divisa~~ | ✅ **Completado (2026-09-05)** — ver Fase 7.2 abajo (contable + UI + revaluación por diferencia de cambio). |
@@ -339,16 +339,16 @@ documento debe caer en una serie que cubra la fecha (exigir serie siempre, 400 c
 ## Mejoras contables identificadas (auditoría 2026-07-20)
 
 > Evaluación del motor de determinación de cuentas tras el endurecimiento contable.
-> El diseño actual es correcto; estos son gaps para llevarlo al nivel SAP B1 completo.
-> Implementar solo cuando el negocio lo requiera.
+> **Estado revisado contra el código el 2026-09-11:** 2 filas ya están implementadas,
+> 1 es parcial y 2 siguen abiertas (son las que se abordan en el frente contable).
 
-| Prioridad | Gap | Descripción / Alcance |
-|-----------|-----|------------------------|
-| Media | **Ingresos/gastos por jerarquía de artículo** | Hoy `SALES_REVENUE`/`PURCHASES` van solo por Account Mapping (una sola cuenta para todo el catálogo). Para P&L por línea de negocio: agregar `revenueAccountId`/`purchaseAccountId` a Item/ItemGroup/Warehouse + resolverlos en el engine antes del mapping. Tamaño mediano (schema + engine + forms). |
-| Media | **Cuentas partner local/extranjero sin resolver** | Campos persistidos (AGENTS.md §5.2) pero sin resolución por país del partner. Al activar M/E real: CxC/CxP deben bifurcar M/N vs M/E automáticamente. |
-| Baja | **Nivel ITEM no lee el maestro del artículo** | `Item.salesCreditAccountId` (y similares) existen en schema y forms pero la determinación nivel ITEM solo lee la matriz artículo-almacén (decisión deliberada con tests). Decidir: leer maestro como fallback (actualizando los 2 tests) o quitar el campo/mención del mensaje de error. |
-| Baja | **Cuenta dedicada de redondeo** | El plug de redondeo (M9) postea a SALES_DISCOUNT; lo limpio sería una cuenta "Diferencias de redondeo" vía mapping. |
-| Baja | **Descuento por pronto pago / retenciones en ventas** | No existen como entry types; evaluar cuando el negocio lo pida. |
+| Prioridad | Gap | Descripción / Alcance | Estado (2026-09-11) |
+|-----------|-----|------------------------|---------------------|
+| ~~Media~~ | ~~**Ingresos/gastos por jerarquía de artículo**~~ | Agregar `revenueAccountId`/`purchaseAccountId` a Item/ItemGroup/Warehouse + resolverlos en el engine antes del mapping. | ✅ **HECHO (S16, 2026-08-09):** `ENTRY_TYPE_TO_ITEM_FIELD` mapea `SALES_REVENUE → salesRevenueAccountId` y `PURCHASES → purchaseAccountId`, y `AccountDeterminationService._walkItemHierarchy` los resuelve por nivel (matriz artículo-almacén → grupo → almacén) con fallback al AccountMapping. |
+| Media | **Cuentas partner local/extranjero sin resolver** | Campos persistidos (AGENTS.md §5.2) pero sin resolución por país del partner. Al activar M/E real: CxC/CxP deben bifurcar M/N vs M/E automáticamente. | ❌ **ABIERTO** — las cuentas M/E existen en el plan de cuentas y en el maestro de socios, pero ninguna resolución las elige por país/moneda del partner. |
+| Baja | **Nivel ITEM no lee el maestro del artículo** | `Item.salesCreditAccountId` (y similares) existen en schema y forms pero la determinación nivel ITEM solo lee la matriz artículo-almacén (decisión deliberada con tests). Decidir: leer maestro como fallback (actualizando los 2 tests) o quitar el campo/mención del mensaje de error. | ❌ **ABIERTO (decisión)** — verificado en `_walkItemHierarchy`: en nivel ITEM solo consulta `ItemWarehouseAccount`. |
+| ~~Baja~~ | ~~**Cuenta dedicada de redondeo**~~ | El plug de redondeo (M9) posteaba a SALES_DISCOUNT; lo limpio era una cuenta "Diferencias de redondeo" vía mapping. | ✅ **HECHO:** entry types dedicados `ROUNDING_EXPENSE` / `ROUNDING_INCOME` (mapping `6.2.1.01.012` / `4.2.1.01.010`) usados por los builders de ventas; `SALES_DISCOUNT` quedó reservado a descuentos reales. |
+| Baja | **Descuento por pronto pago / retenciones en ventas** | Evaluar cuando el negocio lo pida. | ⚠️ **PARCIAL:** el **descuento por pronto pago** ya existe (entry type `EARLY_PAYMENT_DISCOUNT` + `earlyPaymentDiscountAmount` en cobros y pagos). Las **retenciones en ventas** no existen: en BO las retenciones RC-IVA/IUE/IT se aplican en compras y pagos salientes (`WITHHOLDING_TAX_PAYABLE`), así que solo se implementarían si el negocio lo pide. |
 
 ---
 
