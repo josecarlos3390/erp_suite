@@ -49,3 +49,32 @@ remanentes quedan marcados y justificados como deuda aceptada hasta que los
 componentes LUNA expongan customization points (CSS vars/atributos) para cada
 caso — tracking en plan visual v2 Fase 7. Cualquier `::ng-deep` NUEVO debe
 traer su marcador `// ::ng-deep justificado:` con la razón.
+
+---
+
+## Actualización (T62 y T65, 2026-09-11): de 9 a 4 usos, con gate propio
+
+El informe anterior es el **snapshot histórico de T49** (por eso conserva la
+tabla M=9); el estado final de ese trabajo es:
+
+| Ola | Usos | Qué pasó |
+|-----|------|----------|
+| T49 (este informe) | **9** | Se documentaron y marcaron todos los usos activos. |
+| T62 | **6** | Se eliminaron 3 sin cambio visual: `audit-logs` y `assembly-orders` perforaban elementos de **su propia plantilla** o del template del hijo (regla global/`_layout.scss`) y `sales-credit-notes` ya tenía el input `[wrapDescription]`. |
+| T65 | **4** | Se resolvieron 5 más: `batches` → variante **`[presentation]="'field'"`** de `item-combobox`; `partner-selector` → punto de customización **`--luna-btn-height`** de `luna-button`; `stock-valuation` y `luna-empty-state` → elementos de su propia plantilla (regla normal); `price-list-form` → el pierce era **código muerto** (`:not(.luna-input)`). |
+
+Los **4 usos que quedan** son de contenido que no lleva atributo de
+encapsulamiento y no tiene vía alternativa:
+
+| # | Archivo | Caso |
+|---|---------|------|
+| 1-2 | `shared/luna/luna-action-icon/luna-action-icon.component.ts` | El `<svg>` entra por `[innerHTML]` (`ACTION_ICONS`): dimensionarlo/anímarlo es imposible desde la plantilla del componente. |
+| 3 | `shared/section-lock-overlay/section-lock-overlay.component.ts` | El `<strong>` del mensaje entra por `[innerHTML]` (soporta `**negrita**`). |
+| 4 | `styles/_inventory-form-lines.scss` (mixin) | Mixin incluido por 8 formularios de inventario; estiliza celdas y selectores proyectados dentro de `luna-document-lines`. |
+
+**Métrica reproducible:** `npm run audit:ng-deep` (`scripts/audit-ng-deep.mjs`,
+job `lint-test-build` de CI) cuenta los usos fuera de comentarios en
+`src/**/*.{scss,ts}` y falla si alguno no lleva `// ::ng-deep-ok: <razón>`.
+Resultado actual: **4 usos en 3 archivos, 4 justificados, 0 sin justificar**.
+Política y recetas de customización: `erp-frontend/src/styles/CSS-ARCHITECTURE.md`
+§5; detalle del cierre en `AUDIT.md` T65.
