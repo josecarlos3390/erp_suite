@@ -546,6 +546,28 @@ Cada partner debe tener configuradas sus cuentas contables en la pestaña "Conta
 | `payableAccountId` | Proveedor / Ambos | `2.1.1.01.001` (CxP Proveedores M/N) |
 | `advancePayableAccountId` | Proveedor / Ambos | `1.1.2.05.001` (Anticipos Proveedores Nacionales) |
 
+### M/N vs M/E automático (T68, 2026-09-12)
+
+El socio puede tener además las **variantes por moneda** (`receivableAccountIdLocal`,
+`receivableAccountIdForeign`, `payableAccountIdLocal`, `payableAccountIdForeign`).
+`AccountDeterminationService._resolvePartnerVariantAccount` elige la variante con
+`isForeignSettlement()` (`src/common/partner-account-variants.util.ts`):
+
+1. **Moneda del documento** ≠ moneda base (`settings.baseCurrency`) → **M/E**. Los
+   builders de ventas, compras y pagos pasan la moneda del documento en el
+   contexto (`currency`).
+2. **Moneda por defecto del socio** (`Partner.currency`) ≠ moneda base → **M/E**
+   (refuerzo cuando el documento no informa moneda).
+3. **País del socio** ≠ país de la empresa (`Tenant.countryCode`) → **M/E**. El
+   país del socio es texto libre ("Bolivia"), así que la comparación normaliza
+   nombre↔ISO con una tabla corta de alias; si no se puede resolver, se asume
+   **local** (un typo no cambia la cuenta de un socio que ya funcionaba).
+
+Si la variante que corresponde está vacía, se cae a la cuenta **genérica** del
+socio y luego al AccountMapping (comportamiento histórico intacto). Los
+**anticipos** no tienen variante y siguen usando su cuenta genérica. Cuando el
+socio no tiene ninguna variante configurada, ni siquiera se leen los settings.
+
 ### Flujo automático
 
 `AccountingEngine._buildSaleInvoiceJournalEntryLines()` (y sus pares de compras/pagos/stock) determinan la cuenta vía `AccountDeterminationService`, setean `partnerId` y el backend denormaliza `partnerCode` desde `Partner.code` en `JournalEntryLine` al persistir.
@@ -555,6 +577,20 @@ Cada partner debe tener configuradas sus cuentas contables en la pestaña "Conta
 - `reverseJournalEntry` copia todos los campos de doble expresión (`debitLocal`, `creditLocal`, `debitSystem`, `creditSystem`), moneda, dimensiones y referencias.
 - `post()` revalida que `totalDebit === totalCredit` (tolerancia 0.001) antes de cambiar el estado a `POSTED`.
 - `JournalEntryLine` incluye `projectId`, `ref1`, `ref2` y `dueDate`.
+
+### Jerarquía de determinación (nivel ITEM, T67 2026-09-12)
+
+En nivel `ITEM`, `_walkItemHierarchy` resuelve en este orden:
+
+1. **Matriz artículo-almacén** (`ItemWarehouseAccount` activo para ese almacén).
+2. **Maestro del artículo** (`Item.inventoryAccountId`, `salesRevenueAccountId`, …):
+   antes los campos del formulario del artículo eran decorativos a nivel ITEM y
+   un artículo sin fila en la matriz no podía contabilizar aunque tuviera la
+   cuenta cargada.
+3. AccountMapping global **solo** para los entry types de la lista
+   `ITEM_ENTRY_TYPES_WITH_MAPPING_FALLBACK` (SALES_REVENUE, PURCHASES, GRIR,
+   contrapartidas de inventario, diferencia de cambio, …). El resto es estricto y
+   lanza `BadRequestException` con el nivel y las fuentes a configurar.
 
 ---
 
