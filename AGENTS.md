@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-09-12.  
+> **Última actualización:** 2026-09-12 (cierre de T77/T79–T84).  
 > **Versión canónica de restricciones transversales.**  
 > Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
@@ -173,7 +173,8 @@ npm run format           # prettier --write
 npm run lint             # ng lint — 0 errores, 0 warnings
 npm test                 # Karma + Jasmine — 1558 tests
 npm run e2e              # playwright test — suite completa (incluye capturas y diagnósticos)
-npm run e2e:functional   # gate funcional (196 tests de regresión) en una sola pasada — config propia
+npm run e2e:functional   # gate funcional de escritorio (196 tests) en una sola pasada — config propia
+npm run e2e:mobile       # gate móvil/tablet: lista curada de 11 specs en mobile-chrome + tablet-safari
 npm run e2e:captures     # capturas de formularios mobile/desktop (herramienta, no gate)
 npm run e2e:visual       # regresión visual de los 52 formularios (baselines propios)
 npm run e2e:baseline     # regenera los 52 baselines de referencia
@@ -265,7 +266,23 @@ npm run audit:ng-deep    # gate de `::ng-deep`: falla ante usos sin justificar (
 > - **Entorno E2E determinista (T53, 2026-09-10):** tipografías self-hosted (sin CDNs externos) y `e2e/auth.setup.ts` garantiza gestión fiscal abierta + series antes de cada corrida (el seed NO las crea). BD dev reproducible con `npm run db:recreate` y BD de tests E2E con `npm run test:e2e:prepare` (sincroniza `erp_test` con `prisma db push`; sin ese paso **13 de 14 suites fallaban** por esquema desactualizado). El mismo `setup` garantiza la terminal POS de E2E (`ensurePosTerminal`) porque el formulario de usuarios cambia de alto según existan terminales (T56: era la causa de un baseline visual que dependía del orden de los specs).
 > - **Karma estable (T62):** la config ya endurecida (`browserNoActivityTimeout: 300000`, `browserDisconnectTolerance: 5`, `timeoutInterval: 20000`, `--no-sandbox --disable-dev-shm-usage`) da **1534/1534 en ~3,5-4 min** de forma repetida (corridas verdes el 2026-09-11, incluidas las del hook de pre-push); el "hang" histórico **no se reproduce** y cualquier fallo nuevo debe tratarse como regresión, no como flakiness de infraestructura. **Nota (T65):** en specs de componentes `OnPush`, cambiar un `@Input` mutando la instancia **no** re-renderiza la vista (el `[class]`/`@if` no se reevalúa): usar `fixture.componentRef.setInput(...)` + `fixture.detectChanges()` (o `markForCheck()`), como hacen los 7 tests nuevos.
 > - **Accesibilidad (T74, 2026-09-12):** axe-core en **0 violaciones sobre 16 páginas** y **gate estático `npm run a11y:check` en CI** (antes apuntaba a un archivo inexistente: el paso de accesibilidad nunca se ejecutó). Reglas obligatorias en `FRONTEND_GUIDE.md` §1.6: un `h1` por página (título del listado/formulario), secciones en `h2`, nombre accesible en todo control (`luna-form-field` lo hereda; `app-filter-field` exige `ariaLabel`), botones de solo icono con `action`, y «el texto visible es el nombre accesible» (WCAG 2.5.3).
-> - **CSS del POS (T76, 2026-09-12):** `pos.component.scss` bajó de 2.399 a 2.044 líneas eliminando 22 clases sin uso (verificado pixel a pixel en 5 estados). **Queda documentado** que el POS usa `ViewEncapsulation.None`, así que ~12 nombres genéricos de su hoja (`chip`, `cancelled`, `modal-body/header/footer`, `search-input`…) estilizan también otras páginas: sacarlo de `None` (o prefijar todas sus clases) es el refactor dedicado que falta.
+> - **CSS del POS (T76 + T84, 2026-09-12):** `pos.component.scss` bajó de 2.399 a 2.044 líneas eliminando 22 clases sin uso (pixel a pixel en 5 estados) y **sus 16 clases con nombre genérico quedaron acotadas con `:where(app-pos)`** (22 reglas), así que ya no estilizan el sidebar ni otras páginas; al quitarla se corrigieron dos defectos que la filtración ocultaba (el sidebar heredaba el color del icono de marca y el `flex-direction: column` del POS). Queda como deuda menor que las ~140 clases propias del POS sigan siendo globales (no filtran: solo las usa el POS).
+> - **Gate móvil (T77, 2026-09-12):** `npm run e2e:mobile`
+>   (`playwright.mobile.config.ts`) corre una **lista curada** de specs en `mobile-chrome` y
+>   `tablet-safari` (la suite completa en móvil tarda horas y varios specs son de escritorio por
+>   diseño). Fallos cross-browser ya llevados a causa raíz: ambigüedad de locators (usar
+>   `{ exact: true }` cuando dos controles comparten prefijo de etiqueta), rate limit del entorno
+>   local (429 tras muchas corridas seguidas: reiniciar el backend de dev), specs de escritorio y
+>   un problema de layout móvil abierto en el paso «Pago Saliente» de `purchase-full-journey-ui`.
+> - **Correlativos por serie (T81, 2026-09-12):** el código es `prefijo + contador de la serie`
+>   **sin la gestión**, así que dos series activas del mismo `docType` con el mismo prefijo pueden
+>   chocar contra el índice único `(tenantId, code)`; `DocumentSeriesService` auto-sana el contador
+>   contra el mayor código emitido con ese prefijo (cacheado por serie y proceso). Al crear series
+>   de prueba/QA conviene arrancar el contador muy alto (el helper de E2E usa 1000).
+> - **CSS global de componentes `ViewEncapsulation.None` (T84, 2026-09-12):** acotar con
+>   **`:where(<host>)`**, nunca con un prefijo de host a secas (sube la especificidad y cambia el
+>   aspecto dentro del propio componente). Receta y procedimiento en
+>   `erp-frontend/src/styles/CSS-ARCHITECTURE.md` §6.b.
 > - **Deuda estructural priorizada:** ver `AUDIT.md` §7 (S1 refactor del accounting engine es la única recomendada antes de F6; S2-S6 mantenimiento normal).
 
 ---
