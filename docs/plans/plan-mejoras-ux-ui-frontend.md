@@ -33,6 +33,10 @@ Hay una inconsistencia de copy: `luna-icon-button` dice `"Más acciones"` y `lun
 - Cambiar `ACTION_TITLES['moreHorizontal']` a `"Más acciones"` en `luna-button.component.ts`, o
 - Forzar siempre el uso de `luna-icon-button` para triggers de menú de fila.
 
+**✅ Resuelto (verificado 2026-09-12, T74):** `ACTION_TITLES['moreHorizontal']` ya
+es `'Más acciones'` en `luna-button`; `'Más opciones'` corresponde a la acción
+`menu`, que es otra acción (trigger de menú genérico) y se mantiene.
+
 ### Criterio de aceptación
 - [x] Un lector de pantalla (VoiceOver/NVDA) anuncia un texto significativo al enfocar cualquier botón `⋯` de fila.
 - [x] Unificar copy a `"Más acciones"` en ambos componentes (`luna-icon-button` y `luna-button`).
@@ -65,12 +69,35 @@ Auditoría 2026-07-26 contra el código: la mayoría de los componentes LUNA ya 
 ### Pendiente (fuera del scope inmediato)
 - Los ~60 listados que usan `<luna-menu>` con trigger inline todavía dependen del wrapper ARIA de `luna-menu`; migrarlos uno a uno a `[ariaHasPopup]/[ariaExpanded]/[ariaControls]` en el `<luna-button>` trigger es un refactor mecánico grande que no se hace en este paso.
 
+**✅ Resuelto (2026-09-12, T74) sin tocar plantillas:** `luna-menu` escribe ahora
+`aria-haspopup`/`aria-expanded`/`aria-controls` **sobre el botón real** del trigger
+(no sobre el `div` wrapper) y marca los ítems proyectados con `role="menuitem"`
+(además, `lunaMenuItem` era un atributo inerte: al no existir directiva, los ítems
+no tenían rol y la navegación ↑/↓ nunca funcionó en los listados). Cubre los 61
+`luna-menu` de una vez.
+
 ### Criterio de aceptación
 - [x] `luna-modal`, `luna-select`, `luna-menu` y `luna-tabs` son operables por teclado y anuncian roles/estados correctamente.
 - [x] Skip-link implementado en el layout.
 - [x] Botones de solo ícono tienen `aria-label` efectivo (via `action` title o `ariaLabel` explícito).
-- [ ] Verificación manual del flujo "abrir modal → llenar formulario → guardar → cerrar → foco vuelve al disparador" en 3 formularios (recomendado hacerlo en entorno local antes de cerrar la fase).
-- [ ] Medición Lighthouse Accessibility antes/después (delta en PR).
+- [x] Verificación manual del flujo "abrir modal → llenar formulario → guardar → cerrar → foco vuelve al disparador" en 3 formularios (recomendado hacerlo en entorno local antes de cerrar la fase).
+
+  **✅ Automatizado (2026-09-12, T74):** no queda como verificación manual — el
+  spec `e2e/accessibility-focus.spec.ts` comprueba en el navegador el flujo
+  completo del modal (`role="dialog"`, `aria-modal`, foco dentro del diálogo,
+  cierre con Escape y **devolución del foco al disparador**) y el mismo patrón en
+  el menú de acciones de una fila (Enter abre, el foco entra al `menuitem`, Escape
+  cierra y devuelve el foco al trigger).
+- [x] Medición Lighthouse Accessibility antes/después (delta en PR).
+
+  **✅ Reemplazado por una medición mejor (2026-09-12, T74):** Lighthouse **no
+  puede auditar páginas autenticadas** en esta SPA (sin cookie redirige a
+  `/login`, y el CLI solo alcanza páginas públicas: `/login` da 100/100 y no
+  ejercita nada del cambio). La medición se hace con **axe-core** —el mismo motor
+  que usa Lighthouse— inyectado en Playwright sobre **16 páginas reales con
+  sesión**: línea base **9 violaciones en 6 listados** → **0 violaciones en
+  16/16**. El gate estático `npm run a11y:check` (R1/R2/R3) queda en CI y el spec
+  `e2e/accessibility-focus.spec.ts` verifica ARIA/foco en el navegador.
 
 ---
 
@@ -276,6 +303,12 @@ Auditoría de explicabilidad (2026-08-09) detectó 4 hallazgos 🔴 que pueden c
 - **B — Unificación visual ✅**: color de estado OPEN unificado a `info` (azul) en los 4 listados de stock (paridad con ventas/compras; CONFIRMED/CLOSED → `success`); label "Nº Referencia" en los 4 forms de stock; botón "Crear Cuenta/Cuenta Bancaria/Moneda/Año Fiscal/Proyecto" en 5 maestros; `density="compact"` en facturas y recepciones; iconos residuales reemplazados (✅/❌ → `luna-action-icon check/close` en purchase-requests, "½" → texto "Parcial" en pedidos, `fas fa-link` → `luna-action-icon link`); tildes corregidas ("Nuevo Artículo", "Sin artículos", "Nuevo Almacén"); toasts de maestros al patrón "X creado correctamente" / "X actualizado correctamente" (warehouses, currencies, price-lists, branches, users, projects, items, partners, banks).
 - **C — Explicabilidad ✅**: "Dotación (GRIR)" → "Recepción de mercancía (GRIR)" con helperText en item-form/item-group-form/warehouse-form; "DPP" → "Desc. pronto pago" (con title) en cuotas de facturas; placeholder "- Sin almacén -" → "Seleccionar almacén (opcional)" en 13 forms; help-hints contextuales (`app-help-hint`) en los listados de facturas de venta, pedidos de venta, facturas de compra y órdenes de compra, enlazados a las secciones `sales-flow`/`purchase-flow` del centro de ayuda.
 - **Pendiente menor documentado**: capitalización/prefijo "+" en botones "Nuevo X" de listados, y banners de campos readonly (Cliente en pago desde factura, Costo en tab Costos) — quedan como mejoras menores para futuras pasadas.
+
+**✅ Resuelto (2026-09-12, T75):** los **13** botones que faltaban pasaron al patrón
+`+ Nuevo/Nueva <Sustantivo>` con capitalización canónica (el `Nueva Venta` del POS
+queda fuera: POS es scope separado en este plan), y los dos campos readonly se
+explican con un aviso: `hint` en el `Cliente` de un cobro creado desde factura y un
+texto informativo en la pestaña **Costos** de `luna-document-lines` (`.lines-tab-hint`).
 
 ### Verificación
 - `npm run build` + `npm run lint` 0/0 + suite completa 1,257 tests en verde.

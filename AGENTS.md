@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-09-11.  
+> **Última actualización:** 2026-09-12.  
 > **Versión canónica de restricciones transversales.**  
 > Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
@@ -171,9 +171,9 @@ npm run watch            # ng build --watch --configuration development
 npm run serve:ssr:erp-frontend   # SSR local
 npm run format           # prettier --write
 npm run lint             # ng lint — 0 errores, 0 warnings
-npm test                 # Karma + Jasmine — 1534 tests
+npm test                 # Karma + Jasmine — 1558 tests
 npm run e2e              # playwright test — suite completa (incluye capturas y diagnósticos)
-npm run e2e:functional   # gate funcional (187 tests de regresión) en una sola pasada — config propia
+npm run e2e:functional   # gate funcional (196 tests de regresión) en una sola pasada — config propia
 npm run e2e:captures     # capturas de formularios mobile/desktop (herramienta, no gate)
 npm run e2e:visual       # regresión visual de los 52 formularios (baselines propios)
 npm run e2e:baseline     # regenera los 52 baselines de referencia
@@ -222,7 +222,7 @@ npm run audit:ng-deep    # gate de `::ng-deep`: falla ante usos sin justificar (
 
 ---
 
-## 4. Estado real del proyecto (2026-09-11)
+## 4. Estado real del proyecto (2026-09-12)
 
 ### Backend (`backend-erp/`)
 
@@ -243,8 +243,8 @@ npm run audit:ng-deep    # gate de `::ng-deep`: falla ante usos sin justificar (
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores (bundle inicial ~1.27 MB) |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1534 / 1534 tests** (1527 + 7 tests de T65 que fijan los puntos de customización por estilo computado) |
-| `npm run e2e:functional` | ✅ **OK** | **187 tests en una sola pasada: 177 passed / 0 failed / 10 skipped** (~25 min; chromium, con el proyecto fijado desde T60) — mismo escenario que CI (BD recién sembrada). Los 10 skips son condicionales con motivo (inventario en AUDIT T61) |
+| `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1558 / 1558 tests** (1545 previos + 7 de T65 que fijan puntos de customización por estilo computado + 6 nuevos de T74 para el ARIA/foco de `luna-menu`) |
+| `npm run e2e:functional` | ✅ **OK** | **196 tests en una sola pasada: 192 passed / 0 failed / 4 skipped** (~25 min; chromium, con el proyecto fijado desde T60) — mismo escenario que CI (BD recién sembrada). T73 sustituyó 6 skips por datos garantizados de forma idempotente (`e2e/helpers/ensure-accounting-data.ts`); los 4 que quedan son condicionales por diseño (2 del smoke SSR, `density-audit` con `DENSITY_AUDIT=1` y el modo comercial de conciliación) — inventario en AUDIT T61/T73 |
 | `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (deterministas desde T59: fecha fija `VISUAL_REFERENCE_TIME` + correlativos normalizados en `e2e/forms-screenshot.helper.ts`) |
 | `npm run typecheck:e2e` | ✅ **OK** | 0 errores (`tsconfig.e2e.json`, 55 archivos de `e2e/`) tras T60 |
 | `npm run format:check` | ✅ **OK** | prettier limpio en **todo `e2e/` y todo el SCSS de `src/`** (T62 cerró los 67 SCSS que faltaban); el TS/HTML legacy se gestiona con `format:check:touched` |
@@ -254,6 +254,8 @@ npm run audit:ng-deep    # gate de `::ng-deep`: falla ante usos sin justificar (
 | `npm run audit:important` | ✅ **OK** | **7 usos de `!important` en 3 archivos**, todos compitiendo con algo fuera del control propio (librería, autofill, `prefers-reduced-motion`) o gates funcionales — desde T58 (antes 105) y T64 (los 2 de `luna-data-table` pasaron a custom property) |
 | `npm run audit:ng-deep` | ✅ **OK** | **4 usos de `::ng-deep` en 3 archivos, los 4 justificados** con `::ng-deep-ok` (contenido de `[innerHTML]` ×3 y el mixin de líneas de inventario) — desde T65 (antes 9 sin métrica reproducible) |
 | `npx playwright test density-raw-tables.spec.ts` | ✅ **OK** | tablas crudas medidas con datos reales (1px → 4px) |
+| `npm run a11y:check` | ✅ **OK** | **0 hallazgos** — gate estático nuevo (`scripts/audit-a11y.mjs`, T74): R1 botones sin nombre accesible, R2 `img` sin `alt`, R3 controles dentro de `app-filter-field` sin `ariaLabel`/`label`. Reemplaza a `scripts/check-icon-button-a11y.js`, un archivo **que nunca existió** y hacía fallar siempre el paso "Accessibility Check" de CI con `MODULE_NOT_FOUND` |
+| Auditoría axe de accesibilidad (Playwright + axe-core) | ✅ **OK** | **0 violaciones en 16/16 páginas** autenticadas (6 listados, 3 formularios, dashboard, plan de cuentas, usuarios, Carga Masiva, reporte y POS) — línea base 9 violaciones en los 6 listados; metodo y hallazgos en AUDIT T74 y `FRONTEND_GUIDE.md` §1.6 |
 
 > **Notas de deuda técnica activa (2026-09-10):**
 > - **Integridad branch↔warehouse completada (2026-08-08):** `assertWarehousesInBranch` en 22 servicios + POS (create/update), herencia de branchId en flujos de copia del frontend (`applyBranchFromSource`), matriz artículo-almacén optimizada a 3 `findMany` en paralelo, stock-transfers con destino libre de sucursal. Ver `AUDIT.md` §7 y `ROADMAP.md` DT.11-14.
@@ -262,6 +264,8 @@ npm run audit:ng-deep    # gate de `::ng-deep`: falla ante usos sin justificar (
 > - **Plan visual v2**: Fases 0, 1, 3, 4, 5, 6 resueltas; Fase 2 cerrada en su parte de densidad (T48) y Fase 7 auditada (T49, 9 reglas justificadas). Sigue como tracking continuo (`docs/plans/plan-consistencia-visual-v2.md`).
 > - **Entorno E2E determinista (T53, 2026-09-10):** tipografías self-hosted (sin CDNs externos) y `e2e/auth.setup.ts` garantiza gestión fiscal abierta + series antes de cada corrida (el seed NO las crea). BD dev reproducible con `npm run db:recreate` y BD de tests E2E con `npm run test:e2e:prepare` (sincroniza `erp_test` con `prisma db push`; sin ese paso **13 de 14 suites fallaban** por esquema desactualizado). El mismo `setup` garantiza la terminal POS de E2E (`ensurePosTerminal`) porque el formulario de usuarios cambia de alto según existan terminales (T56: era la causa de un baseline visual que dependía del orden de los specs).
 > - **Karma estable (T62):** la config ya endurecida (`browserNoActivityTimeout: 300000`, `browserDisconnectTolerance: 5`, `timeoutInterval: 20000`, `--no-sandbox --disable-dev-shm-usage`) da **1534/1534 en ~3,5-4 min** de forma repetida (corridas verdes el 2026-09-11, incluidas las del hook de pre-push); el "hang" histórico **no se reproduce** y cualquier fallo nuevo debe tratarse como regresión, no como flakiness de infraestructura. **Nota (T65):** en specs de componentes `OnPush`, cambiar un `@Input` mutando la instancia **no** re-renderiza la vista (el `[class]`/`@if` no se reevalúa): usar `fixture.componentRef.setInput(...)` + `fixture.detectChanges()` (o `markForCheck()`), como hacen los 7 tests nuevos.
+> - **Accesibilidad (T74, 2026-09-12):** axe-core en **0 violaciones sobre 16 páginas** y **gate estático `npm run a11y:check` en CI** (antes apuntaba a un archivo inexistente: el paso de accesibilidad nunca se ejecutó). Reglas obligatorias en `FRONTEND_GUIDE.md` §1.6: un `h1` por página (título del listado/formulario), secciones en `h2`, nombre accesible en todo control (`luna-form-field` lo hereda; `app-filter-field` exige `ariaLabel`), botones de solo icono con `action`, y «el texto visible es el nombre accesible» (WCAG 2.5.3).
+> - **CSS del POS (T76, 2026-09-12):** `pos.component.scss` bajó de 2.399 a 2.044 líneas eliminando 22 clases sin uso (verificado pixel a pixel en 5 estados). **Queda documentado** que el POS usa `ViewEncapsulation.None`, así que ~12 nombres genéricos de su hoja (`chip`, `cancelled`, `modal-body/header/footer`, `search-input`…) estilizan también otras páginas: sacarlo de `None` (o prefijar todas sus clases) es el refactor dedicado que falta.
 > - **Deuda estructural priorizada:** ver `AUDIT.md` §7 (S1 refactor del accounting engine es la única recomendada antes de F6; S2-S6 mantenimiento normal).
 
 ---

@@ -267,6 +267,40 @@ export abstract class DocumentListBase<T> {
 
 ---
 
+### 1.6. Accesibilidad (reglas obligatorias desde T74, 2026-09-12)
+
+La accesibilidad del frontend se **mide** (axe-core sobre páginas reales con
+sesión, 16 páginas en 0 violaciones) y se **vigila** con un gate estático
+(`npm run a11y:check`, job `lint-test-build` de CI). Reglas al escribir pantallas:
+
+| # | Regla | Cómo se cumple |
+|---|-------|----------------|
+| 1 | **Un `h1` por página: el título.** El título del listado va en `.page-header` y el del formulario/documento en `[formTitle]`, ambos como `<h1>`. | Los selectores CSS ya contemplan `h1` (`.page-header h1, h2`, `.form-title-group h1, h2`). El POS (sin título visible) usa `<h1 class="pos-sr-only">`. |
+| 2 | **Un solo nivel de salto**: debajo del `h1` van `h2`. Los títulos de sección (`luna-form-section`) y los subtítulos de página (socio, artículo, cuenta) son `h2`; los widgets de dashboard, `h2`. | No usar `h3` "para que se vea más chico": el tamaño lo fija la clase, no la etiqueta. |
+| 3 | **Todo control tiene nombre accesible.** Dentro de `luna-form-field` el nombre sale del `label` del wrapper (los primitivos `luna-input`/`luna-select` lo heredan solos). Fuera de él —`.filter-field` crudo, `app-filter-field`, celdas de tabla, búsquedas del layout— hace falta `ariaLabel` explícito. | `app-filter-field` renderiza un `<label>` **sin `for`**: el R3 del gate falla si el control no declara `ariaLabel`/`label`. |
+| 4 | **Botones de solo icono**: siempre `action="…"` (de ahí sale el nombre desde `ACTION_TITLES` de `luna-button`) o `ariaLabel`. | R1 del gate. |
+| 5 | **Si el botón tiene texto visible, ese texto es su nombre accesible** (WCAG 2.5.3 «Label in Name»): no pasar `aria-label` distinto del texto. | `luna-button` ya no pisa el texto con el título del icono (`resolvedAriaLabel`). |
+| 6 | **Encabezados de tabla con nombre**: una columna de acciones con `label: ''` y `type: 'actions'` recibe `<span class="sr-only">Acciones</span>` y **no** es ordenable (`isSortableColumn`). | En `luna-data-table`; no hay que hacer nada desde la página. |
+| 7 | **Contraste AA para texto**: usar los tokens de texto (`--text-success`, `--text-error`, `--text-warning`, `--text-body`), **no** los de marca (`--color-success` = 2,3:1 sobre fondo claro). | Hallazgo `color-contrast` de axe. |
+| 8 | **Menús `luna-menu`**: no hace falta cablear ARIA a mano. El componente escribe `aria-haspopup`/`aria-expanded`/`aria-controls` sobre el botón real y marca los ítems proyectados (`lunaMenuItem` o `.luna-menu__item`) con `role="menuitem"`. | `getMenuItems()` reconoce ambos marcadores: la navegación ↑/↓ y el foco inicial funcionan en cualquier listado. |
+
+**Comandos:**
+
+```bash
+npm run a11y:check   # gate estático: botones sin nombre, img sin alt, filtros sin nombre
+npx ng test --watch=false --browsers=ChromeHeadlessCI --include="src/app/shared/luna/luna-menu/luna-menu.component.spec.ts"
+npx playwright test e2e/accessibility-focus.spec.ts --project=chromium   # foco/ARIA en el navegador
+```
+
+> **Medición dinámica (auditoría).** Para auditar páginas autenticadas con
+> axe-core hay que inyectar el script en una sesión de Playwright
+> (`page.addScriptTag({ path: … axe.min.js })` + `axe.run(document)`), porque
+> **Lighthouse no puede autenticarse** en la SPA (redirige a `/login`). El
+> inventario de páginas auditadas y el detalle de los hallazgos están en
+> `AUDIT.md` T74.
+
+---
+
 ## 2. Regla crítica: OnPush + Async = markForCheck()
 
 > **Contexto:** Todos los componentes de formularios de documentos usan `ChangeDetectionStrategy.OnPush`. En esta estrategia, Angular **no** refresca la vista automáticamente cuando una suscripción asíncrona modifica el estado del componente.
