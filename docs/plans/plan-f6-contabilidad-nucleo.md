@@ -82,6 +82,74 @@
 - Ciclo cierre→apertura→nuevo ejercicio ejecutado y verificado en local y Railway.
 - Suites backend (nuevos specs) y FE (Karma de páginas) en verde; build AOT 0 errores.
 
+---
+
+## Replicación del ciclo en Railway — evaluación (2026-09-12, T72)
+
+**Estado:** ✅ **EVALUADO Y DOCUMENTADO.** El ciclo está verificado **en local**
+(Fase 1-3: journal/trial/ledger cuadran, cierre de GEST-2026, apertura 2027 y trial
+de enero 2027 con saldos). Lo que queda es ejecutarlo **con los datos del entorno de
+Railway**, y eso no se hizo desde aquí por una razón concreta: **es una operación
+destructiva sobre producción** (postea el asiento de cierre y bloquea el ejercicio),
+y el plan la dejaba como "pendiente menor". Esta evaluación deja el terreno listo
+para decidirla.
+
+### Qué se verificó (read-only, sin escribir nada)
+
+Acceso: el CLI de Railway está instalado y **autenticado** (`joseka3390@gmail.com`),
+vinculado al proyecto `incredible-expression` / entorno `production` (servicios
+`Postgres` y `erp-backend`). La BD **no tiene endpoint público** (solo
+`postgres.railway.internal`), así que no se puede dumpear desde el equipo de
+desarrollo; la auditoría se corrió **dentro del contenedor** con
+`railway ssh --service erp-backend` (script Node por base64, solo `findMany/count/aggregate`).
+
+| Dato del entorno de producción | Valor |
+|---|---|
+| Tenants | 1 (`default` — "Empresa Principal", país BO) |
+| Plan de cuentas | 303 cuentas |
+| Períodos | 12 |
+| Asientos | **4** (todos POSTED, 0 borradores) |
+| Gestión | `GEST-2026` (2026-01-01 → 2026-12-31), estado **OPEN** |
+| Cuadratura | 14 líneas, **Dr = Cr = 1.830,41** ✓ |
+| Asientos de cierre/apertura | **ninguno** → el ciclo anual **no se ejecutó** allí |
+| Datos de operación | 2 socios · 1 artículo · 1 FV · 1 FC |
+| Backend desplegado | `GET /health` → 200 `{prisma: up, memory: up, disk: up}` |
+
+Conclusión: el entorno de Railway es de **validación** (4 asientos de una factura de
+venta y una de compra), su contabilidad **cuadra**, y el ejercicio 2026 sigue abierto
+con el ciclo anual sin ejecutar — exactamente el escenario del criterio pendiente.
+
+### Por qué no se ejecutó aquí
+
+1. **Es escritura en producción**: `POST /fiscal-years/:id/generate-closing-entry`
+   postea el asiento de cierre y `close()` deja el ejercicio LOCKED. Revertirlo
+   requiere reapertura/asientos manuales; no se hace sin autorización explícita del
+   usuario, aunque el impacto sea bajo (4 asientos).
+2. **No hay credenciales de la API de producción** en el repo (ni se adivinan): el
+   login del entorno desplegado no es el del seed de desarrollo.
+
+### Receta lista para ejecutar (cuando el usuario lo autorice)
+
+```powershell
+# 0. Respaldo ANTES de tocar nada (dentro del contenedor, sin exponer la BD):
+railway ssh --service erp-backend "pg_dump -Fc $env:PGDATABASE > /tmp/backup-$(date +%F).dump"
+
+# 1. Ciclo, por API (token de un usuario admin del entorno):
+#    a) POST /auth/login                     → access_token (+ XSRF)
+#    b) GET  /fiscal-years                   → id de GEST-2026
+#    c) GET  /reports/trial-balance          → cuadratura previa (Deudor = Acreedor)
+#    d) POST /fiscal-years/<id>/generate-closing-entry
+#    e) POST /fiscal-years/<id>/close        → debe quedar LOCKED y rechazar asientos del mes (409)
+#    f) POST /fiscal-years  (2027) + períodos → POST /fiscal-years/<nuevo>/generate-opening-entry
+#    g) GET  /reports/trial-balance?from=2027-01-01 → enero 2027 con saldos y cuadrando
+```
+
+Alternativa **sin tocar producción** (recomendada para validar el ciclo con datos
+reales): habilitar temporalmente un *TCP proxy* público en el servicio Postgres,
+`pg_dump` a un archivo, restaurarlo en una BD local desechable (`erp_prod_copy`) y
+ejecutar allí el ciclo completo con un usuario admin temporal de esa copia. La copia
+se borra al terminar.
+
 ## Entregables / commits
 
 - Backend: `backend-erp` (reportes + specs) → origin + deploy (Railway).
