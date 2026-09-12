@@ -171,7 +171,7 @@ npm run watch            # ng build --watch --configuration development
 npm run serve:ssr:erp-frontend   # SSR local
 npm run format           # prettier --write
 npm run lint             # ng lint — 0 errores, 0 warnings
-npm test                 # Karma + Jasmine — 1527 tests
+npm test                 # Karma + Jasmine — 1534 tests
 npm run e2e              # playwright test — suite completa (incluye capturas y diagnósticos)
 npm run e2e:functional   # gate funcional (187 tests de regresión) en una sola pasada — config propia
 npm run e2e:captures     # capturas de formularios mobile/desktop (herramienta, no gate)
@@ -191,13 +191,20 @@ npm run generate-types   # copia prisma-types.ts desde backend
 npm run audit:density:ci # gate de densidad: estático (px crudos + tablas) + calidad de bloques
 npm run audit:density:e2e# auditoría dinámica Compacta vs Espaciosa (bajo demanda)
 npm run audit:important  # gate de `!important`: falla ante usos sin justificar (!important-ok)
+npm run audit:ng-deep    # gate de `::ng-deep`: falla ante usos sin justificar (::ng-deep-ok)
 ```
 
 > **Regla de estilo (T58):** todo override de un primitivo LUNA se resuelve por
 > **especificidad** (repetir la clase propia: `.form-field.form-field …`), no con
-> `!important`. La política completa, los 4 casos en que `!important` sí es
+> `!important`. La política completa, los 3 casos en que `!important` sí es
 > legítimo y el método de verificación están en
 > `erp-frontend/src/styles/CSS-ARCHITECTURE.md`.
+>
+> **`::ng-deep` (T65):** solo se acepta para contenido que no se puede alcanzar
+> de otra forma (contenido de `[innerHTML]`, contenido proyectado, mixin
+> compartido) y cada uso lleva `// ::ng-deep-ok: <razón>`; antes de escribir uno,
+> usar las **recetas de customización** de `CSS-ARCHITECTURE.md` §5 (variantes de
+> input, CSS vars como `--luna-btn-height`/`--col-min-width`).
 
 ### Git hooks
 
@@ -228,7 +235,7 @@ npm run audit:important  # gate de `!important`: falla ante usos sin justificar 
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores (bundle inicial ~1.27 MB) |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1527 / 1527 tests** |
+| `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1534 / 1534 tests** (1527 + 7 tests de T65 que fijan los puntos de customización por estilo computado) |
 | `npm run e2e:functional` | ✅ **OK** | **187 tests en una sola pasada: 177 passed / 0 failed / 10 skipped** (~25 min; chromium, con el proyecto fijado desde T60) — mismo escenario que CI (BD recién sembrada). Los 10 skips son condicionales con motivo (inventario en AUDIT T61) |
 | `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (deterministas desde T59: fecha fija `VISUAL_REFERENCE_TIME` + correlativos normalizados en `e2e/forms-screenshot.helper.ts`) |
 | `npm run typecheck:e2e` | ✅ **OK** | 0 errores (`tsconfig.e2e.json`, 55 archivos de `e2e/`) tras T60 |
@@ -236,16 +243,17 @@ npm run audit:important  # gate de `!important`: falla ante usos sin justificar 
 | `npm run migrate:heights:check` | ✅ **OK** | **0 alturas en px crudas** en `pages/`+`shared/` (65 migradas a variables de densidad en T62; el audit estático ya las vigila) |
 | `npm run e2e:ssr` | ✅ **OK** | **3 passed** con la configuración `smoke` (backend local) y **job `ssr-smoke` en CI** — antes el spec se **skipeaba siempre** por falta de un server SSR levantado (T61/T63) |
 | `npm run audit:density:ci` | ✅ **OK** | 0 hallazgos estáticos + 0 de calidad de bloques |
-| `npm run audit:important` | ✅ **OK** | **9 usos de `!important` en 4 archivos**, todos compitiendo con algo fuera del control propio (librería, estilos inline, autofill, `prefers-reduced-motion`) o gates funcionales — desde T58 (antes 105) |
+| `npm run audit:important` | ✅ **OK** | **7 usos de `!important` en 3 archivos**, todos compitiendo con algo fuera del control propio (librería, autofill, `prefers-reduced-motion`) o gates funcionales — desde T58 (antes 105) y T64 (los 2 de `luna-data-table` pasaron a custom property) |
+| `npm run audit:ng-deep` | ✅ **OK** | **4 usos de `::ng-deep` en 3 archivos, los 4 justificados** con `::ng-deep-ok` (contenido de `[innerHTML]` ×3 y el mixin de líneas de inventario) — desde T65 (antes 9 sin métrica reproducible) |
 | `npx playwright test density-raw-tables.spec.ts` | ✅ **OK** | tablas crudas medidas con datos reales (1px → 4px) |
 
 > **Notas de deuda técnica activa (2026-09-10):**
 > - **Integridad branch↔warehouse completada (2026-08-08):** `assertWarehousesInBranch` en 22 servicios + POS (create/update), herencia de branchId en flujos de copia del frontend (`applyBranchFromSource`), matriz artículo-almacén optimizada a 3 `findMany` en paralelo, stock-transfers con destino libre de sucursal. Ver `AUDIT.md` §7 y `ROADMAP.md` DT.11-14.
-> - **Densidad visual (T48) y `::ng-deep` (T49) cerrados:** auditoría estática y de calidad de bloques en 0. Los **`!important` bajaron de 105 a 9 en 4 archivos** (T58, 2026-09-11): los que quedan compiten con algo que el CSS del proyecto no controla (stylesheet de librería, estilos inline del template, autofill del motor, `prefers-reduced-motion`) o son gates funcionales — política completa en `erp-frontend/src/styles/CSS-ARCHITECTURE.md`. Las **65 alturas px crudas** de `pages/`+`shared/` quedaron como variables de densidad (T62) y el audit estático ya las vigila; los **`::ng-deep`** activos son **6**, todos sobre elementos internos de un child sin input equivalente (qué API haría falta para cada uno, en `CSS-ARCHITECTURE.md` §5).
+> - **Densidad visual (T48) y `::ng-deep` (T49) cerrados:** auditoría estática y de calidad de bloques en 0. Los **`!important` bajaron de 105 a 7 en 3 archivos** (T58 + T64, 2026-09-11): los que quedan compiten con algo que el CSS del proyecto no controla (autofill del motor, `prefers-reduced-motion`) o son gates funcionales — política completa en `erp-frontend/src/styles/CSS-ARCHITECTURE.md`. Las **65 alturas px crudas** de `pages/`+`shared/` quedaron como variables de densidad (T62) y el audit estático ya las vigila; los **`::ng-deep`** activos son **4** (T65), todos con marca `::ng-deep-ok` (contenido de `[innerHTML]` y el mixin de líneas de inventario) y vigilados por el gate `npm run audit:ng-deep`; las recetas para no volver a necesitarlos están en `CSS-ARCHITECTURE.md` §5.
 > - **Patrón `openDialog` eliminado completamente.** Todos los formularios y catálogos usan `ConfirmDialogService.ask()`. `document-form.base.ts` limpiada.
 > - **Plan visual v2**: Fases 0, 1, 3, 4, 5, 6 resueltas; Fase 2 cerrada en su parte de densidad (T48) y Fase 7 auditada (T49, 9 reglas justificadas). Sigue como tracking continuo (`docs/plans/plan-consistencia-visual-v2.md`).
 > - **Entorno E2E determinista (T53, 2026-09-10):** tipografías self-hosted (sin CDNs externos) y `e2e/auth.setup.ts` garantiza gestión fiscal abierta + series antes de cada corrida (el seed NO las crea). BD dev reproducible con `npm run db:recreate` y BD de tests E2E con `npm run test:e2e:prepare` (sincroniza `erp_test` con `prisma db push`; sin ese paso **13 de 14 suites fallaban** por esquema desactualizado). El mismo `setup` garantiza la terminal POS de E2E (`ensurePosTerminal`) porque el formulario de usuarios cambia de alto según existan terminales (T56: era la causa de un baseline visual que dependía del orden de los specs).
-> - **Karma estable (T62):** la config ya endurecida (`browserNoActivityTimeout: 300000`, `browserDisconnectTolerance: 5`, `timeoutInterval: 20000`, `--no-sandbox --disable-dev-shm-usage`) da **1527/1527 en ~3,5-4 min** de forma repetida (4 corridas verdes el 2026-09-11, incluida la del hook de pre-push); el "hang" histórico **no se reproduce** y cualquier fallo nuevo debe tratarse como regresión, no como flakiness de infraestructura.
+> - **Karma estable (T62):** la config ya endurecida (`browserNoActivityTimeout: 300000`, `browserDisconnectTolerance: 5`, `timeoutInterval: 20000`, `--no-sandbox --disable-dev-shm-usage`) da **1534/1534 en ~3,5-4 min** de forma repetida (corridas verdes el 2026-09-11, incluidas las del hook de pre-push); el "hang" histórico **no se reproduce** y cualquier fallo nuevo debe tratarse como regresión, no como flakiness de infraestructura. **Nota (T65):** en specs de componentes `OnPush`, cambiar un `@Input` mutando la instancia **no** re-renderiza la vista (el `[class]`/`@if` no se reevalúa): usar `fixture.componentRef.setInput(...)` + `fixture.detectChanges()` (o `markForCheck()`), como hacen los 7 tests nuevos.
 > - **Deuda estructural priorizada:** ver `AUDIT.md` §7 (S1 refactor del accounting engine es la única recomendada antes de F6; S2-S6 mantenimiento normal).
 
 ---
@@ -452,6 +460,7 @@ Frontend: la URL de la API se configura en `src/environments/environment.ts` (de
 11. ✅ **Gate visual determinista (T59, 2026-09-11)** — el gate fallaba en 18 formularios por datos volátiles (fecha del día y correlativo del chip `Nº <serie>`), no por CSS; se fijó el reloj (`page.clock.setFixedTime`) y se normalizan los correlativos en `e2e/forms-screenshot.helper.ts` → 52/52 repetible. Ver AUDIT T59.
 12. ✅ **Higiene del suite E2E y de los tests de carga (T60, 2026-09-11)** — `tsconfig.e2e.json` + `npm run typecheck:e2e` (de 130 errores a 0) y prettier con ratchet (`format:check` en CI + `format:check:touched`), más `npm run perf:k6:check` con el aviso de que el suite de carga resetea el tenant `default`. Ver AUDIT T60.
 13. ✅ **Dos verificaciones que nunca se ejecutaban (T61, 2026-09-11)** — `npm run e2e:ssr` levanta el build SSR de producción y corre el smoke (3 passed: render server-side, headers de hardening y rutas protegidas sin fuga de datos; antes el spec se skipeaba siempre) y `qa-tax-calculations` resuelve los indicadores con paginación completa + creación idempotente de `E2E-IVAINC`/`E2E-IVAEXC` (6 passed / 0 skipped; los 4 tests de cálculo inclusivo/exclusivo se skipeaban siempre por la ventana `?limit=20`). Inventario de los skips que quedan, con motivo: en AUDIT T61.
+14. ✅ **Frente C cerrado: `!important` 105 → 7 y `::ng-deep` 9 → 4 (T64 + T65, 2026-09-11)** — los 2 `!important` que quedaban en `luna-data-table` se resolvieron publicando el ancho mínimo por columna como **custom property** (`--col-min-width`) en vez de como estilo inline, y los 5 `::ng-deep` evitables se convirtieron en puntos de customización reales de LUNA: variante **`[presentation]="'field'"`** de `item-combobox` (en lugar de reestilar sus celdas desde `batches`), **`--luna-btn-height`** en `luna-button` (botón "quitar" de `partner-selector`), reglas normales donde el elemento es de la propia plantilla (`stock-valuation`, `luna-empty-state`) y eliminación del pierce muerto de `price-list-form`. Los 4 que quedan (contenido de `[innerHTML]` ×3 y el mixin de líneas de inventario) llevan marca `::ng-deep-ok` y hay **gate propio** (`npm run audit:ng-deep`, en CI). Evidencia: sonda de estilos computados antes/después con 0 diferencias, 7 tests Karma nuevos por estilo computado, Karma 1534/1534, `e2e:visual` 52/52. Ver AUDIT T64/T65.
 
 ---
 

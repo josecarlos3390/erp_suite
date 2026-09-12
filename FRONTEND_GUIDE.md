@@ -1217,6 +1217,21 @@ La densidad global la aplica `DensityService` (clases `density-compact` /
 
 ---
 
+- **Gates de `!important` y `::ng-deep` (T58–T65):** `npm run audit:important` y
+  `npm run audit:ng-deep` (ambos en el job `lint-test-build` de CI) fallan ante
+  cualquier uso sin marcar — la marca es `!important-ok: <razón>` /
+  `::ng-deep-ok: <razón>` en la misma línea, en las dos anteriores o en las
+  primeras 30 líneas del archivo. Estado actual: **7 `!important`** (autofill de
+  WebKit, `prefers-reduced-motion` y el gate funcional de carga) y **4
+  `::ng-deep`** (svg/`<strong>` insertados por `[innerHTML]` y el mixin
+  `inventory-form-lines`). Antes de recurrir a cualquiera de los dos, usar una
+  **receta de customización**: input o variante del componente
+  (`[presentation]`, `[wrapDescription]`, `[variant]`, `[size]`), CSS var que el
+  primitivo ya consume (`--luna-btn-height`, `--col-min-width`,
+  `--luna-action-icon-size`) o **custom property publicada en la plantilla**
+  cuando lo que pelea es un estilo inline. Tablas y checklist completas en
+  `erp-frontend/src/styles/CSS-ARCHITECTURE.md` §4 y §5.
+
 ## 13. Documentación adicional del frontend
 
 Estos documentos complementan a esta guía canónica. No son obligatorios para tareas rutinarias, pero deben consultarse antes de trabajar en los dominios que cubren.
