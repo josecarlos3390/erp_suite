@@ -152,7 +152,57 @@ vuelve a llamar a `confirm()` (evita "Solo se puede confirmar una entrada abiert
 
 ---
 
-## 4. Siguientes fases (backlog)
+## 4. Fase 4 — CATÁLOGOS BASE (unidades, grupos, impuestos y plan de cuentas) ✅ (implementada y verificada 2026-09-12, T69)
+
+**Objetivo de la fase:** poder cargar por Excel los catálogos que los maestros ya
+implementados referencian **por código** — sin ellos, la carga de artículos falla
+con "el código de X no existe en el catálogo del tenant".
+
+### Piezas compartidas (nuevas)
+
+| Pieza | Archivo | Detalle |
+|-------|---------|---------|
+| Generador de plantillas | `backend-erp/src/common/import-workbook.util.ts` | `buildImportWorkbook()` arma el formato estándar de 3 hojas (**Datos** con encabezados amigables y filas `EJEMPLO:`, **Instrucciones** por columna, **Catálogos**), más los parsers reutilizables: `normalizeImportRow()` (etiqueta→clave ignorando mayúsculas/espacios), `isExampleOrBlankRow()`, `parseImportBoolean()` (SÍ/NO/1/0/x), `parseImportText/Number/Date` y el tipo `BulkImportSummary` (`created`, `updated`, `errors`, `total`). |
+| Utilidades HTTP | `backend-erp/src/common/bulk-import-http.util.ts` | `sendTemplateDownload()` (headers del .xlsx + nombre con fecha) y `parseExcelUpload()` (lee la primera hoja, valida vacío y tope de 10.000 filas). Los controladores declaran su propio `@RequirePermission` y delegan aquí. |
+
+### Entidades incorporadas
+
+| Entidad | Plantilla (`*-import-template.ts`) | Endpoints | Particularidades del importador |
+|---------|-----------------------------------|-----------|---------------------------------|
+| **Unidades de medida** | `uoms/uom-import-template.ts` (Código, Nombre, Descripción, Estado) | `GET/POST /uoms/bulk-import[/template]` | Upsert por código, validación de estado. |
+| **Grupos de artículos** | `item-groups/item-group-import-template.ts` (4 columnas + **23 cuentas**) | `GET/POST /item-groups/bulk-import[/template]` | Resuelve las cuentas **por código** contra el plan del tenant; si vienen vacías, el servicio aplica sus defaults (mismo alta que el formulario). |
+| **Indicadores de impuesto** | `tax-indicators/tax-indicator-import-template.ts` (12 columnas) | `GET/POST /tax-indicators/bulk-import[/template]` | La **tasa se informa en %** (13 = 13%) y se guarda como fracción; valida rango 0-100 y método de cálculo (`STANDARD`/`BOLIVIA_SIN`); fechas de vigencia en ISO o dd/mm/aaaa. |
+| **Plan de cuentas** | `accounts/account-import-template.ts` (16 columnas) | `GET/POST /accounts/bulk-import[/template]` | Jerarquía por **código de cuenta padre** con **reintentos en pasadas** (hasta 5): si el padre aparece más abajo en la plantilla, la fila se difiere y se crea igual. |
+
+**Upsert por código en las cuatro:** re-importar la misma plantilla no duplica
+registros; actualiza los campos informados de los que ya existen (`updated` en el
+resumen, que el frontend muestra como "N creados, M actualizados").
+
+### Frontend
+
+| Pieza | Archivo | Detalle |
+|-------|---------|---------|
+| Cliente compartido | `erp-frontend/src/app/shared/bulk-upload/bulk-import.service.ts` | `downloadTemplate(path)` (blob) y `upload(path, file)` (multipart) + tipo `BulkImportResult` con `updated`. |
+| Páginas | `erp-frontend/src/app/pages/bulk-upload/{uoms,item-groups,tax-indicators,accounts}-bulk-upload.component.ts` | Componentes finos (~60 líneas) sobre `app-bulk-upload`, con sus columnas y hints. |
+| Rutas y menú | `routes/settings-admin.routes.ts` + `core/layout/sidebar/sidebar.config.ts` | `/bulk-upload/uoms`, `/bulk-upload/item-groups`, `/bulk-upload/tax-indicators`, `/bulk-upload/accounts`. |
+| Resumen de importación | `shared/bulk-upload/bulk-upload.component.ts` | El toast ahora distingue creados y actualizados. |
+
+### Verificación live (2026-09-12)
+
+Contra el backend local, con la plantilla descargada de la propia API:
+
+- `GET /{uoms,tax-indicators,item-groups,accounts}/bulk-import/template` → 200,
+  .xlsx con las 3 hojas esperadas (p. ej. `Unidades de medida / Instrucciones /
+  Catálogos`; 20-85 kB según catálogos del tenant).
+- `POST …/bulk-import` con 2 filas del mismo código → `{created:1, updated:1}`
+  (upsert), tasa `13` → guardada como `0.13`, grupo con cuentas por código →
+  creado, y **plan de cuentas con la hija ANTES del padre** → `{created:2}` con
+  `hija nivel 2 parentId=304` (los reintentos funcionan).
+- Limpieza de los registros de prueba vía API ✓.
+
+---
+
+## 5. Siguientes fases (backlog)
 
 - **Fase 2 — PARTNERS ✅ (implementada y verificada 2026-09-01):** plantilla oficial
   `GET /partners/bulk-import/template` con 46 columnas (identificación, contacto,
@@ -169,15 +219,19 @@ vuelve a llamar a `confirm()` (evita "Solo se puede confirmar una entrada abiert
   arriba. Plantilla con artículo (código), almacén (código), cantidad y costo unitario;
   reutiliza `items.bulkImportStock` con resolución de códigos y crea Entradas de
   Mercadería consolidadas por almacén (kardex + asiento contable automático).
-- **Fase 4 — Datos maestros adicionales:** cuentas contables, grupos, UoMs, impuestos
-  (mismos patrones: plantilla + catálogos + resolución por código).
+- **Fase 4 — Datos maestros adicionales: cuentas contables, grupos, UoMs, impuestos
+  ✅ (implementada y verificada 2026-09-12, T69):** ver sección 4 arriba.
 - **Fase 5 — Importación documental (opcional):** precios de lista, terceros con
   dimensiones.
 
 ### Criterios de aceptación (transversal)
 
-- [ ] El botón "Descargar plantilla" baja un .xlsx real con las 3 hojas.
-- [ ] El usuario rellena SOLO con códigos de la hoja Catálogos (sin IDs internos).
-- [ ] Errores por fila con mensaje en español y número de fila del Excel.
-- [ ] Los registros creados son válidos para el flujo normal del ERP (combinaciones
-      canBeSold/CanBePurchased/CanBeInventoried, impuestos, cuentas).
+- [x] El botón "Descargar plantilla" baja un .xlsx real con las 3 hojas — verificado
+      en las 4 plantillas nuevas (`Unidades de medida`, `Grupos de artículos`,
+      `Indicadores de impuesto`, `Plan de cuentas` + `Instrucciones` + `Catálogos`).
+- [x] El usuario rellena SOLO con códigos de la hoja Catálogos (sin IDs internos).
+- [x] Errores por fila con mensaje en español y número de fila del Excel
+      (`{ row, message }`, fila 2 = primera fila de datos; cubierto por tests).
+- [x] Los registros creados son válidos para el flujo normal del ERP (los
+      importadores delegan en los servicios de alta/edición de cada entidad, así
+      que aplican sus mismas validaciones y defaults).

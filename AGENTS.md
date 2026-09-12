@@ -212,6 +212,14 @@ npm run audit:ng-deep    # gate de `::ng-deep`: falla ante usos sin justificar (
 - **Backend:** pre-commit lint, pre-push `npm test`.
 - **Frontend:** pre-commit lint, pre-push tests Karma + build producción.
 
+> **Regla de proceso (2026-09-12):** nunca hacer *round-trip* de archivos de código
+> por PowerShell (`Get-Content -Raw` + `Set-Content -Encoding utf8`): en PS 5.1 el
+> archivo se lee como Windows-1252 y se reescribe como UTF-8, lo que **mojibakea los
+> acentos** de todo el archivo (`importación` → `importaciÃ³n`). Usar las
+> herramientas de edición del agente (o Node) para escribir código; si hay que
+> tocarlo por script, escribir con `fs.writeFileSync(..., 'utf8')` y verificar con
+> `git diff --numstat` que solo aparezcan las inserciones esperadas.
+
 ---
 
 ## 4. Estado real del proyecto (2026-09-11)
