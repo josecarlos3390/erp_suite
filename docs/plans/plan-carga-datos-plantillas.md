@@ -1,7 +1,7 @@
 # Plan — Carga de datos masiva (plantillas Excel oficiales)
 
-> **Fecha:** 2026-09-01 · **Estado:** Fases 1–3 (ARTÍCULOS, PARTNERS, STOCK INICIAL)
-> implementadas y verificadas.
+> **Fecha:** 2026-09-01 · **Estado:** Fases 1–5 implementadas y verificadas
+> (ARTÍCULOS, PARTNERS, STOCK INICIAL, CATÁLOGOS BASE y PRECIOS DE LISTA).
 > **Objetivo:** que el usuario pueda descargar una plantilla Excel oficial por entidad,
 > rellenarla con los datos necesarios e importantes, y cargarla con drag & drop
 > (ya existente) para crear registros en el ERP.
@@ -202,7 +202,51 @@ Contra el backend local, con la plantilla descargada de la propia API:
 
 ---
 
-## 5. Siguientes fases (backlog)
+## 5. Fase 5 — Importación documental (precios de lista) ✅ (implementada y verificada 2026-09-12, T70)
+
+**Alcance real de la fase (con un hallazgo):** el plan la describía como "precios de
+lista, terceros con dimensiones". La mitad de **precios de lista** se implementó; la
+de **terceros con dimensiones** quedó **descartada por el modelo de datos** (ver
+"Hallazgo" abajo).
+
+### Piezas
+
+| Pieza | Archivo | Detalle |
+|-------|---------|---------|
+| Plantilla | `backend-erp/src/price-lists/price-list-import-template.ts` | 11 columnas: Código de lista*, Código de artículo*, Precio neto*, Precio bruto, Moneda y **3 escalas de cantidad** (Hasta cantidad N + Descuento % N). Catálogos: listas, monedas y artículos del tenant. |
+| Endpoints | `GET/POST /price-lists/bulk-import[/template]` | Declarados **antes** de `:id`; permiso `price-lists:create`; tope de 10.000 filas. |
+| Importador | `price-lists.service.ts → bulkImport()` | Resuelve lista y artículo **por código**, hace **upsert por (lista, artículo)** y reemplaza las escalas del artículo. El `priceResult` de cada escala se calcula sobre el **precio bruto** (`bruto × (1 − %/100)`, redondeo a 2 decimales), igual que el formulario; valida descuentos 0-100 y rangos ascendentes. Al terminar dispara la **cascada normal** (`cascadePriceChanges`: precios especiales + listas derivadas) agrupando por lista en una transacción por lista. |
+| Frontend | `/bulk-upload/price-lists` | Página fina sobre `app-bulk-upload` + entrada en el menú Carga Masiva (T70). |
+
+### Verificación live (2026-09-12)
+
+Con una **lista temporal** creada por API (y eliminada al final, sin residuos):
+
+- `GET /price-lists/bulk-import/template` → 200, .xlsx de 28 kB con
+  `Precios de lista / Instrucciones / Catálogos`.
+- `POST /price-lists/bulk-import` con 2 filas sobre el mismo artículo (primera crea,
+  segunda actualiza) → **`{created:1, updated:1, errors:[], total:2}`**.
+- Estado final en la lista: `neto=95`, `bruto=107.35`, `moneda=BOB` y **2 escalas**
+  con `3% = 104.1295` y `6% = 100.909` (calculadas sobre el bruto ✓).
+- Sin `ItemPriceHistory` ni cambios en el precio del maestro del artículo (la cascada
+  de una lista **no default** no toca `Item.price`) ✓.
+
+### Hallazgo: "terceros con dimensiones" no aplica (decisión documentada)
+
+El plan pedía importar **terceros con dimensiones**, pero el modelo de datos **no
+tiene dimensiones por socio**: `DimensionConfig` + `JournalEntryLine.dimension1..5`
+son dimensiones **contables de la línea de asiento**, y `Partner` no tiene campos de
+dimensión (ni relación con `DimensionConfig`). Agregarlas solo como columnas en el
+maestro sería **dato muerto** — exactamente el antipatrón que T67 corrigió (campos
+existentes que nada lee). Si el negocio quiere dimensiones por defecto por socio,
+el trabajo es: (1) decidir la semántica (¿default al crear documentos para ese
+socio?), (2) `Partner.dimension1..5` + formulario, (3) **cablearlas en los builders**
+al construir las líneas, y (4) recién ahí la plantilla. Queda como propuesta, no
+como import pendiente.
+
+---
+
+## 6. Siguientes fases (backlog)
 
 - **Fase 2 — PARTNERS ✅ (implementada y verificada 2026-09-01):** plantilla oficial
   `GET /partners/bulk-import/template` con 46 columnas (identificación, contacto,
@@ -221,8 +265,9 @@ Contra el backend local, con la plantilla descargada de la propia API:
   Mercadería consolidadas por almacén (kardex + asiento contable automático).
 - **Fase 4 — Datos maestros adicionales: cuentas contables, grupos, UoMs, impuestos
   ✅ (implementada y verificada 2026-09-12, T69):** ver sección 4 arriba.
-- **Fase 5 — Importación documental (opcional):** precios de lista, terceros con
-  dimensiones.
+- **Fase 5 — Importación documental: precios de lista ✅ (2026-09-12, T70)** — ver
+  sección 5. La parte de "terceros con dimensiones" quedó descartada: el modelo no
+  tiene dimensiones por socio (hallazgo documentado en la misma sección).
 
 ### Criterios de aceptación (transversal)
 
