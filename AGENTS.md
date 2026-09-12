@@ -193,6 +193,7 @@ npm run audit:density:ci # gate de densidad: estático (px crudos + tablas) + ca
 npm run audit:density:e2e# auditoría dinámica Compacta vs Espaciosa (bajo demanda)
 npm run audit:important  # gate de `!important`: falla ante usos sin justificar (!important-ok)
 npm run audit:ng-deep    # gate de `::ng-deep`: falla ante usos sin justificar (::ng-deep-ok)
+npm run audit:pos-scope  # gate: ninguna clase propia del POS estiliza otras páginas
 ```
 
 > **Regla de estilo (T58):** todo override de un primitivo LUNA se resuelve por
@@ -254,6 +255,7 @@ npm run audit:ng-deep    # gate de `::ng-deep`: falla ante usos sin justificar (
 | `npm run audit:density:ci` | ✅ **OK** | 0 hallazgos estáticos + 0 de calidad de bloques |
 | `npm run audit:important` | ✅ **OK** | **7 usos de `!important` en 3 archivos**, todos compitiendo con algo fuera del control propio (librería, autofill, `prefers-reduced-motion`) o gates funcionales — desde T58 (antes 105) y T64 (los 2 de `luna-data-table` pasaron a custom property) |
 | `npm run audit:ng-deep` | ✅ **OK** | **4 usos de `::ng-deep` en 3 archivos, los 4 justificados** con `::ng-deep-ok` (contenido de `[innerHTML]` ×3 y el mixin de líneas de inventario) — desde T65 (antes 9 sin métrica reproducible) |
+| `npm run audit:pos-scope` | ✅ **OK** | **0 filtraciones** — gate nuevo (T86, `scripts/audit-pos-scope.mjs`, en CI): de los 147 selectores de nivel raíz del POS sin acotar, **147 están ancorados** en clases propias y **0 son globales puros**; falla si una clase propia del POS se usa fuera de `pages/pos` sin `:where(app-pos)`. Sustituye al barrido de las 176 clases, que costaba **+4,11 kB (+11,2 %)** de CSS y no arreglaba ninguna filtración real |
 | `npx playwright test density-raw-tables.spec.ts` | ✅ **OK** | tablas crudas medidas con datos reales (1px → 4px) |
 | `npm run a11y:check` | ✅ **OK** | **0 hallazgos** — gate estático nuevo (`scripts/audit-a11y.mjs`, T74): R1 botones sin nombre accesible, R2 `img` sin `alt`, R3 controles dentro de `app-filter-field` sin `ariaLabel`/`label`. Reemplaza a `scripts/check-icon-button-a11y.js`, un archivo **que nunca existió** y hacía fallar siempre el paso "Accessibility Check" de CI con `MODULE_NOT_FOUND` |
 | Auditoría axe de accesibilidad (Playwright + axe-core) | ✅ **OK** | **0 violaciones en 16/16 páginas** autenticadas (6 listados, 3 formularios, dashboard, plan de cuentas, usuarios, Carga Masiva, reporte y POS) — línea base 9 violaciones en los 6 listados; metodo y hallazgos en AUDIT T74 y `FRONTEND_GUIDE.md` §1.6 |
