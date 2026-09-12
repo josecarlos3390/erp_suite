@@ -149,7 +149,7 @@ npm run start:dev        # watch mode
 npm run start:prod       # node dist/main.js
 npm run format           # prettier --write
 npm run lint             # eslint — 0 errores, 0 warnings
-npm test                 # jest — 162 suites / 1747 tests
+npm test                 # jest — 164 suites / 1814 tests
 npm run test:watch       # jest --watch
 npm run test:cov         # jest --coverage
 npm run test:e2e         # jest E2E — 14 suites / 93 tests (sincroniza antes la BD de tests)
@@ -173,7 +173,7 @@ npm run format           # prettier --write
 npm run lint             # ng lint — 0 errores, 0 warnings
 npm test                 # Karma + Jasmine — 1558 tests
 npm run e2e              # playwright test — suite completa (incluye capturas y diagnósticos)
-npm run e2e:functional   # gate funcional de escritorio (196 tests) en una sola pasada — config propia
+npm run e2e:functional   # gate funcional de escritorio (201 tests) en una sola pasada — config propia
 npm run e2e:mobile       # gate móvil/tablet: lista curada de 11 specs en mobile-chrome + tablet-safari
 npm run e2e:captures     # capturas de formularios mobile/desktop (herramienta, no gate)
 npm run e2e:visual       # regresión visual de los 52 formularios (baselines propios)
@@ -231,7 +231,7 @@ npm run audit:ng-deep    # gate de `::ng-deep`: falla ante usos sin justificar (
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npm test` | ✅ **OK** | **162 suites / 1747 tests passed** (incluye `plan-limits.service.spec.ts`, `permissions-coverage.spec.ts`, `warehouse-branch.util.spec.ts`) |
+| `npm test` | ✅ **OK** | **164 suites / 1814 tests passed** (2026-09-12, tras T81; incluye `document-series.service.spec.ts` con los 4 casos de sanado/colisión, `plan-limits.service.spec.ts`, `permissions-coverage.spec.ts`, `warehouse-branch.util.spec.ts`) |
 | `npx tsc --noEmit` (proyecto y specs) | ✅ **OK** | 0 errores |
 | `npm run test:e2e` | ✅ **OK** | **14 suites / 93 tests passed** (2026-09-10; el script sincroniza antes el esquema de `erp_test` con `prisma db push` — ver nota de entorno) |
 | `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`) |
@@ -245,7 +245,7 @@ npm run audit:ng-deep    # gate de `::ng-deep`: falla ante usos sin justificar (
 | `npm run build` | ✅ **OK** | 0 errores (bundle inicial ~1.27 MB) |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
 | `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1558 / 1558 tests** (1545 previos + 7 de T65 que fijan puntos de customización por estilo computado + 6 nuevos de T74 para el ARIA/foco de `luna-menu`) |
-| `npm run e2e:functional` | ✅ **OK** | **196 tests en una sola pasada: 192 passed / 0 failed / 4 skipped** (~25 min; chromium, con el proyecto fijado desde T60) — mismo escenario que CI (BD recién sembrada). T73 sustituyó 6 skips por datos garantizados de forma idempotente (`e2e/helpers/ensure-accounting-data.ts`); los 4 que quedan son condicionales por diseño (2 del smoke SSR, `density-audit` con `DENSITY_AUDIT=1` y el modo comercial de conciliación) — inventario en AUDIT T61/T73 |
+| `npm run e2e:functional` | ✅ **OK** | **201 tests en una sola pasada: 197 passed / 0 failed / 4 skipped** (26,1 min, chromium, con el proyecto fijado desde T60, exit=0) — esta corrida es sobre la **BD recién sembrada** (escenario de CI) y es la que cierra T79: la primera corrida en ese escenario dio **165 passed / 9 failed / 23 did not run** por la colisión de correlativos entre series del mismo prefijo (T81, sanado + reintento). T73 sustituyó 6 skips por datos garantizados de forma idempotente (`e2e/helpers/ensure-accounting-data.ts`); los 4 que quedan son condicionales por diseño (2 del smoke SSR, `density-audit` con `DENSITY_AUDIT=1` y el modo comercial de conciliación) — inventario en AUDIT T61/T73 |
 | `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (deterministas desde T59: fecha fija `VISUAL_REFERENCE_TIME` + correlativos normalizados en `e2e/forms-screenshot.helper.ts`) |
 | `npm run typecheck:e2e` | ✅ **OK** | 0 errores (`tsconfig.e2e.json`, 55 archivos de `e2e/`) tras T60 |
 | `npm run format:check` | ✅ **OK** | prettier limpio en **todo `e2e/` y todo el SCSS de `src/`** (T62 cerró los 67 SCSS que faltaban); el TS/HTML legacy se gestiona con `format:check:touched` |
@@ -276,9 +276,11 @@ npm run audit:ng-deep    # gate de `::ng-deep`: falla ante usos sin justificar (
 >   un problema de layout móvil abierto en el paso «Pago Saliente» de `purchase-full-journey-ui`.
 > - **Correlativos por serie (T81, 2026-09-12):** el código es `prefijo + contador de la serie`
 >   **sin la gestión**, así que dos series activas del mismo `docType` con el mismo prefijo pueden
->   chocar contra el índice único `(tenantId, code)`; `DocumentSeriesService` auto-sana el contador
->   contra el mayor código emitido con ese prefijo (cacheado por serie y proceso). Al crear series
->   de prueba/QA conviene arrancar el contador muy alto (el helper de E2E usa 1000).
+>   chocar contra el índice único `(tenantId, code)`; `DocumentSeriesService` **auto-sana el contador**
+>   contra el mayor código emitido con ese prefijo (cacheado por serie y proceso) y, si aun así el
+>   número asignado ya está usado por otra serie, **consume el siguiente** (hasta 10 intentos) en vez
+>   de devolver un código duplicado. Al crear series de prueba/QA conviene arrancar el contador muy
+>   alto (el helper de E2E usa 1000).
 > - **CSS global de componentes `ViewEncapsulation.None` (T84, 2026-09-12):** acotar con
 >   **`:where(<host>)`**, nunca con un prefijo de host a secas (sube la especificidad y cambia el
 >   aspecto dentro del propio componente). Receta y procedimiento en
