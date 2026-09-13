@@ -735,6 +735,46 @@ Línea adicional:
   Descripción: "Diferencia de cambio — COB-001"
 ```
 
+**Si el cliente retiene impuestos (T91, 2026-09-13):**
+
+El cliente retiene IT/IUE y paga el neto. La CxC del documento origen quedó abierta
+por el **total facturado**, así que el importe retenido no se pierde: se debita a la
+cuenta de **retención por cobrar** (activo) y la factura se cierra completa.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  COBRO: COB-070 | Cliente: ABC Corp | Total facturado: Bs 3.990  │
+│  Retención IT 3%: Bs 119,70 | Cobrado en caja: Bs 3.870,30       │
+├─────────────────────────────────────────────────────────────────┤
+│  ASIENTO CONTABLE:                                               │
+│  ─────────────────────────────────────────────────────────────── │
+│  Línea 1:  Débito  Caja/Banco (CASH/BANK)            Bs 3.870,30 │
+│            "Cobro COB-070 — CASH"                                │
+│  Línea 2:  Débito  1.1.2.08.001 IT Retenido por Cobrar  Bs 119,70│
+│            (WITHHOLDING_TAX_RECEIVABLE — cuenta del tipo)        │
+│            "Cobro COB-070 — Retención sufrida"                   │
+│  Línea 3:  Crédito CxC Clientes M/N (ACCOUNTS_RECEIVABLE)        │
+│            Bs 3.990,00 — "Cobro COB-070 — Aplicación CxC"        │
+│                                                                   │
+│  TOTALES: Débitos 3.990 = Créditos 3.990 ✅                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+| Elemento | Regla |
+|---|---|
+| Cuenta del débito | `WithholdingTaxType.receivableAccountId` del tipo elegido; si el tipo no la tiene, la cuenta genérica del mapping `INCOMING_PAYMENT / WITHHOLDING_TAX_RECEIVABLE` (`1.1.2.08.003`) |
+| Cuentas por defecto (BO) | IT → `1.1.2.08.001`, IUE → `1.1.2.08.002` (sembradas); RC-IVA no tiene cuenta sufrida (solo se retiene: somos agentes) |
+| Importe | `IncomingPayment.withholdingAmount` (el monto retenido); la suma de métodos de pago debe ser `total − retención` |
+| Alcance | Solo cobros de facturas/notas de débito. En un cobro **a cuenta contable** no hay CxC que cerrar y el backend lo rechaza con 400 |
+| Contrapartida | La CxC se acredita por el **total facturado** (no por el neto): así la factura queda con `balanceDue = 0` |
+
+> **Contexto del fix (T91):** antes de esta fecha el campo «Retención» del cobro
+> existía en el formulario y en el DTO, pero el asiento **no lo leía**: el guardado
+> fallaba con `Asiento desbalanceado en INCOMING_PAYMENT … (diff = retención)` (500).
+> La retención sufrida es un **activo** (por cobrar o compensar contra el impuesto),
+> no un gasto ni un pasivo: no se usa la cuenta de IT/IUE por pagar, que es la del
+> lado en que retenemos nosotros al proveedor.
+
 ### **11. BANK STATEMENT (Extracto Bancario) — cargos tipificados ITF**
 
 **Momento:** Al postear el extracto bancario (`POST /bank-statements/:id/post`)

@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-09-12 (cierre de T77/T79–T84).  
+> **Última actualización:** 2026-09-13 (cierre de T90 y T91).  
 > **Versión canónica de restricciones transversales.**  
 > Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
@@ -232,7 +232,7 @@ npm run audit:pos-scope  # gate: ninguna clase propia del POS estiliza otras pá
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npm test` | ✅ **OK** | **164 suites / 1814 tests passed** (2026-09-12, tras T81; incluye `document-series.service.spec.ts` con los 4 casos de sanado/colisión, `plan-limits.service.spec.ts`, `permissions-coverage.spec.ts`, `warehouse-branch.util.spec.ts`) |
+| `npm test` | ✅ **OK** | **164 suites / 1823 tests passed** (2026-09-13, tras T91; incluye `document-series.service.spec.ts` con los 4 casos de sanado/colisión, `plan-limits.service.spec.ts`, `permissions-coverage.spec.ts`, `warehouse-branch.util.spec.ts` y los 9 tests nuevos de T91 — retención sufrida en el cobro) |
 | `npx tsc --noEmit` (proyecto y specs) | ✅ **OK** | 0 errores |
 | `npm run test:e2e` | ✅ **OK** | **14 suites / 93 tests passed** (2026-09-10; el script sincroniza antes el esquema de `erp_test` con `prisma db push` — ver nota de entorno) |
 | `npm run perf:k6` | ✅ **OK** | **5/5 escenarios con 100 % de checks y 0 % de fallos** en perfil `small` (~4,5 min). El perfil **`large`** (25 VUs) corre **programado** —job `load-tests-large`, semanal + a demanda— en **modo medición** (`K6_LATENCY_MODE=report`: exige los umbrales de fallos y **reporta sin bloquear** los de latencia, porque el techo de escritura del entorno los cruza sin ningún fallo funcional: p(95) 6,7 s / 5,6 s frente a 1,5 s / 2 s); el resumen queda como artefacto `k6-large-summary` (T89) |
@@ -290,7 +290,18 @@ npm run audit:pos-scope  # gate: ninguna clase propia del POS estiliza otras pá
 >   **`:where(<host>)`**, nunca con un prefijo de host a secas (sube la especificidad y cambia el
 >   aspecto dentro del propio componente). Receta y procedimiento en
 >   `erp-frontend/src/styles/CSS-ARCHITECTURE.md` §6.b.
-> - **Deuda estructural y de proceso: sin pendientes abiertos (2026-09-12).** `AUDIT.md` §7 (S1–S18, S32–S39) está **liquidada** —incluido el último «pendiente menor» de S1 (`previewJournalEntryFromDraft`, cerrado el 2026-08-09)— y §5 (issues activos) no tiene ninguna fila abierta. Los frentes de proceso/QA y de carga también quedaron cerrados: **T88** (el gate funcional ya no ensucia el árbol con 4 PNG) y **T89** (el perfil `large` de k6 corre programado en modo medición, con el techo de latencia a 25 VUs descrito como limitación del entorno). El pendiente menor de UX de `docs/plans/plan-mejoras-ux-ui-frontend.md` quedó cerrado en **T90** (7 botones de listado + 18 estados vacíos, y de paso 6 comprobaciones del suite de E2E que no verificaban nada: guardas `if ((await locator.count()) > 0)` que nunca se ejecutaban). Lo único que sigue abierto es **producto** (F5.1, G1–G4, F6.6, F5.3/F5.4, F7.3), la decisión de negocio sobre **retenciones en ventas** y dos **riesgos declarados de QA**: el desglose multimoneda de `sap-b1-ui-verification` (comprobación condicionada a un dato que aún no existe) y la convención de copy, que sigue sin gate automático.
+> - **Baselines visuales: nunca capturar un estado transitorio (T91, 2026-09-13).** Un cambio de
+>   tiempos de carga puede mover un elemento que aún no está asentado y dejar el baseline con un
+>   ancho que ya no se reproduce: el baseline del formulario de cobros había guardado el chip
+>   «Nº <serie>» en su estado **sin resolver** (texto de 58 px frente a 73 px resuelto, misma altura
+>   de glifo) y el gate falló con **747 px localizados en la caja del chip** al añadir una petición
+>   más al `ngOnInit`. Cómo diagnosticarlo sin ver la imagen: perfil de **bandas por filas** (para
+>   separar un desplazamiento de un cambio real) + **búsqueda del desplazamiento vertical** que
+>   mejor empareja cada región (el resto del formulario cuadraba con **dy=+100 px** exactos, la fila
+>   nueva). Prevención: `forms-screenshot.helper.ts` desactiva transiciones/animaciones, espera a
+>   que el chip esté **resuelto**, normaliza los dígitos recorriendo **nodos de texto** (asignar
+>   `textContent` aplasta los hijos) y aplica el último parche justo antes de capturar.
+> - **Deuda estructural y de proceso: sin pendientes abiertos (2026-09-12).** `AUDIT.md` §7 (S1–S18, S32–S39) está **liquidada** —incluido el último «pendiente menor» de S1 (`previewJournalEntryFromDraft`, cerrado el 2026-08-09)— y §5 (issues activos) no tiene ninguna fila abierta. Los frentes de proceso/QA y de carga también quedaron cerrados: **T88** (el gate funcional ya no ensucia el árbol con 4 PNG) y **T89** (el perfil `large` de k6 corre programado en modo medición, con el techo de latencia a 25 VUs descrito como limitación del entorno). El pendiente menor de UX de `docs/plans/plan-mejoras-ux-ui-frontend.md` quedó cerrado en **T90** (7 botones de listado + 18 estados vacíos, y de paso 6 comprobaciones del suite de E2E que no verificaban nada: guardas `if ((await locator.count()) > 0)` que nunca se ejecutaban) y las **retenciones en ventas** se resolvieron en **T91** (el cobro con retención ya contabiliza: antes rompía el guardado con un 500 de «Asiento desbalanceado»). Lo único que sigue abierto es **producto** (F5.1, G1–G4, F6.6, F5.3/F5.4, F7.3) y los **riesgos declarados de QA**: el desglose multimoneda de `sap-b1-ui-verification` (comprobación condicionada a un dato que aún no existe), la convención de copy sin gate automático, la ausencia de un reporte de «retenciones sufridas» (T91 dejó el asiento y la validación, no el certificado) y la falta de pantalla de administración de tipos de retención (hoy se configuran por seed/API).
 
 ---
 
