@@ -2372,6 +2372,34 @@ Rules that came out of that frente:
 5. **Local 429s after many consecutive runs** are the dev throttler, not a product bug:
    restart the dev backend before blaming a spec.
 
+### 21.7 Document→document traceability: the real origin line id must survive
+
+Source mappers (`pages/*/mappers/*.mapper.ts`) emit the origin **line** id under the
+document's own name — `salesOrderItemId`, `salesQuotationItemId`, `deliveryOrderItemId`,
+`orderItemId`, `quotationItemId`, `receiptItemId`, `reserveInvoiceItemId` — and the
+backend DTO **requires that real id** when the line belongs to a source document (it
+validates ownership and pending quantities with it). The generic draft hydration is
+`commercial-document-form.base.ts#buildLineFromDraft` (used by **14 forms** through
+`hydrateFromDraft`, plus the source-draft paths): **any id a mapper emits that this
+method does not know is silently dropped**, and the save payload then goes out without
+it → `400 items.0.<field> must be an integer number`, an error that *looks* like a
+backend problem but is a frontend hydration gap.
+
+Real case (T93): «Copiar a → F. Reserva Venta» from a sales order built the line with
+`salesOrderItemId`, the hydration kept only `orderItemId`, and `JSON.stringify` omitted
+the missing key — so the flow was broken until the shared builder learned the field.
+The payload should also fall back to the generic name when the flow allows it
+(`l.get('salesOrderItemId')?.value ?? l.get('orderItemId')?.value`, as the sale-invoice
+form already did, which is why *that* flow was not affected).
+
+**Rules:** (1) adding a mapper or a traceability field means adding its control to
+`buildLineFromDraft` **and** reading it in the save payload; (2) when the user asks
+"why does it happen?", reproduce it against the API with the exact payload the form
+sends — the difference between `undefined` (key omitted) and a wrong value is the whole
+diagnosis; (3) keep a regression spec at the UI level that runs the whole flow and
+asserts the **link** survived (`orderItemId` of the created document == order line id),
+because the payload-level test alone would not have caught the hydration gap.
+
 ----
 
 ## 22. Hands-on checklist before delivering a frontend change

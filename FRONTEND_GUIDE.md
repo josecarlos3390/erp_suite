@@ -1126,6 +1126,25 @@ Reglas rápidas (detalle en el doc enlazado):
 - **Cambio de impuesto**: `onLineTaxChange()` debe llamar `applyLineTax()` y luego `this.cdr.detectChanges()` para refrescar los totales del documento, porque los montos afectados viven en controles `disabled` con `emitEvent: false`.
 - **`detectChanges()` vs `markForCheck()`**: con `HttpClient` + `withFetch()` (no Zone.js) usar `detectChanges()` tras async; para refresco síncrono inmediato de totales tras mutar el FormArray usar `detectChanges()`; `markForCheck()` solo cuando un ancestro ya garantizará un tick de CD.
 
+> **Trazabilidad documento → documento (T93, 2026-09-13).** Los mappers de origen
+> (`*.mapper.ts`) emiten el id de la línea origen con el **nombre del documento**
+> (`salesOrderItemId`, `salesQuotationItemId`, `deliveryOrderItemId`,
+> `deliveryItemId`, `orderItemId`, `quotationItemId`, `receiptItemId`,
+> `reserveInvoiceItemId`) y el **DTO del backend exige ese id real** cuando la línea
+> pertenece a un documento origen (lo usa para validar pertenencia y cantidades
+> pendientes). La hidratación genérica de borradores vive en
+> `commercial-document-form.base.ts#buildLineFromDraft`: **si un mapper emite un id
+> que ese método no conoce, el valor se pierde al construir la línea del
+> formulario** y el guardado falla con un `400 … must be an integer number` que
+> apunta al backend aunque el origen sea el frontend (así se rompió «F. Reserva
+> desde pedido» en T93, y el mismo agujero existía para `salesQuotationItemId`).
+>
+> **Regla:** al añadir un mapper nuevo (o un campo de trazabilidad), comprobar que
+> `buildLineFromDraft` tenga el control correspondiente y que el payload de guardado
+> lo lea (con fallback al nombre genérico si el flujo lo permite). El listado de
+> mappers está en `pages/*/mappers/` y el de los 14 formularios que restauran
+> borradores por ese builder se ve con `grep -rn "hydrateFromDraft" src/app`.
+
 ---
 
 ## 11. Checklists
