@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-09-13 (cierre de T90, T91 y T92).  
+> **Última actualización:** 2026-09-13 (cierre de T90–T95).  
 > **Versión canónica de restricciones transversales.**  
 > Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
@@ -150,7 +150,7 @@ npm run start:dev        # watch mode
 npm run start:prod       # node dist/main.js
 npm run format           # prettier --write
 npm run lint             # eslint — 0 errores, 0 warnings
-npm test                 # jest — 164 suites / 1814 tests
+npm test                 # jest — 164 suites / 1824 tests
 npm run test:watch       # jest --watch
 npm run test:cov         # jest --coverage
 npm run test:e2e         # jest E2E — 14 suites / 93 tests (sincroniza antes la BD de tests)
@@ -172,7 +172,7 @@ npm run watch            # ng build --watch --configuration development
 npm run serve:ssr:erp-frontend   # SSR local
 npm run format           # prettier --write
 npm run lint             # ng lint — 0 errores, 0 warnings
-npm test                 # Karma + Jasmine — 1558 tests
+npm test                 # Karma + Jasmine — 1566 tests
 npm run e2e              # playwright test — suite completa (incluye capturas y diagnósticos)
 npm run e2e:functional   # gate funcional de escritorio (201 tests) en una sola pasada — config propia
 npm run e2e:mobile       # gate móvil/tablet: lista curada de 12 specs en mobile-chrome + tablet-safari
@@ -233,7 +233,7 @@ npm run audit:pos-scope  # gate: ninguna clase propia del POS estiliza otras pá
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npm test` | ✅ **OK** | **164 suites / 1823 tests passed** (2026-09-13, tras T91; incluye `document-series.service.spec.ts` con los 4 casos de sanado/colisión, `plan-limits.service.spec.ts`, `permissions-coverage.spec.ts`, `warehouse-branch.util.spec.ts` y los 9 tests nuevos de T91 — retención sufrida en el cobro) |
+| `npm test` | ✅ **OK** | **164 suites / 1824 tests passed** (2026-09-13, tras T95; incluye `document-series.service.spec.ts` con los 4 casos de sanado/colisión, `plan-limits.service.spec.ts`, `permissions-coverage.spec.ts`, `warehouse-branch.util.spec.ts`, los 9 tests de T91 — retención sufrida en el cobro — y el de T95 — el `cancel` de la F. Reserva propaga el motivo) |
 | `npx tsc --noEmit` (proyecto y specs) | ✅ **OK** | 0 errores |
 | `npm run test:e2e` | ✅ **OK** | **14 suites / 93 tests passed** (2026-09-10; el script sincroniza antes el esquema de `erp_test` con `prisma db push` — ver nota de entorno) |
 | `npm run perf:k6` | ✅ **OK** | **5/5 escenarios con 100 % de checks y 0 % de fallos** en perfil `small` (~4,5 min). El perfil **`large`** (25 VUs) corre **programado** —job `load-tests-large`, semanal + a demanda— en **modo medición** (`K6_LATENCY_MODE=report`: exige los umbrales de fallos y **reporta sin bloquear** los de latencia, porque el techo de escritura del entorno los cruza sin ningún fallo funcional: p(95) 6,7 s / 5,6 s frente a 1,5 s / 2 s); el resumen queda como artefacto `k6-large-summary` (T89) |
@@ -246,8 +246,8 @@ npm run audit:pos-scope  # gate: ninguna clase propia del POS estiliza otras pá
 |---------|--------|-----------|
 | `npm run build` | ✅ **OK** | 0 errores (bundle inicial **1.32 MB** medido el 2026-09-12, sobre un `maximumWarning` de 1.40 MB) |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
-| `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1558 / 1558 tests** (1545 previos + 7 de T65 que fijan puntos de customización por estilo computado + 6 nuevos de T74 para el ARIA/foco de `luna-menu`) |
-| `npm run e2e:functional` | ✅ **OK** | **201 tests en una sola pasada: 197 passed / 0 failed / 4 skipped** (26,1 min, chromium, con el proyecto fijado desde T60, exit=0) — esta corrida es sobre la **BD recién sembrada** (escenario de CI) y es la que cierra T79: la primera corrida en ese escenario dio **165 passed / 9 failed / 23 did not run** por la colisión de correlativos entre series del mismo prefijo (T81, sanado + reintento). T73 sustituyó 6 skips por datos garantizados de forma idempotente (`e2e/helpers/ensure-accounting-data.ts`); los 4 que quedan son condicionales por diseño (2 del smoke SSR, `density-audit` con `DENSITY_AUDIT=1` y el modo comercial de conciliación) — inventario en AUDIT T61/T73 |
+| `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1566 / 1566 tests** (1545 previos + 7 de T65 que fijan puntos de customización por estilo computado + 6 nuevos de T74 para el ARIA/foco de `luna-menu` + 2 de T93 y 6 de T95 — trazabilidad y payloads de los documentos de compra) |
+| `npm run e2e:functional` | ✅ **OK** | **201 tests en una sola pasada: 197 passed / 0 failed / 4 skipped** (26,1 min, chromium, con el proyecto fijado desde T60, exit=0) — esta corrida es sobre la **BD recién sembrada** (escenario de CI) y es la que cierra T79: la primera corrida en ese escenario dio **165 passed / 9 failed / 23 did not run** por la colisión de correlativos entre series del mismo prefijo (T81, sanado + reintento). T73 sustituyó 6 skips por datos garantizados de forma idempotente (`e2e/helpers/ensure-accounting-data.ts`); los 4 que quedan son condicionales por diseño (2 del smoke SSR, `density-audit` con `DENSITY_AUDIT=1` y el modo comercial de conciliación) — inventario en AUDIT T61/T73. El suite crece con cada frente: `--list` da hoy **253 tests / 60 archivos** (T93 y T95 sumaron los dos specs de F. Reserva desde pedido, ventas y compras) |
 | `npm run e2e:visual` | ✅ **OK** | **52/52** baselines de formularios (deterministas desde T59: fecha fija `VISUAL_REFERENCE_TIME` + correlativos normalizados en `e2e/forms-screenshot.helper.ts`) |
 | `npm run typecheck:e2e` | ✅ **OK** | 0 errores (`tsconfig.e2e.json`, 55 archivos de `e2e/`) tras T60 |
 | `npm run format:check` | ✅ **OK** | prettier limpio en **todo `e2e/` y todo el SCSS de `src/`** (T62 cerró los 67 SCSS que faltaban); el TS/HTML legacy se gestiona con `format:check:touched` |
@@ -302,7 +302,7 @@ npm run audit:pos-scope  # gate: ninguna clase propia del POS estiliza otras pá
 >   nueva). Prevención: `forms-screenshot.helper.ts` desactiva transiciones/animaciones, espera a
 >   que el chip esté **resuelto**, normaliza los dígitos recorriendo **nodos de texto** (asignar
 >   `textContent` aplasta los hijos) y aplica el último parche justo antes de capturar.
-> - **Deuda estructural y de proceso: sin pendientes abiertos (2026-09-12).** `AUDIT.md` §7 (S1–S18, S32–S39) está **liquidada** —incluido el último «pendiente menor» de S1 (`previewJournalEntryFromDraft`, cerrado el 2026-08-09)— y §5 (issues activos) no tiene ninguna fila abierta. Los frentes de proceso/QA y de carga también quedaron cerrados: **T88** (el gate funcional ya no ensucia el árbol con 4 PNG) y **T89** (el perfil `large` de k6 corre programado en modo medición, con el techo de latencia a 25 VUs descrito como limitación del entorno). El pendiente menor de UX de `docs/plans/plan-mejoras-ux-ui-frontend.md` quedó cerrado en **T90** (7 botones de listado + 18 estados vacíos, y de paso 6 comprobaciones del suite de E2E que no verificaban nada: guardas `if ((await locator.count()) > 0)` que nunca se ejecutaban) y las **retenciones en ventas** se resolvieron en **T91** (el cobro con retención ya contabiliza: antes rompía el guardado con un 500 de «Asiento desbalanceado»). Lo único que sigue abierto es **producto** (F5.1, G1–G4, F6.6, F5.3/F5.4, F7.3) y los **riesgos declarados de QA**: el desglose multimoneda de `sap-b1-ui-verification` (comprobación condicionada a un dato que aún no existe), la convención de copy sin gate automático, la ausencia de un reporte de «retenciones sufridas» (T91 dejó el asiento y la validación, no el certificado) y la falta de pantalla de administración de tipos de retención (hoy se configuran por seed/API).
+> - **Deuda estructural y de proceso: sin pendientes abiertos (2026-09-12).** `AUDIT.md` §7 (S1–S18, S32–S39) está **liquidada** —incluido el último «pendiente menor» de S1 (`previewJournalEntryFromDraft`, cerrado el 2026-08-09)— y §5 (issues activos) no tiene ninguna fila abierta. Los frentes de proceso/QA y de carga también quedaron cerrados: **T88** (el gate funcional ya no ensucia el árbol con 4 PNG) y **T89** (el perfil `large` de k6 corre programado en modo medición, con el techo de latencia a 25 VUs descrito como limitación del entorno). El pendiente menor de UX de `docs/plans/plan-mejoras-ux-ui-frontend.md` quedó cerrado en **T90** (7 botones de listado + 18 estados vacíos, y de paso 6 comprobaciones del suite de E2E que no verificaban nada: guardas `if ((await locator.count()) > 0)` que nunca se ejecutaban) y las **retenciones en ventas** se resolvieron en **T91** (el cobro con retención ya contabiliza: antes rompía el guardado con un 500 de «Asiento desbalanceado»). Lo único que sigue abierto es **producto** (F5.1, G1–G4, F6.6, F5.3/F5.4, F7.3) y los **riesgos declarados de QA**: el desglose multimoneda de `sap-b1-ui-verification` (comprobación condicionada a un dato que aún no existe), la convención de copy sin gate automático, la ausencia de un reporte de «retenciones sufridas» (T91 dejó el asiento y la validación, no el certificado) y la falta de pantalla de administración de tipos de retención (hoy se configuran por seed/API) y, desde **T95**, la **falta de E2E de Factura Proveedor creada desde un documento de origen por la interfaz**: el formulario enviaba `priceNet` —campo que los DTO de línea de factura no admiten— y ningún spec recorría ese camino (por API sí está cubierto, con `go-live-smoke`); el mismo frente dejó `COTIZACIÓN → PEDIDO → F. RESERVA COMPRA` funcionando por la interfaz, con spec propio.
 
 ---
 
