@@ -302,13 +302,27 @@ Auditoría de explicabilidad (2026-08-09) detectó 4 hallazgos 🔴 que pueden c
 ### Pendientes resueltos (Bloques B y C, S18 — 2026-08-09)
 - **B — Unificación visual ✅**: color de estado OPEN unificado a `info` (azul) en los 4 listados de stock (paridad con ventas/compras; CONFIRMED/CLOSED → `success`); label "Nº Referencia" en los 4 forms de stock; botón "Crear Cuenta/Cuenta Bancaria/Moneda/Año Fiscal/Proyecto" en 5 maestros; `density="compact"` en facturas y recepciones; iconos residuales reemplazados (✅/❌ → `luna-action-icon check/close` en purchase-requests, "½" → texto "Parcial" en pedidos, `fas fa-link` → `luna-action-icon link`); tildes corregidas ("Nuevo Artículo", "Sin artículos", "Nuevo Almacén"); toasts de maestros al patrón "X creado correctamente" / "X actualizado correctamente" (warehouses, currencies, price-lists, branches, users, projects, items, partners, banks).
 - **C — Explicabilidad ✅**: "Dotación (GRIR)" → "Recepción de mercancía (GRIR)" con helperText en item-form/item-group-form/warehouse-form; "DPP" → "Desc. pronto pago" (con title) en cuotas de facturas; placeholder "- Sin almacén -" → "Seleccionar almacén (opcional)" en 13 forms; help-hints contextuales (`app-help-hint`) en los listados de facturas de venta, pedidos de venta, facturas de compra y órdenes de compra, enlazados a las secciones `sales-flow`/`purchase-flow` del centro de ayuda.
-- **Pendiente menor documentado**: capitalización/prefijo "+" en botones "Nuevo X" de listados, y banners de campos readonly (Cliente en pago desde factura, Costo en tab Costos) — quedan como mejoras menores para futuras pasadas.
+- **Pendiente menor — ✅ RESUELTO (ver el bloque siguiente y T90)**: capitalización/prefijo "+" en botones "Nuevo X" de listados, y banners de campos readonly (Cliente en pago desde factura, Costo en tab Costos).
 
 **✅ Resuelto (2026-09-12, T75):** los **13** botones que faltaban pasaron al patrón
 `+ Nuevo/Nueva <Sustantivo>` con capitalización canónica (el `Nueva Venta` del POS
 queda fuera: POS es scope separado en este plan), y los dos campos readonly se
 explican con un aviso: `hint` en el `Cliente` de un cobro creado desde factura y un
 texto informativo en la pestaña **Costos** de `luna-document-lines` (`.lines-tab-hint`).
+
+**✅ Cerrado del todo (2026-09-12, T90):** la auditoría del pendiente encontró
+**7 botones** más sin el patrón canónico (empleados, tasas de cambio, condiciones de
+pago, solicitudes de compra, campos UDF, grupos de descuento y proyectos) y **18
+textos de estado vacío sin tildes** en 12 plantillas —el copy que ve el usuario la
+primera vez que abre un listado vacío—, todos corregidos. El inventario de T75 era
+una lista a mano, de ahí que se escaparan: **la convención de copy sigue sin gate
+automático** y es el riesgo declarado de este frente. Además, al verificar el alcance
+aparecieron **6 comprobaciones del suite de E2E que no verificaban nada** (guardas
+`if ((await locator.count()) > 0)`), dos de ellas apuntando a elementos que no
+existen en las plantillas reales; quedaron como aserciones reales y el detalle está
+en `AUDIT.md` T90. Fuera de alcance, y declarado como tal: los *títulos de formulario*
+«Nueva tasa de cambio»/«Nuevo empleado» y el `luna-badge` «Nuevo» de activos fijos,
+porque cambiarlos mueve baselines visuales.
 
 ### Verificación
 - `npm run build` + `npm run lint` 0/0 + suite completa 1,257 tests en verde.
