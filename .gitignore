@@ -81,6 +81,11 @@ frontend.zip
 /backend-erp/
 /erp-frontend/
 
+# ── MCP del ERP (paquete propio del monorepo) ──
+# El patrón `scripts/` de arriba apunta a los scripts sueltos de migración de la raíz;
+# el smoke del MCP sí se versiona porque es una herramienta del paquete.
+!mcp-erp/scripts/
+
 # ── Local caches / session files ──
 __pycache__/
 memory/

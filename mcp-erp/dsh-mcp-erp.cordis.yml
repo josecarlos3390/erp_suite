@@ -1,0 +1,29 @@
+# Overlay de Cordis para cargar el MCP del ERP en DSH.
+#
+#   dsh web --patch "$PWD/mcp-erp/dsh-mcp-erp.cordis.yml"
+#
+# Sustituye `args` por la ruta absoluta de tu checkout y define las credenciales por
+# entorno (no las escribas aquí: este archivo se versiona). Si prefieres no ponerlas en
+# el overlay, exporta ERP_USERNAME/ERP_PASSWORD antes de arrancar DSH y borra esas dos
+# líneas de `env` (el servidor solo usará las que vea en el entorno).
+#
+# Las herramientas quedan como `mcp__erp__erp_health`, `mcp__erp__erp_get_document`, …
+# y hace falta abrir una sesión nueva para verlas (no reiniciar el host).
+- insert:
+    - id: erp-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: erp
+        transport: stdio
+        command: node
+        args:
+          # Ruta relativa a la raíz del monorepo (se resuelve con el cwd del proceso),
+          # así el overlay funciona en cualquier checkout.
+          - !!js process.getBuiltinModule('node:path').join(process.cwd(), 'mcp-erp', 'dist', 'index.js')
+        env:
+          ERP_API_URL: http://localhost:3001
+          ERP_TENANT_SLUG: default
+          ERP_USERNAME: admin
+          ERP_PASSWORD: admin123
+          ERP_MAX_ROWS: '25'
+        cwd: !!js process.cwd()

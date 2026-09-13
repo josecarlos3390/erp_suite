@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-09-13 (cierre de T90 y T91).  
+> **Última actualización:** 2026-09-13 (cierre de T90, T91 y T92).  
 > **Versión canónica de restricciones transversales.**  
 > Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
@@ -85,6 +85,7 @@ erp_suite/
 │   ├── e2e/              # tests E2E con Playwright
 │   └── dist/             # salida de build
 ├── luna/                 # componentes standalone del design system (copia de referencia)
+├── mcp-erp/              # MCP del ERP (paquete propio: servidor stdio de solo lectura)
 ├── .agents/skills/       # skills de Kimi para backend/frontend
 ├── docs/                 # documentación del proyecto
 │   ├── guides/           # guías canónicas de dominio
@@ -536,6 +537,7 @@ Archivos complementarios que no requieren lectura obligatoria para tareas rutina
 | `backend-erp/CHANGELOG.md` / `erp-frontend/CHANGELOG.md` | Historial de cambios por versión. | Para entender evolución reciente del proyecto. |
 | `backend-erp/load-tests/k6/README.md` | Documentación de la suite de carga k6. | Antes de ejecutar o modificar tests de carga. |
 | `backend-erp/perf/README.md` | Documentación del módulo de performance. | Antes de trabajar en optimización de performance. |
+| `mcp-erp/README.md` | **MCP del ERP** (servidor stdio de solo lectura, 13 herramientas): instalación, variables, tabla de herramientas, cómo conectarlo a DSH (`dsh-mcp-erp.cordis.yml`) y a otros clientes MCP, garantías de seguridad y alcance. | Cuando un agente necesite **consultar** el ERP (documentos, asientos, stock, series, retenciones, reportes) o leer la documentación canónica a través de MCP. |
 
 > **Nota:** Los archivos listados arriba son **referencia**. Las reglas obligatorias de diseño, tipado, arquitectura y testing viven en los 5 archivos canónicos de la sección "Protocolo de inicio de trabajo".
 
