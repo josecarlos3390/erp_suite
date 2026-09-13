@@ -204,6 +204,8 @@ Antes de mergear un PR que agregue un flujo `createFrom*`, verificar:
 - [ ] Si el controller inyecta `tenantId` / `createdById` / `branchId`, existe un Input-DTO interno para el servicio.
 - [ ] Si el servicio itera sobre líneas de fuentes distintas (DTO vs modelo Prisma), usa una discriminated union en lugar de casts.
 - [ ] La transacción `$transaction` retorna el documento creado: `return this.prisma.$transaction(...)` o `const x = await ...; return x` — **nunca** `await` a secas que descarte el resultado (ver §4 "Transacciones Prisma"). El endpoint debe responder con el documento, no `{}` con 201/200.
+- [ ] **El vínculo con el documento origen se escribe en AMBOS sentidos** (T96): además del vínculo genérico de `setTargetOnSourceLine` (`targetDocType`/`targetDocId`/`targetLineId`) y de las cantidades denormalizadas, se rellena **la columna de relación que lee la API del documento destino** (`SaleInvoiceItem.deliveryOrderItemId`, `PurchaseInvoiceItem.purchaseReceiptItemId`, …) y, cuando aplique, la del origen (`SaleInvoice.deliveryOrderId`). Escribir solo el vínculo genérico deja al documento **contando mal su pendiente**: la lectura enriquece `invoicedQty`/`pendingInvoiceQty`/`hasPendingToInvoice` desde las relaciones, no desde `target*`. Ver AUDIT T96.
+- [ ] **Los indicadores derivados se calculan por línea, no sumando campos que representan el mismo hecho**: `hasPendingToInvoice` se decide con `items.some(pendingInvoiceQty > 0)`; **nunca** `Σ(invoicedQty + reservedQty) < entregado`, que cuenta el doble cuando las dos columnas derivan de la misma fuente (T96) y oculta facturación legítima en entregas parciales.
 - [ ] `npm run build`, `npm test` y `npm run lint` están verdes.
 
 ---
