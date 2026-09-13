@@ -1,6 +1,6 @@
 # AGENTS.md — erp_suite
 
-> **Última actualización:** 2026-09-13 (cierre de T90–T95).  
+> **Última actualización:** 2026-09-14 (auditoría de flujos cerrada: T96–T101; matriz en `docs/reference/matriz-flujos-documentos.md`).
 > **Versión canónica de restricciones transversales.**  
 > Para detalles específicos de frontend, backend, roadmap o auditoría, ver los archivos enlazados abajo.
 
@@ -533,6 +533,7 @@ Archivos complementarios que no requieren lectura obligatoria para tareas rutina
 | `docs/reference/ACCOUNTS_DETERMINATION_FIX.md` | Análisis y corrección de paridad de cuentas contables por nivel. | Como referencia del fix de paridad de cuentas. |
 | `docs/reference/SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md` | Análisis comparativo de determinación de cuentas: SAP B1 vs ERP. | Como referencia de arquitectura contable. |
 | `docs/reference/SAP_B1_INTEGRATION.md` | Capa de integración bidireccional SAP B1: 11 modelos con identidad SAP, mapeos por documento (BaseType 13/15/17/20/23, ReserveInvoice, PaymentInvoices it_CreditMemo), idempotencia 409, migraciones, abono de NC. | Antes de implementar el conector SAP (F5.3) o extender la integración al flujo de compras. |
+| `docs/reference/matriz-flujos-documentos.md` | **Matriz origen→destino de ventas y compras**: las tres capas del vínculo (columnas desnormalizadas / `base*`-`target*` / columnas de relación), qué escribe cada flujo, qué lee cada consumidor, qué guard bloquea, qué regla de `npm run audit:flows` lo vigila, y los límites declarados. | Al tocar cualquier flujo de copia entre documentos, sus guards o la lectura de la API (T96–T101). |
 | `docs/archive/` | Informes históricos de frentes completados y cierres de fase. | Solo si se necesita trazabilidad histórica de una migración ya cerrada. |
 | `backend-erp/CHANGELOG.md` / `erp-frontend/CHANGELOG.md` | Historial de cambios por versión. | Para entender evolución reciente del proyecto. |
 | `backend-erp/load-tests/k6/README.md` | Documentación de la suite de carga k6. | Antes de ejecutar o modificar tests de carga. |
