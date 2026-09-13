@@ -1,9 +1,15 @@
 ---
 name: angular-erp-frontend
-description: Scaffold and maintain Angular frontend pages for an ERP system using the Luna design system. Use when building new pages, forms, services, models, or tests in the erp-frontend project. Covers standalone components, Luna list + form page patterns, reactive forms with FormArray for document lines, lazy loading, shared component reuse, RxJS patterns (debounce, forkJoin), Karma/Jasmine testing, and integration with NestJS REST API.
+description: Scaffold and maintain Angular frontend pages for an ERP system using the Luna design system. Use when building new pages, forms, services, models, or tests in the erp-frontend project. Covers standalone components, Luna list + form page patterns, reactive forms with FormArray for document lines, lazy loading, shared component reuse, RxJS patterns (debounce, forkJoin), Karma/Jasmine testing, integration with NestJS REST API, the CI gates (prettier, !important, ::ng-deep, POS scope, density, a11y), accessibility rules (headings, accessible names, WCAG 2.5.3), CSS specificity/:where canon, copy conventions and the Playwright E2E/visual gates and their anti-patterns.
 ---
 
 # Angular ERP Frontend — Luna Design System
+
+> **Read this first when the task touches `erp-frontend/src/`:** the project's protocol
+> (see `AGENTS.md`) requires reading `FRONTEND_GUIDE.md` **in full** before writing any
+> Angular/SCSS code, and `erp-frontend/src/styles/CSS-ARCHITECTURE.md` before writing or
+> modifying global SCSS. This skill is the implementation recipe; those are the canonical
+> rules. When they disagree, the codebase wins — and the divergence belongs here.
 
 > **Canonical design specification:** For the complete visual design system specification (color philosophy, typography scale, spacing rationale, component anatomy, motion principles, accessibility rules, and ERP-specific patterns), see `DESIGN.md` at the project root. This skill documents the **Angular implementation** of that specification — what is actually built, file locations, code patterns, and divergences from the canonical spec.
 >
@@ -2177,7 +2183,11 @@ A form page is **legacy** if ANY of the following is true:
 
 ## 20. Lint & Type Hygiene
 
-> **Current status (Aug 2026):** `ng lint` reports `0 errors, 18 warnings` (unused imports, `@typescript-eslint/no-unused-vars`) — all pre-existing, tracked for cleanup. The codebase went through a `strict: true` cleanup that removed ~318 `: any` annotations. Unit-test count grows as features land; the **lint-clean** target remains a goal, not the current state. Verify with `npm run lint` before treating the tree as clean.
+> **Current status (Sep 2026):** `ng lint` reports **0 errors / 0 warnings**, and the
+> Karma suite is at **1558/1558**. The codebase went through a `strict: true` cleanup
+> that removed ~318 `: any` annotations, and specs went to 0 `any` as well (AUDIT T47).
+> Verify with `npm run lint` before treating the tree as clean — the targets above are
+> the current state, not a goal.
 
 ### Keep the lint clean
 
@@ -2208,12 +2218,182 @@ A form page is **legacy** if ANY of the following is true:
 
 ### Pre-commit checklist
 
+> The complete, current checklist (gates, baselines, mobile, accessibility, copy) lives
+> in **§22**. The short version below is what the pre-commit hook itself enforces.
+
 - [ ] `npm run lint` passes with zero warnings.
 - [ ] `npm run build` succeeds (watch the bundle budget warning; it is pre-existing).
-- [ ] `npm test -- --watch=false --browsers=ChromeHeadless` reports all tests passing.
+- [ ] `npx ng test --watch=false --browsers=ChromeHeadlessCI` reports all tests passing.
 - [ ] No new `: any` annotations introduced.
 
 For the full backend + frontend type design rules, see `AGENTS.md` at the project root.
+
+----
+
+## 21. Gates, accessibility and CSS canon (post-audit, T48–T91)
+
+> This section is the **enforcement layer** of the rest of the skill: everything above
+> describes how to build; this describes what CI will reject and how to verify it
+> locally before delivering. The canonical Spanish guides are `FRONTEND_GUIDE.md`,
+> `erp-frontend/src/styles/CSS-ARCHITECTURE.md` and `AUDIT.md` (finale `T*` rows).
+
+### 21.1 The gates (all fail CI on any finding)
+
+| Gate | Command | Rejects |
+|---|---|---|
+| Formatting | `npm run format:check` | prettier drift in **`e2e/` and every SCSS in `src/`** (`format:check:touched` is the ratchet for legacy TS/HTML) |
+| E2E types | `npm run typecheck:e2e` | type errors in `e2e/` (`tsconfig.e2e.json`) |
+| `!important` | `npm run audit:important` | any `!important` without an `!important-ok: <reason>` marker (current state: **7**, all fighting something outside our CSS) |
+| `::ng-deep` | `npm run audit:ng-deep` | any `::ng-deep` without `::ng-deep-ok: <reason>` (current state: **4**) |
+| POS scope | `npm run audit:pos-scope` | a POS class used outside `pages/pos` without `:where(app-pos)` |
+| Density | `npm run audit:density:ci` | raw px in paddings/gaps/font-sizes/heights, raw tables without a density rule, undefined CSS vars, orphan/inconsistent density blocks |
+| Density heights | `npm run migrate:heights:check` | any raw height left in `pages/` + `shared/` |
+| Accessibility | `npm run a11y:check` | icon-only buttons without `action`, `img` without `alt`, controls inside `app-filter-field` without `ariaLabel`/`label` |
+
+**Marker syntax:** the reason goes on the same line, the two lines above, or within the
+first 30 lines of the file. Before using `!important`/`::ng-deep`, try the
+customization recipes first (`CSS-ARCHITECTURE.md` §5): a component variant
+(`[presentation]`, `[variant]`, `[size]`), a CSS var the primitive already consumes
+(`--luna-btn-height`, `--col-min-width`, `--luna-action-icon-size`), or a **custom
+property published from the template** when what you are fighting is an inline style.
+
+### 21.2 Verification playbook (what to run, in this order)
+
+```bash
+npm run build                 # 0 errors; watch the anyComponentStyle budget (35 kB) and initial bundle (1.40 MB warn)
+npm run lint                  # 0 errors, 0 warnings
+npx ng test --watch=false --browsers=ChromeHeadlessCI     # full Karma suite
+npm run typecheck:e2e && npm run format:check && npm run a11y:check
+npm run audit:important && npm run audit:ng-deep && npm run audit:pos-scope && npm run audit:density:ci
+npm run e2e:visual            # 52 form baselines — run when you touch any form layout
+npm run e2e:mobile            # curated mobile/tablet gate — run when you touch layout or a shared component
+npm run e2e:functional        # full desktop gate (~26 min) — run for document/payment flows
+```
+
+**Never run Karma and Playwright at the same time**, and do not edit `src/` while an
+E2E run is in flight (the dev server rebuilds and the run reads a half-built app).
+
+**Volatile-element rule (T59 + T91):** a gate may only compare settled states. The
+`série` chip (`Nº <serie>`) advances with every document the functional suite creates,
+so `e2e/forms-screenshot.helper.ts` freezes the clock, disables
+transitions/animations, waits for the chip to be **resolved** and normalizes the digit
+run **walking text nodes** (assigning `textContent` flattens the element). A baseline
+that captured a transient state (58 px text) instead of the settled one (73 px) is a
+trap: it fails as soon as load timing changes, with the diff **localized in the chip
+box**. Diagnose without looking at the image: build a **row-band profile** (to separate
+a shift from a real change) and search the **vertical offset** that best matches each
+region — the rest of the form matched with an exact `dy = +100 px` (the new row).
+
+### 21.3 Accessibility rules (T74, enforced + measured)
+
+| # | Rule | How |
+|---|---|---|
+| 1 | **One `h1` per page**: list title in `.page-header`, form/document title in `[formTitle]`. | CSS already styles `h1`; the POS uses `<h1 class="pos-sr-only">` |
+| 2 | **One heading level per jump**: everything under the `h1` is `h2` (section titles, page subtitles, dashboard widgets). Never `h3` "to make it smaller" — size comes from the class. | `luna-form-section` renders `h2` |
+| 3 | **Every control has an accessible name.** Inside `luna-form-field` it comes from the wrapper `label` (primitives inherit it). Outside (raw `.filter-field`, `app-filter-field`, table cells, layout searches) you must pass `ariaLabel`. | `app-filter-field` renders a `<label>` **without `for`** → the gate fails without `ariaLabel`/`label` |
+| 4 | **Icon-only buttons** always carry `action="…"` (name from `ACTION_TITLES`) or `ariaLabel`. | R1 of the gate |
+| 5 | **Visible text is the accessible name** (WCAG 2.5.3): never pass an `aria-label` different from the button text. | `luna-button` no longer overrides text with the icon title |
+| 6 | **Contrast AA for text**: use text tokens (`--text-success/error/warning/body`), **not** brand tokens (`--color-success` is 2.3:1 on light backgrounds). | axe `color-contrast` |
+| 7 | **`luna-menu`**: no manual ARIA — the component wires `aria-haspopup`/`aria-expanded`/`aria-controls` and marks projected items (`lunaMenuItem` or `.luna-menu__item`) with `role="menuitem"`. | arrows/initial focus work in any list |
+
+**Measuring accessibility (not guessing):** Lighthouse **cannot** audit authenticated
+pages of this SPA (it gets redirected to `/login`). Use axe-core injected in a
+Playwright session: `page.addScriptTag({ path: '…/axe.min.js' })` + `axe.run(document)`.
+Baseline: 16 authenticated pages at **0 violations**.
+
+### 21.4 CSS architecture: win by specificity, scope with `:where`
+
+1. **Never** solve a LUNA primitive override with `!important`. Repeat your own class:
+   `.form-field.form-field .luna-input { … }` (recipe and rationale in
+   `CSS-ARCHITECTURE.md` §4). The gate counts what is left.
+2. **`ViewEncapsulation.None` components** (the POS is the big one) emit **global** CSS.
+   Scope generic class names with **`:where(<host>)`**, never with a bare host prefix:
+   `:where()` contributes **0 specificity**, so the rule stops applying outside the
+   component **and keeps its exact place in the internal cascade**; a plain `app-pos `
+   prefix raises specificity (0,1,0 → 0,2,0) and silently changes the look *inside*
+   the component (measured: the POS brand icon changed from white to grey).
+3. **When scoping, check that the rule is a top-level one.** In T84 a script prefixed
+   *nested* rules, producing `.search-bar-mobile :where(app-pos) .filter-search` — an
+   `app-pos` **inside** the container, which never matches — so 4 POS search rules
+   stopped applying and no gate noticed (T87).
+4. **Wrapping everything costs real kilobytes**: wrapping the POS's ~176 classes in
+   `:where(app-pos)` took its CSS from 36.67 kB to 40.78 kB (**+11.2 %**) and fixed no
+   real leak. Prefer a **gate** (`audit:pos-scope`) over a blanket wrap.
+5. **Density variables**: raw px in `padding`/`gap`/`font-size`/`height` is rejected.
+   Declare per-component variables (base = current look, only `body.density-spacious`
+   relaxes, Δ ≥ 2 px per axis). `--space-*`/`--text-*` are **constants**; only
+   `--text-base` scales. `--fs-*`/`--font-size-*` **do not exist any more**.
+6. **Raw `<table>`** outside `luna-data-table` inherits the browser's 1 px padding:
+   declare a density var with base 1 px (zero visual change) and 4 px in Spacious.
+
+### 21.5 Copy and text conventions (T75 + T90)
+
+- **List buttons**: `+ Nuevo/Nueva <Noun>` with a **capitalized noun** (`+ Nuevo Artículo`).
+  This project **deliberately overrides RAE lowercase** because it is the majority
+  convention across the ~60 listings. Form titles keep sentence case.
+- **Empty states**: neutral, accented, actionable (`Sin artículos con stock bajo`,
+  `Sin órdenes`). They are the first text a user sees in a new tenant — the audit found
+  **18** of them missing their accents.
+- **Read-only fields explain themselves**: a `hint` on the wrapper (`Cliente` in a
+  receipt created from an invoice) or an in-tab notice (`.lines-tab-hint` in the
+  **Costs** tab) instead of a silently disabled input.
+- **There is no gate for copy**: the audit that closed this front was a **manual
+  inventory**, which is exactly why 7 buttons and 18 texts survived it. Treat any copy
+  claim as unverified until you grep the templates.
+
+### 21.6 E2E: DOM contracts and anti-patterns
+
+**Never write `if ((await locator.count()) > 0) { … expect … }`.** Six checks in
+`qa-buttons-interaction.spec.ts` never ran because of it — and two of them asserted
+against selectors that **do not exist in any template**: the sidebar was queried as
+`app-sidebar a` when the real top-level links are `a.nav-item` and the modules are
+`button.nav-group-btn` sections whose children only exist once expanded; the paginator
+was queried as `app-paginator, .paginator, .pagination` when the component is
+`luna-paginator` (info text `.luna-paginator__info` = `N of M records`, controls are
+`button[title="Primera página"|"Anterior"|"Siguiente"|"Última página"]`).
+
+Rules that came out of that frente:
+
+1. **Verify the locator against the template first** (`grep` the class in `src/`), then
+   assert existence with `await expect(locator).toBeVisible()`. A silent guard hides both
+   a missing element **and** a renamed one.
+2. **Legitimate conditionals** must be about *state*, not about *existence*: the
+   "unsaved changes" dialog only appears if the form is dirty; `selectWarehouse` checks
+   whether a warehouse is already preselected; the paginator's "next" is enabled only if
+   there is more than one page.
+3. **Prefer real assertions over `waitForTimeout`**, and when a test needs data, use the
+   **idempotent helpers** in `e2e/helpers/` (`ensure-accounting-data.ts`,
+   `ensure-document-series.ts`, `ensure-fiscal-year.ts`, `ensure-exchange-rate.ts`,
+   `ensure-pos-terminal.ts`) — replacing a conditional `test.skip` with a real assertion
+   is the pattern that closed T73.
+4. **High series counters in QA data** (`startNumber: 1000`): two active series of the
+   same `docType` share the prefix and used to collide (`500 Unique constraint`); the
+   backend now heals the counter, but QA data should not fight it.
+5. **Local 429s after many consecutive runs** are the dev throttler, not a product bug:
+   restart the dev backend before blaming a spec.
+
+----
+
+## 22. Hands-on checklist before delivering a frontend change
+
+- [ ] `ng build` clean (mind `anyComponentStyle` 35 kB and the 1.40 MB initial budget).
+- [ ] `npm run lint` 0 errors / 0 warnings; no new `: any`.
+- [ ] Karma green (full suite, not just your spec).
+- [ ] `typecheck:e2e` + `format:check` + `a11y:check` green.
+- [ ] `audit:important` / `audit:ng-deep` / `audit:pos-scope` / `audit:density:ci` green
+      (with a justified marker only when the reason is real).
+- [ ] If a **form layout** changed: `e2e:visual` and, when the change is legitimate,
+      **regenerate only the affected baseline** and say so in the commit/CHANGELOG
+      (a baseline change is evidence, not noise).
+- [ ] If a **shared component or a layout** changed: `e2e:mobile` (mobile/tablet are a
+      real gate since T77/T85, and a fixed action bar can leave the viewport).
+- [ ] OnPush: `markForCheck()` after async state changes, `detectChanges()` for
+      `writeValue`, synchronous DOM updates and FormArray mutations with `emitEvent:false`.
+- [ ] New list buttons/filters/selects: `ariaLabel` where the wrapper label does not
+      reach them; icon-only buttons with `action`.
+- [ ] Every new listing has its `+ Nuevo/Nueva <Noun>` button and an accented empty state.
+- [ ] Document the outcome where the project looks for it: `erp-frontend/CHANGELOG.md`
+      (and `AUDIT.md` when you fixed or found a defect).
 
 ----
 

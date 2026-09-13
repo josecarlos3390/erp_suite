@@ -1,9 +1,15 @@
 ---
 name: nestjs-erp-backend
-description: Scaffold and maintain NestJS backend modules for an ERP system using Prisma, PostgreSQL, multi-tenancy, document flows (header + lines), stock tracking, SAP B1 alias compatibility, and Bolivian tax rules. Use when creating new backend modules, DTOs, controllers, services, Prisma migrations, or tests in the backend-erp project. Covers transaction-safe document creation, code generation, pricing/stock/tax utilities, SAP alias resolution (input/output), Swagger/OpenAPI, strict typing (zero `as any`, `strictNullChecks`), and functional testing with mocked PrismaService.
+description: Scaffold and maintain NestJS backend modules for an ERP system using Prisma, PostgreSQL, multi-tenancy, document flows (header + lines), stock tracking, SAP B1 alias compatibility, and Bolivian tax rules. Use when creating new backend modules, DTOs, controllers, services, Prisma migrations, or tests in the backend-erp project. Covers transaction-safe document creation, code generation and series self-healing, the accounting engine by family (balanced entries, withholding taxes in both directions, account determination hierarchy), pricing/stock/tax utilities, SAP alias resolution (input/output), Swagger/OpenAPI, strict typing (zero `as any`, `strictNullChecks`), migrations under known schema drift, k6 load-test modes, and functional testing with mocked PrismaService.
 ---
 
 # NestJS ERP Backend
+
+> **Read this first when the task touches `backend-erp/src/`:** the project protocol (see
+> `AGENTS.md`) requires reading `BACKEND_GUIDE.md` **in full** before writing code, and
+> `docs/guides/ACCOUNTING_ENTRIES_GUIDE.md` before touching accounting. This skill is the
+> implementation recipe; those are the canonical rules. When they disagree, the codebase
+> wins — and the divergence belongs here.
 
 ## Quick start
 
@@ -673,6 +679,184 @@ if (resolvedPaymentTerms.installments) {
 5. If the payment term has `PaymentTermLine` rows, build an installment plan.
 
 `createInvoiceInstallments` creates `InvoiceInstallment` records linked to the invoice.
+
+---
+
+## Production canon: accounting, documents, migrations and gates (T1–T91)
+
+> Everything above is how to build a module. This section is what the module **must
+> respect** in this codebase once it touches money, documents, schema or tests. The
+> canonical Spanish guides are `BACKEND_GUIDE.md`, `docs/guides/ACCOUNTING_ENTRIES_GUIDE.md`
+> and `AUDIT.md` (last `T*` rows). Read `BACKEND_GUIDE.md` in full before editing
+> `backend-erp/src/`.
+
+### 1. Accounting engine: every amount needs a balanced counterpart
+
+The engine was split by family (`src/common/accounting/{sales,purchases,inventory,payments}.journal-builder.ts`
++ `journal-entry-core.ts` + the `AccountingEngineService` facade). Adding a document type
+= **builder + facade method + preview `case`**, per `BACKEND_GUIDE.md` §1.
+
+`createIncomingPaymentJournalEntry` (and every other `create*JournalEntry`) asserts the
+entry is balanced **after** building and **before** persisting:
+
+```
+Asiento desbalanceado en <DOC> <code> (id=…): D=… C=… (diff=…) lines=[…]
+```
+
+That error is a **500** and it means the builder forgot a side. Real case (T91): the
+incoming payment accepted `withholdingAmount` in the form, the DTO and the validation,
+but the builder never read it, so any payment with a withholding died with
+`diff = retención`. Two lessons that generalize:
+
+1. **A field that changes the money must appear in the builder.** If a numeric header
+   field can move the total, either the builder consumes it or the service rejects the
+   request with a 400 — never leave it silently ignored.
+2. **Check *all* branches of the builder.** The legacy single-method path debited the
+   **gross** total in bank; once the retention joined the debit side, only the net
+   balanced. When you add an amount, review each branch (`methods[]`, legacy
+   `paymentMethod`, `accountLines[]`, `accountId`) for the same arithmetic.
+
+**Retention semantics in this ERP (both directions):**
+
+| Direction | Entry type | Account | Where |
+|---|---|---|---|
+| We withhold (purchases, outgoing payments) | `WITHHOLDING_TAX_PAYABLE` | `WithholdingTaxType.accountId` (liability) | purchase-invoice retention lines (gross-down/gross-up), outgoing payment |
+| They withhold from us (sales, incoming payments) | `WITHHOLDING_TAX_RECEIVABLE` | `WithholdingTaxType.receivableAccountId`, else mapping (`1.1.2.08.003`) | incoming payment (T91) |
+
+Receivable entry: `Dr Bank (net) + Dr retention receivable = Cr AR (gross invoiced)`, so
+the invoice closes completely. A retention is an **asset**, not a liability: never reuse
+the IT/IUE payable account for it. Config lives in `prisma/seed.ts` (IT → `1.1.2.08.001`,
+IUE → `1.1.2.08.002`; RC-IVA has none because we are the agent) and is backfilled for
+existing tenants by `scripts/ensure-accounts-existing-tenants.ts` (**idempotent, null-only
+— never overwrite what the tenant configured**).
+
+### 2. Account determination hierarchy (T67 + T68)
+
+- Level **ITEM**: item-warehouse matrix → item master → `AccountMapping` **only** for the
+  entry types in `ITEM_ENTRY_TYPES_WITH_MAPPING_FALLBACK`; anything else throws with the
+  level and the sources to configure (strict by design).
+- Partner accounts: `AccountDeterminationService._resolvePartnerVariantAccount` picks the
+  **M/N vs M/E variant** (`receivableAccountIdLocal/Foreign`, …) using, in order: document
+  currency ≠ base currency, partner default currency ≠ base, partner country ≠ tenant
+  country (country is free text: name↔ISO aliases; unreadable → **local**, so a typo never
+  moves an account). Empty variant → generic partner account → mapping.
+- A new account must be added to `src/common/chart-of-accounts.data.ts` **and** its seed
+  mapping in `src/common/account-mappings.util.ts`; then run
+  `ensure-accounts-existing-tenants.ts` + `ensure-mappings-existing-tenants.ts`.
+
+### 3. Document numbering: series emit `prefix + counter`, no fiscal year (T81)
+
+`DocumentSeriesService._consumeSeries` assigns `prefix + nextNumber`, and the code does
+**not** include the fiscal year, so two active series of the same `docType` with the same
+prefix collide against the unique index `(tenantId, code)` (a hard 500). The service now
+**self-heals** the counter against `MAX(code)` for that prefix (cached per series and
+process) and, if the assigned number is already taken, consumes the next one (up to 10
+attempts). Practical rules:
+
+- QA data should start series counters **very high**: the frontend Playwright helper
+  `e2e/helpers/ensure-document-series.ts` uses `startNumber: 1000` for exactly this reason.
+  The backend E2E fixture (`test/test-utils.ts`) still creates its series at `1`, which is
+  safe only because each suite runs on a wiped `erp_test` with its own documents; do not
+  copy that pattern for shared/long-lived data.
+- Never "fix" a collision by editing `nextNumber` alone in CI data: the healing is in the
+  service, and a new low counter will collide again.
+
+### 4. Schema changes under known drift (DT.45) — the real procedure
+
+The dev/prod database carries drift vs `prisma/migrations`, so `prisma migrate dev` and
+`prisma db push` abort asking for a **reset** (which would drop data). The procedure used
+by the last fronts:
+
+```bash
+# 1. Write the model change in prisma/schema.prisma and validate it
+npx prisma validate
+
+# 2. Generate the SQL delta between the LIVE database and the new schema
+npx prisma migrate diff --from-url "$DATABASE_URL" \
+  --to-schema-datamodel prisma/schema.prisma --script
+
+# 3. Save it as a migration folder AND make the DDL idempotent
+#    (ADD COLUMN IF NOT EXISTS, FK guarded by a pg_constraint DO block):
+#    prisma/migrations/<timestamp>_<name>/migration.sql
+
+# 4. Apply it to the dev database and register it as applied
+npx prisma db execute --schema prisma/schema.prisma --file prisma/migrations/<ts>_<name>/migration.sql
+npx prisma migrate resolve --applied <timestamp>_<name>
+
+# 5. Regenerate the client (it holds a DLL: stop the running backend first)
+npx prisma generate
+```
+
+Why idempotent: the runbook's production pipeline applies `prisma migrate deploy` **and**
+the manual SQLs in `prisma/manual/` (drift), so a non-idempotent script can run twice
+(see the `P3009` incident in `docs/plans/runbook-go-live.md` §3.1). After the schema
+change, re-run the seed/mapping alignment for existing tenants.
+
+### 5. Bulk import: one shared workbook format (T69 + T70)
+
+New importers use `src/common/import-workbook.util.ts` (3 sheets: **Datos** with friendly
+headers and `EJEMPLO:` rows the importer skips, **Instrucciones**, **Catálogos** with the
+tenant's codes) and `src/common/bulk-import-http.util.ts` (download + parse the uploaded
+xlsx, 10 000 row cap). Contracts: **upsert by code** (re-import updates, never duplicates),
+`BulkImportSummary` with `created/updated/errors/total`, endpoints
+`GET/POST /<entity>/bulk-import[/template]`, and one transaction per aggregate (e.g. one
+per price list) so a bad row does not roll back the whole file.
+
+### 6. Load tests need a real fiscal context (T78 + T89)
+
+`npm run perf:k6` runs 5 k6 scenarios. Two traps found in practice:
+
+- The **seed does not create** today's exchange rate, an open fiscal year or a document
+  series, so scenarios failed with 400 until `perf/ensure-context.ts` (`ensureLoadTestContext`)
+  started creating them through the API, exactly like the E2E helpers.
+- **k6's JS engine (goja) has no object spread** in object literals (ES2018): building
+  thresholds with `{ ...fn() }` makes all scenarios fail to load, and a Node pre-check
+  reports "fine" because Node supports it. **Validate any change under `load-tests/k6/`
+  by running k6.**
+- Latency thresholds are per **scenario**, not per profile. `K6_LATENCY_MODE=report`
+  (scheduled `large` job) enforces only the failure thresholds and reports latency;
+  `enforce` is the default for the PR gate.
+
+### 7. Tests: what to run and what to assert
+
+```bash
+npm run build && npm run lint         # 0 errors, 0 warnings
+npm test                              # 164 suites / 1823 tests (unit)
+npm run test:e2e                      # 14 suites / 93 tests — chains prisma db push on erp_test
+npx tsc --noEmit -p tsconfig.json && npx tsc --noEmit -p tsconfig.spec.json
+npx tsc -p tsconfig.perf.json --noEmit   # this one INCLUDES prisma/** (seed scripts)
+```
+
+- **`tsconfig.json` excludes `prisma/`**: `prisma/seed.ts` is only type-checked by
+  `tsconfig.perf.json`. A seed edit that type-checks nowhere will break `db seed` in CI.
+- New `create*` flow → assert the **API responds with the document** (not `{}` with 201):
+  the `await this.prisma.$transaction(...)` without capturing/returning was a real silent
+  bug (`BACKEND_GUIDE.md` §4).
+- New accounting behaviour → cover it with a **unit test on the engine** (mock
+  `AccountDeterminationService.resolveAccount` and assert the persisted lines and that
+  debits equal credits) **and** an E2E in `test/` that creates the real documents and
+  asserts the journal lines with Prisma (see the T91 tests in
+  `test/incoming-payments.e2e-spec.ts`: type WITH its receivable account, type WITHOUT it
+  falling back to the mapping, and the rejection path).
+- No `any` anywhere, specs included (`@typescript-eslint/no-explicit-any` is an **error**
+  for `src/**/*.spec.ts`); mocks use `as unknown as T` / `jest.Mocked<T>`.
+
+### 8. Backend checklist before delivering
+
+- [ ] `npm run build`, `npm run lint`, `npm test` green; both `tsc --noEmit` (project +
+      specs) and `tsc -p tsconfig.perf.json` clean when you touched `prisma/`.
+- [ ] Multi-tenancy: every query filtered by `tenantId` (the Prisma extension injects it in
+      `findMany/count/updateMany/create`, **not** in `findUnique/delete/upsert` — pass it
+      explicitly there).
+- [ ] `@RequirePermission(...)` on new endpoints; DTOs validated (`whitelist`,
+      `forbidNonWhitelisted`, `transform`).
+- [ ] Money/stock side effects inside **one** transaction, and the endpoint returns the
+      created document.
+- [ ] Schema change: idempotent migration + `migrate resolve --applied` + seed/alignment
+      scripts updated + `prisma generate` (with the dev backend stopped).
+- [ ] Accounting change: balanced entry proven by test (unit + E2E), and the
+      `ACCOUNTING_ENTRIES_GUIDE.md` section for that document type updated.
+- [ ] Document the outcome in `backend-erp/CHANGELOG.md` (and `AUDIT.md` for defects).
 
 ---
 
