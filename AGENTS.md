@@ -243,7 +243,7 @@ npm run audit:pos-scope  # gate: ninguna clase propia del POS estiliza otras pá
 
 | Comando | Estado | Evidencia |
 |---------|--------|-----------|
-| `npm run build` | ✅ **OK** | 0 errores (bundle inicial ~1.27 MB) |
+| `npm run build` | ✅ **OK** | 0 errores (bundle inicial **1.32 MB** medido el 2026-09-12, sobre un `maximumWarning` de 1.40 MB) |
 | `npm run lint` | ✅ **OK** | 0 errores, 0 warnings |
 | `npx ng test --watch=false --browsers=ChromeHeadlessCI` | ✅ **OK** | **1558 / 1558 tests** (1545 previos + 7 de T65 que fijan puntos de customización por estilo computado + 6 nuevos de T74 para el ARIA/foco de `luna-menu`) |
 | `npm run e2e:functional` | ✅ **OK** | **201 tests en una sola pasada: 197 passed / 0 failed / 4 skipped** (26,1 min, chromium, con el proyecto fijado desde T60, exit=0) — esta corrida es sobre la **BD recién sembrada** (escenario de CI) y es la que cierra T79: la primera corrida en ese escenario dio **165 passed / 9 failed / 23 did not run** por la colisión de correlativos entre series del mismo prefijo (T81, sanado + reintento). T73 sustituyó 6 skips por datos garantizados de forma idempotente (`e2e/helpers/ensure-accounting-data.ts`); los 4 que quedan son condicionales por diseño (2 del smoke SSR, `density-audit` con `DENSITY_AUDIT=1` y el modo comercial de conciliación) — inventario en AUDIT T61/T73 |
