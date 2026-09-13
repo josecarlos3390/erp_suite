@@ -235,7 +235,7 @@ npm run audit:pos-scope  # gate: ninguna clase propia del POS estiliza otras pá
 | `npm test` | ✅ **OK** | **164 suites / 1814 tests passed** (2026-09-12, tras T81; incluye `document-series.service.spec.ts` con los 4 casos de sanado/colisión, `plan-limits.service.spec.ts`, `permissions-coverage.spec.ts`, `warehouse-branch.util.spec.ts`) |
 | `npx tsc --noEmit` (proyecto y specs) | ✅ **OK** | 0 errores |
 | `npm run test:e2e` | ✅ **OK** | **14 suites / 93 tests passed** (2026-09-10; el script sincroniza antes el esquema de `erp_test` con `prisma db push` — ver nota de entorno) |
-| `npm run perf:k6` | ✅ **OK** | 5/5 escenarios passed (perfil `small`) |
+| `npm run perf:k6` | ✅ **OK** | **5/5 escenarios con 100 % de checks y 0 % de fallos** en perfil `small` (~4,5 min). El perfil **`large`** (25 VUs) corre **programado** —job `load-tests-large`, semanal + a demanda— en **modo medición** (`K6_LATENCY_MODE=report`: exige los umbrales de fallos y **reporta sin bloquear** los de latencia, porque el techo de escritura del entorno los cruza sin ningún fallo funcional: p(95) 6,7 s / 5,6 s frente a 1,5 s / 2 s); el resumen queda como artefacto `k6-large-summary` (T89) |
 | `npm run perf:k6:check` | ✅ **OK** | diagnóstico de entorno + aviso de que el suite resetea el tenant `default` + receta con BD desechable (T60) |
 | `npm run db:recreate` | ✅ **OK** | BD dev reproducible: `migrate reset` + `db push` + SQL manuales + seed; `prisma migrate diff` sin diferencias |
 
