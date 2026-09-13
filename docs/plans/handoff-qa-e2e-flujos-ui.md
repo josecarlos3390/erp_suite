@@ -70,6 +70,11 @@ trazabilidad (serie/lote/UoM) funciona — sin huecos entre formularios.
   `getByRole('heading', …)` (evita strict-mode con el breadcrumb duplicado).
 - Baselines PNG de QA visual regenerados (`qa-sales-quotation-form.png`,
   `qa-purchase-request-copy-menu.png`).
+  > **Nota (T88, 2026-09-12):** esas capturas —y `qa-item-selector-modal.png` y
+  > `qa-tax-default.png`— son **diagnósticos**, no baselines: se dejaron de
+  > rastrear y ahora se escriben en `test-results/screenshots/` (ignorado por
+  > git), porque los specs que las generan **sí** entran en el gate funcional y
+  > lo dejaban con el árbol sucio en cada corrida.
 
 ## Notas de ejecución / ambiente
 - Backend local reiniciado con dist reconstruido; prep E2E reutilizable en
