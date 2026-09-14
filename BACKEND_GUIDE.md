@@ -712,12 +712,29 @@ subtotal = subtotal.plus(lineSubtotal);                       // Decimal, no num
 if (Money.moneyGt(total, remaining)) throw new BadRequestException(/* … */);
 ```
 
-**Deuda declarada y plan de migración:** quedan ~1.100 puntos con `Number(<campo de
-dinero>)` seguido de aritmética (reportes, agregaciones y servicios varios). No se
-migran a ciegas: la regla es **usar la utilidad en todo código nuevo o modificado** y
-migrar por criticidad (documentos que **deciden** dinero —guards, totales persistidos,
-repartos— primero; reportes y lecturas después). Un cambio de dinero sin su test de
-centavos no está terminado.
+**Deuda declarada y plan de migración (T126):** la migración es **por criticidad**, no un
+barrido a ciegas, y hay un **gate** que la gobierna:
+
+```bash
+npm run audit:money        # inventario priorizado (R1 épsilons, R2a Number(...)+aritmética, R2b redondeo manual)
+npm run audit:money:check  # ratchet: falla si la deuda AUMENTA respecto de la línea base
+```
+
+| Fase | Alcance | Estado |
+|---|---|---|
+| 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | ✅ **R1 = 0**: migrados a `isSettled`/`exceedsBy`/`moneyGt` (cobros, pagos, condiciones de pago, POS, borradores) |
+| 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | ⏳ inventariado y priorizado por el gate (los `journal builder` primero) |
+| 3 | Reportes y lecturas | ⏳ |
+
+**Tolerancias de liquidación**: cuando una guarda necesite admitir una diferencia de
+redondeo, la tolerancia se declara **explícita y en centavos** con `isSettled(x, y,
+cents)` / `exceedsBy(x, y, cents)` (por defecto 1 centavo). Nunca un `0.001` suelto en
+una comparación: 1 milésimo **no existe** en dinero y es la firma de T125. Bajar o subir
+esa tolerancia es una **decisión de negocio**, no una migración mecánica.
+
+**Regla de cierre:** un cambio de dinero no está terminado sin su **test de centavos**
+(`money.util.spec.ts` es el modelo) — y el gate `audit:money:check` debe seguir en verde.
+
 
 ---
 
