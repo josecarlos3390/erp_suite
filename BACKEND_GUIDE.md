@@ -678,6 +678,49 @@ candidato y no otro).
 
 ---
 
+## 8.4 Reglas del dinero (obligatorias)
+
+> **Origen (T125, 2026-09-14):** el POS rechazaba acreditar el saldo **completo** de una
+> factura con el mensaje autocontradictorio `El crédito (62,98) supera el saldo restante
+> de la factura (62,98)`. La causa no era la guarda, era la **aritmética**: la nota de
+> crédito recalculaba sus importes con `Number(...)` y coma flotante
+> (`priceNet * qty`, `taxAmount * ratio`, acumulando en variables `number`) y el total
+> quedaba unas milésimas de centavo por encima del saldo almacenado.
+
+El dinero **no es un `number`**: `0.1 + 0.2 !== 0.3`. La utilidad canónica es
+**`src/common/money.util.ts`** y estas son las reglas, aplicables a todo código nuevo o
+que se toque (hay una migración pendiente del resto del código, ver «Deuda» abajo):
+
+| # | Regla | Herramienta |
+|---|---|---|
+| 1 | **Nunca comparar dinero con un épsilon inventado** (`x > y + 0.001`): comparar a la precisión real del dinero, el centavo | `moneyGt`, `moneyGtOrEq`, `moneyLt`, `moneyLtOrEq`, `moneyEquals`, `isZeroMoney` |
+| 2 | **Nunca acumular dinero en `number`**: sumar en `Decimal` | `sumMoney`, `addMoney` |
+| 3 | **Redondear una vez por concepto** (la línea, el documento), no en cada operación intermedia ni al final de una cadena de flotantes | `roundMoney`, `mulMoney`, `prorateMoney` |
+| 4 | El redondeo es **mitad hacia arriba** (`ROUND_HALF_UP`), la convención contable — no `Math.round` (que redondea hacia +∞ en negativos) ni redondeo bancario | `roundMoney` |
+| 5 | En repartos proporcionales (IVA por línea, descuento global, devolución parcial), **cuadrar la última línea con el total redondeado** para que la suma de las partes iguale el todo | `settlementDifference` |
+| 6 | Cuando haga falta aritmética de enteros, **centavos** (nunca floats) | `toCents`, `fromCents` |
+| 7 | En la base, los importes son `Decimal(14,2)`/`(14,6)`; en el código se pasan como `Decimal` (Prisma los acepta), no convertidos a `number` «para operar» | — |
+
+**Ejemplo canónico** (el patrón que se aplicó en la nota de crédito):
+
+```ts
+const lineSubtotal = Money.mulMoney(priceNet, qty);          // redondeo a centavos
+const lineTax = Money.prorateMoney(origLine.taxAmount ?? 0, ratio);
+const lineTotal = Money.addMoney(lineSubtotal, lineTax);
+subtotal = subtotal.plus(lineSubtotal);                       // Decimal, no number
+// …
+if (Money.moneyGt(total, remaining)) throw new BadRequestException(/* … */);
+```
+
+**Deuda declarada y plan de migración:** quedan ~1.100 puntos con `Number(<campo de
+dinero>)` seguido de aritmética (reportes, agregaciones y servicios varios). No se
+migran a ciegas: la regla es **usar la utilidad en todo código nuevo o modificado** y
+migrar por criticidad (documentos que **deciden** dinero —guards, totales persistidos,
+repartos— primero; reportes y lecturas después). Un cambio de dinero sin su test de
+centavos no está terminado.
+
+---
+
 ## 9. Testing
 
 ### Backend
