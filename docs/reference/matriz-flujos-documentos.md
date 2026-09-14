@@ -78,6 +78,30 @@ anulan con **nota de crédito** (RND 10-0016-17, motivo obligatorio).
 anulados con asiento POSTED sin reversa, reversas huérfanas y tipos sin comprobación
 (`EXCHANGE_RATE_REVALUATION`, `ADVANCE_APPLICATION`).
 
+### 4.b Tesorería: el vínculo asiento ↔ extracto es la LÍNEA (T116)
+
+El extracto bancario no tiene documento comercial de anulación, pero **sí** tiene una
+unidad de vínculo propio, y es la **línea**:
+
+| Capa | Qué la escribe | Qué la lee |
+|---|---|---|
+| `JournalEntry.sourceDocumentType='BANK_STATEMENT'` + **`sourceDocumentId = BankStatementLine.id`** | `bank-statements.service.post` (un asiento por línea contabilizable) | `reverseJournalEntry('BANK_STATEMENT', line.id, …)` en el `unpost`; el botón «Ver documento origen»; la regla **R13d** |
+| `BankStatementLine.journalEntryLineId` | el mismo `post` (línea lado banco del asiento) | `unpost` (para saber qué reversar), pantalla del extracto |
+| `BankStatementLine.status` (`UNRECONCILED` → `MATCHED_AUTO` al contabilizar → `RECONCILED` al cerrar la conciliación) | `post`, `autoMatch`/`manualMatch`, `finalize`, `unpost`, `unmatch` | el matcher (solo carga `UNRECONCILED`), `finalize` (cuenta lo resuelto) |
+| `BankReconciliationLine.matchCriteria` (`REFERENCE`/`AMOUNT_DATE`/`AMOUNT_WIDE_DATE`/`MANUAL`) | `autoMatch` (rondas) y `manualMatch` | auditoría de la conciliación (por qué se eligió ese candidato) |
+
+**Por qué la línea y no el encabezado:** el id debe ser único por asiento, porque
+`reverseJournalEntry` resuelve el original con `findFirst` por `(tipo, id)`. Con el id
+del extracto, dos asientos compartirían clave y la reversión habría reversado **uno
+solo, en silencio** (la clase de fallo de T106). Con la línea, `unpost` revierte
+exactamente lo que corresponde a cada una.
+
+**Invariantes que se vigilan:** R13d (asiento de extracto cuya línea no existe =
+**ERROR**; sin documento ligado = WARN histórico de los anteriores a T116) y el guard
+de `unpost` (una reversa que no se puede hacer **falla**, no se ignora). El ciclo
+completo —contabilizar → des-contabilizar con motivo → volver a contabilizar— está en
+la barrida (`--only=bancos`).
+
 ---
 
 ## 5. Límites conocidos (declarados, no silenciosos)

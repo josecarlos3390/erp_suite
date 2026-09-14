@@ -611,13 +611,36 @@ El extracto bancario (`BankStatement`) no genera asientos contables automáticam
    - `projectId` (proyecto, para dimensiones)
 3. **Confirmación y posting** — El usuario presiona "Confirmar y Generar Asientos". El backend:
    - Valida que el estado sea `DRAFT` y no `RECONCILED` ni `POSTED`.
-   - Filtra las líneas que tienen `accountId` asignado.
+   - Filtra las líneas que tienen `accountId` asignado (o cargo tipificado: `ITF`, que resuelve su contrapartida por el mapeo `BANK_STATEMENT` / `FINANCIAL_TRANSACTION_TAX`).
    - Por cada línea, genera un asiento manual (`JournalEntry`) de tipo `BANK_STATEMENT` con `persistManualJournalEntry()`:
      - Lado banco: `debit` (si es débito del extracto) o `credit` (si es crédito) contra la cuenta GL vinculada al `BankAccount`.
      - Lado contrapartida: la cuenta `accountId` asignada por el usuario.
-   - Enlaza cada línea del extracto con su línea de asiento (`journalEntryLineId`).
+   - **Liga el asiento a la LÍNEA del extracto** (`sourceDocumentId` = id de la línea, T116): el vínculo es resoluble desde el documento y la reversión encuentra exactamente ese asiento.
+   - Enlaza cada línea del extracto con su línea de asiento (`journalEntryLineId`) y la marca `MATCHED_AUTO` (el propio extracto la contabiliza).
    - Cambia el estado del extracto a `POSTED`.
-4. **Balance dinámico** — El balance de cada `BankAccount` se calcula en tiempo real agregando `JournalEntryLine` (donde `journalEntry.status = 'POSTED'` y `accountId = BankAccount.accountId`). El campo `balance` del modelo Prisma se ignora en lectura; se reemplaza por el valor calculado en `findAccountsByBank` y `findAccounts`.
+4. **Des-contabilización (`unpost`, T116)** — `POST /bank-statements/:id/unpost` con `{ reason }` (obligatorio):
+   - Solo sobre un extracto `POSTED`; un `RECONCILED` exige deshacer antes la conciliación.
+   - Revierte **una por una** las líneas contabilizadas (`reverseJournalEntry('BANK_STATEMENT', line.id, …)`), libera la línea (`journalEntryLineId = null`, `UNRECONCILED`) y devuelve el extracto a `DRAFT`, de modo que se pueda corregir y volver a registrar.
+   - Si una reversa no se puede hacer, **falla** en vez de continuar: dejar la línea como si nada con el asiento vivo es la degradación silenciosa que produjo T106.
+5. **Balance dinámico** — El balance de cada `BankAccount` se calcula en tiempo real agregando `JournalEntryLine` (donde `journalEntry.status = 'POSTED'` y `accountId = BankAccount.accountId`). El campo `balance` del modelo Prisma se ignora en lectura; se reemplaza por el valor calculado en `findAccountsByBank` y `findAccounts`.
+
+### 8.1.b Emparejamiento de la conciliación (`auto-match`) — rondas ordenadas (T116)
+
+El auto-match **no** toma «el primero que cuadre»: evalúa el emparejamiento en **rondas
+sucesivas** (como los *matching criteria* de SAP Business One y la jerarquía de reglas
+de NetSuite), y dentro de cada ronda ordena los candidatos por **cercanía de fecha** y,
+si persiste el empate, por **id** — el resultado es determinista:
+
+| Ronda | `matchCriteria` | Criterio |
+|---|---|---|
+| 1 | `REFERENCE` | La referencia del extracto aparece en la del candidato (`ref1`/`ref2`/`ref3` del asiento o `referenceNo` del pago), con importe y fecha en la ventana corta. Solo aplica si la línea del extracto **trae** referencia. |
+| 2 | `AMOUNT_DATE` | Importe dentro de la tolerancia y fecha dentro de la ventana corta (`bankReconciliationMatchWindowDays`, ±3 por defecto). |
+| 3 | `AMOUNT_WIDE_DATE` | Importe dentro de la tolerancia y fecha dentro de la ventana **ancha** (`bankReconciliationWideMatchWindowDays`). **Desactivada por defecto** (0): emparejar solo por importe a 90 días puede cruzar dos movimientos iguales y distintos, así que se habilita a propósito. |
+
+La ronda ganadora se guarda en `BankReconciliationLine.matchCriteria`, de modo que la
+decisión del sistema es auditable (antes no quedaba rastro de *por qué* se eligió ese
+candidato y no otro).
+
 
 ### 8.2 Endpoints del módulo bancario (relevantes para contabilidad)
 
@@ -627,12 +650,28 @@ El extracto bancario (`BankStatement`) no genera asientos contables automáticam
 | `POST` | `/bank-statements/:id/import` | Importar líneas desde CSV/Excel |
 | `PUT` | `/bank-statements/:id/lines/:lineId` | Editar `accountId`, `partnerId`, `projectId` de una línea |
 | `POST` | `/bank-statements/:id/post` | **Contabilizar** el extracto. Genera asientos por cada línea con `accountId`. |
+| `POST` | `/bank-statements/:id/unpost` | **Des-contabilizar** el extracto (T116): reversa por línea con `reason` obligatorio y vuelta a `DRAFT`. |
 | `GET` | `/banks/accounts/:id/balance` | Devuelve balance dinámico (`debit - credit` de `JournalEntryLine` POSTED) |
 
 ### 8.3 Reglas críticas
 
 - **Nunca postear un extracto reconciliado:** `POST` sobre `RECONCILED` lanza `ConflictException`.
-- **Líneas sin `accountId` se omiten:** Solo las líneas con cuenta contable asignada generan asiento. Las demás quedan en el extracto como referencia sin impacto contable.
+- **Toda operación que postea se puede des-postear (T116).** `post` es irreversible por
+  diseño (reintentarlo da `409`) y un extracto contabilizado **no se borra** (T114):
+  sin `unpost` el usuario quedaba sin salida ante un registro equivocado. La regla
+  general del motor es: **si algo se puede contabilizar, tiene que poder deshacerse**
+  (reversión con motivo), y ninguna operación destructiva sustituye a la reversión.
+- **El asiento apunta a un documento resoluble, con grano único (T116).** El asiento de
+  un extracto se liga a la **línea** (`sourceDocumentId` = `BankStatementLine.id`, un
+  asiento por línea), no al encabezado: `reverseJournalEntry` busca por `(tipo, id)` con
+  `findFirst`, así que dos asientos con el mismo id de documento harían que la reversión
+  encontrara solo uno y devolviera `null` en silencio (clase T106). El detector lo vigila
+  con **R13d** (asiento de extracto cuya línea no existe = ERROR).
+- **Líneas sin `accountId` se omiten:** Solo las líneas con cuenta contable asignada (o cargo tipificado `ITF`) generan asiento. Las demás quedan en el extracto como referencia sin impacto contable.
+- **Un extracto contabilizado sí cuenta en su conciliación (T117):** el saldo conciliado
+  suma las líneas ya resueltas (`MATCHED_AUTO`/`MATCHED_MANUAL`/`RECONCILED`) aunque no
+  tengan fila de conciliación propia (las contabilizadas por el propio extracto), sin
+  doble contar las que sí la tienen.
 - **Balance siempre desde `JournalEntryLine`:** El `balance` persistente en `BankAccount` es un campo histórico. La API de lista (`GET /banks/:id/accounts`) devuelve el balance dinámico calculado por `_enrichWithBalances`.
 - **Asientos de ajuste de conciliación:** La reconciliación bancaria (`BankReconciliation`) usa `persistManualJournalEntry()` con `documentType: 'BANK_RECONCILIATION_ADJUSTMENT'` y `status: 'DRAFT'` para asientos de ajuste manuales.
 - **Link GL ↔ BankAccount:** Cada `BankAccount` tiene `accountId` (opcional). Si está vinculado, los asientos de pago usan esa cuenta directamente (vía `_resolveBankAccountId`). Si no está vinculado, usa `AccountDeterminationService` (fallback).
