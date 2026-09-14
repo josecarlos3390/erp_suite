@@ -1782,3 +1782,51 @@ factura web (56 bs en 2 uds). Si el modal sigue en 0% tras este fix, el log
 | T111 | Backend (inventario/producción · ensamblaje) · **CERRADO SIN DEFECTO DE CÓDIGO — el ensamblaje no contabiliza porque los COMPONENTES no están valorados: el seed crea su Stock con `avgCost = null` y no se pueden valorar porque les falta la cuenta de inventario del artículo** | **T110 cerrado** (commit `24e733a`): el asiento de la toma pertenece a su `StockAdjustment` derivado; el defecto real (anular la toma dejaba el ajuste vivo y el stock en 98 en vez de 100) ahora se bloquea con mensaje accionable y anular el ajuste sí revierte (21/21). **Ensamblaje, ejecutable de punta a punta**: el barrido manda `type: 'ASSEMBLE'` (mandaba `'ASSEMBLY'`, que caía en la rama de desarmado), el DTO pasó a **`@IsIn(['ASSEMBLE','DISASSEMBLE'])`** (validaba solo `@IsString()`: un typo cambiaba el sentido de la operación) y el escenario habilita la **matriz artículo-almacén** de los componentes y del terminado (el seed solo crea `Stock`). La orden se crea y **el terminado entra en stock** ✓. **Por qué no había asiento** (cadena verificada con datos): `assembly-orders.service` **sí** llama al motor (`createAssemblyJournalEntry`) **si `componentCosts.length > 0`**; los componentes tienen `Item.cost = 1200` en el maestro pero su **`Stock.avgCost` es `null`** (el seed no valoró las existencias), así que no hay nada que contabilizar; y al intentar valorarlos con una entrada de inventario el sistema responde el diagnóstico exacto: **`400 No se encontró cuenta contable para INVENTORY (nivel ITEM). Configure la cuenta en el artículo…`** — es decir, **falta la cuenta de inventario de los componentes** (la matriz del seed se crea para los artículos vendibles, no para los componentes del BOM). Conclusión: **no es un defecto de código, es un hueco de datos/configuración del seed**, y el ERP lo reporta con un mensaje accionable. | **CERRADO (2026-09-14) como prerrequisito**, prioridad **P3** con dos acciones sugeridas: (a) que el seed configure la cuenta de inventario (matriz artículo-almacén) de los **componentes** del BOM, igual que hace con los artículos vendibles, para que el circuito de ensamblaje quede contabilizando de fábrica; (b) mantener la valoración previa en el barrido (una entrada a costo del maestro) para poder verificar el asiento del ensamblaje cuando esa cuenta exista — hoy el escenario lo **anota** y sigue, y la barrida completa queda en **189/189 con exit 0**. **Pendiente de la barrida**: **lotes/seriados** (artículo con `trackingType` LOT/SERIAL + `trackingAssignments`) y **contabilidad avanzada** (conciliación bancaria, activos fijos, cierre de período). **Sigue abierto T107** (IVA del descuento de venta en una cuenta de crédito fiscal): espera criterio contable del usuario. |
 | T112 | QA (barrida operativa · lotes y seriados) · **Lotes VERIFICADOS de punta a punta; seriados pendientes (exigen el número de serie creado antes)** | Nuevo escenario del barrido (`--only=lotes`) sobre un artículo con `trackingType='LOT'`: **(1)** se crea el lote (`POST /batches {itemId, code, expiryDate}`); **(2)** una **entrada** de 10 u. con `trackingAssignments: [{batchId, batchCode, quantity}]` sube el **stock físico** y deja **10 en las existencias del lote** (`StockBatch` por almacén) ✓; **(3)** una **salida** de 4 u. con el mismo lote deja el stock físico en −4 y **las existencias del lote en 6** ✓ — es decir el seguimiento por lote cuadra en las dos direcciones; **(4)** el **guard** funciona: mover ese artículo **sin lote** responde `400` ✓. **Seriados**: el mismo circuito falla con `400 Asignación de serie incompleta… falta serialNumberId` — el seguimiento SERIAL exige el **número de serie ya creado** (se referencia por id, no basta el código), así que el escenario lo deja **anotado como pendiente** en lugar de fallar. | **PARCIAL (2026-09-14)**: lotes **verificados** (15/16 del escenario; el único «fallo» es el pendiente de seriados), barrida completa **199/199 con exit 0** y detector **0 errores / 2 avisos**. **Pendiente**: crear los números de serie antes del movimiento (endpoint de alta de seriados) y verificar el circuito completo (entrada, venta consumiendo serie, devolución y anulación), más el consumo de **lotes en ensamblaje** (los componentes con lote) que hoy no se cubre. **Nada de esto bloquea**: lo que se probó está verde y el guard de tracking se comporta. **Sigue pendiente la contabilidad avanzada** (conciliación bancaria, activos fijos, cierre de período) y **T107** (IVA del descuento de venta), que espera criterio contable del usuario. |
 | T113 | QA (barrida operativa · seriados) · **SERIADOS verificados de punta a punta: alta del número de serie, entrada con una serie por unidad y salida que consume la serie (estado AVAILABLE ↔ consumida)** | Cierre del pendiente de T112. El escenario del barrido (`--only=lotes`) ahora: **(1)** da de alta los números de serie (`POST /serial-numbers {itemId, code, warehouseId, purchaseCost, salePrice}`) — los SERIAL **exigen la serie creada antes** del movimiento y se referencian por `serialNumberId` (con sólo el código el guard responde `400 Asignación de serie incompleta… falta serialNumberId`); **(2)** hace una **entrada** de 2 u. con `trackingAssignments` de una serie por unidad → el **stock físico sube 2** y **las dos series quedan `AVAILABLE`** (en existencia disponible para la venta ✓, que es la semántica correcta: mi primera aserción esperaba lo contrario y la evidencia la corrigió); **(3)** una **salida** consumiendo una serie → **stock físico −1** y **la serie consumida deja de estar `AVAILABLE`** mientras **la otra sigue `AVAILABLE`** ✓. Es decir, el seguimiento por serie cuadra en las tres direcciones (alta, entrada y consumo) igual que el de lotes. | **VERIFICADO (2026-09-14)**: escenario **24/24** y **barrida completa 207/207 con exit 0**, detector **0 errores / 2 avisos**. Cubre ya inventario completo: entrada, salida, transferencia, ajuste, toma física, **lotes** y **seriados**. **Pendiente declarado**: (a) el circuito de la serie en **venta documental y devolución** (consumir la serie desde una entrega/factura y devolverla, verificando el retorno a `AVAILABLE`) y el **consumo de lotes en ensamblaje**; (b) **contabilidad avanzada** (conciliación bancaria, activos fijos, cierre de período); (c) **T107** (IVA del descuento de venta en una cuenta de crédito fiscal), que espera criterio contable del usuario. |
+
+---
+
+## 9. Barrida operativa de flujos — estado y pendientes (2026-09-14)
+
+**Herramienta**: `backend-erp/scripts/flow-sweep.mjs` — opera contra la API real como
+un usuario (login `default`/`admin`), en cada paso verifica **inventario**
+(`Stock.stockPhysical` por artículo/almacén) y **contabilidad** (asiento POSTED y
+cuadrado; al anular, original `CANCELLED` + espejo `REVERSAL` de la misma magnitud) y
+cierra corriendo el detector (`npm run audit:flows`). Flags:
+`--only=ventas|compras|inventario|retenciones|pos|toma|ensamblaje|lotes`,
+`SWEEP_API=…`, exit 1 si algo falla.
+
+**Última corrida**: **207/207 comprobaciones OK · exit 0 · detector 0 errores / 2
+avisos**, con backend **164 suites / 1825 tests** y E2E **15 suites / 105 tests** en
+verde (los cuatro servicios tocados en los frentes T109–T113 pasan las suites
+completas).
+
+**Cubierto** (con evidencia paso a paso):
+
+| Frente | Escenario | Estado |
+|---|---|---|
+| Preparación (lo que un usuario debe configurar) | gestión fiscal + **21 series** + tipo de cambio del día + terminal POS + sesión de caja + matriz artículo-almacén de los componentes del BOM | ✅ |
+| Ventas | cotización → pedido → entrega → factura, F. Reserva desde pedido y su reversión, devolución + NC, guards de anulación | ✅ |
+| Compras | pedido → recepción → FRC → pago (también por el campo legacy) → devolución → NC, guards | ✅ |
+| Inventario | entrada, salida, transferencia, ajuste, **toma física** (ajuste derivado + guard), **lotes** (entrada/salida con existencias por lote + guard) y **seriados** (alta → `AVAILABLE` → consumida) | ✅ |
+| Retenciones | sufrida en cobros (activo) y practicada en pagos (pasivo), con reversiones | ✅ |
+| POS | venta directa (factura + stock + asiento), guards, **nota de crédito**, modo **F. Reserva** | ✅ |
+| Producción | ensamblaje: orden creada y terminado en stock; **sin asiento** por hueco de configuración (T111) | ⚠️ T111 |
+
+**Pendiente por recorrer** (nada de esto bloquea lo verificado):
+
+1. **Serie/lote en venta documental y devolución**: consumir la serie desde una
+   entrega/factura (con `trackingAssignments`) y devolverla verificando el retorno a
+   `AVAILABLE`; y el **consumo de lotes en ensamblaje**.
+2. **Contabilidad avanzada**: conciliación bancaria, activos fijos y cierre de
+   período.
+3. **T107** — el IVA del descuento de venta va a la cuenta de activo
+   `1.1.2.06.004 Crédito Fiscal Descuento Sobre Ventas` cuando en una venta debería
+   reducir el débito fiscal: requiere criterio contable del usuario.
+4. **Mejoras de datos del seed**: cuenta de inventario de los componentes del BOM
+   (T111) y valoración inicial de existencias (T111/T112).
+
+**Higiene del barrido** (aprendido y dejado en el código): artículo de prueba
+**vendible**, inventariable y **sin lote** para los flujos genéricos; el POS
+**factura al precio de lista** (con descuento) así que el escenario reintenta con el
+total que informa el backend; los prerrequisitos de maestros (cuentas, matriz) se
+**anotan**, no se reportan como fallo de flujo.
