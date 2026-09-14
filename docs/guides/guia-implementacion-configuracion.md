@@ -179,6 +179,19 @@ cuando se parte de cero o se replica en un cliente real:
 > **Con contabilidad OFF** los pasos 13 del seed se omiten; la gestión (año fiscal) y las
 > series se crean por pantalla igual que en los perfiles A/B (no son parte del seed).
 
+> **Receta ejecutable del arranque (T104).** La secuencia Fase 0 → A.1 → A.2 → A.3 está
+> automatizada en `backend-erp/scripts/flow-sweep.mjs` (paso 0), que es la referencia de
+> qué hace falta **como mínimo** para que una instalación recién sembrada pueda emitir
+> documentos: gestión fiscal abierta que cubra hoy (+ períodos mensuales), una **serie por
+> cada `docType`** que se vaya a usar y la **tasa de cambio del día** (el seed **no** crea
+> tasas a propósito: ver `prisma/seed.ts` §15 — la cotización es dato del día y el guard
+> `assertTodayExchangeRate` bloquea cualquier transacción sin ella). Sin esos tres, el
+> primer documento falla con un 400 que nombra exactamente lo que falta; la barrida los
+> crea por API y por eso sirve como receta verificable (`node scripts/flow-sweep.mjs`).
+> Ojo con el borde de fecha: el «hoy» del documento lo resuelve el backend con la zona del
+> tenant (UTC−4 en Bolivia), que puede ser el día anterior al UTC — la tasa conviene
+> registrarla por rango (`POST /exchange-rates/bulk`).
+
 ---
 
 ## Anexo B — Errores típicos → causa → solución
