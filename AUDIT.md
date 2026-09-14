@@ -1843,8 +1843,11 @@ verde (los servicios tocados en los frentes T109–T124 pasan las suites complet
    rondas para puntuar candidatos (mantiene su score propio).
 4. **Mejoras de datos del seed restantes**: valoración inicial de **todo** el almacén
    (hoy se valoran los componentes del kit; el resto depende de cómo se carguen las
-   existencias) y nombres de cuenta con mojibake en algún tramo del plan de cuentas
-   (detectado al revisar la data de siembra: las que usa el barrido están correctas).
+   existencias). *Nota de método*: al revisar la data de siembra aparecieron secuencias
+   tipo `MercaderÃ­as` que resultaron ser **artefacto de visualización de PowerShell**
+   (el archivo está correcto en UTF-8, verificado leyéndolo con la herramienta de
+   ficheros) — no se reporta como hallazgo, pero conviene recordar que `Get-Content`
+   miente con los acentos y que sólo la lectura UTF-8 (o el propio archivo) es prueba.
 
 **Higiene del barrido** (aprendido y dejado en el código): artículo de prueba
 **vendible**, inventariable y **sin lote** para los flujos genéricos; el POS
