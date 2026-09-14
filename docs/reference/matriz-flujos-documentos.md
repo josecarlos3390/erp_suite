@@ -84,20 +84,41 @@ anulados con asiento POSTED sin reversa, reversas huérfanas y tipos sin comprob
 
 1. **`target*` es de un solo valor.** Una línea facturada **y** devuelta sólo puede
    apuntar a uno de los dos: manda el de la factura y el detalle vive en el `base*`
-   de la devolución (avisos **R14e**; quedan 8 líneas históricas de venta así).
+   de la devolución. La regla **R14e** sólo avisa cuando la línea **no tiene ningún**
+   vínculo hacia adelante (apuntar a una factura activa es legítimo); las líneas de
+   entrega que quedaron sin vínculo hacia su factura se sanaron con
+   `20260914050000_heal_missing_target_links` (sólo rellena `NULL`, nunca pisa).
 2. **Las columnas de la capa 1 mezclan hechos.** `DeliveryOrderItem.invoicedQty` y
    `PurchaseReceiptItem.invoicedQty` cuentan «facturado» **y** «devuelto» (la
-   devolución las incrementa para consumir la línea), así que su comparación con
-   Σ facturas activas sólo es exacta sin devoluciones (nota de la regla **R3**).
+   devolución las incrementa para consumir la línea), y las **notas de crédito**
+   liberan lo facturado (`PurchaseOrderItem`/`SalesOrderItem.invoicedQty` bajan al
+   crear la NC y se restauran al anularla). Por eso las reglas de cantidades
+   (**R3**, **R11**, **R12b**) aceptan el valor **bruto o el neto** de devoluciones y
+   notas de crédito: lo que no cuadra con ninguno de los dos es deriva real.
+   (T102 se cerró así: no era una columna desviada, era una regla sin netar.)
 3. **Modelos legacy vacíos.** `SaleReserveInvoice`/`SaleReserveInvoiceItem` y
    `PurchaseReserveInvoice` tienen **0 filas**: los datos viven en
-   `SaleInvoice`/`PurchaseInvoice` con `isReserve='Y'`. Quedan **25 lecturas** del
-   modelo vacío (**R9**): decorativas donde el checker también cuenta el modelo
-   unificado, pero inútiles como guard.
+   `SaleInvoice`/`PurchaseInvoice` con `isReserve='Y'`. R9 vigila las lecturas desde
+   el código y quedan **13 funcionales** (los `*-movement-checker` de maestros se
+   excluyen: cuentan también el modelo unificado). Revisarlas encontró **dos
+   defectos reales** (T103): pagar una F. Reserva de compra por su campo legacy
+   `purchaseReserveInvoiceId` devolvía **404**, y el asiento de una FRC se quedaba
+   **sin «documento origen»**; los dos ya usan el modelo unificado.
 4. **Notas de débito sin datos.** `SalesDebitNote`/`PurchaseDebitNote` = 0 filas: su
    simetría está cubierta por R13 (anulaciones) y por análisis de código.
 5. **`assembly-orders.cancel`** contabiliza su asiento espejo pero no lo enlaza como
    reversa del original.
+6. **Drift de migraciones en la BD de desarrollo (DT.45).** `prisma migrate status`
+   lista migraciones antiguas como no aplicadas porque esa BD se creó con
+   `db push`/SQL manual: en una BD limpia (CI y despliegue) `prisma migrate deploy`
+   aplica las **49**. El gate de CI usa ese camino limpio.
+7. **Residuo de E2E en desarrollo.** Los specs corren contra `erp_db` y dejan
+   documentos reales (~190 en una tarde de corridas: pedidos abiertos, entregas y
+   facturas CLOSED/CANCELLED). No es un problema de integridad —los guards derivan de
+   los documentos y `npm run audit:flows` lo verifica—; para decidir qué hacer hay
+   `node scripts/e2e-residue-report.mjs [--hours=N]` (sólo lectura), que lista el
+   residuo por tipo/estado y los pedidos abiertos **sin documento posterior**
+   (los únicos anulables sin arrastrar contabilidad).
 
 ---
 
