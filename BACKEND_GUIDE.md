@@ -722,7 +722,7 @@ npm run audit:money:check  # ratchet: falla si la deuda AUMENTA respecto de la l
 
 | Fase | Alcance | Estado |
 |---|---|---|
-| 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | 🔄 **EN CURSO (2026-09-14)**: reabierta al corregir el 5.º límite (R1 no veía `Math.abs(a - b) < 0.001`): eran **31 guardas** en 13 archivos; migradas las **2 primeras** —los cuadres del núcleo contable, **exactos al centavo** con `moneyEquals`/`isZeroMoney`— y quedan **29**. Familias y tolerancia acordada: cuadres de asiento → **0 centavos**; repartos de pago → **1 centavo** (`isSettled`/`exceedsBy`); diferencias de cambio → a decidir por negocio |
+| 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | 🔄 **EN CURSO (2026-09-15)**: reabierta al corregir el 5.º límite (R1 no veía `Math.abs(a - b) < 0.001`): eran **31 guardas** en 13 archivos; migradas las **2 primeras** (los cuadres del núcleo contable) y **las 10 de los journal builders** —`sales` (4), `payments` (2), `purchases` (3) y el cuadre de columnas Local/System de `journal-entry-core` (1)—, todas a **precisión de centavo** (`moneyEquals`/`isZeroMoney`) → **quedan 22** según el gate y **~35 reales** (límite 6: el detector no ve el medio centavo ni el dinero nombrado por intención, y **corregirlo es requisito previo a cerrar la fase**). Familias y tolerancia acordada: cuadres de asiento → **0 centavos**; repartos de pago → **1 centavo** (`isSettled`/`exceedsBy`); diferencias de cambio → a decidir por negocio (que la línea de diferencia de cambio **exista** sí es un zero-check de dinero, y va a centavo) |
 | 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **en curso**: **redondeo manual cerrado (R2b = 0)** con `scripts/migrate-round-money.mjs`, y **aritmética ya migrada** en `document-totals.util`, `payment-term.util`, `rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts`, `price-lists.service.ts`, `price-resolver.util.ts`, `purchase-invoices.service.ts`, `sale-reserve-invoices.service.ts` y `sale-invoices.service.ts`. Con el **detector ya corregido** (R2c y R2a v2), el inventario es **83** (R2a 66 + R2c 17). Frente abierto por criticidad: `reports` (8), `partners` (6), `bank-reconciliation` (5), `sales-debit-notes` (4), `purchase-debit-notes` (3), `items`/`fiscal-years`/`drafts.journal-builder` (pequeños) |
 | 3 | Reportes y lecturas | ⏳ |
 
@@ -753,8 +753,17 @@ con éxito en `document-totals.util` y `payment-term.util` es:
 
 **Punto de continuación**: **la fase 1 reabierta** —las **31 guardas de dinero** de 13 archivos
 («cuadres» de asiento y repartos de pago: `bank-reconciliation`, cobros, pagos,
-`sales.journal-builder`, `journal-entries`, `reports`, `fiscal-years`…), que es el frente de
-mayor valor porque son las comparaciones que **deciden dinero**— y, en la fase 2, `reports`
+`journal-entries`, `reports`, `fiscal-years`…), que es el frente de mayor valor porque son las
+comparaciones que **deciden dinero**. Los **journal builders** y el **núcleo contable** ya están
+migrados (2026-09-15), así que el orden recomendado es: **(1) corregir el detector —R1 v2, con
+prueba propia contra los casos difíciles— antes de tocar nada más** (si no, la fase se cierra
+otra vez con una medición corta, que es la lección que ya se pagó cinco veces); **(2)** los
+cuadres de más valor: `bank-reconciliation` (4 visibles + 1 ciega), `journal-entries` (4),
+`fiscal-years` (2 + 5 ciegas) y `accounting-periods` (2 ciegas), `reports` (2 + 1 ciega);
+**(3)** los repartos de pago —`incoming-payments` (4) y `outgoing-payments` (4), con la
+tolerancia de **1 centavo** y `isSettled`/`exceedsBy`—; **(4)** `items` (1) y la **familia de
+diferencias de cambio** (`exchange-rate-adjustments`, 2 ciegas), que sigue **a decisión de
+negocio**. Y, en la fase 2, `reports`
 (8 R2a), `partners` (6), `bank-reconciliation` (5), `sales-debit-notes` (4),
 `purchase-debit-notes` (3). *(Ya migrados: `document-totals.util`, `payment-term.util`,
 `rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts`, `price-lists.service.ts`,
@@ -765,6 +774,18 @@ tenga mocks de fe** (crear un documento completo desde el servicio), la red vál
 hizo en `purchase-invoices` (13/13 de la E2E de compras) y en `sale-reserve-invoices` (11/11
 de la de ventas) en lugar de un test de centavos apurado. Eso sí: **declarado** en el
 CHANGELOG y en T126, no omitido en silencio.
+
+**Procedimiento por archivo (fase 1 · guardas — receta probada, 2026-09-15)**: (1) inventario
+del archivo (`npm run audit:money -- --file=<substr>` y `--all`); (2) **decidir si el cambio es
+observable ANTES de migrar**: si el importe que decide la guarda ya viene de
+`roundMoney`/`round2`, entonces `Math.abs(x) >= 0.01` ⟺ `x ≠ 0` y la migración es **exacta** —no
+se escribe un test que pasa antes y después, se **declara la equivalencia**—; si viene de una
+acumulación en flotante, hay **test de centavos que falla antes y pasa después** (se comprueba
+revirtiendo la guarda a mano, como se hizo con la diferencia de cambio de cobros); (3) migrar a
+`isZeroMoney` (zero-check), `moneyEquals` (cuadre) o `isSettled`/`exceedsBy` (reparto) según la
+familia; (4) verificar en el orden de la fase 2 y **reiniciar el backend con el `dist` del
+commit antes de la barrida**; (5) **si el sitio no lo ve el gate, declararlo**: el número que
+baja es el del gate, no el del frente (límite 6).
 
 **Precios con 6 decimales (no todo importe es `Decimal(14,2)`)**: los **precios unitarios**
 —listas de precios, precios especiales y sus escalas— viven en `Decimal(14,6)`, así que
@@ -784,6 +805,8 @@ es que *una métrica sólo vale si el detector está probado contra los casos di
 | 2 | Una **segunda forma** de redondear dinero (`(neto + IVA) × 100` → `Math.round` → `/ 100`) no está reconocida por el gate | ⚠️ **el sitio ya está migrado** (`sale-reserve-invoices:313-319` pasó a `Money.sumMoney` en la ronda de R2b); lo que el gate no reconoce es la **forma**, así que si reaparece no se vería (2026-09-14) |
 | 3 | R2a se ancla en `Number(<dinero>)`/`parseFloat(...)`, así que era **ciego al dinero que ya llega como `number`** (parámetro o local) y se opera con `+(...).toFixed(2\|6)` | ✅ **corregido con la regla R2c** (2026-09-14): detecta las dos formas (`<dinero>.toFixed(N)` y `+(<expr>).toFixed(N)`) + marcador `// toFixed-ok:` para porcentajes y tasas + exclusión informada de plantillas de texto. Medición honesta: **R2c = 50** (2 justificados, 19 de presentación) → **el inventario real pasó de 95 a 145** |
 | 4 | R2a exigía un **prefijo** antes del nombre del campo: `Number(line.price) * qty` se contaba, pero `Number(priceNet) * qty` (**el identificador es el nombre del campo**) **no** | ✅ **corregido con R2a v2** (2026-09-14): prefijo opcional + filtro de lo que no es dinero (tasas, porcentajes e ids). Medición: **+7 sitios reales** (p. ej. `round2(Number(amount) * exchangeRate)`), total **89 → 96** |
+| 5 | R1 solo veía el épsilon **dentro** de la expresión (`x > y + 0.001`); la forma `Math.abs(a - b) < 0.001` —la firma de la tolerancia improvisada— era **invisible**, así que el «R1 = 0» con el que se declaró cerrada esta fase era una **medición corta** | ✅ **corregido** (2026-09-14): la regla cubre las dos formas, con filtro de cantidades y porcentajes (`assignedQty - needed`, `sum - 100`): crudo 47, **real 31** → la fase 1 se reabrió con 31 guardas en 13 archivos |
+| 6 | R1 no reconoce ni el **medio centavo** (`Math.abs(x) < 0.005`, la forma que tenía el cuadre de las columnas convertidas) ni el dinero **nombrado por intención** en vez de por el nombre del campo (`diff`, `exchangeDiffLocal`, `difference`, `netDifference`, `raw`, `resultado`, `n`, `r`). Medido con un escáner propio sobre `src/**/*.ts` (sin specs): de **52** comparaciones `Math.abs(...)` contra un literal decimal el gate ve **22** y **no ve 30**, de las que **23 son código real** — **13 guardas de dinero** (`bank-reconciliation`, `common/discount-propagation`, `document-drafts`, `exchange-rate-adjustments` ×2, `fiscal-years`/`accounting-periods` ×2 + `fiscal-years` ×5, `reports`) y **10 legítimas** en su precisión (cantidades ×4, porcentajes ×2, tasas de cambio ×2, precios `Decimal(14,6)` ×2). Por eso **R1 = 22 es una cota inferior** del frente real (~35) | ⚠️ **declarado y medido (2026-09-15)**; **R1 v2 es requisito previo a declarar cerrada la fase 1**, y hay que probarlo contra los casos difíciles (cantidad, porcentaje, tasa y precio a 6 decimales) para no cambiar un punto ciego por falsos positivos |
 
 **Regla de redondeo, en una línea**: nunca `Math.round(x * 100) / 100` **ni `.toFixed(N)`**
 sobre dinero — las dos redondean el valor binario, no el decimal (`(2.675).toFixed(2) ===
@@ -828,7 +851,10 @@ una comparación: 1 milésimo **no existe** en dinero y es la firma de T125. Baj
 esa tolerancia es una **decisión de negocio**, no una migración mecánica.
 
 **Regla de cierre:** un cambio de dinero no está terminado sin su **test de centavos**
-(`money.util.spec.ts` es el modelo) — y el gate `audit:money:check` debe seguir en verde.
+(`money.util.spec.ts` es el modelo) — o sin la **equivalencia declarada**, cuando el importe
+que decide la guarda ya viene redondeado a centavos y ningún test puede distinguir el antes del
+después (procedimiento de la fase 1, arriba; se declara en el CHANGELOG y en T126) — y el gate
+`audit:money:check` debe seguir en verde.
 
 
 ---
