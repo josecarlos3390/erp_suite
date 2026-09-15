@@ -723,7 +723,7 @@ npm run audit:money:check  # ratchet: falla si la deuda AUMENTA respecto de la l
 | Fase | Alcance | Estado |
 |---|---|---|
 | 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | ✅ **R1 = 0**: migrados a `isSettled`/`exceedsBy`/`moneyGt` (cobros, pagos, condiciones de pago, POS, borradores) |
-| 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **en curso**: **redondeo manual cerrado (R2b = 0)** con `scripts/migrate-round-money.mjs`, y **aritmética ya migrada** en `document-totals.util`, `payment-term.util`, `rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts` (18 prorrateos con `prorateMoney`), `price-lists.service.ts` (20 sitios de precio con `roundMoneyTo`/`roundMoney`) y `price-resolver.util.ts` (19 sitios; es el que resuelve el precio de los documentos). Con el **detector ya corregido** (R2c), el inventario es **125** (R2a 94 + R2c 31). Frente abierto por criticidad: `purchase-invoices` (14), `sale-reserve-invoices` (12), `journal-entries` (10), `sale-invoices` (10), `payment-term.util.ts` (9) |
+| 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **en curso**: **redondeo manual cerrado (R2b = 0)** con `scripts/migrate-round-money.mjs`, y **aritmética ya migrada** en `document-totals.util`, `payment-term.util`, `rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts`, `price-lists.service.ts`, `price-resolver.util.ts` y `purchase-invoices.service.ts`. Con el **detector ya corregido** (R2c), el inventario es **111** (R2a 81 + R2c 30). Frente abierto por criticidad: `sale-reserve-invoices` (12), `sale-invoices` (10), `journal-entries` (10), `payment-term.util.ts` (9), `partners` (6) |
 | 3 | Reportes y lecturas | ⏳ |
 
 **Procedimiento por archivo (fase 2 · aritmética — receta probada)**: la aritmética no se
@@ -751,13 +751,16 @@ con éxito en `document-totals.util` y `payment-term.util` es:
    arnés (ya pasó dos veces: artículo no vendible y kit no comprable en el escenario de
    compras) o real. Esa distinción es el valor del procedimiento.
 
-**Punto de continuación**: `purchase-invoices.service.ts` (**14** hallazgos: 13 R2a + 1
-R2c, ahora el mayor), con el paso 2 hecho en serio. Sigue el orden de criticidad
-`sale-reserve-invoices` (12), `journal-entries` (10), `sale-invoices` (10),
-`payment-term.util.ts` (9). *(Ya migrados: `document-totals.util`, `payment-term.util`,
-`rc-iva.service.ts`, `iue.service.ts`, los 18 prorrateos de `delivery-orders.service.ts`,
-los 20 sitios de precio de `price-lists.service.ts` y los 19 de
-`price-resolver.util.ts`.)*
+**Punto de continuación**: `sale-reserve-invoices.service.ts` (**12** hallazgos R2a, ahora el
+mayor), con el paso 2 hecho en serio. Sigue el orden de criticidad `sale-invoices` (10),
+`journal-entries` (10), `payment-term.util.ts` (9), `partners` (6). *(Ya migrados:
+`document-totals.util`, `payment-term.util`, `rc-iva.service.ts`, `iue.service.ts`,
+`delivery-orders.service.ts`, `price-lists.service.ts`, `price-resolver.util.ts` y
+`purchase-invoices.service.ts`.)* **Cuando el camino tenga mocks de fe** (crear un documento
+completo desde el servicio), la red válida es la **E2E del flujo** (`test/*.e2e-spec.ts`, con
+importes reales) **más** la barrida: es lo que se hizo en `purchase-invoices` (13/13 de la E2E
+de compras) en lugar de un test de centavos apurado. Eso sí: **declarado** en el CHANGELOG y en
+T126, no omitido en silencio.
 
 **Precios con 6 decimales (no todo importe es `Decimal(14,2)`)**: los **precios unitarios**
 —listas de precios, precios especiales y sus escalas— viven en `Decimal(14,6)`, así que
@@ -776,6 +779,7 @@ es que *una métrica sólo vale si el detector está probado contra los casos di
 | 1 | El redondeo manual **multi-línea** (`Math.round(` + `* 100,` + `) / 100` en tres líneas) no se veía con la regex: el «R2b = 0» era un artefacto | ✅ **corregido** (escáner por paréntesis + `--all`) |
 | 2 | Una **segunda forma** de redondear dinero (`(neto + IVA) × 100` → `Math.round` → `/ 100`) no está reconocida por el gate | ⚠️ declarado en `sale-reserve-invoices:313-319` |
 | 3 | R2a se ancla en `Number(<dinero>)`/`parseFloat(...)`, así que era **ciego al dinero que ya llega como `number`** (parámetro o local) y se opera con `+(...).toFixed(2\|6)` | ✅ **corregido con la regla R2c** (2026-09-14): detecta las dos formas (`<dinero>.toFixed(N)` y `+(<expr>).toFixed(N)`) + marcador `// toFixed-ok:` para porcentajes y tasas + exclusión informada de plantillas de texto. Medición honesta: **R2c = 50** (2 justificados, 19 de presentación) → **el inventario real pasó de 95 a 145** |
+| 4 | R2a exige un **prefijo** antes del nombre del campo: `Number(line.price) * qty` se cuenta, pero `Number(priceNet) * qty` (**el identificador es el nombre del campo**) **no** | ⚠️ **declarado** (2026-09-14, encontrado en `purchase-invoices`): el `totalCost` de `createManual` tenía las dos formas y el gate veía una sola. Candidato a **R2a v2** |
 
 **Regla de redondeo, en una línea**: nunca `Math.round(x * 100) / 100` **ni `.toFixed(N)`**
 sobre dinero — las dos redondean el valor binario, no el decimal (`(2.675).toFixed(2) ===
