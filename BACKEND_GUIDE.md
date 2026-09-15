@@ -723,7 +723,7 @@ npm run audit:money:check  # ratchet: falla si la deuda AUMENTA respecto de la l
 | Fase | Alcance | Estado |
 |---|---|---|
 | 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | ✅ **R1 = 0**: migrados a `isSettled`/`exceedsBy`/`moneyGt` (cobros, pagos, condiciones de pago, POS, borradores) |
-| 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **iniciada**: `sales.journal-builder.ts` migrado con el transformador `scripts/migrate-round-money.mjs` (dry-run por defecto) |
+| 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **en curso**: **redondeo manual cerrado (R2b = 0)** con `scripts/migrate-round-money.mjs`, y **aritmética ya migrada** en `document-totals.util`, `payment-term.util`, `rc-iva.service.ts` e `iue.service.ts` (**R2a 143 → 127**). Frente abierto: `delivery-orders` (18), `price-lists` (14), `purchase-invoices` (13), `sale-reserve-invoices` (12), `sale-invoices` (9), `reports` (8) |
 | 3 | Reportes y lecturas | ⏳ |
 
 **Procedimiento por archivo (fase 2 · aritmética — receta probada)**: la aritmética no se
@@ -753,8 +753,20 @@ con éxito en `document-totals.util` y `payment-term.util` es:
 
 **Punto de continuación**: `delivery-orders.service.ts` (**18** hallazgos de aritmética, el
 mayor), con el paso 2 hecho en serio. Sigue el orden de criticidad
-`purchase-invoices`/`sale-reserve-invoices` (13 cada uno), `sale-invoices` (9),
+`purchase-invoices` (13) / `sale-reserve-invoices` (12), `sale-invoices` (9),
 `reports` (8).
+
+**Lección del paso 2, medida en `iue.service.ts` (2026-09-14)**: si el sitio es una
+**suma** de importes de 2 decimales, la deriva de la coma flotante **no cambia el
+resultado redondeado** a volúmenes normales —la suma de valores de 2 decimales es de 2
+decimales y `roundMoney` es la identidad sobre ella—: 30.000 simulaciones aleatorias
+dieron **0 diferencias**. La migración sigue siendo obligatoria (la regla 2 es no acumular
+dinero en `number`), pero obliga a **elegir bien el caso del test**: el que falla de
+verdad es el de **volumen**, donde el error de la acumulación supera el medio centavo
+(20.000 líneas de 1.234.567,89 Bs: exacto 24.691.357.800,00 y flotante
+24.691.357.799,99). Un test de cuatro líneas «pasa antes y después» y **no prueba la
+migración**; escribirlo y llamarlo test de centavos es peor que no tenerlo, porque
+convierte una métrica en una ilusión — la misma lección que dejó el escáner de R2b.
 
 **Herramienta de migración del redondeo manual** (`scripts/migrate-round-money.mjs`):
 convierte `Math.round(<expr> * 100) / 100` en `Money.roundMoney(<expr>)` con un **escáner por
