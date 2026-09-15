@@ -1285,6 +1285,28 @@ La densidad global la aplica `DensityService` (clases `density-compact` /
   cuando lo que pelea es un estilo inline. Tablas y checklist completas en
   `erp-frontend/src/styles/CSS-ARCHITECTURE.md` §4 y §5.
 
+- **Gate de DINERO (T126, 2026-09-15):** `npm run audit:money` mide dos reglas sobre
+  `src/**/*.ts` (sin specs) y `npm run audit:money:check` es el **ratchet** que corre en CI
+  (falla si la deuda **aumenta**; la línea base vive en `scripts/money-audit-baseline.json`):
+  **R1** comparaciones de dinero con **épsilon inventado** —en sus tres formas: `Math.abs(a-b) <=
+  0.01`, `remaining >= payableBalance - 0.001` y `remaining <= 0.001`— y **R2** redondeo de
+  dinero con **`.toFixed()` en aritmética** (`+(balance - discount).toFixed(2)`). El épsilon no
+  habla en centavos: `2,3 − 2,29 = 0,009999999999999787`, así que el formulario daba por
+  cuadrado un descuadre de un centavo que el backend rechaza. **La única utilidad permitida es
+  `src/app/shared/money/money.util.ts`** (espejo de la del backend, con los **mismos nombres**):
+  `centsOf`/`fromCents`/`roundMoney`/`roundMoneyTo`, `addMoney`/`sumMoney`, `moneyEquals`
+  (**cuadres: 0 centavos**), `moneyGt`/`moneyLt`/`isZeroMoney` y `isSettled`/`exceedsBy`
+  (**tolerancias de liquidación: 1 centavo explícito**, `SETTLEMENT_TOLERANCE_CENTS`). Un
+  `.toFixed(2)` sobre un importe **dentro de una plantilla de texto** es presentación y el gate
+  lo informa aparte; los porcentajes, tasas, cantidades y pasos **no** son dinero. Los casos que
+  no son dinero se marcan `// money-ok: <razón>` (o `// toFixed-ok: <razón>` para un porcentaje)
+  y el informe los cuenta como justificados. El detector **se autoprueba** (`npm run
+  audit:money:self-test`, 15 casos) antes de mirar el número, igual que el del backend.
+  **Regla de migración de una proyección de cuotas:** si el épsilon tapa un residuo sub-céntimo,
+  hay que redondear **cada resta** (`remaining = roundMoney(remaining - applied)`) y comparar a
+  centavo (`!moneyGt(remaining, 0)`, `moneyGtOrEq(remaining, payableBalance)`); sustituir sólo la
+  comparación deja `remaining` en `0,004` y la cuota siguiente recibe un importe **negativo**.
+
 ## 13. Documentación adicional del frontend
 
 Estos documentos complementan a esta guía canónica. No son obligatorios para tareas rutinarias, pero deben consultarse antes de trabajar en los dominios que cubren.
