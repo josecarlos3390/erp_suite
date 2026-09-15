@@ -723,7 +723,7 @@ npm run audit:money:check  # ratchet: falla si la deuda AUMENTA respecto de la l
 | Fase | Alcance | Estado |
 |---|---|---|
 | 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | ✅ **R1 = 0**: migrados a `isSettled`/`exceedsBy`/`moneyGt` (cobros, pagos, condiciones de pago, POS, borradores) |
-| 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **en curso**: **redondeo manual cerrado (R2b = 0)** con `scripts/migrate-round-money.mjs`, y **aritmética ya migrada** en `document-totals.util`, `payment-term.util`, `rc-iva.service.ts`, `iue.service.ts` y `delivery-orders.service.ts` (los 18 prorrateos de los seis `getDraft*`, con `prorateMoney`) → **R2a 143 → 109**. Frente abierto: `price-lists` (14), `purchase-invoices` (13), `sale-reserve-invoices` (12), `sale-invoices` (9), `reports` (8) |
+| 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **en curso**: **redondeo manual cerrado (R2b = 0)** con `scripts/migrate-round-money.mjs`, y **aritmética ya migrada** en `document-totals.util`, `payment-term.util`, `rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts` (18 prorrateos con `prorateMoney`) y `price-lists.service.ts` (20 sitios de precio con `roundMoneyTo`/`roundMoney`) → **R2a 143 → 95**. Frente abierto: `purchase-invoices` (13), `sale-reserve-invoices` (12), `sale-invoices` (9), `reports` (8). ⚠️ **El número del gate es un piso, no el total**: ver «Límites conocidos del detector» |
 | 3 | Reportes y lecturas | ⏳ |
 
 **Procedimiento por archivo (fase 2 · aritmética — receta probada)**: la aritmética no se
@@ -751,11 +751,38 @@ con éxito en `document-totals.util` y `payment-term.util` es:
    arnés (ya pasó dos veces: artículo no vendible y kit no comprable en el escenario de
    compras) o real. Esa distinción es el valor del procedimiento.
 
-**Punto de continuación**: `price-lists.service.ts` (**14** hallazgos de aritmética, ahora el
-mayor), con el paso 2 hecho en serio. Sigue el orden de criticidad
-`purchase-invoices` (13) / `sale-reserve-invoices` (12), `sale-invoices` (9),
-`reports` (8). *(Ya migrados: `document-totals.util`, `payment-term.util`, `rc-iva.service.ts`,
-`iue.service.ts` y los 18 prorrateos de `delivery-orders.service.ts`.)*
+**Punto de continuación**: `purchase-invoices.service.ts` (**13** hallazgos de aritmética,
+ahora el mayor), con el paso 2 hecho en serio. Sigue el orden de criticidad
+`sale-reserve-invoices` (12), `sale-invoices` (9), `reports` (8). *(Ya migrados:
+`document-totals.util`, `payment-term.util`, `rc-iva.service.ts`, `iue.service.ts`, los 18
+prorrateos de `delivery-orders.service.ts` y los 20 sitios de precio de
+`price-lists.service.ts`.)*
+
+**Precios con 6 decimales (no todo importe es `Decimal(14,2)`)**: los **precios unitarios**
+—listas de precios, precios especiales y sus escalas— viven en `Decimal(14,6)`, así que
+redondearlos con `roundMoney` (centavos) **pierde precisión**. Para eso está
+**`roundMoneyTo(valor, decimales)`**: la **misma** regla (`ROUND_HALF_UP`) con la precisión
+del sitio. No es una segunda regla de redondeo y por eso no lleva un modo propio. Antes de
+migrar un sitio, mira la **columna destino** (`Decimal(14,2)` → `roundMoney`/`mulMoney`;
+`Decimal(14,6)` → `roundMoneyTo(..., 6)`): la precisión se **preserva**, no se «mejora», o el
+cambio deja de ser una migración y pasa a ser un cambio de producto.
+
+**Límites conocidos del detector** (declarados, no cierres silenciosos — la lección de R2b
+es que *una métrica sólo vale si el detector está probado contra los casos difíciles*):
+
+| # | Límite | Estado |
+|---|---|---|
+| 1 | El redondeo manual **multi-línea** (`Math.round(` + `* 100,` + `) / 100` en tres líneas) no se veía con la regex: el «R2b = 0» era un artefacto | ✅ **corregido** (escáner por paréntesis + `--all`) |
+| 2 | Una **segunda forma** de redondear dinero (`(neto + IVA) × 100` → `Math.round` → `/ 100`) no está reconocida por el gate | ⚠️ declarado en `sale-reserve-invoices:313-319` |
+| 3 | R2a se ancla en `Number(<dinero>)`/`parseFloat(...)`, así que es **ciego al dinero que ya llega como `number`** (parámetro o local) y se opera con `+(...).toFixed(2\|6)` | ⚠️ **medido: 38 sitios en 8 archivos** (`price-resolver.util.ts` 21, `payment-term.util.ts` 8, `drafts.journal-builder` 2, cobros 1, pagos 2, `items` 1, facturas de compra y de venta 1 cada una) → **el frente real es ~133, no el número del gate** |
+
+Consecuencia práctica del límite 3: `.toFixed(N)` **redondea el valor binario**, no el
+decimal, así que es una forma de redondeo **prohibida** igual que `Math.round(x*100)/100`
+(`(2.675).toFixed(2) === '2.67'`, cuando la regla 4 manda `2.68`). Al migrar un archivo,
+búscalo a mano: `grep -n "toFixed(" <archivo>` y decide por precisión. Y **no cierres un
+archivo «a medias»** para que el gate baje: si el cambio no es observable con un test (p. ej.
+porque un redondeo posterior a centavos lo absorbe), **no lo hagas** — dejar ese archivo en
+«0 hallazgos» con sitios reales dentro es peor que declararlo como frente abierto.
 
 **Lección del paso 2, medida en `iue.service.ts` y `delivery-orders.service.ts`
 (2026-09-14)**: el caso del test de centavos depende de la **forma** de la aritmética que se
