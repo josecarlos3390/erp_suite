@@ -726,8 +726,38 @@ npm run audit:money:check  # ratchet: falla si la deuda AUMENTA respecto de la l
 | 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **iniciada**: `sales.journal-builder.ts` migrado con el transformador `scripts/migrate-round-money.mjs` (dry-run por defecto) |
 | 3 | Reportes y lecturas | ⏳ |
 
-**Herramienta de migración** (`scripts/migrate-round-money.mjs`): convierte
-`Math.round(<expr> * 100) / 100` en `Money.roundMoney(<expr>)` con un **escáner por
+**Procedimiento por archivo (fase 2 · aritmética — receta probada)**: la aritmética no se
+migra con un transformador, porque cambia el importe calculado. El orden que ya se aplicó
+con éxito en `document-totals.util` y `payment-term.util` es:
+
+1. **Inventario del archivo**:
+   `npm run audit:money -- --all` (o `--file=<substr>`) → anota cuántos `R2a` tiene y en
+   qué líneas (`Number(<dinero>)` seguido de operación).
+2. **Test de centavos ANTES de tocar nada**: fija el importe exacto que debe salir. Los
+   casos útiles son los que **hoy fallan** por coma flotante —`0.07 × 7` da
+   `0.49000000000000005`, mil centavos dan `9.999999999999831`, `0.1 + 0.2` da
+   `0.30000000000000004`—, no los que ya coinciden. Si el camino es un servicio con mocks
+   pesados, **apóyate en el spec existente y en la barrida** (que pinchan importes) antes
+   que escribir un test apurado: lo que no vale es migrar sin ninguna red.
+3. **Migrar a `Decimal` preservando los tipos** del archivo (`Money.addMoney(...).toNumber()`,
+   `Money.mulMoney(...).toNumber()`): si el archivo está tipado con `number`, convertir en
+   el borde evita refactorizar cientos de líneas a la vez.
+4. **Verificar, en este orden**: `npx tsc --noEmit` → `npm run build` → los specs del
+   módulo **sin cambiar expectativas** (que sigan verdes es la prueba de que el importe no
+   cambió más que en las milésimas que eran error) → `npm test` → la **barrida completa**
+   (`node scripts/flow-sweep.mjs`, que exige cada asiento cuadrado y cada reversa espejo) →
+   `npm run audit:money -- --update-baseline` y `audit:money:check`.
+5. **Si la barrida se pone roja, no la toques para que pase**: investiga si el fallo es del
+   arnés (ya pasó dos veces: artículo no vendible y kit no comprable en el escenario de
+   compras) o real. Esa distinción es el valor del procedimiento.
+
+**Punto de continuación**: `delivery-orders.service.ts` (**18** hallazgos de aritmética, el
+mayor), con el paso 2 hecho en serio. Sigue el orden de criticidad
+`purchase-invoices`/`sale-reserve-invoices` (13 cada uno), `sale-invoices` (9),
+`reports` (8).
+
+**Herramienta de migración del redondeo manual** (`scripts/migrate-round-money.mjs`):
+convierte `Math.round(<expr> * 100) / 100` en `Money.roundMoney(<expr>)` con un **escáner por
 paréntesis** (no una regex: las expresiones llevan paréntesis anidados y saltos de
 línea), informa en *dry-run* y sólo escribe con `--write`. Si el archivo está tipado con
 `number`, se completa con `scripts/migrate-round-money-totypes.mjs`, que añade
