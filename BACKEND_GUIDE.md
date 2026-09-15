@@ -722,7 +722,7 @@ npm run audit:money:check  # ratchet: falla si la deuda AUMENTA respecto de la l
 
 | Fase | Alcance | Estado |
 |---|---|---|
-| 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | ✅ **R1 = 0**: migrados a `isSettled`/`exceedsBy`/`moneyGt` (cobros, pagos, condiciones de pago, POS, borradores) |
+| 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | 🔄 **REABIERTA (2026-09-14)**: la regla R1 solo veía el épsilon *dentro* de la expresión (`x > y + 0.001`); al cubrir también `Math.abs(a - b) < 0.001` (con filtro de cantidades y porcentajes) aparecen **31 guardas en 13 archivos** —cuadres de asiento y repartos de pago— que estaban invisibles bajo el «R1 = 0». Arreglo: `isSettled`/`exceedsBy`/`moneyEquals` |
 | 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **en curso**: **redondeo manual cerrado (R2b = 0)** con `scripts/migrate-round-money.mjs`, y **aritmética ya migrada** en `document-totals.util`, `payment-term.util`, `rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts`, `price-lists.service.ts`, `price-resolver.util.ts`, `purchase-invoices.service.ts`, `sale-reserve-invoices.service.ts` y `sale-invoices.service.ts`. Con el **detector ya corregido** (R2c y R2a v2), el inventario es **83** (R2a 66 + R2c 17). Frente abierto por criticidad: `reports` (8), `partners` (6), `bank-reconciliation` (5), `sales-debit-notes` (4), `purchase-debit-notes` (3), `items`/`fiscal-years`/`drafts.journal-builder` (pequeños) |
 | 3 | Reportes y lecturas | ⏳ |
 
@@ -751,13 +751,15 @@ con éxito en `document-totals.util` y `payment-term.util` es:
    arnés (ya pasó dos veces: artículo no vendible y kit no comprable en el escenario de
    compras) o real. Esa distinción es el valor del procedimiento.
 
-**Punto de continuación**: `reports.service.ts` (**8** R2a, ahora el mayor), con el paso 2
-hecho en serio. Sigue el orden de criticidad `partners` (6), `bank-reconciliation` (5),
-`sales-debit-notes` (4), `purchase-debit-notes` (3). *(Ya migrados: `document-totals.util`,
-`payment-term.util`, `rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts`,
-`price-lists.service.ts`, `price-resolver.util.ts`, `purchase-invoices.service.ts`,
-`sale-reserve-invoices.service.ts`, `sale-invoices.service.ts` y
-`journal-entries.service.ts`.)* **Cuando el camino
+**Punto de continuación**: **la fase 1 reabierta** —las **31 guardas de dinero** de 13 archivos
+(«cuadres» de asiento y repartos de pago: `bank-reconciliation`, cobros, pagos,
+`sales.journal-builder`, `journal-entries`, `reports`, `fiscal-years`…), que es el frente de
+mayor valor porque son las comparaciones que **deciden dinero**— y, en la fase 2, `reports`
+(8 R2a), `partners` (6), `bank-reconciliation` (5), `sales-debit-notes` (4),
+`purchase-debit-notes` (3). *(Ya migrados: `document-totals.util`, `payment-term.util`,
+`rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts`, `price-lists.service.ts`,
+`price-resolver.util.ts`, `purchase-invoices.service.ts`, `sale-reserve-invoices.service.ts`,
+`sale-invoices.service.ts` y `journal-entries.service.ts`.)* **Cuando el camino
 tenga mocks de fe** (crear un documento completo desde el servicio), la red válida es la
 **E2E del flujo** (`test/*.e2e-spec.ts`, con importes reales) **más** la barrida: es lo que se
 hizo en `purchase-invoices` (13/13 de la E2E de compras) y en `sale-reserve-invoices` (11/11
