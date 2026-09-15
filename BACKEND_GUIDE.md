@@ -716,13 +716,20 @@ if (Money.moneyGt(total, remaining)) throw new BadRequestException(/* … */);
 barrido a ciegas, y hay un **gate** que la gobierna:
 
 ```bash
-npm run audit:money        # inventario priorizado (R1 épsilons, R2a Number(...)+aritmética, R2b redondeo manual)
-npm run audit:money:check  # ratchet: falla si la deuda AUMENTA respecto de la línea base
+npm run audit:money           # inventario priorizado (R1 épsilons, R2a Number(...)+aritmética, R2b redondeo manual, R2c .toFixed)
+npm run audit:money:check     # ratchet: falla si la deuda AUMENTA respecto de la línea base (autoprueba primero)
+npm run audit:money:self-test # prueba el DETECTOR contra 23 casos difíciles (positivos y negativos)
 ```
+
+> **La métrica se autoprueba.** `--check` y `--update-baseline` ejecutan la autoprueba
+> **antes** de mirar el número: si el detector deja de ver un caso que ya se pagó una vez
+> (los **siete** límites de la tabla de abajo), el gate falla aunque el número sea «verde».
+> Es la respuesta a la lección que este gate pagó seis veces: *una métrica en 0 sólo vale si
+> el detector está probado contra los casos difíciles*.
 
 | Fase | Alcance | Estado |
 |---|---|---|
-| 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | 🔄 **EN CURSO (2026-09-15)**: reabierta al corregir el 5.º límite (R1 no veía `Math.abs(a - b) < 0.001`): eran **31 guardas** en 13 archivos; migradas las **2 primeras** (los cuadres del núcleo contable) y **las 10 de los journal builders** —`sales` (4), `payments` (2), `purchases` (3) y el cuadre de columnas Local/System de `journal-entry-core` (1)—, todas a **precisión de centavo** (`moneyEquals`/`isZeroMoney`) → **quedan 22** según el gate y **~35 reales** (límite 6: el detector no ve el medio centavo ni el dinero nombrado por intención, y **corregirlo es requisito previo a cerrar la fase**). Familias y tolerancia acordada: cuadres de asiento → **0 centavos**; repartos de pago → **1 centavo** (`isSettled`/`exceedsBy`); diferencias de cambio → a decidir por negocio (que la línea de diferencia de cambio **exista** sí es un zero-check de dinero, y va a centavo) |
+| 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | 🔄 **EN CURSO (2026-09-15)**: reabierta al corregir el 5.º límite (R1 no veía `Math.abs(a - b) < 0.001`) y **medida de verdad** al corregir el 6.º (**R1 v2**, con autoprueba): eran **31 visibles**, son **35 reales**. Migradas las **2 primeras** (los cuadres del núcleo contable) y **las 10 de los journal builders** —`sales` (4), `payments` (2), `purchases` (3) y el cuadre de columnas Local/System de `journal-entry-core` (1)—, todas a **precisión de centavo** (`moneyEquals`/`isZeroMoney`) → **quedan 35 medidas** (13 de ellas las destapó R1 v2: `bank-reconciliation` 1, `common/discount-propagation` 1, `document-drafts` 1, `exchange-rate-adjustments` 2, `fiscal-years`/`accounting-periods` 2 + `fiscal-years` 5, `reports` 1). Familias y tolerancia acordada: cuadres de asiento → **0 centavos**; repartos de pago → **1 centavo** (`isSettled`/`exceedsBy`); diferencias de cambio → a decidir por negocio (que la línea de diferencia de cambio **exista** sí es un zero-check de dinero, y va a centavo) |
 | 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **en curso**: **redondeo manual cerrado (R2b = 0)** con `scripts/migrate-round-money.mjs`, y **aritmética ya migrada** en `document-totals.util`, `payment-term.util`, `rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts`, `price-lists.service.ts`, `price-resolver.util.ts`, `purchase-invoices.service.ts`, `sale-reserve-invoices.service.ts` y `sale-invoices.service.ts`. Con el **detector ya corregido** (R2c y R2a v2), el inventario es **83** (R2a 66 + R2c 17). Frente abierto por criticidad: `reports` (8), `partners` (6), `bank-reconciliation` (5), `sales-debit-notes` (4), `purchase-debit-notes` (3), `items`/`fiscal-years`/`drafts.journal-builder` (pequeños) |
 | 3 | Reportes y lecturas | ⏳ |
 
@@ -751,19 +758,18 @@ con éxito en `document-totals.util` y `payment-term.util` es:
    arnés (ya pasó dos veces: artículo no vendible y kit no comprable en el escenario de
    compras) o real. Esa distinción es el valor del procedimiento.
 
-**Punto de continuación**: **la fase 1 reabierta** —las **31 guardas de dinero** de 13 archivos
-(«cuadres» de asiento y repartos de pago: `bank-reconciliation`, cobros, pagos,
-`journal-entries`, `reports`, `fiscal-years`…), que es el frente de mayor valor porque son las
-comparaciones que **deciden dinero**. Los **journal builders** y el **núcleo contable** ya están
-migrados (2026-09-15), así que el orden recomendado es: **(1) corregir el detector —R1 v2, con
-prueba propia contra los casos difíciles— antes de tocar nada más** (si no, la fase se cierra
-otra vez con una medición corta, que es la lección que ya se pagó cinco veces); **(2)** los
-cuadres de más valor: `bank-reconciliation` (4 visibles + 1 ciega), `journal-entries` (4),
-`fiscal-years` (2 + 5 ciegas) y `accounting-periods` (2 ciegas), `reports` (2 + 1 ciega);
-**(3)** los repartos de pago —`incoming-payments` (4) y `outgoing-payments` (4), con la
-tolerancia de **1 centavo** y `isSettled`/`exceedsBy`—; **(4)** `items` (1) y la **familia de
-diferencias de cambio** (`exchange-rate-adjustments`, 2 ciegas), que sigue **a decisión de
-negocio**. Y, en la fase 2, `reports`
+**Punto de continuación**: **la fase 1, ya medida de verdad** —**35 guardas de dinero**
+visibles («cuadres» de asiento y repartos de pago), que es el frente de mayor valor porque son
+las comparaciones que **deciden dinero**. Los **journal builders** y el **núcleo contable** ya
+están migrados (2026-09-15) y el **detector ya está corregido y autoprobado** (R1 v2), así que
+el orden es por criticidad: **(1)** los **cuadres** de más valor: `bank-reconciliation` (5:
+4 + la del `difference` del cierre), `journal-entries` (4), `fiscal-years` (7) y
+`accounting-periods` (2, la ecuación contable), `reports` (3: las dos de siempre + la del
+`neto - cash`), `document-drafts` (1, precio base del borrador) y `common/discount-propagation`
+(1, el ajuste de la última línea del grupo); **(2)** los **repartos de pago**
+—`incoming-payments` (4) y `outgoing-payments` (4), con la tolerancia de **1 centavo** y
+`isSettled`/`exceedsBy`—; **(3)** `items` (1) y la **familia de diferencias de cambio**
+(`exchange-rate-adjustments`, 3), que sigue **a decisión de negocio**. Y, en la fase 2, `reports`
 (8 R2a), `partners` (6), `bank-reconciliation` (5), `sales-debit-notes` (4),
 `purchase-debit-notes` (3). *(Ya migrados: `document-totals.util`, `payment-term.util`,
 `rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts`, `price-lists.service.ts`,
@@ -784,8 +790,11 @@ acumulación en flotante, hay **test de centavos que falla antes y pasa después
 revirtiendo la guarda a mano, como se hizo con la diferencia de cambio de cobros); (3) migrar a
 `isZeroMoney` (zero-check), `moneyEquals` (cuadre) o `isSettled`/`exceedsBy` (reparto) según la
 familia; (4) verificar en el orden de la fase 2 y **reiniciar el backend con el `dist` del
-commit antes de la barrida**; (5) **si el sitio no lo ve el gate, declararlo**: el número que
-baja es el del gate, no el del frente (límite 6).
+commit antes de la barrida**; (5) **si el sitio no lo ve el gate, declararlo** — el número que
+baja es el del gate, no el del frente (así aparecieron los límites 2, 6 y 7 de la tabla de
+abajo); y (6) si un literal no lo ve el gate y **no** hay que migrarlo (una tasa, una cantidad,
+un precio a 6 decimales), marcarlo `// money-ok: <razón>` en vez de bajar la sensibilidad del
+detector.
 
 **Precios con 6 decimales (no todo importe es `Decimal(14,2)`)**: los **precios unitarios**
 —listas de precios, precios especiales y sus escalas— viven en `Decimal(14,6)`, así que
@@ -806,7 +815,9 @@ es que *una métrica sólo vale si el detector está probado contra los casos di
 | 3 | R2a se ancla en `Number(<dinero>)`/`parseFloat(...)`, así que era **ciego al dinero que ya llega como `number`** (parámetro o local) y se opera con `+(...).toFixed(2\|6)` | ✅ **corregido con la regla R2c** (2026-09-14): detecta las dos formas (`<dinero>.toFixed(N)` y `+(<expr>).toFixed(N)`) + marcador `// toFixed-ok:` para porcentajes y tasas + exclusión informada de plantillas de texto. Medición honesta: **R2c = 50** (2 justificados, 19 de presentación) → **el inventario real pasó de 95 a 145** |
 | 4 | R2a exigía un **prefijo** antes del nombre del campo: `Number(line.price) * qty` se contaba, pero `Number(priceNet) * qty` (**el identificador es el nombre del campo**) **no** | ✅ **corregido con R2a v2** (2026-09-14): prefijo opcional + filtro de lo que no es dinero (tasas, porcentajes e ids). Medición: **+7 sitios reales** (p. ej. `round2(Number(amount) * exchangeRate)`), total **89 → 96** |
 | 5 | R1 solo veía el épsilon **dentro** de la expresión (`x > y + 0.001`); la forma `Math.abs(a - b) < 0.001` —la firma de la tolerancia improvisada— era **invisible**, así que el «R1 = 0» con el que se declaró cerrada esta fase era una **medición corta** | ✅ **corregido** (2026-09-14): la regla cubre las dos formas, con filtro de cantidades y porcentajes (`assignedQty - needed`, `sum - 100`): crudo 47, **real 31** → la fase 1 se reabrió con 31 guardas en 13 archivos |
-| 6 | R1 no reconoce ni el **medio centavo** (`Math.abs(x) < 0.005`, la forma que tenía el cuadre de las columnas convertidas) ni el dinero **nombrado por intención** en vez de por el nombre del campo (`diff`, `exchangeDiffLocal`, `difference`, `netDifference`, `raw`, `resultado`, `n`, `r`). Medido con un escáner propio sobre `src/**/*.ts` (sin specs): de **52** comparaciones `Math.abs(...)` contra un literal decimal el gate ve **22** y **no ve 30**, de las que **23 son código real** — **13 guardas de dinero** (`bank-reconciliation`, `common/discount-propagation`, `document-drafts`, `exchange-rate-adjustments` ×2, `fiscal-years`/`accounting-periods` ×2 + `fiscal-years` ×5, `reports`) y **10 legítimas** en su precisión (cantidades ×4, porcentajes ×2, tasas de cambio ×2, precios `Decimal(14,6)` ×2). Por eso **R1 = 22 es una cota inferior** del frente real (~35) | ⚠️ **declarado y medido (2026-09-15)**; **R1 v2 es requisito previo a declarar cerrada la fase 1**, y hay que probarlo contra los casos difíciles (cantidad, porcentaje, tasa y precio a 6 decimales) para no cambiar un punto ciego por falsos positivos |
+| 6 | R1 no reconocía ni el **medio centavo** (`Math.abs(x) < 0.005`, la forma que tenía el cuadre de las columnas convertidas) ni el dinero **nombrado por intención** en vez de por el nombre del campo (`diff`, `exchangeDiffLocal`, `difference`, `netDifference`, `raw`, `resultado`, `n`, `r`). Medido con un escáner propio sobre `src/**/*.ts` (sin specs): de **52** comparaciones `Math.abs(...)` contra un literal decimal el gate veía **22** y no veía **30**, de las que **23 son código real** — **13 guardas de dinero** y **10 legítimas** en su precisión (cantidades ×4, porcentajes ×2, tasas ×2, precios `Decimal(14,6)` ×2) | ✅ **corregido con R1 v2** (2026-09-15): la forma (b) reconoce ahora **dos caminos** —el nombre del campo **o** un literal de **escala de dinero** (`0.001`/`0.005`/`0.01`)—, deja fuera por diseño los literales de precisión fina (`0.0001`/`0.000001`, que son cantidad/tasa/precio a 6 decimales) y `Math.abs(<suma> - 100)` (porcentaje), y añade el marcador `// money-ok:`. Medición: **R1 22 → 35** (las 13 ocultas, verificadas una a una), total **104 → 117** |
+| 7 | El **filtro de R2a v2** (tasas, porcentajes e ids) era **código muerto**: al envolver `MONEY_FIELD.source` —que ya traía paréntesis— la cola del identificador quedaba en el grupo 3 y el filtro leía el grupo 2, que era la **palabra de dinero**, así que `Number(taxRate) * base` se contaba como aritmética de dinero y `NOT_MONEY_WORD` **nunca filtraba** (sobre-conteo latente desde la ronda de R2a v2) | ✅ **corregido** (2026-09-15): el grupo de dinero va **sin capturar** y la cola es el grupo 1; **efecto medido hoy 0** (en el código actual no hay sitios de esa forma, así que R2a sigue en 65) y el caso queda **pinzado por la autoprueba del detector** |
+| 8 | El aviso general: **el propio detector no estaba probado**. Cada límite de esta tabla se descubrió *después* de declarar un cierre con él | ✅ **corregido en el proceso** (2026-09-15): `npm run audit:money:self-test` ejecuta **23 casos sintéticos** (positivos y negativos de los siete límites) y `--check` y `--update-baseline` lo corren **antes** de mirar el número — un detector roto ya no puede dar un gate verde (el límite 7 lo cazó esa autoprueba en su primera corrida) |
 
 **Regla de redondeo, en una línea**: nunca `Math.round(x * 100) / 100` **ni `.toFixed(N)`**
 sobre dinero — las dos redondean el valor binario, no el decimal (`(2.675).toFixed(2) ===
@@ -815,7 +826,9 @@ sobre dinero — las dos redondean el valor binario, no el decimal (`(2.675).toF
 columna, p. ej. 6 en precios unitarios). Los **porcentajes y tasas** que sí se redondean con
 `.toFixed()` se marcan con `// toFixed-ok: <razón>` (en la línea o en la anterior) y el gate
 los cuenta como justificados; el formateo de un importe dentro de una **plantilla de texto**
-es presentación y el gate lo informa aparte, no lo cuenta. Y **no cierres un archivo «a
+es presentación y el gate lo informa aparte, no lo cuenta. Para una **comparación** con épsilon
+que no es dinero (una tasa, una cantidad, un precio a 6 decimales) el marcador equivalente es
+**`// money-ok: <razón>`**. Y **no cierres un archivo «a
 medias»** para que el gate baje: si el cambio no es observable con un test (p. ej. porque un
 redondeo posterior a centavos lo absorbe), **no lo hagas** — dejar ese archivo en «0
 hallazgos» con sitios reales dentro es peor que declararlo como frente abierto.
