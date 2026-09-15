@@ -729,7 +729,7 @@ npm run audit:money:self-test # prueba el DETECTOR contra 23 casos difíciles (p
 
 | Fase | Alcance | Estado |
 |---|---|---|
-| 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | 🔄 **EN CURSO (2026-09-15)**: reabierta al corregir el 5.º límite (R1 no veía `Math.abs(a - b) < 0.001`) y **medida de verdad** al corregir el 6.º (**R1 v2**, con autoprueba): eran **31 visibles**, fueron **35 reales**, quedan **12**. Migradas **33**: las **2 primeras** (cuadres del núcleo contable), **las 10 de los journal builders** —`sales` 4, `payments` 2, `purchases` 3 y el cuadre de columnas Local/System de `journal-entry-core` 1—, **las 13 de los cuadres contables** —`journal-entries` 4 (`create`, `update`, `post` y el `isBalanced` del preview), `fiscal-years` 7 (saldos y resultado de la apertura y del cierre + las dos guardas de balance) y `accounting-periods` 2 (el saldo del informe y la ecuación contable)— y **las 10 del resto de los cuadres** —`bank-reconciliation` 5 (emparejamiento manual ×3, el `difference` del cierre y el ajuste), `reports` 3 (filtro de ICE, ecuación contable y `matchesCashChange`), `common/discount-propagation` 1 y `document-drafts` 1 (a **6 decimales** con `moneyEqualsTo`)—, todas a **precisión de centavo** (`moneyEquals`/`isZeroMoney`). Quedan **12**: los repartos de pago (`incoming`/`outgoing` 4+4), `exchange-rate-adjustments` (3, **a decisión de negocio**) e `items` (1). Familias y tolerancia acordada: cuadres de asiento → **0 centavos**; repartos de pago → **1 centavo** (`isSettled`/`exceedsBy`); diferencias de cambio → a decidir por negocio (que la línea de diferencia de cambio **exista** sí es un zero-check de dinero, y va a centavo) |
+| 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | 🔄 **CASI CERRADA (2026-09-15)**: reabierta al corregir el 5.º límite (R1 no veía `Math.abs(a - b) < 0.001`) y **medida de verdad** al corregir el 6.º (**R1 v2**, con autoprueba): eran **31 visibles**, fueron **35 reales**, quedan **3**. Migradas **32**: las **2 primeras** (cuadres del núcleo contable), **las 10 de los journal builders** —`sales` 4, `payments` 2, `purchases` 3 y el cuadre de columnas Local/System de `journal-entry-core` 1—, **las 13 de los cuadres contables** —`journal-entries` 4, `fiscal-years` 7 y `accounting-periods` 2—, **las 10 del resto de los cuadres** —`bank-reconciliation` 5, `reports` 3, `common/discount-propagation` 1 y `document-drafts` 1 (a **6 decimales** con `moneyEqualsTo`)— y **las 9 de los repartos de pago e `items`** —`incoming-payments` 4 y `outgoing-payments` 4 (los métodos, las líneas de cuenta y las asignaciones a cuotas deben sumar el total **exacto al centavo**: el builder de pagos **no tiene plug de redondeo**, así que un centavo de diferencia es un 500; antes el centavo pasaba o no **según el flotante**) e `items` 1 (precio neto a **6 decimales**)—. Quedan **3**: la familia de **diferencias de cambio** (`exchange-rate-adjustments`), **a decisión de negocio**. Familias y tolerancia acordada: **cuadres** (asiento, reparto, ecuación, precio) → **0 centavos**; **tolerancias de liquidación** (¿está saldado?, ¿se sobre-asignó?) → **1 centavo** (`isSettled`/`exceedsBy`); diferencias de cambio → a decidir por negocio |
 | 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **en curso**: **redondeo manual cerrado (R2b = 0)** con `scripts/migrate-round-money.mjs`, y **aritmética ya migrada** en `document-totals.util`, `payment-term.util`, `rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts`, `price-lists.service.ts`, `price-resolver.util.ts`, `purchase-invoices.service.ts`, `sale-reserve-invoices.service.ts` y `sale-invoices.service.ts`. Con el **detector ya corregido** (R2c y R2a v2), el inventario es **83** (R2a 66 + R2c 17). Frente abierto por criticidad: `reports` (8), `partners` (6), `bank-reconciliation` (5), `sales-debit-notes` (4), `purchase-debit-notes` (3), `items`/`fiscal-years`/`drafts.journal-builder` (pequeños) |
 | 3 | Reportes y lecturas | ⏳ |
 
@@ -758,14 +758,16 @@ con éxito en `document-totals.util` y `payment-term.util` es:
    arnés (ya pasó dos veces: artículo no vendible y kit no comprable en el escenario de
    compras) o real. Esa distinción es el valor del procedimiento.
 
-**Punto de continuación**: **la fase 1 con 12 guardas medidas** (de las 35 reales: los journal
-builders y **todos** los cuadres —contables, de banco, de reportes y de borradores— ya están
-migrados). Orden por criticidad: **(1)** los **repartos de pago** —`incoming-payments` (4) y
-`outgoing-payments` (4), con la tolerancia de **1 centavo** y `isSettled`/`exceedsBy`— (es el
-frente donde la tolerancia **es una decisión de negocio** y ya está acordada); **(2)** `items`
-(1, la comparación de precios netos con `0.000001`, que es precisión de **6 decimales** →
-`moneyEqualsTo(..., 6)`); **(3)** la **familia de diferencias de cambio**
-(`exchange-rate-adjustments`, 3), que sigue **a decisión de negocio**. Y, en la fase 2, `reports`
+**Punto de continuación**: **la fase 1 con 3 guardas** — sólo la familia de **diferencias de
+cambio** (`exchange-rate-adjustments`: el saldo en moneda sistema, la diferencia del preview y la
+diferencia neta del asiento de ajuste), que **espera una decisión de negocio**: o se registra
+desde el primer centavo (**0 centavos**, como el resto de los cuadres) o se declara un **umbral**
+explícito (p. ej. no revaluar diferencias menores a 1 Bs). Mientras no haya decisión, esas 3
+quedan **declaradas** y el gate las sigue contando. Y queda un **pendiente de frontend** también
+declarado: los cuatro guards con `<= 0.01` de los formularios de **cobros/pagos**
+(`isMethodsBalanced`, `isAccountLinesBalanced`, `isPartnerPaymentBalanced`, `canSubmit`/`canSave`)
+deben alinearse con el backend (que ahora exige el reparto **exacto al centavo**), o el formulario
+debe **autoajustar el último método** con el resto. En la fase 2, `reports`
 (8 R2a), `partners` (6), `bank-reconciliation` (5), `sales-debit-notes` (4),
 `purchase-debit-notes` (3). *(Ya migrados: `document-totals.util`, `payment-term.util`,
 `rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts`, `price-lists.service.ts`,
@@ -873,6 +875,13 @@ redondeo, la tolerancia se declara **explícita y en centavos** con `isSettled(x
 cents)` / `exceedsBy(x, y, cents)` (por defecto 1 centavo). Nunca un `0.001` suelto en
 una comparación: 1 milésimo **no existe** en dinero y es la firma de T125. Bajar o subir
 esa tolerancia es una **decisión de negocio**, no una migración mecánica.
+**Ojo con la frontera (2026-09-15)**: una tolerancia de liquidación es para preguntas como «¿está
+saldada?» o «¿se sobre-asignó?»; **no** para «¿las partes suman el todo?» — eso es un **cuadre**
+y va a **0 centavos** (`moneyEquals`). El caso que lo fijó: la suma de los métodos de pago contra
+el total del documento admitía un centavo, pero el builder de pagos **no tiene plug de
+redondeo**, así que ese centavo dejaba el asiento descuadrado y el guardado terminaba en un
+**500** (y antes, encima, dependía del flotante). Un cuadre de reparto que no cuadra debe
+responder **400** en la validación.
 
 **Regla de cierre:** un cambio de dinero no está terminado sin su **test de centavos**
 (`money.util.spec.ts` es el modelo) — o sin la **equivalencia declarada**, cuando el importe
