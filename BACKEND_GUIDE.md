@@ -729,7 +729,7 @@ npm run audit:money:self-test # prueba el DETECTOR contra 23 casos difíciles (p
 
 | Fase | Alcance | Estado |
 |---|---|---|
-| 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | 🔄 **EN CURSO (2026-09-15)**: reabierta al corregir el 5.º límite (R1 no veía `Math.abs(a - b) < 0.001`) y **medida de verdad** al corregir el 6.º (**R1 v2**, con autoprueba): eran **31 visibles**, son **35 reales**. Migradas las **2 primeras** (los cuadres del núcleo contable) y **las 10 de los journal builders** —`sales` (4), `payments` (2), `purchases` (3) y el cuadre de columnas Local/System de `journal-entry-core` (1)—, todas a **precisión de centavo** (`moneyEquals`/`isZeroMoney`) → **quedan 35 medidas** (13 de ellas las destapó R1 v2: `bank-reconciliation` 1, `common/discount-propagation` 1, `document-drafts` 1, `exchange-rate-adjustments` 2, `fiscal-years`/`accounting-periods` 2 + `fiscal-years` 5, `reports` 1). Familias y tolerancia acordada: cuadres de asiento → **0 centavos**; repartos de pago → **1 centavo** (`isSettled`/`exceedsBy`); diferencias de cambio → a decidir por negocio (que la línea de diferencia de cambio **exista** sí es un zero-check de dinero, y va a centavo) |
+| 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | 🔄 **EN CURSO (2026-09-15)**: reabierta al corregir el 5.º límite (R1 no veía `Math.abs(a - b) < 0.001`) y **medida de verdad** al corregir el 6.º (**R1 v2**, con autoprueba): eran **31 visibles**, fueron **35 reales**, quedan **22**. Migradas las **2 primeras** (los cuadres del núcleo contable), **las 10 de los journal builders** —`sales` (4), `payments` (2), `purchases` (3) y el cuadre de columnas Local/System de `journal-entry-core` (1)— y **las 13 de los cuadres contables** —`journal-entries` (4: `create`, `update`, `post` y el `isBalanced` del preview), `fiscal-years` (7: saldos y resultado de la apertura y del cierre + las dos guardas de balance) y `accounting-periods` (2: el saldo del informe y la ecuación contable, ya con la suma en `Decimal`)—, todas a **precisión de centavo** (`moneyEquals`/`isZeroMoney`). Quedan **22**: `bank-reconciliation` (5), los repartos de pago (`incoming`/`outgoing` 4+4), `reports` (3), `exchange-rate-adjustments` (3, **a decisión de negocio**), `document-drafts` (1), `common/discount-propagation` (1) e `items` (1). Familias y tolerancia acordada: cuadres de asiento → **0 centavos**; repartos de pago → **1 centavo** (`isSettled`/`exceedsBy`); diferencias de cambio → a decidir por negocio (que la línea de diferencia de cambio **exista** sí es un zero-check de dinero, y va a centavo) |
 | 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **en curso**: **redondeo manual cerrado (R2b = 0)** con `scripts/migrate-round-money.mjs`, y **aritmética ya migrada** en `document-totals.util`, `payment-term.util`, `rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts`, `price-lists.service.ts`, `price-resolver.util.ts`, `purchase-invoices.service.ts`, `sale-reserve-invoices.service.ts` y `sale-invoices.service.ts`. Con el **detector ya corregido** (R2c y R2a v2), el inventario es **83** (R2a 66 + R2c 17). Frente abierto por criticidad: `reports` (8), `partners` (6), `bank-reconciliation` (5), `sales-debit-notes` (4), `purchase-debit-notes` (3), `items`/`fiscal-years`/`drafts.journal-builder` (pequeños) |
 | 3 | Reportes y lecturas | ⏳ |
 
@@ -758,17 +758,17 @@ con éxito en `document-totals.util` y `payment-term.util` es:
    arnés (ya pasó dos veces: artículo no vendible y kit no comprable en el escenario de
    compras) o real. Esa distinción es el valor del procedimiento.
 
-**Punto de continuación**: **la fase 1, ya medida de verdad** —**35 guardas de dinero**
-visibles («cuadres» de asiento y repartos de pago), que es el frente de mayor valor porque son
-las comparaciones que **deciden dinero**. Los **journal builders** y el **núcleo contable** ya
-están migrados (2026-09-15) y el **detector ya está corregido y autoprobado** (R1 v2), así que
-el orden es por criticidad: **(1)** los **cuadres** de más valor: `bank-reconciliation` (5:
-4 + la del `difference` del cierre), `journal-entries` (4), `fiscal-years` (7) y
-`accounting-periods` (2, la ecuación contable), `reports` (3: las dos de siempre + la del
-`neto - cash`), `document-drafts` (1, precio base del borrador) y `common/discount-propagation`
-(1, el ajuste de la última línea del grupo); **(2)** los **repartos de pago**
+**Punto de continuación**: **la fase 1 con 22 guardas medidas** (de las 35 reales: los journal
+builders y los cuadres contables ya están migrados). Orden por criticidad: **(1)**
+`bank-reconciliation` (5: el auto-match por importe ×2, el del pago contra la línea del extracto,
+el `difference` del cierre y la guarda de balance del asiento de ajuste); **(2)** `reports` (3: el
+filtro de importes del mayor, la ecuación contable y `matchesCashChange`), `document-drafts` (1) y
+`common/discount-propagation` (1) — **ojo con `document-drafts`**: compara el precio base del
+borrador y **el precio puede venir a 6 decimales** (`Decimal(14,6)`), así que hay que decidir la
+**precisión** antes de migrar (o `roundMoneyTo`/un `moneyEquals` de 6 decimales), no meterlo en el
+mismo saco que los cuadres—; **(3)** los **repartos de pago**
 —`incoming-payments` (4) y `outgoing-payments` (4), con la tolerancia de **1 centavo** y
-`isSettled`/`exceedsBy`—; **(3)** `items` (1) y la **familia de diferencias de cambio**
+`isSettled`/`exceedsBy`—; **(4)** `items` (1) y la **familia de diferencias de cambio**
 (`exchange-rate-adjustments`, 3), que sigue **a decisión de negocio**. Y, en la fase 2, `reports`
 (8 R2a), `partners` (6), `bank-reconciliation` (5), `sales-debit-notes` (4),
 `purchase-debit-notes` (3). *(Ya migrados: `document-totals.util`, `payment-term.util`,
@@ -847,6 +847,17 @@ subir a 4.242,65. Moraleja doble: hay que **saber qué forma se está migrando**
 escribir el test, y un test de cuatro líneas que «pasa antes y después» **no prueba la
 migración** — escribirlo y llamarlo test de centavos es peor que no tenerlo, porque
 convierte una métrica en una ilusión (la misma lección que dejó el escáner de R2b).
+
+**Lección del borde del centavo, medida en `journal-entries.service.ts` (2026-09-15)**: cuando
+la guarda es `|D − C| > 0,01`, el **par de importes elegido decide si el test discrimina**. Un
+desbalance de exactamente un centavo se aceptaba o se rechazaba **según cómo cayera el
+flotante**: `2,3 − 2,29 = 0,009999999999999787` (< 0,01 → **aceptado**, el defecto) mientras
+`100 − 99,99 = 0,010000000000005116` (> 0,01 → rechazado). Un test escrito con el par «natural»
+(100 − 99,99) **pasa antes y después** y no prueba nada; el que discrimina es el par cuyo
+resto flotante cae **por debajo** del umbral. Antes de dar por bueno un test de centavos de una
+guarda con tolerancia, **compruébese el valor flotante del par** (una línea de `node -e`
+basta): si cae del lado del rechazo, el test es decorativo. Es la misma trampa de T125, ahora
+en el propio arnés de pruebas.
 
 **Herramienta de migración del redondeo manual** (`scripts/migrate-round-money.mjs`):
 convierte `Math.round(<expr> * 100) / 100` en `Money.roundMoney(<expr>)` con un **escáner por
