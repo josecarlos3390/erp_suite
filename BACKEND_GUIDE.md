@@ -723,8 +723,17 @@ npm run audit:money:check  # ratchet: falla si la deuda AUMENTA respecto de la l
 | Fase | Alcance | Estado |
 |---|---|---|
 | 1 | **Guards que deciden dinero** (comparaciones con épsilon inventado) | ✅ **R1 = 0**: migrados a `isSettled`/`exceedsBy`/`moneyGt` (cobros, pagos, condiciones de pago, POS, borradores) |
-| 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | ⏳ inventariado y priorizado por el gate (los `journal builder` primero) |
+| 2 | **Totales persistidos** (journal builders, facturas, FRV, devoluciones/NC) | 🔄 **iniciada**: `sales.journal-builder.ts` migrado con el transformador `scripts/migrate-round-money.mjs` (dry-run por defecto) |
 | 3 | Reportes y lecturas | ⏳ |
+
+**Herramienta de migración** (`scripts/migrate-round-money.mjs`): convierte
+`Math.round(<expr> * 100) / 100` en `Money.roundMoney(<expr>)` con un **escáner por
+paréntesis** (no una regex: las expresiones llevan paréntesis anidados y saltos de
+línea), informa en *dry-run* y sólo escribe con `--write`. Si el archivo está tipado con
+`number`, se completa con `scripts/migrate-round-money-totypes.mjs`, que añade
+`.toNumber()` en el borde para **preservar los tipos** y no obligar a refactorizar el
+archivo entero: la fase 2 cambia la **regla de redondeo** (una sola, mitad hacia arriba),
+no la aritmética — ésa es la fase posterior, y llega cuando se migren los `Number(<dinero>)`.
 
 **Tolerancias de liquidación**: cuando una guarda necesite admitir una diferencia de
 redondeo, la tolerancia se declara **explícita y en centavos** con `isSettled(x, y,
