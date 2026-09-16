@@ -35,8 +35,12 @@ o después, en **Parametrización → Contabilidad** del tenant activo.
 
 > El alta por panel ejecuta el seed: moneda base, UoMs, sucursal PRIN, almacén ALM-01,
 > grupo GEN, impuestos, condiciones de pago, lista LP-01, cliente/proveedor/artículo de
-> prueba. **Con contabilidad activada** además siembra plan de cuentas + mappings + cuentas
-> de mayor. Con contabilidad desactivada **no** siembra el bloque contable (se genera luego).
+> prueba, y —desde **T132**— **la gestión del año en curso con sus 12 períodos mensuales y
+> las 26 series de numeración**. **Con contabilidad activada** además siembra plan de cuentas
+> + mappings + cuentas de mayor. Con contabilidad desactivada **no** siembra el bloque
+> contable (se genera luego), pero la gestión y las series **sí** (las series exigen gestión
+> en ambos perfiles). La **tasa de cambio del día** no se siembra a propósito (§15 del seed):
+> es el único paso manual del arranque y el Centro de configuración lo marca bloqueante.
 
 ---
 
@@ -57,6 +61,10 @@ o después, en **Parametrización → Contabilidad** del tenant activo.
 > fallará ("no se encontró cuenta…") — es el error más común al arrancar con contabilidad.
 
 ### Paso A.2 — Gestión contable: año fiscal + períodos
+> Desde **T132** el seed ya crea la gestión del año en curso con sus 12 períodos mensuales
+> abiertos: este paso solo hace falta si se parte de un **núcleo vacío**
+> (`npm run reset:core`), si la empresa usa otro rango (año fiscal no calendario) o si se
+> quiere otra frecuencia de períodos.
 1. Crear el **Año Fiscal / gestión** (código, nombre, rango de fechas): Finanzas → Años Fiscales
    (backend: `POST /fiscal-years`).
 2. Generar los **períodos contables** de la gestión (mensual / trimestral / anual):
@@ -72,6 +80,10 @@ o después, en **Parametrización → Contabilidad** del tenant activo.
 > (`POST /fiscal-years/:id/generate-opening-entry`), solo si existe gestión previa contabilizada.
 
 ### Paso A.3 — Series de numeración (exigen la gestión)
+> Desde **T132** el seed ya crea **las 26 series** ligadas a la gestión del año (con el
+> catálogo canónico `DEFAULT_DOCUMENT_SERIES` y correlativo desde 1). Este paso es para el
+> núcleo vacío, para numeraciones propias (prefijos/rangos de la empresa) o para añadir una
+> **serie por sucursal**.
 1. Crear la gestión (paso A.2) **antes** que las series: cada serie se liga a un año fiscal
    y su vigencia se deriva de la gestión.
 2. Definir una **serie por tipo de documento** que la empresa emite: Administración → Series de
@@ -175,19 +187,23 @@ cuando se parte de cero o se replica en un cliente real:
 | 11 | Artículo de prueba (con impuesto/precios) | Inventario → Artículos |
 | 12 | Matriz artículo-almacén | Artículo → Almacenes y cuentas |
 | 13 (solo contabilidad) | Plan de cuentas + mappings + cuentas de mayor en maestros | Parametrización → Contabilidad → **Generar Plan de Cuentas** |
+| 14 | **Gestión del año en curso + 12 períodos mensuales abiertos** y **las 26 series de numeración** (T132) | Finanzas → Años Fiscales (**Crear gestión** + *Generar períodos*) y Administración → **Series de numeración** (una por tipo, ligada a la gestión) |
 
-> **Con contabilidad OFF** los pasos 13 del seed se omiten; la gestión (año fiscal) y las
-> series se crean por pantalla igual que en los perfiles A/B (no son parte del seed).
+> **Con contabilidad OFF** el paso 13 del seed se omite; la gestión (año fiscal) y las
+> series **sí** las crea el seed igual (paso 14, T132) porque las series exigen gestión en
+> ambos perfiles. Se siguen pudiendo crear/reemplazar por pantalla como en A.2/A.3.
 
-> **Receta ejecutable del arranque (T104).** La secuencia Fase 0 → A.1 → A.2 → A.3 está
-> automatizada en `backend-erp/scripts/flow-sweep.mjs` (paso 0), que es la referencia de
-> qué hace falta **como mínimo** para que una instalación recién sembrada pueda emitir
-> documentos: gestión fiscal abierta que cubra hoy (+ períodos mensuales), una **serie por
-> cada `docType`** que se vaya a usar y la **tasa de cambio del día** (el seed **no** crea
-> tasas a propósito: ver `prisma/seed.ts` §15 — la cotización es dato del día y el guard
-> `assertTodayExchangeRate` bloquea cualquier transacción sin ella). Sin esos tres, el
-> primer documento falla con un 400 que nombra exactamente lo que falta; la barrida los
-> crea por API y por eso sirve como receta verificable (`node scripts/flow-sweep.mjs`).
+> **Receta ejecutable del arranque (T104/T132).** Desde el **paso 14 (T132)** el seed deja la
+> **estructura** lista: gestión del año en curso (en la zona horaria del tenant) con sus 12
+> períodos mensuales y una serie activa por cada uno de los 26 tipos de documento. Lo que
+> queda **manual y es intencional** es la **tasa de cambio del día** (el seed **no** crea tasas
+> a propósito: ver `prisma/seed.ts` §15 — la cotización es dato del día y el guard
+> `assertTodayExchangeRate` bloquea cualquier transacción sin ella). Antes de T132 el seed no
+> creaba ninguna de las tres cosas y el primer documento fallaba con `400 Defina primero una
+> serie de numeración…`: la secuencia completa (gestión + períodos + series + tasa) está
+> automatizada en `backend-erp/scripts/flow-sweep.mjs` (paso 0), que sigue siendo la referencia
+> de qué hace falta **como mínimo** para operar y la receta verificable
+> (`node scripts/flow-sweep.mjs`).
 > Ojo con el borde de fecha: el «hoy» del documento lo resuelve el backend con la zona del
 > tenant (UTC−4 en Bolivia), que puede ser el día anterior al UTC — la tasa conviene
 > registrarla por rango (`POST /exchange-rates/bulk`).
@@ -198,7 +214,7 @@ cuando se parte de cero o se replica en un cliente real:
 
 | Error al usar el ERP | Causa probable | Solución |
 |----------------------|----------------|----------|
-| 400 «Defina primero una serie de numeración para X» | Falta la serie del tipo X (o no cubre la fecha) | Administración → Series de numeración (ligada a la gestión vigente) |
+| 400 «Defina primero una serie de numeración para X» | Falta la serie del tipo X (o no cubre la fecha). Desde T132 el seed las crea para los 26 tipos: si aparece, se está ante un núcleo vacío, una gestión nueva sin series o una serie desactivada | Administración → Series de numeración (ligada a la gestión vigente) |
 | 400 «No existe el tipo de cambio del día entre BOB y USD…» | Tenant con moneda secundaria sin la tasa **del día** (guard global impide registrar cobros/pagos y documentos) | Configuración → Tipos de cambio: registrar la tasa del día. El Centro de configuración lo marca como bloqueante |
 | 400 «La cuenta bancaria no tiene una cuenta contable asociada» | Cuenta bancaria sin cuenta de mayor (perfil contable: posteo de extractos / auto-match de conciliación) | Bancos → Cuenta bancaria: vincular su cuenta contable. Ítem «Cuentas bancarias → cuenta contable» del Centro |
 | 409 «No existe un período contable activo que cubra la fecha…» | Gestión sin períodos o documento fuera del rango | Generar períodos; ajustar fecha del documento |

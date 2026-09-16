@@ -441,6 +441,12 @@ El ERP puede partir de un **núcleo vacío** (solo tenant + admin) y configurars
 completo (ventas, compras, inventario, tesorería):
 
 - `npm run reset:core` (backend-erp) — núcleo vacío reproducible (`scripts/bootstrap-core.ts`).
+- **El seed (alta normal) deja la instalación operable (T132, 2026-09-16)**: además de los
+  maestros y del plan de cuentas crea la **gestión del año en curso con 12 períodos mensuales
+  abiertos** y **las 26 series de numeración** (idempotente). El **único paso manual** del
+  arranque es la **tasa de cambio del día** (cotización, no se siembra a propósito), que el
+  Centro marca como bloqueante. Antes de T132 el primer documento fallaba con
+  `400 Defina primero una serie de numeración…`.
 - **Centro ampliado**: grupos Parametrización y **Validación operativa** (un documento
   confirmado por módulo pasa los ítems `flow*` a OK).
 - **Wizard de maestros base por país**: `POST /setup/base-masters` + botón "Generar
