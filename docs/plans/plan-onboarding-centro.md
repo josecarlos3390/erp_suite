@@ -80,7 +80,7 @@ Análisis por módulo de "lo que exige un flujo operativo" vs "lo que chequea el
 | Transversal | Tasa de cambio del día (multi-moneda) | `exchangeRateToday` | ✅ (F5.2: ahora bloqueante) |
 | Transversal | País / idioma / zona horaria | — | ⚠️ informativo (viven en Tenant; no bloquean) |
 | Contabilidad | Gestión (año fiscal) + períodos | `fiscalYear` / `periods` | ✅ |
-| Contabilidad | Cuentas ganancia/pérdida por TC (revaluación, NC M/E) | **nuevo** `exchangeRateAccounts` (Parametrización) | ⏳ en Fase C ✅ backend |
+| Contabilidad | Cuentas ganancia/pérdida por TC (revaluación, NC M/E) | `exchangeRateAccounts` (Parametrización) | ✅ |
 | Contabilidad | Cuentas bancarias → cuenta contable | `bankAccounts` | ✅ (F5.2) |
 | Numeración | Series por tipo de documento (26) | `series` (tipos "que usaré") | ✅ |
 | Ventas | Cliente + impuestos + condición + precio | `partners`, `taxIndicators`, `paymentTerms`, `priceLists`, `uoms`, `itemGroups` | ✅ |
@@ -91,8 +91,8 @@ Análisis por módulo de "lo que exige un flujo operativo" vs "lo que chequea el
 | Inventario | Costo de artículos / matriz | `itemCosts` | ✅ |
 | Tesorería | Bancos + cuentas bancarias | (maestro bancos) | ⚠️ no hay ítem propio de "bancos" (sí cuenta bancaria→GL) |
 | Parametrización global | Flags stock/POS/warehouse, conciliación, etc. | — | ⚠️ parcial: muchos viven solo en Parametrización (sin check) — se cubren como revisables recomendados en Fase C |
-| Maestros base por país | Impuestos BO, monedas, UoMs, condiciones, grupo/lista por defecto, sucursal/almacén (los creaba el seed) | — (no hay generador) | ⏳ **wizard `base-masters` por país (aprobado)** — Fase C |
-| **Flujo operativo** | ≥1 documento confirmado por familia (venta, compra, inventario, tesorería) | **nuevo** grupo `Validación operativa` (flowSales/flowPurchases/flowInventory/flowTreasury) | ⏳ en Fase C ✅ backend |
+| Maestros base por país | Impuestos BO, monedas, UoMs, condiciones, grupo/lista por defecto, sucursal/almacén (los creaba el seed) | `POST /setup/base-masters` + botón «Generar maestros base» en `/setup` | ✅ (Fase C) |
+| **Flujo operativo** | ≥1 documento confirmado por familia (venta, compra, inventario, tesorería) | grupo `Validación operativa` (`flowSales`/`flowPurchases`/`flowInventory`/`flowTreasury`) | ✅ |
 
 ### Avance
 - **Fase C (backend, 2026-09-05):** grupo **Parametrización** (`exchangeRateAccounts`,
@@ -100,7 +100,7 @@ Análisis por módulo de "lo que exige un flujo operativo" vs "lo que chequea el
   (`flowSales/flowPurchases/flowInventory/flowTreasury`, MISSING recomendado hasta existir
   documento por familia). Verificado en vivo: checklist 25 ítems / 7 grupos sobre núcleo
   vacío. Commit backend `d6a9391`.
-- **Fase C (wizard maestros base por país, en implementación):** `POST /setup/base-masters`
+- **Fase C (wizard maestros base por país, ✅ implementado):** `POST /setup/base-masters`
   (idempotente; datos exactos del seed para BO: monedas, impuestos, UoMs, condiciones,
   grupo/lista por defecto, sucursal/almacén, return reasons) + acción en el Centro.
 - **Fase D (2026-09-05, ✅ completada localmente):** configuración guiada verificada
@@ -113,3 +113,9 @@ Análisis por módulo de "lo que exige un flujo operativo" vs "lo que chequea el
   JWT) → `requiredPending = 0`; validación de flujo por familia OK en Railway (checklist
   `{ok:22, warn:4, missing:0, requiredPending:0}`, flujos venta/compra/inventario/
   tesorería OK). Cierre documental en guía/ROADMAP/CHANGELOG.
+- **Fase F (2026-09-16, ✅ T132):** el **seed ya prepara la estructura operativa** —gestión
+  del año en curso con sus 12 períodos y las 26 series de numeración (`src/setup/startup-config.util.ts`,
+  idempotente)—, de modo que la vía del **alta normal** (no la del núcleo vacío) arranca sin
+  los 3 pasos manuales de estructura; el único paso manual que queda es la **tasa de cambio
+  del día**, por diseño. Ver `AUDIT.md` T132 y el Anexo A de
+  `docs/guides/guia-implementacion-configuracion.md`.
