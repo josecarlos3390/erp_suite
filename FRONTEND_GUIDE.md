@@ -1307,6 +1307,45 @@ La densidad global la aplica `DensityService` (clases `density-compact` /
   centavo (`!moneyGt(remaining, 0)`, `moneyGtOrEq(remaining, payableBalance)`); sustituir sólo la
   comparación deja `remaining` en `0,004` y la cuota siguiente recibe un importe **negativo**.
 
+- **Gate de COPY (2026-09-15):** `npm run audit:copy` informa y `npm run audit:copy:check` es
+  el gate que corre en CI. Cierra el riesgo declarado «la convención de copy sin gate
+  automático»: el frente de UX había cerrado el copy con un inventario **manual** y por eso
+  sobrevivieron 7 botones y 18 textos. La convención vive **como datos** en
+  `erp-frontend/scripts/copy-rules.json` y el detector en `scripts/audit-copy.mjs`; revisa
+  **texto visible**: nodos de texto de las plantillas, atributos de copy (`label`, `text`,
+  `placeholder`, `title`, `ariaLabel`, `emptyTitle`, `hint`…, la lista es
+  `copyAttributes`) y literales de TS usados como copy (toasts, mensajes, hints). Quedan
+  fuera `*.spec.ts` y `testing/`.
+  - **Glosario:** pares `{ pattern, prefer, reason }` de términos (`Grabar → Guardar`,
+    `Salvar → Guardar`, `Dar de alta → Crear`, `E-mail/e-mail → Correo`,
+    `Remover → Eliminar`). Para **extenderlo**: agregar el par al JSON (el script no se
+    toca), y antes **medirlo** con `rg -c` sobre `src/app`; si el repo ya usa el término, o
+    la forma preferida está mezclada, el par va a `rejected` con su medición en vez de a
+    `prohibited`. **El gate nace en 0**: no se crean reglas que el repo no cumpla. Por eso
+    **no** son reglas los `...` de `Cargando...` (450 usos: son la convención vigente), ni
+    los **acentos faltantes** (el repo no está normalizado y no hay diccionario), ni
+    `Email → Correo` (86 vs 6, mezclado), ni `Aceptar → Confirmar` o `Alta → Crear` (usos
+    legítimos: «aceptar los términos», prioridad «Alta»). Las razones medidas de cada
+    candidato descartado están en el propio JSON.
+  - **Tipografía:** tres reglas objetivas y de bajo ruido, todas medidas antes de
+    activarlas — **doble espacio** dentro de un texto visible, **espacio antes de**
+    `:` `;` `,` `.`, y **signos repetidos** (`??`, `!!`). El `??` del operador nullish de
+    TypeScript no es copy y no dispara.
+  - **Marcador `copy-ok: <razón>`** (mismo criterio que `!important-ok`/`::ng-deep-ok`): en
+    la línea del hallazgo, en la anterior o como marcador de archivo en las primeras 30
+    líneas. Los hallazgos marcados se **cuentan aparte** en el informe, nunca se ocultan.
+  - **Sin línea base:** el repo está en **0 hallazgos**, así que no hay ratchet que congelar
+    y `--check` **falla ante cualquier hallazgo nuevo**. Si algún día queda deuda real que no
+    se puede cerrar en el momento, se congela con
+    `node scripts/audit-copy.mjs --update-baseline` (`scripts/copy-audit-baseline.json`) y
+    pasa a ser un ratchet como el de dinero.
+  - **Frontera con `a11y:check`:** este gate vigila **las palabras**; el **nombre accesible**
+    (WCAG 2.5.3: «el texto visible es el nombre accesible»), los botones de solo icono sin
+    `action`, los `img` sin `alt` y los filtros sin `ariaLabel` son de `npm run a11y:check`
+    (+ la auditoría axe). **No se duplican** aquí.
+  - El detector **se autoprueba** (`npm run audit:copy:self-test`, 14 casos positivos y
+    negativos —incluidos `...` y una palabra dentro de otra—) **antes** de mirar el número.
+
 ## 13. Documentación adicional del frontend
 
 Estos documentos complementan a esta guía canónica. No son obligatorios para tareas rutinarias, pero deben consultarse antes de trabajar en los dominios que cubren.
