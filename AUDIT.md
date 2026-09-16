@@ -1810,8 +1810,9 @@ cierra corriendo el detector (`npm run audit:flows`). Flags:
 `SWEEP_API=…`, exit 1 si algo falla.
 
 **Última corrida**: **342/342 comprobaciones OK** · detector **0 errores / 2
-avisos** (R7 y R9), con backend **165 suites / 1881 tests** en verde (medido en el
-`pre-push` del commit `f0f7000`, que cierra la fase 3 del dinero; los servicios
+avisos** (R7 y R9), con backend **165 suites / 1881 tests** en verde (medido con la **suite
+completa en local** —`npx jest`— sobre el árbol del commit `0a261ac`, que cierra la fase 5 del
+dinero; los servicios
 tocados en los frentes T109–T126 pasan las suites completas) y el gate de dinero
 `npm run audit:money:check` en verde (**R1 = 0**, **R2a 0**, **R2b 0** y **R2c 0** —total **0**,
 con 3 justificaciones de porcentaje y 2 de plantilla de texto—
