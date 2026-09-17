@@ -1285,6 +1285,29 @@ La densidad global la aplica `DensityService` (clases `density-compact` /
   cuando lo que pelea es un estilo inline. Tablas y checklist completas en
   `erp-frontend/src/styles/CSS-ARCHITECTURE.md` §4 y §5.
 
+- **Gate de LITERALES DE ESTILO (T133, 2026-09-16):** `npm run audit:tokens` cierra
+  DT.4 (colores) y DT.6 (breakpoints) con **dos reglas** y **autoprueba** de 12 casos
+  (`npm run audit:tokens:self-test`), en CI junto a los otros gates:
+  - **R1 — color:** un `#hex` en cualquier `src/**/*.scss` **fuera de la capa de
+    tokens** (`src/styles.scss` y `src/styles/tokens/**`, que es donde el hex está
+    *declarado*) es deuda: ese color no sigue el tema claro/oscuro. **El caso peor
+    es el fallback `var(--token, #hex)` cuando el token no existe** —el hex es el
+    que pinta, así que se ve bien en claro y queda claro en oscuro—: si un token
+    no está definido, el gate lo marca y la solución es **definirlo o usar el
+    semántico**, nunca dejarlo caer al literal. Los colores que no tienen token
+    (acentos de marca, ámbar de un badge, degradados, el knob de un switch, `#fff`
+    sobre un degradado) se **declaran** con `// color-ok: <razón>`.
+  - **R2 — breakpoint:** un `@media` con `px` fuera de `src/styles/_breakpoints.scss`
+    duplica los valores canónicos (`bp.$breakpoint-xs/sm/md/lg/xl`, más
+    `$breakpoint-lg-up` para el complemento `min-width`). Se usa
+    `@use 'breakpoints' as bp;` (resuelve desde cualquier componente por
+    `stylePreprocessorOptions.includePaths`) y, si de verdad hace falta un ancho
+    propio, se marca `// breakpoint-ok: <razón>`.
+  - Ambos marcadores valen en la misma línea, en las **5 anteriores** (una
+    declaración puede ocupar varias líneas) o como marcador de archivo en las
+    primeras 30. El repo está en **0 sin justificar**: cualquier literal nuevo
+    rompe el build.
+
 - **Gate de DINERO (T126, 2026-09-15):** `npm run audit:money` mide dos reglas sobre
   `src/**/*.ts` (sin specs) y `npm run audit:money:check` es el **ratchet** que corre en CI
   (falla si la deuda **aumenta**; la línea base vive en `scripts/money-audit-baseline.json`):
