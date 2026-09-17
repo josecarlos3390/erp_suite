@@ -624,14 +624,14 @@ El extracto bancario (`BankStatement`) no genera asientos contables automáticam
    - Si una reversa no se puede hacer, **falla** en vez de continuar: dejar la línea como si nada con el asiento vivo es la degradación silenciosa que produjo T106.
 5. **Balance dinámico** — El balance de cada `BankAccount` se calcula en tiempo real agregando `JournalEntryLine` (donde `journalEntry.status = 'POSTED'` y `accountId = BankAccount.accountId`). El campo `balance` del modelo Prisma se ignora en lectura; se reemplaza por el valor calculado en `findAccountsByBank` y `findAccounts`.
 
-### 8.1.b Emparejamiento de la conciliación (`auto-match`) — rondas ordenadas (T116)
+### 8.1.b Emparejamiento de la conciliación (`auto-match`) — rondas ordenadas (T116/T135)
 
 El auto-match **no** toma «el primero que cuadre»: evalúa el emparejamiento en **rondas
 sucesivas** (como los *matching criteria* de SAP Business One y la jerarquía de reglas
 de NetSuite), y dentro de cada ronda ordena los candidatos por **cercanía de fecha** y,
 si persiste el empate, por **id** — el resultado es determinista:
 
-| Ronda | `matchCriteria` | Criterio |
+| Ronda | `matchCriteria` / `criteria` | Criterio |
 |---|---|---|
 | 1 | `REFERENCE` | La referencia del extracto aparece en la del candidato (`ref1`/`ref2`/`ref3` del asiento o `referenceNo` del pago), con importe y fecha en la ventana corta. Solo aplica si la línea del extracto **trae** referencia. |
 | 2 | `AMOUNT_DATE` | Importe dentro de la tolerancia y fecha dentro de la ventana corta (`bankReconciliationMatchWindowDays`, ±3 por defecto). |
@@ -640,6 +640,24 @@ si persiste el empate, por **id** — el resultado es determinista:
 La ronda ganadora se guarda en `BankReconciliationLine.matchCriteria`, de modo que la
 decisión del sistema es auditable (antes no quedaba rastro de *por qué* se eligió ese
 candidato y no otro).
+
+**Una sola política para el auto-match y las sugerencias (T135).** Las tres rondas viven en
+`_rankCandidates` —la **única** función que las declara— y los candidatos los construye
+`_buildCandidates` (importe compatible, anti-duplicado, **sin** filtrar por fecha; la ventana
+se aplica en las rondas). Los dos consumidores son el mismo cálculo:
+
+- `_pickCandidate` → `ranked[0]` (y persiste la ronda en `matchCriteria`);
+- `_suggestCandidatesForLine` → `ranked.slice(0, 5)`, con la ronda en `criteria` y su peso en
+  `score` (100/10/1, informativo: **el orden lo decide la ronda**, no el score).
+
+De ahí el invariante que fija el test: **la primera sugerencia es el candidato que elegiría el
+auto-match**. `POST /bank-reconciliations/:id/suggest` carga el alcance con la **ventana ancha**
+(igual que el auto-match), así que con la ventana ancha habilitada la pantalla muestra lo mismo
+que el motor puede emparejar —marcando las de la ronda 3 como último recurso—; con la ventana
+ancha desactivada, `wideWindowMs === windowMs` y la ronda 3 no se alcanza nunca (el
+comportamiento por defecto no cambia). `matchedRef` y `descriptionSimilar` siguen viajando en la
+sugerencia, pero son **informativos**: no ordenan la lista (antes la similitud de descripción
+sumaba al score y podía poner primero un candidato más lejano en fecha).
 
 
 ### 8.2 Endpoints del módulo bancario (relevantes para contabilidad)
