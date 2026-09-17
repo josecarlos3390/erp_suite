@@ -707,7 +707,8 @@ sumaba al score y podía poner primero un candidato más lejano en fecha).
 
 El dinero **no es un `number`**: `0.1 + 0.2 !== 0.3`. La utilidad canónica es
 **`src/common/money.util.ts`** y estas son las reglas, aplicables a todo código nuevo o
-que se toque (hay una migración pendiente del resto del código, ver «Deuda» abajo):
+que se toque (la migración del código existente está **cerrada** —fases 1 a 6, gate en
+**0**—; el registro está en «El plan de migración (T126) y su registro», abajo):
 
 | # | Regla | Herramienta |
 |---|---|---|
@@ -730,19 +731,20 @@ subtotal = subtotal.plus(lineSubtotal);                       // Decimal, no num
 if (Money.moneyGt(total, remaining)) throw new BadRequestException(/* … */);
 ```
 
-**Deuda declarada y plan de migración (T126):** la migración es **por criticidad**, no un
-barrido a ciegas, y hay un **gate** que la gobierna:
+**El plan de migración (T126) y su registro:** la migración fue **por criticidad**, no un
+barrido a ciegas, y hay un **gate** que la gobierna —hoy con el frente en **0**—:
 
 ```bash
 npm run audit:money           # inventario priorizado (R1 épsilons, R2a Number(...)+aritmética, R2b redondeo manual, R2c .toFixed)
 npm run audit:money:check     # ratchet: falla si la deuda AUMENTA respecto de la línea base (autoprueba primero)
-npm run audit:money:self-test # prueba el DETECTOR contra 33 casos difíciles (positivos y negativos)
-npm run audit:money:taint     # LÍMITE 12: informe del dinero en variables locales `number` (no bloquea)
+npm run audit:money:self-test # prueba el DETECTOR contra 41 casos difíciles (positivos y negativos)
+npm run audit:money:taint     # vista de foco del dinero en variables locales `number` (la regla ya está en el gate como R2a v5; este informe no bloquea)
 ```
 
 > **La métrica se autoprueba.** `--check` y `--update-baseline` ejecutan la autoprueba
 > **antes** de mirar el número: si el detector deja de ver un caso que ya se pagó una vez
-> (los **trece** límites de la tabla de abajo), el gate falla aunque el número sea «verde».
+> (los **doce** límites del gate de la tabla de abajo; el **13** es frontera de diseño, no una
+> regla que el detector pueda reconocer), el gate falla aunque el número sea «verde».
 > Es la respuesta a la lección que este gate pagó seis veces: *una métrica en 0 sólo vale si
 > el detector está probado contra los casos difíciles*.
 
@@ -780,25 +782,37 @@ con éxito en `document-totals.util` y `payment-term.util` es:
    arnés (ya pasó dos veces: artículo no vendible y kit no comprable en el escenario de
    compras) o real. Esa distinción es el valor del procedimiento.
 
-**Punto de continuación**: **la fase 1 está cerrada (R1 = 0)**; el frente vivo es la **fase 2/3**
-— **81 sitios**: `R2a` (aritmética de dinero con `Number(<dinero>)`, 64) y `R2c` (redondeo con
-`.toFixed()`, 17)—, a atacar **por criticidad** con el procedimiento de la fase 2 de arriba:
-`reports` (8 R2a), `accounts` (4 + 3 R2c), `purchase-credit-notes` (7), `sales.journal-builder`
-(6), `partners` (6 R2c), `purchase-orders` (5), `bank-reconciliation` (4)… Y quedan dos
-**pendientes declarados** que no son del gate: (a) los cuatro guards con `<= 0.01` de los
-formularios de **cobros/pagos** en el frontend (`isMethodsBalanced`, `isAccountLinesBalanced`,
-`isPartnerPaymentBalanced`, `canSubmit`/`canSave`), que deben alinearse con el reparto **exacto al
-centavo** del backend o autoajustar el último método; y (b) el **límite 2** del detector (la
-segunda forma de redondeo manual, `× 100` → `Math.round` → `÷ 100`), declarado y sin reconocer.
-*(Ya migrados en la fase 2: `document-totals.util`, `payment-term.util`,
-`rc-iva.service.ts`, `iue.service.ts`, `delivery-orders.service.ts`, `price-lists.service.ts`,
-`price-resolver.util.ts`, `purchase-invoices.service.ts`, `sale-reserve-invoices.service.ts`,
-`sale-invoices.service.ts` y `journal-entries.service.ts`.)* **Cuando el camino
-tenga mocks de fe** (crear un documento completo desde el servicio), la red válida es la
-**E2E del flujo** (`test/*.e2e-spec.ts`, con importes reales) **más** la barrida: es lo que se
-hizo en `purchase-invoices` (13/13 de la E2E de compras) y en `sale-reserve-invoices` (11/11
-de la de ventas) en lugar de un test de centavos apurado. Eso sí: **declarado** en el
-CHANGELOG y en T126, no omitido en silencio.
+**Punto de continuación (revisado el 2026-09-17): la migración está CERRADA** —fases 1 a 6,
+backend y frontend— y el marcador del frente es **0 en las cuatro reglas del backend** (`R1` 0 ·
+`R2a` 0 · `R2b` 0 · `R2c` 0 → `TOTAL: 0`; **3 justificaciones** en `R2a`/`R2b` y **20** apariciones
+en plantillas de texto informadas aparte como presentación) y **0 en las dos del frontend** (`R1` 0
+—con **3** literales de precisión fina, cantidad/tasa, fuera por diseño— y `R2` 0 con **17** de
+presentación). Los **dos frentes que esta sección dejaba abiertos quedaron cerrados**: los cuatro
+guards de **cobros/pagos** del frontend (`isMethodsBalanced`, `isAccountLinesBalanced`,
+`isPartnerPaymentBalanced`, `canSubmit`/`canSave`) migraron a la utilidad **espejo**
+(`erp-frontend/src/app/shared/money/money.util.ts`: los mismos nombres, `moneyEquals` a 0 centavos
+para los cuadres e `isSettled`/`exceedsBy` a 1 centavo para las liquidaciones) y el **límite 2** del
+detector (la segunda forma de redondeo manual, `× 100` → `Math.round` → `÷ 100`) se reconoce desde
+la ronda del 2026-09-15.
+
+No hay, por tanto, un frente de dinero abierto: lo que queda son los **límites declarados del
+detector** (tabla de arriba) —el de diseño es el **límite 13**: el detector reconoce el dinero por
+el **nombre** del identificador, así que un `number` intermedio sin nombre de dinero sólo lo
+distingue el compilador, gracias a que el contrato interno declara `Decimal` (fase 5)— y las
+**exclusiones deliberadas** por precisión (cantidades, tasas, precios a 6 decimales, porcentajes),
+que se marcan `// money-ok:` / `// toFixed-ok:` en vez de bajar la sensibilidad del gate. **Cómo
+comprobarlo hoy**: `npm run audit:money:check` (autoprueba **41/41** antes de mirar el número) y
+`npm run audit:money` para el inventario, en el backend; `npm run audit:money:check` con autoprueba
+**15/15** en el frontend.
+
+Se conserva el **procedimiento por archivo** de abajo para cuando haya que migrar un sitio nuevo
+—inventario → decidir **si el cambio es observable** → test de centavos **o** equivalencia
+declarada → migrar preservando tipos → verificar `tsc`, specs, barrida y gate— y, sobre todo, la
+regla de la **red válida**: **cuando el camino tenga mocks de fe** (crear un documento completo
+desde el servicio), la red es la **E2E del flujo** (`test/*.e2e-spec.ts`, con importes reales)
+**más** la barrida, como se hizo en `purchase-invoices` (13/13 de la E2E de compras) y en
+`sale-reserve-invoices` (11/11 de la de ventas) en lugar de un test de centavos apurado. Eso sí:
+**declarado** en el CHANGELOG y en T126, nunca omitido en silencio.
 
 **Procedimiento por archivo (fase 1 · guardas — receta probada, 2026-09-15)**: (1) inventario
 del archivo (`npm run audit:money -- --file=<substr>` y `--all`); (2) **decidir si el cambio es
