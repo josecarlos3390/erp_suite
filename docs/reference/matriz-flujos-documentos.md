@@ -42,7 +42,7 @@ reabre) — es lo que rompieron, cada uno por su lado, los guards de T97/T98.
 | **F. Reserva → Entrega** (el defecto de COT-181) | `POST /delivery-orders/from-reserve-invoice/:reserveInvoiceId`, `/from-multi-reserve-invoice` | Escribe la **relación** (`SaleInvoiceItem.deliveryOrderItemId`) **y** el vínculo genérico, más `SaleInvoice.deliveryOrderId` si está en NULL (T96) | API entrega: `hasPendingToInvoice=false`, `hasLinkedReserveInvoice=true`; «Copiar a» ya no re-ofrece facturarla | El backend ya bloqueaba la segunda factura (`400 … Pendiente: 0`); el defecto era de lectura y trazabilidad | **R1–R4** + spec `sale-delivery-from-reserve-invoice-ui` |
 | Pedido → Factura directa (sin entrega) | `POST /sale-invoices/from-order/:orderId`, `/from-multi-order` | `SaleInvoiceItem.orderItemId` + `base*`; `SalesOrderItem.invoicedQty ↑` (y `deliveredQty ↑` en el camino directo) | API pedido (`invoiceStatus`), API factura | Pendiente = `quantity − Σ facturas activas − Σ entregas` (T97) | **R6**, **R12b** (espejo compras) |
 | **Devolución de venta** | `POST /sales-returns` (cabecera en el body), `/sales-returns/from-delivery/:deliveryOrderId` | `SalesReturnItem.base*` **siempre** (por línea o **resuelto por artículo** si el payload sólo trae la cabecera — T101) + `target*` en la línea de entrega **sin pisar** un vínculo existente; `DeliveryOrderItem.invoicedQty ↑` (capacidad consumida), `SalesOrderItem.deliveredQty ↓`, `openQty = quantity − deliveredQty`, pedido **reabierto** | API entrega: `returnStatus`, `returnedQty`; guard de facturación (resta devoluciones); listado de pedidos | Devuelto ≤ entregado **por línea resuelta** (el bucle ya no itera sólo las líneas vinculadas — T101) | **R14/R14b–e** (vínculo, tipo de origen, línea inexistente, devuelto > entregado, vínculo inverso) |
-| **Nota de crédito de venta** | `POST /sales-credit-notes`, `/from-invoice/:invoiceId` | `SalesCreditNoteItem.base*` (línea de factura) + `target*`; en confirm `DeliveryOrderItem.invoicedQty ↓` y `SalesOrderItem.invoicedQty ↓` (espejo del incremento al facturar), restaurados al cancelar | API factura (saldo), API entrega (capacidad) | **No acreditar más de lo facturado** en la línea (400 verificado en T101) | **R15/R15b**, **R13** (reversa del asiento) |
+| **Nota de crédito de venta** | `POST /sales-credit-notes`, `/from-invoice/:invoiceId` | `SalesCreditNoteItem.base*` (línea de factura) + `target*`; en confirm `DeliveryOrderItem.invoicedQty ↓` y `SalesOrderItem.invoicedQty ↓` (espejo del incremento al facturar), restaurados al cancelar. El `base*` se **completa en el servicio** cuando el payload sólo manda `baseLineId` (tipo e id de la cabecera, `baseQty` = cantidad) — sin eso la traza quedaba a medias | API factura (saldo), API entrega (capacidad); **pendiente de devolución derivado** (`GET /sales-credit-notes/:id/return-pending`), badge del listado de entregas | **No acreditar más de lo facturado** en la línea (400 verificado en T101). La devolución **no** se bloquea por la NC: su límite es lo entregado − lo devuelto | **R15/R15b**, **R13** (reversa del asiento), **R14f** (aviso: NC con mercancía entregada sin devolver) |
 | Cobro (CxC) | `POST /incoming-payments`, `/batch`, `/apply-balance`, `/:id/cancel` | Asiento del cobro (+ retención sufrida como activo, T91), saldos del partner y de la factura | Estado de cuenta, conciliación | Total de métodos = `total − retención`; retención exige tipo | **R13** |
 
 ---
@@ -59,7 +59,7 @@ reabre) — es lo que rompieron, cada uno por su lado, los guards de T97/T98.
 | Pedido → F. Reserva de compra (avance) | `POST /purchase-reserve-invoices/from-order/:orderId`, `/manual`, `/from-receipt/:purchaseReceiptId` | `base*` + `target*`; `PurchaseOrderItem.invoicedQty ↑` en las líneas **sin recepción** (directa **y** reserva, T101); `receivedQty` sólo en la compra directa | API del pedido (`invoiceStatus`), API de la reserva | Pendiente = `quantity − Σ facturas activas` | **R12b** |
 | Pedido → Factura directa | `POST /purchase-invoices/from-order/:orderId`, `/manual` | `PurchaseInvoiceItem.orderItemId` + `base*`; `PurchaseOrderItem.invoicedQty ↑` **y** `receivedQty ↑` (la factura directa es también la recepción) | API pedido, API factura | Pendiente = `quantity − Σ facturas activas` (sin doble conteo de OPEN — T98) | **R12/R12b** |
 | **Devolución de compra** | `POST /purchase-returns`, `/purchase-returns/from-receipt/:purchaseReceiptId` | Igual que ventas: `PurchaseReturnItem.base*` **siempre** (resuelto por artículo si hace falta), `target*` en la línea de recepción; `PurchaseReceiptItem.invoicedQty ↑`, `PurchaseOrderItem.receivedQty ↓`, `openQty` recalculado, pedido reabierto | API recepción (`returnStatus`), guard de facturación, listado de pedidos | Devuelto ≤ recibido por línea | **R14/R14b–e** |
-| **Nota de crédito de compra** | `POST /purchase-credit-notes`, `/from-invoice/:invoiceId`, `/:id/apply` | `PurchaseCreditNoteItem.base*` + `target*`; `invoicedQty ↓` y su restauración al cancelar; el saldo a favor se **aplica** a otra factura (`/apply`) | Estado de cuenta del proveedor, anticipos | No acreditar más de lo facturado | **R15/R15b**, **R13** |
+| **Nota de crédito de compra** | `POST /purchase-credit-notes`, `/from-invoice/:invoiceId`, `/:id/apply` | `PurchaseCreditNoteItem.base*` + `target*`; `invoicedQty ↓` y su restauración al cancelar; el saldo a favor se **aplica** a otra factura (`/apply`). El `base*` se **completa en el servicio** cuando el payload sólo manda `baseLineId` (igual que ventas) | Estado de cuenta del proveedor, anticipos; **pendiente de devolución derivado** (`GET /purchase-credit-notes/:id/return-pending`), badge del listado de recepciones | No acreditar más de lo facturado. La devolución **no** se bloquea por la NC: su límite es lo recibido − lo devuelto | **R15/R15b**, **R13**, **R14f** (aviso) |
 | Pago (CxP) | `POST /outgoing-payments`, `/batch`, `/:id/cancel` | Asiento del pago (+ retención que **practicamos**), saldos | Estado de cuenta, conciliación | Total de métodos = `total − retención` | **R13** |
 
 ---
@@ -121,6 +121,22 @@ la barrida (`--only=bancos`).
    (**R3**, **R11**, **R12b**) aceptan el valor **bruto o el neto** de devoluciones y
    notas de crédito: lo que no cuadra con ninguno de los dos es deriva real.
    (T102 se cerró así: no era una columna desviada, era una regla sin netar.)
+   **Corolario (T144)**: como R3 neta la NC **mapeándola por la línea de factura**, la
+   NC debe traer su `base*` **completo**; con `baseDocType = null` el detector no la
+   encontraba y reportaba un **falso ERROR** de `invoicedQty` (el servicio lo deriva
+   ahora de la cabecera). Además `invoicedQty` **no** es lo que habilita la devolución:
+   el guard de `sales-returns`/`purchase-returns` limita contra lo entregado/recibido
+   menos lo ya devuelto, así que una devolución es válida **con o sin** NC.
+2b. **NC acreditada sin devolver: es un pendiente, no una incoherencia.** La NC es el
+   hecho financiero y la devolución el físico; pueden separarse en el tiempo (o no
+   devolverse nunca, si el negocio lo decide). El ERP lo **mide** —`pendiente =
+   min(acreditado, entregado/recibido) − devuelto`, derivado en
+   `src/common/pending-return.util.ts`— y lo publica en tres sitios: el listado de
+   entregas/recepciones (`pendingReturnQty`, badge «NC sin devolver»), el panel de la
+   nota de crédito (`GET /<nc>/:id/return-pending`, agrupado por documento) y la regla
+   **R14f** del detector, **como aviso** (no tumba el gate). El enlace que ofrece la NC
+   lleva a la devolución **de la entrega/recepción**, que es el único flujo que existe
+   para devolver: la devolución **no nace de la nota de crédito**.
 3. **Modelos legacy vacíos.** `SaleReserveInvoice`/`SaleReserveInvoiceItem` y
    `PurchaseReserveInvoice` tienen **0 filas**: los datos viven en
    `SaleInvoice`/`PurchaseInvoice` con `isReserve='Y'`. R9 vigila las lecturas desde
