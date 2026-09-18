@@ -55,6 +55,7 @@ reabre) — es lo que rompieron, cada uno por su lado, los guards de T97/T98.
 | Cotización → Pedido | `POST /purchase-orders/from-multi-quotation` | `PurchaseOrderItem.purchaseQuotationItemId` + `base*` + `target*`; contadores de la cotización | API del pedido, listado | Pendiente derivado de la cotización | cobertura E2E |
 | Pedido → Recepción | `POST /purchase-receipts/from-order/:orderId`, `/from-multi-order`, `/manual` | `PurchaseReceiptItem.orderItemId` + `base*` (PURCHASE_ORDER) + `target*`; `PurchaseOrderItem.receivedQty ↑ / openQty ↓` en confirm / revertido en cancel | API recepción (pendiente por recibir), API pedido (`receiptStatus`) | Pendiente = `quantity − Σ recepciones CLOSED − Σ recepciones OPEN − devoluciones` (T98, devoluciones en T100) | **R12** |
 | Recepción → Factura | `POST /purchase-invoices/from-receipt/:receiptId`, `/from-multi-receipt` | `PurchaseInvoiceItem.purchaseReceiptItemId` + `orderItemId` + `base*` + `target*`; `PurchaseReceiptItem.invoicedQty ↑` (creación) y `PurchaseOrderItem.invoicedQty ↑` (creación, T100) | API recepción (`pendingInvoiceQty`, `returnStatus`, `hasPendingToInvoice`), API factura; **menú «Copiar a → Factura de Compra»** del formulario de recepción + modal simple/consolidada (**T129**; antes sólo por API) | Σ **facturas activas** ligadas a la línea de recepción, **netas de devoluciones** (T98) | **R10/R10b**, **R11**, **R12b** |
+| **Recepción → Precio de Entrega** (G1) | `POST /landed-costs/from-receipt/:receiptId` (o `POST /landed-costs` con `purchaseReceiptId`); entrada **«Copiar a → Precio de Entrega»** del formulario de recepción | `LandedCost.purchaseReceiptId` (FK **Restrict**) y `LandedCostItem.purchaseReceiptItemId` por línea (FK **Restrict**), con el **valor** de la línea (`cantidad × costo de la recepción`) como base del reparto. Al **aplicar**: costo final en `PurchaseReceiptItem.unitCost/cost/totalCost`, kardex valorizado y `StockMovement` `LANDED_COST` (cantidad 0) con `landedCostId` | API del Precio de Entrega (líneas y gastos), kardex del artículo (`_resolveKardexSourceDoc` reconoce `landedCost`), listado de Precios de Entrega | La recepción **anulada** no se costea (`400`); una línea de factura de gasto ya aplicada no se puede repetir (traza `LandedCostExpense.purchaseInvoiceItemId`); ya aplicado, el documento sólo se puede **anular** | 7 E2E de backend (`test/landed-costs.e2e-spec.ts`) + E2E de UI |
 | Pedido → F. Reserva de compra (avance) | `POST /purchase-reserve-invoices/from-order/:orderId`, `/manual`, `/from-receipt/:purchaseReceiptId` | `base*` + `target*`; `PurchaseOrderItem.invoicedQty ↑` en las líneas **sin recepción** (directa **y** reserva, T101); `receivedQty` sólo en la compra directa | API del pedido (`invoiceStatus`), API de la reserva | Pendiente = `quantity − Σ facturas activas` | **R12b** |
 | Pedido → Factura directa | `POST /purchase-invoices/from-order/:orderId`, `/manual` | `PurchaseInvoiceItem.orderItemId` + `base*`; `PurchaseOrderItem.invoicedQty ↑` **y** `receivedQty ↑` (la factura directa es también la recepción) | API pedido, API factura | Pendiente = `quantity − Σ facturas activas` (sin doble conteo de OPEN — T98) | **R12/R12b** |
 | **Devolución de compra** | `POST /purchase-returns`, `/purchase-returns/from-receipt/:purchaseReceiptId` | Igual que ventas: `PurchaseReturnItem.base*` **siempre** (resuelto por artículo si hace falta), `target*` en la línea de recepción; `PurchaseReceiptItem.invoicedQty ↑`, `PurchaseOrderItem.receivedQty ↓`, `openQty` recalculado, pedido reabierto | API recepción (`returnStatus`), guard de facturación, listado de pedidos | Devuelto ≤ recibido por línea | **R14/R14b–e** |
@@ -143,6 +144,16 @@ la barrida (`--only=bancos`).
    `node scripts/e2e-residue-report.mjs [--hours=N]` (sólo lectura), que lista el
    residuo por tipo/estado y los pedidos abiertos **sin documento posterior**
    (los únicos anulables sin arrastrar contabilidad).
+8. **El Precio de Entrega (G1) no usa las capas `base*`/`target*`.** Su vínculo con la
+   recepción es `LandedCost.purchaseReceiptId` + `LandedCostItem.purchaseReceiptItemId`
+   y, con el gasto, la traza `LandedCostExpense.purchaseInvoiceItemId`; no reescribe
+   ninguna columna del documento origen salvo el **costo** de la recepción al aplicar
+   (que es su razón de ser: la recepción queda con su costo final, como en SAP B1).
+   Las dos FK a la recepción son **Restrict**, así que una recepción costeada no se
+   puede borrar — y la limpieza global (seed, `clean-documents.js`, `test-utils`)
+   borra los Precios de Entrega **antes** de las recepciones desde T143.
+   El detector R1–R15 no cubre este documento: su coherencia la verifican los 7 E2E
+   de backend y el E2E de UI.
 
 ---
 
@@ -164,6 +175,7 @@ Specs de regresión por flujo (frontend, Playwright):
 | `e2e/sale-reserve-invoice-from-order-ui.spec.ts` | T93/T95: Pedido → F. Reserva |
 | `e2e/sales-billing-guards.spec.ts` / `purchases-billing-guards.spec.ts` | T97/T98: no facturar dos veces, no entregar/recibir de más |
 | `backend-erp/test/returns-and-credit-notes.e2e-spec.ts` | T101: asiento + vínculos + no facturar lo devuelto + reversa al anular |
+| `e2e/landed-cost-ui.spec.ts` | **G1/T142**: Recepción → «Copiar a» → Precio de Entrega (gastos del proyecto, reparto, guardado, aplicación con asiento y anulación con motivo) + el maestro de tipos de gasto |
 
 Referencias: `AUDIT.md` (filas **T93, T95, T96, T97, T98, T99, T100, T101**),
 `BACKEND_GUIDE.md` §2 (checklist: vínculo en ambos sentidos; indicadores por línea;

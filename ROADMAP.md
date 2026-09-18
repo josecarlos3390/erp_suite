@@ -479,11 +479,13 @@ completo (ventas, compras, inventario, tesorería):
 Items "pendiente a futuro" y backlogs consolidados (con su estado/plan; se
 cierran con fila en `AUDIT.md`). **Plan de cierre 2026-09-09:
 `docs/plans/plan-cierre-backlog-2026-09.md` — T43–T52 ✅ CERRADO (grupos 3, 4
-y 5 del listado); quedan abiertos SOLO el grupo 1 (gaps G1–G4) y el grupo 2
-(features SIN/SAP/CRM/Nómina/localización):**
+y 5 del listado); del grupo 1 (gaps G1–G4) **G1 quedó cerrado el 2026-09-17**
+(ver la fila de abajo) y siguen abiertos G2–G4; del grupo 2 (features
+SIN/SAP/CRM/Nómina/localización) sigue todo abierto:**
 
 | Item | Origen | Estado / dueño |
 |---|---|---|
+| **G1 — Costeo de importación («Precio de Entrega» / Landed Cost)** | plan-gaps 2026-09 (grupo 1) | ✅ **Resuelto (2026-09-17, T142)**: módulo completo (documento + maestro de tipos de gasto), capitaliza flete/seguro/aduana en el costo de la mercancía recibida con los 5 criterios de reparto de SAP B1, agrupado por **proyecto** (código de importación); al aplicar revalúa el costo promedio, deja la recepción con su costo final, escribe el kardex y contabiliza `Dr Inventario + Dr COGS · Cr gasto` (lo ya vendido va a costo de ventas); anular revierte el asiento y devuelve el costo. Frontend completo (listado, formulario, maestro, «Copiar a → Precio de Entrega» en la recepción) + E2E de UI. Backend **170 suites/1951 tests** y E2E **17/118**, frontend **Karma 1670**, barrida operativa `--only=importacion` **38/38**. Límites declarados: exige contabilidad habilitada, solo costo promedio y solo Recepción como origen (F3: factura, lote/serie, dimensiones). Ver AUDIT **T142** (y **T143** para el defecto del seed que destapó su E2E) y `docs/plans/plan-g1-precio-entrega.md` |
 | **Serie de numeración por sucursal** (correlativos por tienda) | AUDIT T32e (mejora de modelo) / grupo 5 | ✅ Resuelto (2026-09-09, T50): `DocumentSeries.branchId` + resolución sucursal→global con exclusión de otras sucursales, threading en los 28 servicios de documentos, UI (columna + campo Sucursal) y E2E del caso (T52). Ver AUDIT T50 |
 | **Baseline visual consolidado** (`e2e/forms-reference-screenshots.spec.ts`) | AGENTS §8 QA | ✅ Resuelto (2026-09-09, T51): fix del seed que rompía el `webServer` de Playwright (P2003) + 52 baselines regenerados y `e2e:visual` 52/52. Ver AUDIT T51 |
 | **Flujos críticos E2E** (ventas, compras, stock, pagos parciales, devoluciones, conciliación) | AGENTS §8 QA | ✅ Resuelto (2026-09-09, T52): QA crítica 31/31 + resto de la ola QA en verde; nuevo caso E2E de serie por sucursal. Ver AUDIT T52 |

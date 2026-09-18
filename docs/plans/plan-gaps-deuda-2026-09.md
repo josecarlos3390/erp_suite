@@ -13,7 +13,25 @@
 
 ## 1. Gaps de negocio (módulos ausentes o por potenciar)
 
-### G1 — Costeo de importación: "Precios de Entrega" / Landing Cost ☐ · Prioridad ALTA
+### G1 — Costeo de importación: "Precios de Entrega" / Landing Cost ✅ · Prioridad ALTA
+
+> **CERRADO (2026-09-17, T142).** Plan detallado, decisiones aprobadas y estado de
+> implementación: `docs/plans/plan-g1-precio-entrega.md`. Resumen: documento
+> **Precio de Entrega** (serie `PDE`) que **nace de una Recepción** («Copiar a»),
+> consolida los gastos de las **facturas del proyecto** (código de importación) más
+> los manuales y los reparte entre las líneas de mercadería con los **5 criterios de
+> reparto** de SAP B1; al aplicar revalúa el **costo promedio**, deja la recepción
+> con su **costo final**, escribe el **kardex** y **contabiliza**
+> (`Dr Inventario + Dr COGS · Cr cuenta de gasto`, con lo ya vendido a costo de
+> ventas); anular **revierte el asiento y devuelve el costo**. Incluye el **maestro de
+> tipos de gasto** (*Expense Code*) y la pantalla completa (listado, formulario y
+> maestro). Evidencia en AUDIT T142/T143: backend **170 suites/1951 tests**, E2E de
+> backend **17/118**, barrida operativa `--only=importacion` **38/38**, frontend
+> **Karma 1670**, **E2E de UI** `e2e/landed-cost-ui.spec.ts` **3 passed** y los gates
+> en 0. **Límites declarados** (F3/F4, pendientes): exige contabilidad habilitada,
+> sólo `costingMethod = AVERAGE` y sólo Recepción como origen; quedan para después la
+> Factura de Compra como origen, el costeo por lote/serie, las dimensiones por línea
+> de gasto y el informe «Importación por proyecto».
 
 - **Qué falta:** no existe ningún documento de *landed cost* / "Precio de
   Entrega". El usuario lo necesita para costear una importación sumando todos
@@ -314,7 +332,7 @@
 | Orden | Ítem | Tipo | Justificación |
 |---|---|---|---|
 | ~~1~~ | ~~**D1 borradores snapshot**~~ | Deuda técnica | ✅ Cerrado (2026-09-09, T37) — el patrón snapshot ya estaba implementado (T32/T32b/T32c); auditoría con evidencia + regresión E2E 12/12 en verde; fix de orden en `auth.setup.ts` (tasa del día antes del login) |
-| 2 | **G1 Precios de Entrega / Landing Cost** | Negocio | El usuario lo pidió explícitamente (importaciones) |
+| ~~2~~ | ~~**G1 Precios de Entrega / Landing Cost**~~ | Negocio | ✅ **Cerrado (2026-09-17, T142)** — módulo completo (documento + maestro de tipos de gasto) con su E2E de UI y la barrida operativa `--only=importacion` en 38/38; el siguiente del orden es G2, que comparte el motor de costos |
 | 3 | **G2 Revalorización de artículos** | Negocio | El usuario lo pidió explícitamente; comparte motor con G1 |
 | ~~4~~ | ~~**G5 Doc canónica desactualizada**~~ | Mantenimiento | ✅ Cerrado (2026-09-08, T33) — AGENTS.md + ROADMAP.md al día |
 | ~~5~~ | ~~**D2 costeo duplicado backend**~~ | Deuda técnica | ✅ Cerrado (2026-09-08, T36) — auditoría: primitivas ya centralizadas; totales hand-rolled adoptan helper compartido en returns/receipts |
