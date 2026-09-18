@@ -824,6 +824,34 @@ Es gasto deducible del IUE. El ITF pagado también es **compensable contra el IT
 
 ## ✅ Validaciones y Reglas
 
+### **Reglas de Anulación (reversa) — T149:**
+```
+1. Un asiento contabilizado NUNCA se edita ni se borra: se anula con un ASIENTO
+   ESPEJO (sourceDocumentType = 'REVERSAL', debe/haber intercambiados en todas las
+   expresiones) y el original pasa a CANCELLED, ligado por reversalJournalEntryId
+   (único en BD → imposible reversar dos veces).
+
+2. Si el asiento YA estaba reversado, la anulación FALLA (409): no se devuelve un
+   "no hice nada" silencioso.
+
+3. La reversa se valida con _assertBalanced antes de persistir y copia moneda y
+   tipo de cambio DEL ORIGINAL (reversar con la tasa de hoy inventaría una
+   diferencia de cambio).
+
+4. FECHA DE CONTABILIZACIÓN: por defecto el «hoy» del tenant y elegible por el
+   usuario (POST /<doc>/:id/cancel con { postingDate: 'YYYY-MM-DD' }). Decide el
+   período de la reversa: si cae en un período CERRADO o BLOQUEADO, o fuera de la
+   gestión, responde 409 pidiendo REABRIR el período o elegir otra fecha.
+
+5. La anulación es ATÓMICA: el período se resuelve dentro de la transacción, así
+   que un 409 no anula el documento, no revierte stock y no toca el asiento
+   original. Reabierto el período, se registran el documento Y el asiento.
+
+6. SALDOS E INFORMES: un asiento cuenta si está POSTED y NO es REVERSAL
+   (common/journal-entry-scope.ts). El par revertido se excluye completo: para
+   saldos, mayor, informes fiscales y cierres, el documento anulado no existió.
+```
+
 ### **Reglas de Balance:**
 ```
 1. Todo asiento debe estar balanceado:

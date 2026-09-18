@@ -70,30 +70,45 @@ No existe un documento comercial de anulación: `AccountingEngineService.reverse
 crea un **asiento espejo** (`sourceDocumentType='REVERSAL'`, `sourceDocumentId` = asiento
 original, debe/haber intercambiados con importes base/local/sistema, partner, ítem,
 proyecto y dimensiones), deja el original en `CANCELLED` y lo enlaza por
-`reversalJournalEntryId`. Es idempotente y **silenciosamente nulo** si el tipo de
-documento no coincide con el del asiento — de ahí el defecto de T99 (5 F. Reserva de
-compra anuladas con el asiento vivo). Documentos fiscales fuera del plazo legal se
-anulan con **nota de crédito** (RND 10-0016-17, motivo obligatorio).
+`reversalJournalEntryId`. Si el asiento original **ya estaba reversado**, la anulación
+**falla con 409** (T149: antes devolvía `null` en silencio, la clase de no-op que dejó
+pasar T99 con 5 F. Reserva de compra anuladas y el asiento vivo). El espejo se **valida
+con `_assertBalanced`** antes de persistir. Documentos fiscales fuera del plazo legal se
+anulan con **nota de crédito** (RND 10-0016-17, motivo obligatorio), y una factura con
+pagos, abonos o NC aplicadas **no se puede cancelar**: el propio mensaje pide la nota de
+crédito.
 
 `R13/R13b/R13c` del detector recorren **21 tipos de documento** buscando documentos
 anulados con asiento POSTED sin reversa, reversas huérfanas y tipos sin comprobación
 (`EXCHANGE_RATE_REVALUATION`, `ADVANCE_APPLICATION`).
 
-**Fecha de la reversa (T147, resuelto el 2026-09-18)**: la reversa se fecha con el
-**«hoy» del tenant** (`resolveDocumentDate(undefined)`, `accounting-engine.service`
-≈L1932), no con la fecha del documento original, y **así se queda** —decisión del
-usuario: la fecha del documento se mantiene y la de **contabilización** es la del
-período en el que se aplica la anulación, porque un período **cerrado** no admite
-asientos—. Para que esa libertad no rompa ningún cuadre, el **cuadre «informe ↔
-mayor»** de `withholding-reports` **netea el par revertido**: un asiento `CANCELLED`
-con `reversalJournalEntryId` y su espejo `REVERSAL` cuentan **0 dondequiera que
-caigan** (el documento está anulado, igual que el informe no lo lista y lo declara en
-`excluded.cancelledPayments`). Antes, anular un documento de otro período dejaba el
-cuadre de ese período con diferencia (`ledgerTotal = 33.9 / difference = −33.9`,
-medido); ahora mide **0 / 0 / cuadrado**, con el unitario «el par anulado no cuenta
-aunque su reversa caiga en OTRO período» y el E2E «la reversa fechada en otro día del
-tenant no rompe el cuadre». Falta —declarado como **T149**— poder **elegir** esa fecha
-de contabilización desde la interfaz: hoy ningún endpoint de anulación la recibe.
+**Fecha de contabilización de la anulación (T147 + T149, resuelto el 2026-09-18)**: la
+reversa se fecha con el **«hoy» del tenant** (`resolveDocumentDate`, `accounting-engine.service`)
+por defecto —nunca con la fecha del documento original— y desde **T149 el usuario puede
+elegirla**: las **27 rutas `POST /<doc>/:id/cancel`** aceptan `{ reason?, postingDate }`
+(`YYYY-MM-DD`) y la interfaz la pide en el diálogo de anulación de todo documento que
+genere asiento (`ConfirmDialogService.askWithDetails`, propuesta con el **día del
+tenant**). La fecha elegida decide el **período contable** de la reversa:
+`_resolveAccountingPeriod` (`journal-entry-core.ts`, compartido con `_persist`) lanza
+**409** si cae en un período **cerrado o bloqueado** o fuera de la gestión, con el mensaje
+que pide **reabrir el período o elegir otra fecha**; el 409 ocurre **dentro de la
+transacción**, así que la anulación es **atómica** (ni el documento, ni el stock, ni el
+asiento original cambian). Antes de T149 la reversa **se saltaba la guarda** (creaba el
+asiento con `tx.journalEntry.create` directo, sin `_persist`): medido — anular con el
+período cerrado devolvía **201** y dejaba la reversa con `fiscalYearId`/`periodId` nulos.
+
+**El par revertido en saldos e informes (convención única, T149)**: un asiento **cuenta**
+si está `POSTED` y **no** es `REVERSAL` (`common/journal-entry-scope.ts`), de modo que el
+original `CANCELLED` y su espejo se excluyen **juntos** —para el reporte, el documento
+anulado nunca existió—. Aplica a saldos de cuenta y mayor, saldos por lote, bancos,
+ajuste por diferencia de cambio, cierre de período/ejercicio (arrastre incluido), IUE/IT/ICE
+y los informes fiscales, candidatos de conciliación bancaria y el cuadre «informe ↔ mayor»
+de retenciones (el caso especial de T147 pasa a usar el mismo helper). Antes de T149 cada
+informe aplicaba su criterio: los saldos filtraban `status = 'POSTED'`, que **incluye la
+reversa y excluye el original** — medido: tras anular una factura de 226 en el mismo
+período, el saldo de CxC quedaba en **−226** en vez de 0—. **Excepciones declaradas**: el
+listado de Asientos contables muestra el par (es donde se audita) y los
+`*-movement-checker` (guardas de borrado de maestros) siguen contando cualquier asiento.
 
 ### 4.b Tesorería: el vínculo asiento ↔ extracto es la LÍNEA (T116)
 
