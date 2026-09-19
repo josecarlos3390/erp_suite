@@ -103,7 +103,17 @@
 > - **Reversa/cancelación**: cubierta — anulación con motivo y fecha de contabilización que
 >   revierte el asiento y **restituye el costo** contra la existencia actual.
 
-### G3 — Módulo de Producción (potenciar) ☐ · Prioridad MEDIA
+### G3 — Módulo de Producción (potenciar) 📝 PLAN ESCRITO · Prioridad MEDIA
+
+> **Plan y decisiones: `plan-g3-produccion.md`** (2026-09-19, pendiente de aprobación del usuario) con la
+> referencia comparativa `docs/reference/PRODUCCION_ERP_COMPARATIVA.md` (SAP B1 / Odoo 19 / Dynamics 365,
+> verificada contra documentación pública). **Decisiones del usuario**: (D1) órdenes con **explosión de BOM y
+> aviso de faltantes**, sin MRP ni capacidad finita; (D2) **costo real por orden con liquidación al cierre**
+> (sin costo estándar); (D3) **maestro de recursos con componentes de costo** y máquinas como recurso enlazado
+> al Activo Fijo; (D4) primero la documentación. El módulo reutiliza las cuentas WIP que el maestro de artículos
+> **ya tiene**, el motor contable por jerarquía, el kardex y la guarda de período (T151).
+> **El ensamblaje (`AssemblyOrder`) se queda como está**: producción es un ciclo aparte (estados, emisión/recibo
+> parciales, recursos, WIP y cierre).
 
 - **Estado actual:** existe el circuito de **ensamblaje** (Kits + BOMs +
   `AssemblyOrder` → asiento propio vía `AccountingEngine`), útil para

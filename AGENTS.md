@@ -46,8 +46,8 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
 | Carpeta | Propósito | Archivos clave |
 |---------|-----------|----------------|
 | `docs/guides/` | Guías canónicas de dominio específico | `ESTANDAR_LINEAS_DOCUMENTO.md`, `ACCOUNTING_ENTRIES_GUIDE.md`, `guia-implementacion-configuracion.md` (orden de configuración/parametrización por perfil: contabilidad completa vs solo comercial/inventario; checklist + errores típicos) |
-| `docs/plans/` | Planes de trabajo activos | `plan-consistencia-visual-v2.md`, `plan-mejoras-ux-ui-frontend.md` |
-| `docs/reference/` | Análisis técnicos y referencias de arquitectura | `ACCOUNTS_DETERMINATION_FIX.md`, `SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md`, `SAP_B1_INTEGRATION.md` (capa de integración bidireccional SAP B1: modelos, mapeos, idempotencia, migraciones) |
+| `docs/plans/` | Planes de trabajo activos | `plan-consistencia-visual-v2.md`, `plan-mejoras-ux-ui-frontend.md`, `plan-g3-produccion.md` (plan del módulo de Producción, pendiente de aprobación) |
+| `docs/reference/` | Análisis técnicos y referencias de arquitectura | `ACCOUNTS_DETERMINATION_FIX.md`, `SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md`, `SAP_B1_INTEGRATION.md` (capa de integración bidireccional SAP B1: modelos, mapeos, idempotencia, migraciones), `PRODUCCION_ERP_COMPARATIVA.md` (cómo resuelven producción SAP B1 / Odoo 19 / Dynamics 365, verificado contra documentación pública) |
 | `docs/archive/` | Informes históricos de migraciones completadas | Índice de frentes y cierres de fase |
 
 ---
