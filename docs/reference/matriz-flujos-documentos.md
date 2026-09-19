@@ -212,6 +212,19 @@ la barrida (`--only=bancos`).
    **artículo + almacén** (el costo promedio vive ahí), no lote/serie; (c) no admite
    cantidad parcial (se revalúa toda la existencia, que es lo que hace inequívoco el
    «costo resultante»); (d) moneda base del tenant, sin tipo de cambio.
+10. **El eje de la guarda de período es la fecha de CONTABILIZACIÓN (T151, 2026-09-18).**
+   El motor resuelve el período con `source.postingDate ?? source.date`, así que un
+   documento con la fecha documental en un período abierto y la contabilización en uno
+   **cerrado** falla **409** (y al revés: documento en un período cerrado y
+   contabilización en uno abierto se registra, vinculado al período de la
+   contabilización). Excepciones declaradas: los dos tipos de **nota de débito** (su
+   modelo no tiene columna `postingDate`: su fecha documental es la única) y las dos
+   **aplicaciones de anticipo** (asientos técnicos de conciliación sin fecha de
+   contabilización propia). **Propiedad declarada de la familia de stock**: el alta de
+   una salida/entrada/ajuste/transferencia crea el documento **abierto** en una
+   transacción y lo confirma (asiento + kardex) en otra, de modo que un 409 de la guarda
+   deja el documento en `OPEN` **sin asiento ni kardex** —recuperable confirmándolo tras
+   reabrir el período— en vez de no dejar nada.
 
 ---
 
