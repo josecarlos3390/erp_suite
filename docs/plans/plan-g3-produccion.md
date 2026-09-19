@@ -1,6 +1,7 @@
 # Plan G3 — Módulo de Producción (Órdenes de Producción, emisión/recibo y WIP)
 
-> **Estado:** PLAN ESCRITO (2026-09-19) — **pendiente de aprobación del usuario** antes de tocar código.
+> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **Fase 1 implementada y verificada**
+> (maestros + BOM multinivel + explosión con faltantes, backend y UI); las Fases 2–7 siguen pendientes.
 > **Origen:** `docs/plans/plan-gaps-deuda-2026-09.md` §G3 · ROADMAP G3 · referencia
 > `docs/reference/PRODUCCION_ERP_COMPARATIVA.md` (SAP B1 / Odoo 19 / Dynamics 365, verificado contra
 > documentación pública).
@@ -27,7 +28,7 @@ estados, parciales, recursos y WIP. El maestro de **BOM y ruta es compartido** y
 | D1 | Alcance de planificación | **Explosión de BOM + aviso de faltantes** contra stock. **Sin MRP** (necesidades por fecha y propuestas de compra/orden) y **sin capacidad finita (APS)** |
 | D2 | Costeo | **Costo real por orden con liquidación al cierre** (sin costo estándar ni desviaciones sistemáticas) |
 | D3 | Recursos y máquinas | **Maestro de recursos con componentes de costo** (concepto + cuenta + tarifa) y **máquinas como recurso `MACHINE` enlazado al Activo Fijo** existente |
-| D4 | Orden de trabajo | **Primero la referencia y el plan** (esto), implementación después de la aprobación |
+| D4 | Orden de trabajo | **Primero la referencia y el plan** (esto), implementación después de la aprobación — *cumplido: el plan se aprobó el 2026-09-19 y la Fase 1 ya está implementada* |
 
 ## 3. Contrato funcional
 
@@ -139,7 +140,7 @@ a la cuenta de mermas sin valorizar stock propio.
 | `ProductionIssue` + `ProductionIssueItem` | documento de emisión (serie, estado, anulación) y sus líneas |
 | `ProductionReceipt` + `ProductionReceiptItem` | documento de recibo (serie, estado, anulación) con `lineType` `MAIN/BYPRODUCT/SCRAP` |
 | `ItemBom` (ampliado) | `+ lineNum`, `+ scrapPct`, `+ operationNum?` |
-| `Item` | sin campos nuevos en fase 1 (ya tiene `wipAccountId`, `wipVarianceAccountId`, `scrapAccountId`, `cost`, `costingMethod`) |
+| `Item` | `+ procurementMethod` (`MAKE`/`BUY`, SAP B1: *Procurement Method*): un artículo fabricado puede tener receta y ruta aunque **no** sea kit. Ya tenía `wipAccountId`, `wipVarianceAccountId`, `scrapAccountId`, `cost`, `costingMethod` |
 
 **Series nuevas** (`DocumentType`): `PRODUCTION_ORDER` (prefijo propuesto `OP`), `PRODUCTION_ISSUE` (`EP`),
 `PRODUCTION_RECEIPT` (`RP`), añadidas al catálogo canónico y al seed (28 → 31 tipos).
@@ -157,7 +158,8 @@ a la cuenta de mermas sin valorizar stock propio.
   (emisión, recibo, recursos, cierre/anulación) con `_assertBalanced` y guarda de período por fecha de
   **contabilización** (T151).
 - `src/production-orders/`, `src/production-issues/`, `src/production-receipts/`, `src/work-centers/`,
-  `src/resources/` (module/controller/service/dto + specs).
+  `src/resources/` (module/controller/service/dto + specs) — **Fase 1**: `src/work-centers/`, `src/resources/` y
+  `src/production-routes/` ya existen con sus specs (module/controller/service/dto).
 - `src/items/items.service.ts`: kardex con los tipos nuevos y `sourceDoc` navegable; explosión multinivel de BOM.
 - `src/common/bom-explosion.util.ts` (pura, testeada): explosión multinivel, merma, detección de ciclos y faltantes.
 - `scripts/audit-flow-links.mjs`: **R16** (orden cerrada con WIP ≠ 0, emisión sin componentes previstos, recibo sin
@@ -169,7 +171,11 @@ a la cuenta de mermas sin valorizar stock propio.
   pestañas: Componentes / Operaciones / Emisiones / Recibos / Costos y desviaciones).
 - `pages/production-issues/` y `pages/production-receipts/` (listado + formulario con líneas, lote/serie y
   valorización).
-- `pages/work-centers/` y `pages/resources/` (maestros, este último con la grilla de **componentes de costo**).
+- `pages/work-centers/`, `pages/resources/` (maestros, este último con la grilla de **componentes de costo**) y
+  `pages/production-routes/` (ruta por artículo) — **Fase 1: hechas**, con los selectores reutilizables
+  `app-work-center-selector` y `app-resource-selector`; el formulario de **Recetas (BOM)** gana merma, operación por
+  componente y la sección de **explosión y faltantes**; el maestro de artículos expone el **método de
+  aprovisionamiento** en la pestaña Producción.
 - Ruta y entradas de menú en Inventario/Producción; etiquetas y rutas del kardex; selector de recurso/centro de
   trabajo; reportes de WIP y desviaciones.
 
@@ -178,15 +184,40 @@ a la cuenta de mermas sin valorizar stock propio.
 
 ## 6. Fases y criterios de aceptación
 
-### Fase 1 — Maestros (`WorkCenter`, `Resource`, `ResourceCostComponent`, ruta y BOM ampliado)
-- [ ] CRUD completo con permisos, listados con acciones de fila y formularios LUNA.
-- [ ] `Resource` de tipo `LABOR` con **tres componentes de costo** (p. ej. sueldo, alimentación, ropa de trabajo)
-      cada uno con su cuenta; validación: los componentes no pueden quedar sin cuenta; suma ≠ 0 para poder absorber.
-- [ ] Máquina como recurso `MACHINE` **enlazado a un Activo Fijo** (validación de existencia y tenant).
-- [ ] Ruta por artículo con operaciones, centro de trabajo, recurso y tiempos.
-- [ ] BOM ampliado con merma y `lineNum`; **explosión multinivel** con test unitario (ciclos, fantasmas,
-      subensambles) y aviso de faltantes contra stock.
-- [ ] Gates: backend build/lint/`tsc`/jest; frontend lint/build/Karma/gates estáticos.
+### Fase 1 — Maestros (`WorkCenter`, `Resource`, `ResourceCostComponent`, ruta y BOM ampliado) — ✅ **IMPLEMENTADA (2026-09-19)**
+- [x] CRUD completo con permisos, listados con acciones de fila y formularios LUNA. **Evidencia**: `/work-centers`,
+      `/resources` y `/production-routes` (backend + pantallas), permisos `work-centers:*`, `resources:*` y
+      `production-routes:*`; `audit:list-actions` en 100 tablas · 0 sin columna de acciones.
+- [x] `Resource` de tipo `LABOR` con **tres componentes de costo** (sueldo, alimentación, ropa de trabajo) cada uno con
+      su cuenta; validación: los componentes no pueden quedar sin cuenta; suma ≠ 0 para poder absorber. **Evidencia**:
+      seed `MO-ENSAMBLE` con 3 componentes y el E2E `production-masters.e2e-spec.ts` (crea el recurso con 3 componentes,
+      rechaza tarifa total 0, rechaza cuenta agrupadora).
+- [x] Máquina como recurso `MACHINE` **enlazado a un Activo Fijo** (validación de existencia y tenant). **Evidencia**:
+      E2E (400 sin `fixedAssetId`, 201 con el activo del tenant enlazado) + seed `MAQ-EMPAQUE` sobre `AF-EMPAQ-01`.
+- [x] Ruta por artículo con operaciones, centro de trabajo, recurso y tiempos. **Evidencia**: `production-routes`
+      (secuencia automática cada 10, recurso de otro centro rechazado, operación usada por una línea de BOM no se
+      elimina) y su pantalla.
+- [x] BOM ampliado con merma y `lineNum`; **explosión multinivel** con test unitario (ciclos, subensambles) y aviso de
+      faltantes contra stock. **Evidencia**: 17 unitarios de `src/common/bom-explosion.util.ts`, `POST /item-boms/explode`
+      y la sección «Explosión y faltantes» del formulario de recetas.
+- [x] Gates: backend build/lint/`tsc`/jest; frontend lint/build/Karma/gates estáticos. **Evidencia**: backend
+      **178 suites / 2087 tests** y **E2E 25 suites / 182 tests** (incluye la suite nueva `production-masters` 11/11),
+      `build`/`lint`/los tres `tsc`/`audit:flows` (0 errores) y `db:recreate` con el seed nuevo; frontend **Karma
+      1789/1789**, `build`/`lint`, `e2e:visual` **53/53** (baseline de `item-boms` regenerada y el resto intacto) y los
+      gates estáticos (tokens, `!important`, `::ng-deep`, a11y, copy, dinero, densidad, `typecheck:e2e`, `format:check`).
+
+**Decisiones tomadas al implementar la Fase 1** (declaradas, no silenciosas):
+1. **`Item.procurementMethod`** (`MAKE`/`BUY`, SAP B1: *Procurement Method*) — el plan decía «`Item` sin campos nuevos»,
+   pero la elegibilidad de receta/ruta necesita un flag propio: reutilizar `isKit` habría convertido en «kit» a un
+   artículo fabricado. Un kit `ASSEMBLE_THEN_SELL` sigue pudiendo tener receta, así que **nada existente cambia**.
+2. **La ruta vive en su propio módulo** (`production-routes`, permiso propio) en vez de colgar de `item-boms`: la ruta se
+   administra por artículo y tiene sus propias operaciones.
+3. **Subensamble con existencia se consume tal cual**: si la explosión encuentra un artículo intermedio del que ya hay
+   existencia suficiente para el lote, **no** lo explota (si no, el aviso de faltantes pediría los componentes de algo que
+   está en stock). Los que se consumieron así se devuelven en `consumedAsIsItemIds`.
+4. **Cuentas nuevas `5.1.3 Costos de Producción`** (`5.1.3.01.001` Mano de Obra Directa, `.002` Beneficios al Personal,
+   `.003` Carga Fabril, `.004` Variación de Productos en Proceso): el plan de cuentas no tenía ninguna cuenta de
+   absorción productiva y los componentes de costo del recurso necesitan una cuenta de detalle real.
 
 ### Fase 2 — Orden de producción (sin ejecución)
 - [ ] Alta con cabecera + componentes (snapshot del BOM con merma) + operaciones (snapshot de la ruta).

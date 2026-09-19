@@ -103,9 +103,11 @@
 > - **Reversa/cancelación**: cubierta — anulación con motivo y fecha de contabilización que
 >   revierte el asiento y **restituye el costo** contra la existencia actual.
 
-### G3 — Módulo de Producción (potenciar) 📝 PLAN ESCRITO · Prioridad MEDIA
+### G3 — Módulo de Producción (potenciar) 🚧 FASE 1 IMPLEMENTADA (2026-09-19) · Prioridad MEDIA
 
-> **Plan y decisiones: `plan-g3-produccion.md`** (2026-09-19, pendiente de aprobación del usuario) con la
+> **Plan y decisiones: `plan-g3-produccion.md`** (2026-09-19, aprobado por el usuario; **Fase 1 ya
+> implementada y verificada**: centros de trabajo, recursos con componentes de costo, rutas por artículo,
+> receta multinivel con merma y **explosión con aviso de faltantes**, con el `AssemblyOrder` intacto) con la
 > referencia comparativa `docs/reference/PRODUCCION_ERP_COMPARATIVA.md` (SAP B1 / Odoo 19 / Dynamics 365,
 > verificada contra documentación pública). **Decisiones del usuario**: (D1) órdenes con **explosión de BOM y
 > aviso de faltantes**, sin MRP ni capacidad finita; (D2) **costo real por orden con liquidación al cierre**
