@@ -1,8 +1,9 @@
 # Plan G3 — Módulo de Producción (Órdenes de Producción, emisión/recibo y WIP)
 
-> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **Fases 1, 2 y 3 implementadas y verificadas**
-> (maestros, BOM multinivel con explosión y faltantes, orden de producción con snapshot y estados reversibles, y
-> emisión para producción que carga los componentes al WIP; backend y UI); las Fases 4–7 siguen pendientes.
+> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **Fases 1, 2, 3 y 4 implementadas y verificadas**
+> (maestros, BOM multinivel con explosión y faltantes, orden de producción con snapshot y estados reversibles,
+> emisión para producción que carga los componentes al WIP y recibo para producción que ingresa el PT, los
+> subproductos y la merma absorbiendo ese WIP; backend y UI); las Fases 5–7 siguen pendientes.
 > **Origen:** `docs/plans/plan-gaps-deuda-2026-09.md` §G3 · ROADMAP G3 · referencia
 > `docs/reference/PRODUCCION_ERP_COMPARATIVA.md` (SAP B1 / Odoo 19 / Dynamics 365, verificado contra
 > documentación pública).
@@ -70,10 +71,10 @@ copian los **componentes de costo** del recurso (snapshot: concepto, cuenta, tar
 
 `ProductionReceipt`: ingresa al almacén de destino el **producto terminado**, los **subproductos** y la **merma**.
 Tipo de línea: `MAIN` | `BYPRODUCT` | `SCRAP`. Valorización:
-- `MAIN`: al **costo real acumulado de la orden** hasta ese momento, por unidad recibida (el kardex entra a ese
-  costo y actualiza `Stock.avgCost`).
+- `MAIN`: al **costo real acumulado de la orden ÷ cantidad prevista** (ver §3.6), por unidad recibida (el kardex
+  entra a ese costo y actualiza `Stock.avgCost`).
 - `BYPRODUCT`: por el costo capturado (o 0 si no se valoriza) y **reduce** el costo a absorber por el principal.
-- `SCRAP`: a la cuenta `Mermas y Desperdicios` (`Item.scrapAccountId`), sin valorizar existencia.
+- `SCRAP`: a la cuenta `Mermas y Desperdicios` (`Item.scrapAccountId`), sin valorizar existencia (no mueve kardex).
 
 ### 3.5 Receta y ruta (maestro compartido, ampliado)
 
@@ -88,11 +89,18 @@ Tipo de línea: `MAIN` | `BYPRODUCT` | `SCRAP`. Valorización:
 
 ```
 costoRealAcumulado = Σ emisiones (cantidad × costo promedio)  +  Σ recursos (cantidad × tarifa del componente)
-costoUnitarioPT    = costoRealAcumulado ÷ cantidad recibida MAIN
+costoUnitarioPT    = costoRealAcumulado ÷ cantidad prevista de la orden
 costoPrevisto      = snapshot del BOM (cantidad × costo del maestro) + recursos estándar (ruta)
+
+# con parciales (implementado en la fase 4):
+costoRealAcumulado = WIP vivo (ProductionOrder.actualCost) + Σ valor ya absorbido por los recibos vivos
+valorDelRecibo     = cantidad MAIN recibida × costoUnitarioPT
 ```
 
-- **El recibo valoriza el PT al costo real**: el inventario del terminado queda con ese costo promedio.
+- **El recibo valoriza el PT al costo real**: el inventario del terminado queda con ese costo promedio. La tasa se
+  calcula sobre la **cantidad prevista** de la orden (no sobre lo ya recibido), así que **todos los parciales
+  absorben la misma tasa**, el WIP nunca queda negativo y al recibir el lote completo lo absorbido iguala lo
+  acumulado.
 - **El WIP queda en cero al cerrar**: si tras recibir todo el WIP no es cero (merma no valorizada, ajustes,
   emisiones de más), el residuo se contabiliza contra `WIP_VARIANCE` (`Item.wipVarianceAccountId`) — es el
   comportamiento **verbatim de SAP B1** (ver la referencia §1.3), adaptado a costo real.
@@ -104,9 +112,9 @@ costoPrevisto      = snapshot del BOM (cantidad × costo del maestro) + recursos
 
 | Momento | Asiento | Cuenta / EntryType |
 |---|---|---|
-| Emisión de componentes | `Dr WIP` · `Cr Inventario` (componentes a promedio) | `WIP` → `Item.wipAccountId`; `INVENTORY` |
+| Emisión de componentes | `Dr WIP` · `Cr Inventario` (componentes a promedio) | `WIP` → `Item.wipAccountId` **del artículo fabricado**; `INVENTORY` (del componente) |
 | Consumo de recursos | `Dr WIP` · `Cr cuenta del componente del recurso` | `WIP` + cuentas del maestro de recursos |
-| Recibo de producto terminado | `Dr Inventario PT` · `Cr WIP` | `INVENTORY` (PT) / `WIP` |
+| Recibo de producto terminado | `Dr Inventario PT` · `Cr WIP` | `INVENTORY` (PT) / `WIP` (del artículo fabricado) |
 | Subproducto | `Dr Inventario subproducto` · `Cr WIP` | `INVENTORY` |
 | Merma | `Dr Mermas y Desperdicios` · `Cr WIP` | `SCRAP` → `Item.scrapAccountId` (`5.1.2.01.004`) |
 | **Cierre con residuo** | `Dr/Cr WIP_VARIANCE` hasta dejar **WIP = 0** | `WIP_VARIANCE` → `Item.wipVarianceAccountId` |
@@ -114,7 +122,9 @@ costoPrevisto      = snapshot del BOM (cantidad × costo del maestro) + recursos
 
 Todas las cuentas se resuelven por **la misma jerarquía** del ERP (matriz artículo-almacén → artículo → grupo →
 almacén → `AccountMapping`), y las líneas del asiento llevan `itemId`, `warehouseId`, `projectId` y
-`dimension1..5`, como el resto de los documentos.
+`dimension1..5`, como el resto de los documentos. La cuenta **WIP es una sola por orden** y es la del **artículo
+fabricado** (SAP B1: *WIP Inventory Account* del artículo que se produce): lo que carga la emisión es exactamente lo
+que acredita el recibo y lo que el cierre deja en cero (corrección de la fase 3, AUDIT **T154**).
 
 **Invariante con test (backend y E2E):** al cerrar una orden, `Σ (Dr − Cr)` de las cuentas WIP de esa orden es
 **exactamente 0** y la suma de las patas de cada asiento cuadra (`_assertBalanced`).
@@ -290,11 +300,55 @@ a la cuenta de mermas sin valorizar stock propio.
    estricta a nivel ITEM, así que un artículo sin `wipAccountId` responde **400 accionable** en vez de contabilizar a
    una cuenta inventada.
 
-### Fase 4 — Recibo para producción (PT, subproductos y merma)
-- [ ] Documento con parciales; el PT entra al **costo real acumulado** (kardex + `Stock.avgCost`).
-- [ ] Subproducto valorizado y merma contra `Mermas y Desperdicios`.
-- [ ] Asiento `Dr Inventario PT / Cr WIP` (+ subproducto + merma) cuadrado y validado.
-- [ ] Regla: no recibir más que la cantidad prevista (tolerancia declarada); anulación con reversa.
+### Fase 4 — Recibo para producción (PT, subproductos y merma) — ✅ **IMPLEMENTADA (2026-09-19)**
+- [x] Documento con parciales; el PT entra al **costo real acumulado** (kardex + `Stock.avgCost`).
+      **Evidencia**: `ProductionReceipt` + líneas (serie **`RP`**, catálogo de 31 tipos) con **parciales** (el E2E
+      recibe 4 de 10 y después 2 más), valorización a **costo real acumulado ÷ cantidad prevista** (200 de WIP ÷ 10 →
+      20 la unidad; el kardex entra con ese costo y `Stock.avgCost` se recalcula por promedio ponderado).
+- [x] Subproducto valorizado y merma contra `Mermas y Desperdicios`.
+      **Evidencia**: línea `BYPRODUCT` valorizada al costo capturado (2 × 3 = 6, kardex `PRODUCTION_BYPRODUCT`) que
+      **reduce** lo que absorbe el principal (40 − 6 − 2 = 32, 16 la unidad) y línea `SCRAP` contra
+      `5.1.2.01.004` **sin** movimiento de kardex (medido: la existencia del artículo de la merma no cambia y no hay
+      ningún `StockMovement` de esa línea).
+- [x] Asiento `Dr Inventario PT / Cr WIP` (+ subproducto + merma) cuadrado y validado.
+      **Evidencia**: builder propio (`production.journal-builder.ts`) con las cuentas resueltas por jerarquía y las
+      patas deudoras **agrupadas por cuenta de destino** (PT + subproducto = 38 en inventario, merma = 2 en mermas) y
+      un **único Haber al WIP del artículo fabricado** por el total (40), cuadrado y comprobado en el E2E.
+- [x] Regla: no recibir más que la cantidad prevista (tolerancia declarada); anulación con reversa.
+      **Evidencia**: sobre-recibo rechazado con el pendiente en el mensaje (previsto 10, recibido 4 → pendiente 6) y
+      tolerancia declarada en **0 %**; sin línea `MAIN`, sin artículo del PT, con subproducto no inventariable, sin
+      costo acumulado en el WIP y contra una orden no liberada también rechazados; anulación con el par
+      `CANCELLED`/`REVERSAL`, stock y `avgCost` restituidos (104 → 100 y 50 exacto) y valor devuelto al WIP.
+- Gates de la fase: backend **181 suites / 2126 tests** (**+13** del recibo) y **E2E 28 suites / 211 tests**
+  (`test/production-receipts.e2e-spec.ts` **8/8**), `build`/`lint`/los tres `tsc`/`audit:flows` en 0 errores y
+  `db:recreate` con la serie **`RP`** (`Series de numeración: 31 creadas / 31 tipos`); frontend **Karma 1817**
+  (**+10** del listado del recibo), `build` AOT con las dos pantallas, **`e2e:visual` 53/53 sin
+  regenerar nada** (séptimo hito: la entrada nueva del menú no movió ningún baseline) y
+  **`e2e:functional` 231 passed · 0 fallos · 3 skips** sobre BD recreada. El kardex del PT devuelve el recibo como
+  **documento origen navegable** (`sourceDoc.type = PRODUCTION_RECEIPT`, comprobado por API en el E2E y con la ruta
+  del frontend en `SOURCE_DOCUMENT_ROUTE_MAP`).
+
+**Decisiones tomadas al implementar la Fase 4**:
+1. **El recibo se aplica al crearse** (`APPLIED`), como la emisión y el Precio de Entrega: es el acto físico del
+   ingreso; solo se puede **anular** con su reversa (no hay borrador ni edición).
+2. **El PT se valoriza a `costo acumulado ÷ cantidad prevista de la orden`**, donde el costo acumulado es el **WIP
+   vivo** (`ProductionOrder.actualCost`, que los recibos van absorbiendo) **más lo ya absorbido** por los recibos
+   vivos. Con parciales la tasa es **estable** (cada unidad recibida absorbe lo mismo), el WIP nunca queda negativo y
+   al recibir el lote completo lo absorbido iguala lo acumulado; el residuo (merma no valorizada, ajustes) lo
+   liquidará el cierre de la fase 6 contra la cuenta de variación.
+3. **El subproducto y la merma valorizados reducen el Haber al WIP del principal**: el total que sale del WIP es
+   `cantidad MAIN × tasa` y se reparte entre el inventario del PT, el del subproducto y la cuenta de mermas. Si la
+   valorización capturada del subproducto y la merma supera el costo a absorber, el alta responde **400** en vez de
+   dejar el PT en negativo.
+4. **La merma no mueve existencia** (no genera kardex): su único efecto contable es el cargo a `Mermas y
+   Desperdicios`; por eso el tipo `StockMovementType.PRODUCTION_SCRAP` del plan **no se añadió** (no habría uso) y
+   queda declarado como decisión, no como olvido.
+5. **Recibir exige costo acumulado**: si la orden no tiene WIP (ni emisiones ni consumos de recursos) el alta
+   responde **400 accionable** —salvo que el ajuste «Permitir operaciones sin costo» esté activo—, en vez de ingresar
+   el PT a costo cero en silencio.
+6. **El WIP es el del artículo fabricado** (corrección de la Fase 3, AUDIT **T154**): el builder de la emisión
+   resuelve la cuenta `WIP` con el artículo de la **orden**, no con el del componente, así que la instalación
+   sembrada (WIP configurado en `PT-PC01`) puede emitir y el Dr de la emisión es exactamente el Cr del recibo.
 
 ### Fase 5 — Recursos
 - [ ] Parte de horas/consumo por operación con **snapshot de los componentes de costo** del recurso.
@@ -307,8 +361,13 @@ a la cuenta de mermas sin valorizar stock propio.
 - [ ] Reporte de WIP por orden y de desviaciones por tipo.
 - [ ] Detector **R16** en 0 errores y sus avisos declarados según los datos.
 
-### Fase 7 — Frontend completo y cierre
-- [ ] Pantallas de emisión y recibo con líneas, valorización en vivo y totales del documento.
+### Fase 7 — Reportes, E2E de UI y cierre
+- [x] Pantallas de emisión y recibo con líneas, valorización en vivo y totales del documento.
+      **Evidencia**: la pantalla de **emisión** se entregó con la Fase 3 y la de **recibo** con la Fase 4 (listado con
+      filtros y acciones de fila —ver y anular— más el formulario con la grilla de líneas `MAIN`/`BYPRODUCT`/`SCRAP`,
+      subtotales por tipo y total del documento). Desviación declarada del reparto original del plan: las pantallas se
+      construyeron con su fase en vez de acumularlas aquí (misma decisión que en las fases 1–3), así que esta fase se
+      queda con los reportes y el E2E de UI.
 - [ ] Reportes en pantalla (WIP, desviaciones, costo de la orden) con exportación.
 - [ ] E2E de UI de la orden (alta → liberar → emitir → recibir → cerrar) y de la emisión/recibo parcial.
 - [ ] Gates completos: Karma, gates estáticos, `e2e:functional` sobre BD recreada, y backend E2E.

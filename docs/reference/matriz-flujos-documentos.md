@@ -237,13 +237,23 @@ la barrida (`--only=bancos`).
    estado de la orden (`DRAFT → PLANNED → RELEASED → IN_PROGRESS → CLOSED`/`CANCELLED`)
    es **reversible** en su tramo no ejecutado y revertir **limpia el efecto**
    (descongela el costo previsto, retira la liberación y, al anular una emisión,
-   **devuelve la orden a `RELEASED`** si no queda nada consumido). Contablemente la
-   emisión **acumula** en el WIP de la orden (`Dr WIP / Cr Inventario`), el recibo
-   (fase 4) lo acredita y el **cierre** (fase 6) liquida el residuo contra la cuenta de
+   **devuelve la orden a `RELEASED`** si no queda nada consumido). El **recibo para
+   producción** (fase 4) sigue la misma regla: el pendiente de recepción del PT se
+   **deriva por agregación** de los recibos vivos (`lineType = 'MAIN'`, estado
+   `APPLIED`) contra `ProductionOrder.quantity` —no hay columna desnormalizada que
+   pueda desincronizarse—, la tolerancia de sobre-recibo es **0 %** con el pendiente en
+   el mensaje y la anulación devuelve la orden a `RELEASED` cuando no queda **ni
+   emisión ni recibo vivo** (las dos se consultan antes de revertir el estado).
+   Contablemente la emisión **acumula** en el WIP de la orden (`Dr WIP / Cr Inventario`
+   con la cuenta del **artículo fabricado**: un solo WIP por orden), el recibo lo
+   acredita (`Dr Inventario PT / Inventario subproducto / Mermas y Desperdicios · Cr WIP`,
+   por `cantidad MAIN × tasa` —costo acumulado ÷ cantidad prevista— y con la merma **sin**
+   valorizar existencia) y el **cierre** (fase 6) liquidará el residuo contra la cuenta de
    variación; el detector **R16** vigilará las tres incoherencias de esta familia
    (orden cerrada con WIP ≠ 0, emisión sin componentes previstos y recibo sin emisión).
-   Límites declarados de la fase 3: la emisión es **manual** (sin `Backflush`) y no
-   tiene asiento preliminar (preview).
+   Límites declarados: la emisión es **manual** (sin `Backflush`), la emisión y el recibo
+   no tienen asiento preliminar (preview) y la merma no genera movimiento de kardex
+   (por eso el tipo `PRODUCTION_SCRAP` del plan no se añadió).
 
 ---
 

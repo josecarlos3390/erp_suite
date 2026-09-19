@@ -103,7 +103,7 @@
 > - **Reversa/cancelación**: cubierta — anulación con motivo y fecha de contabilización que
 >   revierte el asiento y **restituye el costo** contra la existencia actual.
 
-### G3 — Módulo de Producción (potenciar) 🚧 FASES 1–3 IMPLEMENTADAS (2026-09-19) · Prioridad MEDIA
+### G3 — Módulo de Producción (potenciar) 🚧 FASES 1–4 IMPLEMENTADAS (2026-09-19) · Prioridad MEDIA
 
 > **Plan y decisiones: `plan-g3-produccion.md`** (2026-09-19, aprobado por el usuario; **Fases 1, 2 y 3 ya
 > implementadas y verificadas**: centros de trabajo, recursos con componentes de costo, rutas por artículo,
