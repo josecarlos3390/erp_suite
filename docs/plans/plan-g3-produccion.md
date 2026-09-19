@@ -1,8 +1,8 @@
 # Plan G3 — Módulo de Producción (Órdenes de Producción, emisión/recibo y WIP)
 
-> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **Fases 1 y 2 implementadas y verificadas**
-> (maestros, BOM multinivel con explosión y faltantes, y la orden de producción con snapshot, estados reversibles y
-> costo previsto congelado; backend y UI); las Fases 3–7 siguen pendientes.
+> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **Fases 1, 2 y 3 implementadas y verificadas**
+> (maestros, BOM multinivel con explosión y faltantes, orden de producción con snapshot y estados reversibles, y
+> emisión para producción que carga los componentes al WIP; backend y UI); las Fases 4–7 siguen pendientes.
 > **Origen:** `docs/plans/plan-gaps-deuda-2026-09.md` §G3 · ROADMAP G3 · referencia
 > `docs/reference/PRODUCCION_ERP_COMPARATIVA.md` (SAP B1 / Odoo 19 / Dynamics 365, verificado contra
 > documentación pública).
@@ -256,12 +256,39 @@ a la cuenta de mermas sin valorizar stock propio.
 4. **El aviso de faltantes no bloquea** (decisión D1 del plan): es información para comprar o lanzar la orden del
    subensamble, y el alta responde 201 aunque falte existencia.
 
-### Fase 3 — Emisión para producción
-- [ ] Documento con serie, parciales, lote/serie obligatorio cuando el artículo lo maneja, y costo promedio real.
-- [ ] Asiento `Dr WIP / Cr Inventario` con proyecto y dimensiones; kardex `PRODUCTION_ISSUE` navegable.
-- [ ] Reglas: no emitir más que lo previsto (tolerancia declarada), no emitir en orden no liberada, no emitir
-      artículos que no son componentes de la orden.
-- [ ] Anulación con reversa (T149: fecha de contabilización elegible y 409 atómico con el período cerrado).
+### Fase 3 — Emisión para producción — ✅ **IMPLEMENTADA (2026-09-19)**
+- [x] Documento con serie, parciales, lote/serie obligatorio cuando el artículo lo maneja, y costo promedio real.
+      **Evidencia**: `ProductionIssue` + líneas (serie **`EP`**, catálogo de 30 tipos) con **parciales** (el E2E emite 6
+      de 22 previstas), costo promedio del momento (`Stock.avgCost` → 3 × 6 = 18), lote/serie validado con el helper
+      compartido (`validateDocumentLineTracking`) y la línea ligada a la línea de componente de la orden.
+- [x] Asiento `Dr WIP / Cr Inventario` con proyecto y dimensiones; kardex `PRODUCTION_ISSUE` navegable. **Evidencia**:
+      builder propio (`production.journal-builder.ts`) con las cuentas resueltas por jerarquía (la WIP del maestro del
+      artículo), asiento cuadrado comprobado en el E2E contra `1.1.3.03.001` / `1.1.3.01.001`, y el kardex del artículo
+      muestra la emisión como **documento origen** (tipo `PRODUCTION_ISSUE`, con `PRODUCTION_ISSUE_CANCEL` en la
+      reversa).
+- [x] Reglas: no emitir más que lo previsto (tolerancia declarada), no emitir en orden no liberada, no emitir
+      artículos que no son componentes de la orden. **Evidencia**: los tres rechazos con mensaje accionable (el del
+      pendiente incluye previsto/emitido/pendiente) y la tolerancia de sobre-consumo declarada en **0 %**.
+- [x] Anulación con reversa (T149: fecha de contabilización elegible y 409 atómico con el período cerrado).
+      **Evidencia**: `POST /production-issues/:id/cancel` con motivo persistido (T153), par `CANCELLED`/`REVERSAL`
+      medido en el E2E, stock y pendiente devueltos y orden de vuelta a `RELEASED`; la fecha de contabilización viaja
+      por el `CancelDocumentDto` (la guarda de período es la del motor, T151).
+- Gates de la fase: backend **180 suites / 2113 tests** (**+10** de la emisión) y **E2E 27 suites / 203 tests**
+  (`test/production-issues.e2e-spec.ts` **7/7**), `build`/`lint`/los tres `tsc`/`audit:flows` en 0 errores y
+  `db:recreate` con la serie **`EP`** (`Series de numeración: 30 creadas / 30 tipos`); frontend **Karma 1807**
+  (**+10** del listado de emisiones), `build` AOT con las dos pantallas, **`e2e:visual` 53/53 sin regenerar nada** y
+  **`e2e:functional` 231 passed · 0 fallos · 3 skips** sobre BD recreada.
+
+**Decisiones tomadas al implementar la Fase 3**:
+1. **La emisión se aplica al crearse** (`APPLIED`), como el Precio de Entrega y la Revalorización: la emisión es el
+   acto físico; solo se puede **anular** con su reversa (no hay borrador ni edición).
+2. **Tolerancia de sobre-consumo 0 %** (el plan la dejaba «declarada»): emitir más que el pendiente de la orden se
+   rechaza con el pendiente en el mensaje; el exceso legitimo se resuelve modificando la orden o emitiendo una segunda.
+3. **Al anular la última emisión la orden vuelve a `RELEASED`**: los estados son reversibles y revertir limpia el
+   efecto (`IN_PROGRESS` lo puso la emisión), tal como Dynamics 365 describe para sus estados.
+4. **El artículo componente necesita su cuenta WIP configurada** (maestro o matriz artículo-almacén): la resolución es
+   estricta a nivel ITEM, así que un artículo sin `wipAccountId` responde **400 accionable** en vez de contabilizar a
+   una cuenta inventada.
 
 ### Fase 4 — Recibo para producción (PT, subproductos y merma)
 - [ ] Documento con parciales; el PT entra al **costo real acumulado** (kardex + `Stock.avgCost`).

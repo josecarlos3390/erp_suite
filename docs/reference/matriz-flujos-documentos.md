@@ -226,6 +226,25 @@ la barrida (`--only=bancos`).
    deja el documento en `OPEN` **sin asiento ni kardex** —recuperable confirmándolo tras
    reabrir el período— en vez de no dejar nada.
 
+11. **El ciclo de producción (G3) no usa cantidades desnormalizadas entre
+   documentos: el vínculo es por id y por estado.** La **orden de producción** guarda
+   su **snapshot** (componentes con la merma prevista y el costo previsto congelado al
+   planificar) y la **emisión para producción** apunta a la **línea de componente**
+   (`ProductionIssueItem.productionOrderComponentId`), así que el pendiente se lee de la
+   propia línea (`quantityPlanned − quantityIssued`) —no se deriva de otros
+   documentos— y la emisión lo **incrementa** en la misma transacción (tolerancia de
+   sobre-consumo **0 %**: el exceso se rechaza con el pendiente en el mensaje). El
+   estado de la orden (`DRAFT → PLANNED → RELEASED → IN_PROGRESS → CLOSED`/`CANCELLED`)
+   es **reversible** en su tramo no ejecutado y revertir **limpia el efecto**
+   (descongela el costo previsto, retira la liberación y, al anular una emisión,
+   **devuelve la orden a `RELEASED`** si no queda nada consumido). Contablemente la
+   emisión **acumula** en el WIP de la orden (`Dr WIP / Cr Inventario`), el recibo
+   (fase 4) lo acredita y el **cierre** (fase 6) liquida el residuo contra la cuenta de
+   variación; el detector **R16** vigilará las tres incoherencias de esta familia
+   (orden cerrada con WIP ≠ 0, emisión sin componentes previstos y recibo sin emisión).
+   Límites declarados de la fase 3: la emisión es **manual** (sin `Backflush`) y no
+   tiene asiento preliminar (preview).
+
 ---
 
 ## 6. Cómo verificarlo
