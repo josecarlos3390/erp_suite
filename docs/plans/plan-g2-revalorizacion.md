@@ -2,7 +2,8 @@
 
 > **Estado:** CERRADO (2026-09-18) — **T150** (documento, asiento, kardex y anulación) y **T152** (los dos
 > defectos de interfaz que el E2E de UI destapó: el alta no se podía guardar y el listado no tenía acciones de
-> fila). Queda **T151** declarado y abierto (el eje de la guarda de período, decisión de producto; ver §7).
+> fila). Queda **T151 CERRADO** el mismo día (el eje de la guarda de período se unificó en la fecha de
+> contabilización; ver §7) y **T153** también cerrado (el motivo de la anulación se persiste y se muestra).
 > **Origen:** `docs/plans/plan-gaps-deuda-2026-09.md` §G2 · ROADMAP G2 · AUDIT (G2).
 > **Documento hermano:** `plan-g1-precio-entrega.md` (comparte el motor de costos).
 
@@ -259,11 +260,14 @@ valorizado.
 
 ## 7. Hallazgos y residuos del cierre
 
-- **T151 (declarado, ABIERTO — decisión de producto):** la guarda de período valida la
-  fecha que cada servicio pasa como `date` al motor. **18 llamadores** pasan la **fecha
-  del documento**; **G1** y **G2** pasan `doc.postingDate ?? doc.date` (lo que promete la
-  interfaz). Unificar el eje mueve el comportamiento de **todos** los documentos, así que
-  se declara con sus tres opciones en AUDIT T151 en vez de decidirlo aquí.
+- **T151 (CERRADO el 2026-09-18):** la guarda de período validaba la fecha que cada
+  servicio pasaba como `date` al motor. Medido: **18 llamadores** pasaban la **fecha del
+  documento** y **G1**/**G2** la de contabilización (lo que promete la interfaz), así que
+  el usuario eligió **unificar el eje en la fecha de contabilización**: el motor resuelve
+  el período con `source.postingDate ?? source.date`, los **24 llamadores** que armaban a
+  mano el objeto del documento ya la pasan y quedan **4 excepciones declaradas** (las dos
+  notas de débito, sin columna `postingDate`, y las dos aplicaciones de anticipo). Detalle
+  y mediciones en AUDIT **T151**.
 - **T152 (cerrado):** el alta no se podía guardar (el botón `type="submit"` de la barra
   de acciones vive **fuera del `<form>`** → `HTMLButtonElement.form === null`) y el
   listado no pintaba sus acciones (faltaba la columna `type: 'actions'`); el **mismo**
