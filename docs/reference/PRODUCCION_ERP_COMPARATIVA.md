@@ -75,7 +75,8 @@ de los componentes desensamblados**.
 
 > Nota: SAP valoriza el recibo al **costo del artículo** (estándar), y por eso la diferencia con el costo real de
 > los componentes aparece como desviación. Nuestro ERP usa **costo promedio móvil**, así que el recibo se valorará
-> por el **costo real acumulado** de la orden y la desviación aparecerá solo por merma/ajustes (ver el plan §4).
+> por el **costo real acumulado** de la orden y la desviación aparecerá solo por merma/ajustes (ver el plan §3.6 y
+> el límite 2 de §7).
 
 ### 1.4 Recursos
 
