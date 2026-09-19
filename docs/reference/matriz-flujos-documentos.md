@@ -201,6 +201,17 @@ la barrida (`--only=bancos`).
    borra los Precios de Entrega **antes** de las recepciones desde T143.
    El detector R1–R15 no cubre este documento: su coherencia la verifican los 7 E2E
    de backend y el E2E de UI.
+9. **Revalorización de inventario (G2): no reexpresa costos de ventas ni mueve
+   cantidades.** El documento asigna el costo **resultante** de la existencia de un
+   artículo en un almacén (por precio unitario nuevo o por importe total nuevo) y el
+   ajuste va **íntegro** a Inventario contra la cuenta de **Revalorización** (si sube) o
+   la de **Contrapartida** (si baja); el kardex lo registra con **cantidad 0**, así que
+   ninguna cantidad ni ningún saldo de unidades cambia. Límites declarados: (a) no
+   reexpresa el COGS de lo ya vendido —a diferencia del Precio de Entrega, que sí reparte
+   a costo de ventas porque capitaliza un gasto del período—; (b) la granularidad es
+   **artículo + almacén** (el costo promedio vive ahí), no lote/serie; (c) no admite
+   cantidad parcial (se revalúa toda la existencia, que es lo que hace inequívoco el
+   «costo resultante»); (d) moneda base del tenant, sin tipo de cambio.
 
 ---
 

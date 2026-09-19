@@ -143,6 +143,36 @@ goEdit(row: MyEntity) {
 menuOpen: Record<number, boolean> = {};
 ```
 
+**La columna de acciones es OBLIGATORIA cuando existe la plantilla `#actions` (T152).**
+`luna-data-table` solo pinta la plantilla `#actions` **dentro de una celda de una
+columna `type: 'actions'`**; si el componente declara el `ng-template` y olvida la
+columna, el template es **código muerto** y la fila se queda **sin ninguna acción**
+—sin ojo, sin menú— y la tabla se ve exactamente igual (no hay error). Le pasó a
+cinco pantallas, y en dos de ellas la acción perdida era la única vía para algo que
+el backend ya hacía (anular una Revalorización, eliminar un Tipo de gasto, quitar
+una línea de gasto del Precio de Entrega).
+
+```typescript
+columns: LunaColumn<Row>[] = [
+  // … las columnas de datos …
+  { key: 'actions', label: '', type: 'actions', align: 'center' }, // ← siempre
+];
+```
+
+El gate `npm run audit:list-actions` (en CI, con autoprueba
+`npm run audit:list-actions:self-test`) falla si una plantilla declara `#actions` y
+su componente hermano no declara la columna; los casos legítimos (la columna la
+aporta el llamador, como en `luna-document-lines-detail`) se marcan con
+`list-actions-ok: <razón>`.
+
+**Los botones de la barra de acciones de un formulario NO son `type="submit"`.**
+`luna-form-page` proyecta `[lunaFormActions]` en `.luna-form-page__actions`, **fuera
+del `<form>`**, así que un `type="submit"` no tiene formulario asociado
+(`HTMLButtonElement.form === null`) y **el clic no envía nada** (ni el envío
+implícito con Enter, con varios campos de texto). El patrón canónico es
+`(lunaClick)="save()"` (ver `landed-costs-form`). Fue el defecto G2-UI-1 de T152: la
+Revalorización no se podía crear por la pantalla.
+
 ### 1.2.1. Barra de filtros
 
 El buscador **nunca** debe estar envuelto en `.filter-field` con `<label>`. El `leadingAction="search"` del `luna-input` ya actúa como label visual; envolverlo genera un label extra, doble fondo/borde y desalineación.

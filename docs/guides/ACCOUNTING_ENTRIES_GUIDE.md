@@ -693,6 +693,47 @@ cuentas es idéntico.
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+### **9.b STOCK REVALUATION (Revalorización de Inventario)** — G2
+
+> Asigna un **nuevo costo** a los artículos de un almacén. **No mueve cantidades** (el
+> kardex la registra con cantidad 0 y el costo nuevo): solo actualiza `Stock.avgCost` y el
+> valor del inventario. La contrapartida del ajuste va a **dos cuentas del maestro** del
+> artículo, resueltas por la jerarquía (matriz artículo-almacén → artículo → grupo →
+> almacén), igual que en SAP B1 (*Inventory Revaluation Increase / Decrease*):
+
+| Campo del maestro | Cuándo se usa | Asiento |
+|---|---|---|
+| `stockRevaluationAccountId` («Revalorización») | el valor **aumenta** | **Cr** Revalorización |
+| `stockRevaluationOffsetAccountId` («Contrapartida») | el valor **disminuye** | **Dr** Contrapartida |
+
+```
+Caso AUMENTO — existencia 100, costo 50.00 → valor 5,000.00; nuevo costo 55.00:
+──────────────────────────────────────────────────────────────────
+  Línea 1: Débito  Inventario                         $500.00
+           Descripción: "Revalorización REV-000001 — Laptops"
+           Contra-cuenta: Revalorización
+  Línea 2: Crédito Revalorización                     $500.00
+           Descripción: "Revalorización REV-000001 — Laptops"
+           Contra-cuenta: Inventario
+  TOTALES: Débitos: $500 = Créditos: $500 ✅   ·   avgCost queda 55.000000
+
+Caso DISMINUCIÓN — mismo artículo; nuevo valor total 4,500.00:
+──────────────────────────────────────────────────────────────────
+  Línea 1: Débito  Contrapartida Revalorización       $500.00
+           Descripción: "Revalorización REV-000002 — Laptops"
+           Contra-cuenta: Inventario
+  Línea 2: Crédito Inventario                         $500.00
+           Descripción: "Revalorización REV-000002 — Laptops"
+           Contra-cuenta: Contrapartida Revalorización
+  TOTALES: Débitos: $500 = Créditos: $500 ✅   ·   avgCost queda 45.000000
+```
+
+**Reglas:** la fecha de contabilización decide el período (409 si está cerrado, T149); el
+ajuste **no** reexpresa costos de ventas históricos (va íntegro a inventario y a las
+cuentas de revalorización — límite declarado); anular el documento revierte el asiento y
+**restituye el costo** contra la existencia actual, dejando el movimiento de kardex
+inverso.
+
 ---
 
 ## 💰 Documentos de Pago/Cobro

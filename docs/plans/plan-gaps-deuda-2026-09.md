@@ -54,7 +54,22 @@
   almacén) y con el módulo de revalorización G2 (comparten el motor de
   actualización de costos).
 
-### G2 — Revalorización de artículos (por cantidad y por valor) ☐ · Prioridad ALTA
+### G2 — Revalorización de artículos (por precio unitario y por importe total) ✅ · Prioridad ALTA
+
+> **CERRADO (2026-09-18, T150).** Plan detallado, decisiones aprobadas por el usuario y
+> estado de la implementación: `plan-g2-revalorizacion.md`. Documento del módulo de
+> **Inventario** que asigna el **costo resultante** de la existencia de un artículo en un
+> almacén (por precio unitario nuevo o por importe total nuevo), con el ajuste contable a
+> la cuenta de **Revalorización** (si el valor aumenta) o a la de **Contrapartida** (si
+> disminuye) — las dos cuentas que los maestros ya exponían en los cuatro niveles — y el
+> **kardex** con **cantidad 0** (no mueve cantidades: solo el costo). Anulación con motivo
+> y fecha de contabilización (reversa del asiento + restitución del costo). Límites
+> declarados: no reexpresa el COGS ya vendido, granularidad artículo + almacén (lote/serie
+> fuera de alcance) y moneda base. **T152:** su E2E de interfaz destapó dos defectos de
+> pantalla que dejaban **inalcanzable** lo que el backend ya hacía —el alta no se podía
+> guardar (el botón `type="submit"` vive fuera del `<form>`) y el listado no pintaba sus
+> acciones (faltaba la columna `type: 'actions'`, defecto que también tenía el Precio de
+> Entrega desde G1)—, corregidos y ya ejercitados por el botón y el menú de fila reales.
 
 - **Qué falta:** el dato maestro deja claro que el costo NO se edita a mano
   ("se calcula por operaciones o revalorización futura" — ver ROADMAP DT.28);
@@ -76,6 +91,17 @@
   - Reversa/cancelación del documento sin romper promedios posteriores.
 - **Relación:** comparte motor con G1; coordinar para no duplicar la
   actualización de costos.
+
+> **Lo que se implementó frente al alcance sugerido** (para que el histórico no se lea
+> como si todo estuviera pendiente):
+> - **«Por cantidad»** quedó como **toda la existencia** del artículo en el almacén (decisión
+>   del usuario): es lo que hace que el costo capturado sea *exactamente* el costo resultante.
+>   La cantidad parcial tipo SAP B1 quedó **declarada fuera de alcance**.
+> - **«Por valor»**: modo `TOTAL` (importe total nuevo) además del modo `PRICE`.
+> - **Lote/serie**: fuera de alcance en esta entrega (el costo promedio vive por artículo +
+>   almacén), declarado.
+> - **Reversa/cancelación**: cubierta — anulación con motivo y fecha de contabilización que
+>   revierte el asiento y **restituye el costo** contra la existencia actual.
 
 ### G3 — Módulo de Producción (potenciar) ☐ · Prioridad MEDIA
 
