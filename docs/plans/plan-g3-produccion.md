@@ -1,7 +1,8 @@
 # Plan G3 — Módulo de Producción (Órdenes de Producción, emisión/recibo y WIP)
 
-> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **Fase 1 implementada y verificada**
-> (maestros + BOM multinivel + explosión con faltantes, backend y UI); las Fases 2–7 siguen pendientes.
+> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **Fases 1 y 2 implementadas y verificadas**
+> (maestros, BOM multinivel con explosión y faltantes, y la orden de producción con snapshot, estados reversibles y
+> costo previsto congelado; backend y UI); las Fases 3–7 siguen pendientes.
 > **Origen:** `docs/plans/plan-gaps-deuda-2026-09.md` §G3 · ROADMAP G3 · referencia
 > `docs/reference/PRODUCCION_ERP_COMPARATIVA.md` (SAP B1 / Odoo 19 / Dynamics 365, verificado contra
 > documentación pública).
@@ -219,11 +220,41 @@ a la cuenta de mermas sin valorizar stock propio.
    `.003` Carga Fabril, `.004` Variación de Productos en Proceso): el plan de cuentas no tenía ninguna cuenta de
    absorción productiva y los componentes de costo del recurso necesitan una cuenta de detalle real.
 
-### Fase 2 — Orden de producción (sin ejecución)
-- [ ] Alta con cabecera + componentes (snapshot del BOM con merma) + operaciones (snapshot de la ruta).
-- [ ] Estados `DRAFT/PLANNED/RELEASED` con sus permisos y **reversibilidad**; `expectedCost` congelado al planificar.
-- [ ] Aviso de faltantes por componente (previsto vs disponible) sin bloquear el guardado.
-- [ ] Listado con filtros, chip de estado y detalle; aislamiento por tenant y sucursal.
+### Fase 2 — Orden de producción (sin ejecución) — ✅ **IMPLEMENTADA (2026-09-19)**
+- [x] Alta con cabecera + componentes (snapshot del BOM con merma) + operaciones (snapshot de la ruta). **Evidencia**:
+      `POST /production-orders` toma el snapshot del maestro del artículo (cantidad por unidad × cantidad de la orden
+      con la merma de la receta, costo del maestro) y de la ruta (tiempo estándar del lote = minutos/unidad × cantidad
+      + preparación, y costo previsto con la tarifa del recurso).
+- [x] Estados `DRAFT/PLANNED/RELEASED` con sus permisos y **reversibilidad**; `expectedCost` congelado al planificar.
+      **Evidencia**: `plan` (congela `expectedCost` y `plannedAt`), `release`, `revert` (solo hacia atrás:
+      `RELEASED → PLANNED` retira la liberación y `PLANNED → DRAFT` **descongela** el costo previsto), `cancel` con
+      motivo persistido (T153) y `DELETE` solo de borradores; permisos `production-orders:view|create|edit|release|cancel|delete`
+      y serie **`OP`** (catálogo de 29 tipos).
+- [x] Aviso de faltantes por componente (previsto vs disponible) sin bloquear el guardado. **Evidencia**: el detalle
+      devuelve `analysis.components[]` con `available`/`missing`/`hasOwnRecipe` y `totals` (materiales, recursos,
+      costo previsto y líneas con faltante); el E2E crea la orden **con** faltante (22 requeridas, 5 disponibles,
+      17 faltantes) y el alta responde 201.
+- [x] Listado con filtros, chip de estado y detalle; aislamiento por tenant y sucursal. **Evidencia**: listado con
+      búsqueda + filtro de estado + artículo, badge de estado, y E2E de aislamiento por tenant (404); la pantalla de
+      la orden tiene pestañas de datos, componentes, operaciones y costos/faltantes.
+- Gates de la fase: backend **179 suites / 2103 tests** (**+16** de la orden) y **E2E 26 suites / 196 tests**
+  (`test/production-orders.e2e-spec.ts` **14/14**), `build`/`lint`/los tres `tsc`/`audit:flows` (0 errores) y
+  `db:recreate` con la serie **`OP`** (el catálogo canónico de series pasa a **29 tipos**: `Series de numeración:
+  29 creadas / 29 tipos`); frontend **Karma 1797** (**+8** del listado de órdenes), `build` AOT con las dos pantallas,
+  **`e2e:functional` 231 passed · 0 fallos · 3 skips** (30,0 min, 234 programados, sobre BD recreada) y
+  **`e2e:visual` 53/53 sin regenerar nada** (la entrada nueva del menú lateral no movió ningún baseline), más los
+  gates estáticos (tokens, `!important`, `::ng-deep`, a11y, copy, dinero, densidad, `typecheck:e2e`, `format:check`).
+
+**Decisiones tomadas al implementar la Fase 2**:
+1. **El snapshot es de nivel 1** (los componentes directos de la receta): el subensamble es otra orden —el aviso de
+   faltantes marca con `hasOwnRecipe` los componentes que se fabrican—; la explosión multinivel del plan se usa en la
+   pantalla de recetas y en el aviso, no para emitir.
+2. **`objectType` sin `DEFAULT`** en la tabla (como G1/G2): PostgreSQL no permite usar un valor de enum recién añadido
+   en el mismo script (`unsafe use of new value of enum type`).
+3. **`revert` no es lo mismo que avanzar**: valida explícitamente las dos vueltas (`RELEASED→PLANNED`,
+   `PLANNED→DRAFT`); `plan`/`release` son las que avanzan.
+4. **El aviso de faltantes no bloquea** (decisión D1 del plan): es información para comprar o lanzar la orden del
+   subensamble, y el alta responde 201 aunque falte existencia.
 
 ### Fase 3 — Emisión para producción
 - [ ] Documento con serie, parciales, lote/serie obligatorio cuando el artículo lo maneja, y costo promedio real.
