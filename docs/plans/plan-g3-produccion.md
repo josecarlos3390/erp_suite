@@ -1,9 +1,10 @@
 # Plan G3 — Módulo de Producción (Órdenes de Producción, emisión/recibo y WIP)
 
-> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **Fases 1, 2, 3 y 4 implementadas y verificadas**
+> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **Fases 1, 2, 3, 4 y 5 implementadas y verificadas**
 > (maestros, BOM multinivel con explosión y faltantes, orden de producción con snapshot y estados reversibles,
-> emisión para producción que carga los componentes al WIP y recibo para producción que ingresa el PT, los
-> subproductos y la merma absorbiendo ese WIP; backend y UI); las Fases 5–7 siguen pendientes.
+> emisión para producción que carga los componentes al WIP, recibo para producción que ingresa el PT, los
+> subproductos y la merma absorbiendo ese WIP y consumo de recursos que carga horas y servicios a ese mismo WIP;
+> backend y UI); las Fases 6–7 siguen pendientes.
 > **Origen:** `docs/plans/plan-gaps-deuda-2026-09.md` §G3 · ROADMAP G3 · referencia
 > `docs/reference/PRODUCCION_ERP_COMPARATIVA.md` (SAP B1 / Odoo 19 / Dynamics 365, verificado contra
 > documentación pública).
@@ -350,10 +351,50 @@ a la cuenta de mermas sin valorizar stock propio.
    resuelve la cuenta `WIP` con el artículo de la **orden**, no con el del componente, así que la instalación
    sembrada (WIP configurado en `PT-PC01`) puede emitir y el Dr de la emisión es exactamente el Cr del recibo.
 
-### Fase 5 — Recursos
-- [ ] Parte de horas/consumo por operación con **snapshot de los componentes de costo** del recurso.
-- [ ] Asiento `Dr WIP / Cr cada cuenta del componente`; costo real acumulado de la orden actualizado.
-- [ ] Reglas: recurso activo, centro de trabajo coherente con la operación, tiempo > 0.
+### Fase 5 — Consumo de recursos — ✅ **IMPLEMENTADA (2026-09-20)**
+- [x] Parte de horas/consumo por operación con **snapshot de los componentes de costo** del recurso.
+      **Evidencia**: `ProductionOrderResource` + `ProductionOrderResourceCost` (no es un documento con serie: vive dentro
+      de la orden) con endpoints `GET|POST /production-orders/:orderId/resources` y
+      `POST …/:partId/cancel`; el alta **copia** concepto, cuenta y tarifa de los componentes activos del recurso
+      (E2E: dos componentes → 80 + 20) y valora **tarifa × cantidad** (4 h × 25 = 100); el parte se imputa a una
+      operación —o a la orden— y suma sus **minutos reales** (`cantidad × 60` por defecto, editable), con lo que la
+      operación se cierra sola al alcanzar su tiempo estándar (240 → `IN_PROGRESS`, 300 ≥ 260 → `DONE`).
+- [x] Asiento `Dr WIP / Cr cada cuenta del componente`; costo real acumulado actualizado.
+      **Evidencia**: builder propio que agrupa las patas **por cuenta** y carga al WIP del **artículo fabricado** (una
+      sola cuenta por orden); asiento medido en el E2E (`Dr WIP 100 · Cr 5.1.3.01.001 80 + Cr 5.1.3.01.002 20`) y el
+      invariante del mayor (`Σ Debe − Haber` de la cuenta WIP con la regla del par revertido, T149) siguiendo a
+      `actualCost` en todo el ciclo (100 → 125 → 25 → 0). El detalle de la orden publica además
+      `analysis.actual` = materiales emitidos, recursos consumidos, absorbido por los recibos y **WIP vivo**.
+- [x] Reglas: recurso activo, centro de trabajo coherente con la operación, tiempo > 0.
+      **Evidencia**: cuatro rechazos 400 accionables medidos (recurso **inactivo**, recurso **sin componentes de costo
+      activos**, operación que **no es de la orden** y recurso de **otro centro de trabajo** que el de la operación) más
+      el rechazo de componentes con **tarifa cero** (no habría nada que valorizar).
+- Gates de la fase: backend **182 suites / 2136 tests** (**+10** del consumo de recursos) y **E2E 29 suites / 218**
+  (`test/production-resources.e2e-spec.ts` **7/7**), `build`/`lint`/los tres `tsc`/`audit:flows` en 0 errores y
+  `db:recreate` aplicando la migración nueva **desde cero** (31 series, `migrate diff` sin residuo propio);
+  frontend **Karma 1840** (**+23**), `build` AOT, `lint` 0/0, `audit:list-actions` **106/0**, **`e2e:visual` 53/53**
+  (con **4 baselines regenerados con atribución medida** por la corrección **T155**) y
+  **`e2e:functional` 231 passed · 0 fallos · 3 skips** sobre BD recreada.
+
+**Decisiones tomadas al implementar la Fase 5**:
+1. **El parte vive dentro de la orden** (el plan lo dice expresamente: no es un documento con serie): endpoints
+   anidados bajo `/production-orders/:orderId/resources` y permisos `production-orders:view` (listar) y
+   `production-orders:edit` (registrar y anular), sin estrenar acciones de permiso nuevas.
+2. **La cantidad se interpreta en horas** salvo que el parte envíe `minutes` explícitos: los tiempos de la ruta están
+   en minutos y la unidad que siembra el maestro es `HORA`. Límite declarado: con un recurso medido en otra unidad hay
+   que enviar los minutos reales.
+3. **El recurso debe ser del mismo centro de trabajo que la operación** cuando los dos lo tienen; sin operación no hay
+   guarda (consumo a nivel de orden, previsto en el plan).
+4. **La operación se cierra sola** (`DONE`) al alcanzar su tiempo estándar y vuelve a `PENDING` si la anulación deja el
+   tiempo real en cero: el estado refleja el tiempo real, no una decisión aparte.
+5. **Una sola regla de reversibilidad del estado de la orden** (`src/common/production-order-status.util.ts`): la orden
+   vuelve a `RELEASED` solo cuando **no queda ninguna emisión, recibo ni parte vivo**. Antes la regla estaba duplicada
+   en la emisión y el recibo; ahora las tres fases comparten la misma función (no puede divergir).
+6. **El parte se aplica al crearse y solo se anula** (con motivo persistido y fecha de contabilización, T149), como la
+   emisión y el recibo.
+7. **Corrección de interfaz (AUDIT T155)**: al construir la pestaña se midió que **6 formularios** usaban
+   `lunaSectionActions` en vez del slot real `[lunaFormSectionActions]`, así que su botón de «agregar línea» caía en el
+   **cuerpo** de la sección en vez de su encabezado; los 6 quedaron corregidos con la atribución visual medida.
 
 ### Fase 6 — Cierre, desviaciones y reportes
 - [ ] Cierre: liquida el WIP (**invariante WIP = 0** medido en el mayor), con `closedAt/ById` y asiento de cierre.

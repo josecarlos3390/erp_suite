@@ -245,12 +245,19 @@ la barrida (`--only=bancos`).
    el mensaje y la anulación devuelve la orden a `RELEASED` cuando no queda **ni
    emisión ni recibo vivo** (las dos se consultan antes de revertir el estado).
    Contablemente la emisión **acumula** en el WIP de la orden (`Dr WIP / Cr Inventario`
-   con la cuenta del **artículo fabricado**: un solo WIP por orden), el recibo lo
-   acredita (`Dr Inventario PT / Inventario subproducto / Mermas y Desperdicios · Cr WIP`,
+   con la cuenta del **artículo fabricado**: un solo WIP por orden), el **consumo de
+   recursos** (fase 5) acumula también —`Dr WIP / Cr cuenta del componente de costo`
+   del recurso, con el snapshot de la tarifa copiado en el parte, que no es un
+   documento con serie sino que vive dentro de la orden—, el recibo lo acredita
+   (`Dr Inventario PT / Inventario subproducto / Mermas y Desperdicios · Cr WIP`,
    por `cantidad MAIN × tasa` —costo acumulado ÷ cantidad prevista— y con la merma **sin**
    valorizar existencia) y el **cierre** (fase 6) liquidará el residuo contra la cuenta de
    variación; el detector **R16** vigilará las tres incoherencias de esta familia
    (orden cerrada con WIP ≠ 0, emisión sin componentes previstos y recibo sin emisión).
+   La **reversibilidad del estado** es una sola regla (`restoreProductionOrderStatus`):
+   al anular, la orden vuelve a `RELEASED` solo cuando **no queda ninguna emisión ni
+   recibo ni parte de horas vivo**, y el parte devuelve además sus minutos a la
+   operación (`timeReal`, que vuelve a `PENDING` cuando queda en cero).
    Límites declarados: la emisión es **manual** (sin `Backflush`), la emisión y el recibo
    no tienen asiento preliminar (preview) y la merma no genera movimiento de kardex
    (por eso el tipo `PRODUCTION_SCRAP` del plan no se añadió).
