@@ -539,6 +539,21 @@ a la cuenta de mermas sin valorizar stock propio.
 8. **Sin `phantom item`** en fase 1: los subensambles se explotan por BOM; el artículo fantasma (no inventariable,
    solo estructura) se declara como mejora posterior.
 
+## 7.b Límites declarados de G3 — **cerrados** (ronda 2026-09-20)
+
+Los seis límites que la Fase 7 dejó declarados se cerraron en una ronda posterior, con evidencia real de cada uno
+(AUDIT **T158–T162**):
+
+| Límite declarado | Qué se hizo | Evidencia |
+|---|---|---|
+| El detalle de la orden no devolvía sus emisiones ni sus recibos; la pantalla no tenía pestaña de documentos y los listados solo buscaban por texto libre (**T158**) | El detalle publica las dos familias (con importe, estado, motivo de anulación y nº de líneas), el listado publica los contadores, la orden estrena la pestaña **Documentos** (con «Ver» a cada documento) y los listados de emisiones/recibos ganan el filtro **Orden**; el detalle publica además **quién** cerró/reabrió/anuló | Unitarios backend/frontend + E2E de UI del ciclo con la pestaña, el filtro por orden y el nombre del usuario |
+| Una operación de ruta **sin tiempo estándar** quedaba `IN_PROGRESS` para siempre con el primer parte y bloqueaba el cierre (**T159**) | El primer parte la deja `DONE` (y al anular el parte vuelve a `PENDING`) y el guard del cierre cuenta solo las operaciones con `timeStandard > 0` | Unitarios + E2E: ruta de 0 min con un parte → operación `DONE` y cierre **201** con el WIP en cero |
+| El proyecto del documento no llegaba al mayor (la pantalla manda `projectId` y el asiento guarda `projectCode`) y la orden no capturaba las cinco dimensiones (**T160**) | `_resolveProjectCode` resuelve el código del maestro (y lo limpia al quitar el proyecto); el formulario pinta un selector de centro de costo **por dimensión habilitada**; la pata del WIP del recibo hereda el proyecto del documento | Unitarios + E2E: todas las líneas del asiento de la emisión con el `projectCode` resuelto y la pata de **mermas** conservando la dimensión (el motor limpia las dimensiones en cuentas de activo, regla declarada) |
+| Los selectores de orden topaban en **200 órdenes** y los listados no tenían filtro por orden (**T161**) | Selector nuevo `app-production-order-selector` con **búsqueda en el servidor** (primer consumidor del `searchMode="server"` de `luna-entity-select`), usado en los dos formularios, en los reportes y como filtro de los dos listados | 9 unitarios del selector + los de los listados y del listado de órdenes + E2E eligiendo la orden por el modal y filtrando el listado |
+| El recorrido E2E de UI dejaba la orden **reabierta**, con la operación 20 sin hacer y sin subproducto ni merma (**T162**) | El journey completa **las dos operaciones**, recibe **subproducto + merma** (artículos creados por el propio spec por API) y **vuelve a cerrar**: termina con la orden `CLOSED` y WIP 0 | `production-full-journey-ui.spec.ts` **8/8** sobre BD recién sembrada |
+| El umbral de descuadre del WIP (`0.005` en la UI frente a `> 0.005` en el backend) y los ids crudos de cierre/reapertura | **No era una divergencia real**: el backend publica `difference` ya redondeado a centavos, así que `|difference| > 0.005` ⇔ `≠ 0` (lo mismo que pregunta la pantalla con `centsOf`); queda **fijado** con el caso del medio centavo en el spec y documentado. Los ids crudos se sustituyen por el **nombre** del usuario | Unitario del frontend (0,004 / ±0,005 / ±0,02) + E2E del cierre |
+
+
 ## 8. Preguntas menores con valor por defecto (se implementan así salvo indicación)
 
 | Tema | Valor por defecto propuesto |
