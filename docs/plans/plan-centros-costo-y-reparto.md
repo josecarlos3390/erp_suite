@@ -2,9 +2,21 @@
 
 > **Estado:** propuesto el **2026-09-21** (petición del usuario: «hacer un plan después para adicionar o integrar los
 > centros de costo para utilizar normas de reparto […] y así poder generar informes por centros de costo y normas de
-> reparto»). Pendiente de decisión de diseño.
+> reparto»). **C0 RESUELTO (2026-09-21): opción C aprobada por el usuario** —ver §2.1—; C1–C4 pendientes de ejecución.
 > Relacionado: `plan-cuentas-contables-editables.md` (la cuenta de la línea viaja por el mismo camino que el centro de
 > costo: `BaseLineItemDto` → documento → asiento → informe).
+
+---
+
+## 0. Decisión del usuario (C0, 2026-09-21)
+
+| Pregunta | Decisión |
+|---|---|
+| **Opción de diseño** | **C** — reutilizar el **eje** (sin columna nueva), **validar** el valor contra el maestro de centros de costo y **extender el reparto a los asientos generados por documentos**. Se descarta la FK `costCenterId` en documentos y asiento (duplicaría el concepto y apartaría del modelo SAP B1 que el ERP sigue). |
+| **Norma de reparto** | Se **captura por línea**, **opcional**: si no se captura, la línea se contabiliza entera como hoy con su dimensión; si se captura, se expande en N líneas (una por centro de costo) con el importe prorrateado. |
+| **Qué eje es «Centro de costo»** | *Adoptado por recomendación (revisable en C1):* un ajuste **explícito** en la configuración de dimensiones («eje de centros de costo»), con el **nombre** del eje como valor por defecto para las instalaciones existentes. |
+| **Qué muestran los informes** | *Adoptado por recomendación (revisable en C3):* las dos cosas — el **importe original** de la línea del documento y el **reparto efectivo** del asiento, con una columna «repartido en N centros». |
+
 
 ---
 
@@ -36,7 +48,7 @@ y en `JournalEntryLine`.
 referencial y un informe trivial; *contra:* duplica el concepto (el mismo centro de costo quedaría en `dimensionN` **y**
 en `costCenterId`) y se aparta del modelo SAP B1 que el ERP sigue en todo lo demás.
 
-**Opción C (recomendada) — A + validación y reparto también en documentos.**
+**Opción C (APROBADA por el usuario el 2026-09-21) — A + validación y reparto también en documentos.**
 1. **Captura** en la línea con el eje configurado como centro de costo (opción A), **validando** que el valor sea un
    centro de costo **activo** del eje (si el eje tiene maestro, no se acepta texto libre).
 2. **Norma de reparto por línea** (`distributionRuleId`, opcional) **también en los documentos**: el builder que arma el
@@ -53,7 +65,7 @@ en `costCenterId`) y se aparta del modelo SAP B1 que el ERP sigue en todo lo dem
 
 | Fase | Alcance | Criterio de aceptación |
 |---|---|---|
-| **C0** | **Decisión del usuario**: eje vs columna nueva (opciones A/B/C) y si los centros de costo se validan contra el maestro | El plan queda aprobado con la decisión escrita |
+| **C0** | **Decisión del usuario**: eje vs columna nueva (opciones A/B/C), el eje de centros de costo y si el reparto se captura | ✅ **RESUELTO (2026-09-21)**: opción **C**, reparto **capturado por línea (opcional)** y las dos recomendaciones (ajuste explícito del eje + informes que muestran el importe original y el reparto efectivo) adoptadas y anotadas en §0 |
 | **C1** | **Validación del valor del eje**: si el eje tiene centros de costo activos, la línea solo acepta códigos del maestro (400 accionable con la línea); el formulario ya usa el selector | Una línea con un código inventado se rechaza; con un centro de costo real, se guarda |
 | **C2** | **Norma de reparto en documentos**: `distributionRuleId` opcional por línea + el expandidor compartido en los builders que hoy no reparten (ventas, compras, stock, producción) | Un documento con una línea repartida contabiliza **N líneas** con el importe prorrateado al céntimo y el centro de costo en la dimensión del eje (medido en el mayor) |
 | **C3** | **Informes por centro de costo y por norma de reparto** (pantalla + CSV), con filtros por rango, eje, centro y norma | Los importes del informe cuadran con el mayor del mismo rango (test que compara ambos) |
