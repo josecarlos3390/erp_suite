@@ -1,10 +1,11 @@
 # Plan G3 — Módulo de Producción (Órdenes de Producción, emisión/recibo y WIP)
 
-> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **Fases 1, 2, 3, 4 y 5 implementadas y verificadas**
+> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **Fases 1, 2, 3, 4, 5 y 6 implementadas y verificadas**
 > (maestros, BOM multinivel con explosión y faltantes, orden de producción con snapshot y estados reversibles,
 > emisión para producción que carga los componentes al WIP, recibo para producción que ingresa el PT, los
-> subproductos y la merma absorbiendo ese WIP y consumo de recursos que carga horas y servicios a ese mismo WIP;
-> backend y UI); las Fases 6–7 siguen pendientes.
+> subproductos y la merma absorbiendo ese WIP, consumo de recursos que carga horas y servicios a ese mismo WIP, y
+> cierre que liquida el WIP a cero contra la variación con sus reportes de costo/WIP/desviaciones y el detector R16;
+> backend y UI); la Fase 7 (reportes en pantalla con exportación, E2E de UI del ciclo y gates finales) sigue pendiente.
 > **Origen:** `docs/plans/plan-gaps-deuda-2026-09.md` §G3 · ROADMAP G3 · referencia
 > `docs/reference/PRODUCCION_ERP_COMPARATIVA.md` (SAP B1 / Odoo 19 / Dynamics 365, verificado contra
 > documentación pública).
@@ -396,11 +397,65 @@ a la cuenta de mermas sin valorizar stock propio.
    `lunaSectionActions` en vez del slot real `[lunaFormSectionActions]`, así que su botón de «agregar línea» caía en el
    **cuerpo** de la sección en vez de su encabezado; los 6 quedaron corregidos con la atribución visual medida.
 
-### Fase 6 — Cierre, desviaciones y reportes
-- [ ] Cierre: liquida el WIP (**invariante WIP = 0** medido en el mayor), con `closedAt/ById` y asiento de cierre.
-- [ ] Reporte de costo de la orden: previsto vs real por componente, recurso, tiempo y merma.
-- [ ] Reporte de WIP por orden y de desviaciones por tipo.
-- [ ] Detector **R16** en 0 errores y sus avisos declarados según los datos.
+### Fase 6 — Cierre, desviaciones y reportes — ✅ **IMPLEMENTADA (2026-09-20)**
+- [x] Cierre: liquida el WIP (**invariante WIP = 0** medido en el mayor), con `closedAt/ById` y asiento de cierre.
+      **Evidencia**: `POST /production-orders/:id/close` (permiso nuevo `production-orders:close`) mide el residuo
+      **en el mayor** (saldo de la cuenta WIP del artículo fabricado sobre los documentos de la orden + su asiento de
+      cierre, con la regla única del par revertido T149), lo **concilia contra los documentos** (Σ emitido +
+      consumido − recibido) y **falla en voz alta con 409** si no cuadran al céntimo (en vez de contabilizar un ajuste
+      inventado); el residuo va a `WIP_VARIANCE` (`Dr Variación / Cr WIP` si quedó deudor, al revés si quedó acreedor) y
+      la orden queda `CLOSED` con `closedAt`/`closedById` y el asiento en `transactionId`. La columna `actualCost`
+      vuelve a **cero** (el importe liquidado vive en el asiento y en la respuesta `closing`). Guardas declaradas:
+      **operaciones en proceso** y **consumo emitido sin ningún recibo** rechazados con mensaje accionable. La
+      **reapertura** (`POST /production-orders/:id/reopen`, con motivo persistido y fecha de contabilización T149)
+      revierte el asiento de cierre y devuelve la orden a `IN_PROGRESS` (o `RELEASED` si ya no queda nada vivo).
+      **Medido en el E2E**: con 170 de WIP el cierre deja `Σ Debe − Haber` de la cuenta WIP en **0** y la columna en 0;
+      la reapertura lo devuelve a **170** y el par `CANCELLED`/`REVERSAL` queda vinculado.
+- [x] Reporte de costo de la orden: previsto vs real por componente, recurso, tiempo y merma.
+      **Evidencia**: `GET /production-reports/orders/:id/cost` devuelve el previsto del snapshot (materiales y
+      recursos), el real (emisiones, partes, absorbido y WIP vivo), el detalle por **componente** (previsto, emitido,
+      desviación de cantidad y de costo), por **operación** (tiempo estándar, tiempo real, desviación de tiempo y de
+      costo) y las líneas de **merma** y **subproducto** recibidas, más las desviaciones agregadas (cantidad, consumo,
+      tiempo, costo y merma). Medido en el E2E: previsto 60 de materiales y 108,33 de recursos frente a 200 y 50 reales,
+      con la desviación de cantidad −10 y la de consumo 140.
+- [x] Reporte de WIP por orden y de desviaciones por tipo.
+      **Evidencia**: `GET /production-reports/wip` publica por orden el WIP **documental** (columna), el **medido en el
+      mayor**, su diferencia y el conteo de órdenes descuadradas (el mismo invariante que el cierre exige);
+      `GET /production-reports/deviations?from&to&branchId&itemId` agrega las desviaciones por orden con sus totales.
+- [x] Detector **R16** en 0 errores y sus avisos declarados según los datos.
+      **Evidencia**: el detector gana el bloque **R16** (9 bloques de reglas en total) con seis reglas: **R16a** ERROR
+      (mayor ≠ columna), **R16b** ERROR (columna ≠ documentos en una orden viva), **R16c** ERROR (orden cerrada con WIP
+      ≠ 0), **R16d/e/f** WARN (emisión sin componentes previstos, recibo sin emisión y orden en proceso sin
+      movimientos). Corrido sobre la BD recreada: **0 errores** y **1 aviso** (el R9 preexistente de lecturas legacy),
+      con R16 sin hallazgos. **Sonda de verificación** (no es gate): con datos incoherentes creados a propósito —una
+      orden en proceso con 100 de WIP y sin documentos y una orden cerrada con 50 de WIP en el mayor— el detector cerró
+      **3 errores** exactamente por R16a, R16b (2 muestras) y R16c más el aviso R16f; limpiados los datos y recreada la
+      BD, volvió a **0 errores**. Al escribirla se corrigieron **dos defectos de la propia regla** que la sonda destapó:
+      el filtro por tenant usaba el del primer registro (dejaba sin medir las órdenes de otros tenants) y las "cuentas
+      WIP" se derivaban de **todas** las patas del consumo (incluida la contrapartida de inventario), de modo que el
+      neto salía siempre cero; ahora se derivan solo de las patas **deudoras** del consumo.
+- Gates de la fase: backend **182 suites / 2142 tests** (**+6** del cierre y la reapertura) y **E2E 30 suites / 224**
+  (`test/production-close.e2e-spec.ts` **6/6**), `build`/`lint`/los tres `tsc`/`audit:flows` (9 bloques) en 0 errores y
+  `db:recreate` aplicando la migración nueva desde cero (31 series); frontend **Karma 1852** (**+12** del cierre y la
+  reapertura), `build` AOT, `lint` 0/0, `e2e:visual` **53/53** y `e2e:functional` **231 passed · 0 fallos · 3 skips**
+  sobre BD recreada.
+
+**Decisiones tomadas al implementar la Fase 6**:
+1. **El cierre exige que el mayor y los documentos cuadren al céntimo**: si no, responde **409** con las dos cifras en
+   el mensaje. Es la misma clase de guarda que la conciliación del WIP del cierre de SAP B1 y evita el defecto clásico
+   (contabilizar un ajuste que esconde un asiento mal hecho).
+2. **`actualCost` vuelve a cero al cerrar**: la columna es el **WIP vivo**; lo liquidado queda en el asiento de cierre
+   (y en `closing`). Al reabrir, la columna vuelve a su valor **documental** (Σ documentos vivos).
+3. **Guardas del cierre declaradas**: operaciones **en proceso** (tiempo real empezado y no terminado) y **consumo
+   emitido sin ningún recibo**. Una operación `PENDING` (nunca tocada) **no** bloquea: la ruta puede ser informativa.
+4. **La reapertura es la anulación del cierre**, no un estado aparte: revierte el asiento (T149) y persiste
+   `reopenReason`/`reopenedAt`/`reopenedById` (columnas nuevas), porque el motivo de una reversa debe quedar auditado
+   (T153).
+5. **Los reportes son de solo lectura y derivados de los documentos**; el único dato que se lee de las columnas es el
+   WIP vivo, y precisamente para **conciliarlo** contra el mayor (que es la medición que manda).
+6. **R16 quedó con seis reglas y dos de ellas se corrigieron durante la sonda**: una regla de auditoría que nunca
+   puede dispararse es un guard decorativo (la lección de R9 en este mismo detector), así que la sonda de datos
+   incoherentes se hizo antes de dar la regla por buena.
 
 ### Fase 7 — Reportes, E2E de UI y cierre
 - [x] Pantallas de emisión y recibo con líneas, valorización en vivo y totales del documento.

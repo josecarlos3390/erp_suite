@@ -251,9 +251,15 @@ la barrida (`--only=bancos`).
    documento con serie sino que vive dentro de la orden—, el recibo lo acredita
    (`Dr Inventario PT / Inventario subproducto / Mermas y Desperdicios · Cr WIP`,
    por `cantidad MAIN × tasa` —costo acumulado ÷ cantidad prevista— y con la merma **sin**
-   valorizar existencia) y el **cierre** (fase 6) liquidará el residuo contra la cuenta de
-   variación; el detector **R16** vigilará las tres incoherencias de esta familia
-   (orden cerrada con WIP ≠ 0, emisión sin componentes previstos y recibo sin emisión).
+   valorizar existencia) y el **cierre** (fase 6) liquida el residuo contra la cuenta de
+   variación (`WIP_VARIANCE`) hasta dejar el WIP de la orden en **cero**, medido en el
+   mayor: el cierre **exige que el mayor y los documentos cuadren al céntimo** (si no,
+   responde 409 en vez de contabilizar un ajuste inventado), deja `closedAt`/`closedById`
+   y el asiento en `transactionId`, y su **reapertura** revierte ese asiento (con motivo
+   persistido y fecha de contabilización, T149) devolviendo el WIP documental; el
+   detector **R16** vigila las incoherencias de esta familia (mayor ≠ columna, columna ≠
+   documentos en una orden viva, orden cerrada con WIP ≠ 0, emisión sin componentes
+   previstos, recibo sin emisión y orden en proceso sin movimientos).
    La **reversibilidad del estado** es una sola regla (`restoreProductionOrderStatus`):
    al anular, la orden vuelve a `RELEASED` solo cuando **no queda ninguna emisión ni
    recibo ni parte de horas vivo**, y el parte devuelve además sus minutos a la

@@ -103,16 +103,17 @@
 > - **Reversa/cancelación**: cubierta — anulación con motivo y fecha de contabilización que
 >   revierte el asiento y **restituye el costo** contra la existencia actual.
 
-### G3 — Módulo de Producción (potenciar) 🚧 FASES 1–5 IMPLEMENTADAS (2026-09-20) · Prioridad MEDIA
+### G3 — Módulo de Producción (potenciar) 🚧 FASES 1–6 IMPLEMENTADAS (2026-09-20) · Prioridad MEDIA
 
-> **Plan y decisiones: `plan-g3-produccion.md`** (2026-09-19, aprobado por el usuario; **Fases 1–5 ya
+> **Plan y decisiones: `plan-g3-produccion.md`** (2026-09-19, aprobado por el usuario; **Fases 1–6 ya
 > implementadas y verificadas**: centros de trabajo, recursos con componentes de costo, rutas por artículo,
 > receta multinivel con merma y **explosión con aviso de faltantes**, la **orden de producción** con snapshot
 > de receta y ruta, estados reversibles y costo previsto congelado, la **emisión para producción** que carga
 > el consumo al **WIP** (Dr WIP / Cr Inventario), el **recibo para producción** que ingresa el PT, los
 > subproductos y la merma absorbiendo ese WIP y el **consumo de recursos** (partes de horas con el snapshot
 > de los componentes de costo del recurso y Dr WIP / Cr cuenta del componente, con el tiempo real de la
-> operación), con el `AssemblyOrder` intacto) con la
+> operación) y el **cierre** que liquida el WIP a cero contra la cuenta de variación (con su reapertura, los
+> reportes de costo/WIP/desviaciones y el detector R16), con el `AssemblyOrder` intacto) con la
 > referencia comparativa `docs/reference/PRODUCCION_ERP_COMPARATIVA.md` (SAP B1 / Odoo 19 / Dynamics 365,
 > verificada contra documentación pública). **Decisiones del usuario**: (D1) órdenes con **explosión de BOM y
 > aviso de faltantes**, sin MRP ni capacidad finita; (D2) **costo real por orden con liquidación al cierre**
