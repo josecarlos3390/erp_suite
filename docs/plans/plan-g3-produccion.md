@@ -1,11 +1,13 @@
 # Plan G3 — Módulo de Producción (Órdenes de Producción, emisión/recibo y WIP)
 
-> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **Fases 1, 2, 3, 4, 5 y 6 implementadas y verificadas**
+> **Estado:** APROBADO por el usuario el 2026-09-19 (D1–D4) y **las siete fases implementadas y verificadas**
 > (maestros, BOM multinivel con explosión y faltantes, orden de producción con snapshot y estados reversibles,
 > emisión para producción que carga los componentes al WIP, recibo para producción que ingresa el PT, los
-> subproductos y la merma absorbiendo ese WIP, consumo de recursos que carga horas y servicios a ese mismo WIP, y
-> cierre que liquida el WIP a cero contra la variación con sus reportes de costo/WIP/desviaciones y el detector R16;
-> backend y UI); la Fase 7 (reportes en pantalla con exportación, E2E de UI del ciclo y gates finales) sigue pendiente.
+> subproductos y la merma absorbiendo ese WIP, consumo de recursos que carga horas y servicios a ese mismo WIP,
+> cierre que liquida el WIP a cero contra la variación con sus reportes de costo/WIP/desviaciones y el detector R16,
+> y las pantallas de reportes con exportación más el E2E de UI del ciclo completo; backend y UI).
+> **Cierre**: G3 queda **completo** con el alcance declarado en §7 (sin MRP/APS, sin costo estándar, sin backflush,
+> sin subcontratación ni capacidad finita, sin nómina y sin `costCenterId` en la línea del asiento).
 > **Origen:** `docs/plans/plan-gaps-deuda-2026-09.md` §G3 · ROADMAP G3 · referencia
 > `docs/reference/PRODUCCION_ERP_COMPARATIVA.md` (SAP B1 / Odoo 19 / Dynamics 365, verificado contra
 > documentación pública).
@@ -457,17 +459,66 @@ a la cuenta de mermas sin valorizar stock propio.
    puede dispararse es un guard decorativo (la lección de R9 en este mismo detector), así que la sonda de datos
    incoherentes se hizo antes de dar la regla por buena.
 
-### Fase 7 — Reportes, E2E de UI y cierre
+### Fase 7 — Reportes, E2E de UI y cierre — ✅ **IMPLEMENTADA (2026-09-20)**
 - [x] Pantallas de emisión y recibo con líneas, valorización en vivo y totales del documento.
       **Evidencia**: la pantalla de **emisión** se entregó con la Fase 3 y la de **recibo** con la Fase 4 (listado con
       filtros y acciones de fila —ver y anular— más el formulario con la grilla de líneas `MAIN`/`BYPRODUCT`/`SCRAP`,
       subtotales por tipo y total del documento). Desviación declarada del reparto original del plan: las pantallas se
       construyeron con su fase en vez de acumularlas aquí (misma decisión que en las fases 1–3), así que esta fase se
       queda con los reportes y el E2E de UI.
-- [ ] Reportes en pantalla (WIP, desviaciones, costo de la orden) con exportación.
-- [ ] E2E de UI de la orden (alta → liberar → emitir → recibir → cerrar) y de la emisión/recibo parcial.
-- [ ] Gates completos: Karma, gates estáticos, `e2e:functional` sobre BD recreada, y backend E2E.
-- [ ] Docs al día y commits sin acentos empujados a los tres repos.
+- [x] Reportes en pantalla (WIP, desviaciones, costo de la orden) con exportación.
+      **Evidencia**: pantalla **`/production-reports`** (permiso `production-orders:view`, entrada en el grupo
+      Producción del menú + tarjeta en el índice de Reportes) con tres pestañas: **costo de la orden** (selector de
+      orden —con `?orderId=N` para enlazar directo— y previsto vs real de materiales y recursos, desviaciones de
+      cantidad, consumo, tiempo, costo y merma, y las tablas de componentes, operaciones, merma y subproductos),
+      **WIP por orden** (documental vs **mayor**, diferencia marcada en rojo con la nota de que el cierre exige que
+      coincidan, y los totales del API) y **desviaciones** (filtros de fechas —primer día del mes del tenant→hoy—,
+      artículo `MAKE` y sucursal, con los totales). Las tres exportan **CSV** con la utilidad compartida
+      `downloadCsv` (BOM UTF-8, separador `;`, números crudos y `exportDateStamp()` en el nombre).
+- [x] E2E de UI de la orden (alta → liberar → emitir → recibir → cerrar) y de la emisión/recibo parcial.
+      **Evidencia**: `e2e/production-full-journey-ui.spec.ts` (**7 pruebas, todas verdes**, 5,0 min en la corrida
+      aislada —que informa 8 porque cuenta el `setup` de autenticación—, y repetible sobre la BD ya usada) recorre
+      **todo por pantalla**: alta de la orden con `PT-PC01` del seed, planificar y liberar desde el menú de fila,
+      **emisión parcial** (la mitad de cada componente), **recibo parcial** (1 de 2), dos **partes de horas** que
+      terminan la operación, **cierre** (WIP 1.028,80 → **0** medido en el mayor por dos vías independientes: los
+      asientos de los documentos y el reporte de WIP) y **reapertura** con motivo (par `CANCELLED`/`REVERSAL` y WIP
+      restituido a 1.028,80). Los parciales del backend ya estaban cubiertos por las suites de las fases 3–6.
+      El recorrido **destapó dos defectos de producto**, los dos corregidos (AUDIT **T156** y **T157**) y **fijados**
+      por el propio spec (que ahora afirma el diálogo ausente y el signo `entry` del kardex).
+- [x] Gates completos: Karma, gates estáticos, `e2e:functional` sobre BD recreada, y backend E2E.
+      **Evidencia**: backend **182 suites / 2143 tests** (con el unitario de regresión de T157) y **E2E 30 suites /
+      224 tests**; `build`/`lint`/los tres `tsc`/`audit:flows` (9 bloques, 0 errores) en 0 errores. Frontend
+      **Karma 1906**
+      (**+39**: 38 de las pantallas de reportes y el unitario de regresión de T156), `build` AOT, `lint` 0/0, los
+      gates estáticos (tokens, `!important`, `::ng-deep`, a11y, copy, dinero, densidad, `typecheck:e2e`,
+      `format:check`, `audit:e2e-conditional` y `audit:list-actions` en 106 tablas), **`e2e:visual` 53/53 sin
+      regenerar nada** y **`e2e:functional` 238 passed · 0 fallos · 3 skips** (**241** programados: los 234 previos +
+      las 7 pruebas del ciclo completo de producción) sobre BD recreada.
+- [x] Docs al día y commits sin acentos empujados a los tres repos.
+      **Evidencia**: plan, AUDIT (T156/T157), los dos CHANGELOG, `AGENTS.md`, `ROADMAP.md`, el plan de gaps y la
+      matriz de flujos actualizados en la misma ronda; commits sin acentos empujados a `origin` (los tres) y a
+      `deploy` (backend).
+
+**Decisiones tomadas al implementar la Fase 7**:
+1. Los reportes son **una pantalla con tres pestañas** (no tres rutas): comparten encabezado, filtros y formato, y el
+   enlace directo a una orden se resuelve con `?orderId=N` (`/production-reports?orderId=12`).
+2. La **exportación es CSV en el cliente** con la utilidad compartida `downloadCsv` (BOM UTF-8, separador `;`,
+   números crudos): es el convenio del repo, así que no se añaden endpoints de exportación ni librerías.
+3. La entrada del menú va al grupo **Producción** (que está colapsado) y el acceso desde **Reportes** se resuelve con
+   una **tarjeta en el índice**: una entrada en los enlaces sueltos de Reportes desplaza el sidebar y **rompe ~50 de
+   los 53 baselines** visuales (medido en el hito 1 de T133) y el gate visual no admite regeneraciones gratuitas.
+   El gate pasó **53/53 sin regenerar nada**.
+4. El **descuadre del WIP** se decide con la utilidad de dinero canónica (`centsOf(difference) !== 0`, medio centavo)
+   y el conteo autoritativo es el del API (`totals.ordersWithDifference`).
+5. El **E2E de UI del ciclo completo** crea su propia orden con los maestros del seed y **no depende de códigos ni
+   ids fijos** (los correlativos avanzan entre corridas); deja la orden **reabierta** al final (es el último paso del
+   recorrido) y declara que no usa subproducto ni merma (el `PT-PC01` del seed no los tiene) ni completa la segunda
+   operación (la guarda del cierre solo rechaza operaciones `IN_PROGRESS`).
+6. **Hallazgo colateral en la semilla (declarado)**: el `cleanTransactions` del seed borraba asientos y stock pero
+   **no** el ciclo de producción, así que entre corridas quedaban órdenes con su WIP **documental** y sin mayor
+   —exactamente la incoherencia que **R16b** marca (el detector la midió: **7 órdenes** con `mayor 0.00` frente a una
+   columna de 953,80–1.028,80)—. El seed limpia ahora emisiones, recibos, partes y órdenes (con su kardex) y lo
+   publica en el resumen (`- Órdenes Producción : 0`); tras el cambio, `db:recreate` deja el detector en **0 errores**.
 
 ## 7. Límites declarados (no se implementan en G3)
 
