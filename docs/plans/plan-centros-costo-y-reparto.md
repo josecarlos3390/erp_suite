@@ -2,7 +2,8 @@
 
 > **Estado:** propuesto el **2026-09-21** (petición del usuario: «hacer un plan después para adicionar o integrar los
 > centros de costo para utilizar normas de reparto […] y así poder generar informes por centros de costo y normas de
-> reparto»). **C0 RESUELTO (2026-09-21): opción C aprobada por el usuario** —ver §2.1—; C1–C4 pendientes de ejecución.
+> reparto»). **C0 RESUELTO (2026-09-21): opción C aprobada por el usuario** —ver §2.1—; **C1 RESUELTO (2026-09-21)** —ver
+> §3.1—; C2–C4 pendientes de ejecución.
 > Relacionado: `plan-cuentas-contables-editables.md` (la cuenta de la línea viaja por el mismo camino que el centro de
 > costo: `BaseLineItemDto` → documento → asiento → informe).
 
@@ -66,10 +67,23 @@ en `costCenterId`) y se aparta del modelo SAP B1 que el ERP sigue en todo lo dem
 | Fase | Alcance | Criterio de aceptación |
 |---|---|---|
 | **C0** | **Decisión del usuario**: eje vs columna nueva (opciones A/B/C), el eje de centros de costo y si el reparto se captura | ✅ **RESUELTO (2026-09-21)**: opción **C**, reparto **capturado por línea (opcional)** y las dos recomendaciones (ajuste explícito del eje + informes que muestran el importe original y el reparto efectivo) adoptadas y anotadas en §0 |
-| **C1** | **Validación del valor del eje**: si el eje tiene centros de costo activos, la línea solo acepta códigos del maestro (400 accionable con la línea); el formulario ya usa el selector | Una línea con un código inventado se rechaza; con un centro de costo real, se guarda |
+| **C1** | **Validación del valor del eje**: si el eje tiene centros de costo activos, la línea solo acepta códigos del maestro (400 accionable con la línea); el formulario ya usa el selector | ✅ **RESUELTO (2026-09-21)**: ver §3.1 — `DimensionConfig.isCostCenterAxis` (ajuste explícito, único por empresa, con el nombre del eje como respaldo), `assertCostCentersInDimensions` en el **punto único** de todo documento que contabiliza (`AccountingEngineService._persist`) y la marca en la pantalla de Configuración de Dimensiones; medido en `test/cost-centers.e2e-spec.ts` **8/8** |
 | **C2** | **Norma de reparto en documentos**: `distributionRuleId` opcional por línea + el expandidor compartido en los builders que hoy no reparten (ventas, compras, stock, producción) | Un documento con una línea repartida contabiliza **N líneas** con el importe prorrateado al céntimo y el centro de costo en la dimensión del eje (medido en el mayor) |
 | **C3** | **Informes por centro de costo y por norma de reparto** (pantalla + CSV), con filtros por rango, eje, centro y norma | Los importes del informe cuadran con el mayor del mismo rango (test que compara ambos) |
 | **C4** | **Cierre**: matriz de flujos y guía de configuración actualizadas; `audit` que avise si un builder nuevo se olvida de aplicar el reparto | Los gates en verde y el detector de reparto añadido al `audit:flows` |
+
+---
+
+## 3.1 C1 — Validación del valor del eje (RESUELTO, 2026-09-21)
+
+| Pieza | Qué se hizo |
+|---|---|
+| **Eje declarado** | `DimensionConfig.isCostCenterAxis` (migración `20260921140000_dimension_cost_center_axis`, `ADD COLUMN IF NOT EXISTS`). Es **único por empresa**: `DimensionsService.batchUpdateConfigs` rechaza **400** si el lote trae dos ejes marcados y, al marcar uno, **apaga los demás** en la misma transacción (`_applyCostCenterAxisFlag`). La pantalla de Configuración de Dimensiones estrena el interruptor «Eje de centros de costo» con la misma exclusividad en el formulario. |
+| **Resolución del eje** | `resolveCostCenterAxis` (`src/common/cost-center.util.ts`): **(1)** el eje declarado; **(2)** si ninguno lo declara, el eje **habilitado** cuyo nombre contenga «centro de costo» (normaliza acentos y mayúsculas) — el valor por defecto para las instalaciones existentes; **(3)** si no hay ninguno, el tenant **no usa** centros de costo por ejes y no se valida nada. |
+| **Validación** | `assertCostCentersInDimensions` corre **dentro de `_persist`** del motor (`src/common/accounting/journal-entry-core.ts`), es decir en el **punto único** por el que pasa cada línea del mayor: los ~43 altas de documentos, el asiento manual, las plantillas y las reversas quedan cubiertos sin repetir la guarda. Un código que no sea **centro de costo activo del eje** corta con **400** que nombra el código, la **línea** y el eje. |
+| **Cuándo NO valida** (declarado) | (a) el tenant no tiene eje de centros de costo; (b) el **maestro del eje está vacío** — una instalación que usa el eje para otra cosa sigue capturando texto libre, y la validación **entra sola** en cuanto carga su primer centro de costo. |
+| **Comparación exacta** | El código viaja como **texto** a `dimensionN` (así lo agrupan los informes), así que la comparación es exacta: `cc-adm` no vale por `CC-ADM`. El mensaje dirige al maestro. |
+| **Medición** | `test/cost-centers.e2e-spec.ts` **8/8** (maestro vacío → texto libre; código real → 201 con el código en el asiento; inventado → 400 con stock, kardex y asiento intactos; caja distinta → 400; inactivo → 400; el eje declarado manda sobre el nombre y desmarca el anterior; dos ejes en un lote → 400 sin tocar la configuración; desmarcar devuelve la validación al eje por nombre) + `src/common/cost-center.util.spec.ts` **13/13** y `dimensions.service.spec.ts` **+5**. |
 
 ---
 
@@ -92,3 +106,8 @@ en `costCenterId`) y se aparta del modelo SAP B1 que el ERP sigue en todo lo dem
   un atributo de la línea, no un libro paralelo.
 - Sin presupuestos por centro de costo ni desviaciones presupuestarias (fuera de alcance; se puede plantear como frente
   posterior con los datos que este plan deja).
+- **C1**: la validación se activa con el **maestro** del eje (no con la mera existencia de un eje): un tenant que nombra
+  «Centro de costo» un eje y nunca carga centros de costo sigue capturando texto libre. Los ejes **no habilitados**
+  quedan fuera de la resolución por nombre (el ajuste explícito sí los admite, porque es una decisión del usuario).
+- **C1**: el valor sigue siendo **texto** en `dimensionN` (opción C, sin FK): la validación es del motor, no del esquema,
+  así que una carga masiva por SQL directo no pasa por ella.

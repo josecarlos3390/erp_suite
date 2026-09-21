@@ -114,6 +114,22 @@ Orden sugerido (coincide con `seedTenantData`):
 > Opcionales según necesidad: empleados/vendedores, proyectos, dimensiones, motivos de
 > devolución/NC, reglas de alertas y aprobaciones.
 
+### Paso A.4b — Centros de costo y ejes analíticos (opcional, C1)
+1. **Configuración de Dimensiones** (`/settings/dimensions`, pestaña *Dimensiones*): ponga
+   nombre visible y **habilite** los ejes que va a usar y marque **un solo** eje como
+   **«Eje de centros de costo»** (el interruptor de la tarjeta). Si no marca ninguno, el ERP
+   usa el eje que se llame «Centro de costo»/«Centros de Costo».
+2. Pestaña *Centros de Costo*: cargue el maestro **en ese eje** (código + nombre). Es lo que
+   alimenta los selectores de los documentos.
+3. **Efecto medido**: en cuanto el eje de centros de costo tiene al menos un centro
+   **activo**, toda línea que contabiliza (documentos comerciales, stock, producción,
+   asientos manuales) solo acepta **códigos del maestro** —un código inventado responde
+   **400** nombrando la línea y el eje—. Con el maestro **vacío** el eje sigue aceptando
+   texto libre (una instalación que usa el eje para otra cosa no queda bloqueada).
+4. Pestaña *Normas de Reparto*: reglas por porcentaje sobre los centros de costo del eje
+   (se aplican hoy al asiento manual; su extensión a los documentos es C2 del plan
+   `docs/plans/plan-centros-costo-y-reparto.md`).
+
 ### Paso A.5 — Parametrización fina y usuarios
 | # | Paso | Dónde |
 |---|------|-------|
@@ -130,6 +146,8 @@ Orden sugerido (coincide con `seedTenantData`):
 - [ ] Perfil de empresa completo (NIT/razón social) — usado por PDFs/facturas.
 - [ ] Sucursal principal + almacén por defecto asignados al usuario admin.
 - [ ] Impuestos (IVA), condiciones de pago, lista de precios, UoMs creados.
+- [ ] *(Opcional)* Eje de centros de costo marcado + su maestro cargado en Configuración de
+      Dimensiones (si no se usa, no se marca y nada se valida).
 - [ ] Prueba E2E: documento → asiento automático POSTED sin errores de cuentas.
 
 ---
