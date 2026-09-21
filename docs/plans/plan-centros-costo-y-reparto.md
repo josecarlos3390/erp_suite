@@ -3,7 +3,7 @@
 > **Estado:** propuesto el **2026-09-21** (petición del usuario: «hacer un plan después para adicionar o integrar los
 > centros de costo para utilizar normas de reparto […] y así poder generar informes por centros de costo y normas de
 > reparto»). **C0 RESUELTO (2026-09-21): opción C aprobada por el usuario** —ver §2.1—; **C1 RESUELTO (2026-09-21)** —ver
-> §3.1—; **C2 RESUELTO (2026-09-21)** —ver §3.2, con C2-UI (§3.3) pendiente—; C3–C4 pendientes de ejecución.
+> §3.1—; **C2 RESUELTO (2026-09-21)** —ver §3.2, con C2-UI (§3.3) pendiente—; **C3 RESUELTO (2026-09-21)** —ver §3.4—; C4 pendiente de ejecución.
 > Relacionado: `plan-cuentas-contables-editables.md` (la cuenta de la línea viaja por el mismo camino que el centro de
 > costo: `BaseLineItemDto` → documento → asiento → informe).
 
@@ -69,7 +69,7 @@ en `costCenterId`) y se aparta del modelo SAP B1 que el ERP sigue en todo lo dem
 | **C0** | **Decisión del usuario**: eje vs columna nueva (opciones A/B/C), el eje de centros de costo y si el reparto se captura | ✅ **RESUELTO (2026-09-21)**: opción **C**, reparto **capturado por línea (opcional)** y las dos recomendaciones (ajuste explícito del eje + informes que muestran el importe original y el reparto efectivo) adoptadas y anotadas en §0 |
 | **C1** | **Validación del valor del eje**: si el eje tiene centros de costo activos, la línea solo acepta códigos del maestro (400 accionable con la línea); el formulario ya usa el selector | ✅ **RESUELTO (2026-09-21)**: ver §3.1 — `DimensionConfig.isCostCenterAxis` (ajuste explícito, único por empresa, con el nombre del eje como respaldo), `assertCostCentersInDimensions` en el **punto único** de todo documento que contabiliza (`AccountingEngineService._persist`) y la marca en la pantalla de Configuración de Dimensiones; medido en `test/cost-centers.e2e-spec.ts` **8/8** |
 | **C2** | **Norma de reparto en documentos**: `distributionRuleId` opcional por línea + el expandidor compartido en los builders que hoy no reparten (ventas, compras, stock, producción) | ✅ **RESUELTO (2026-09-21)**: ver §3.2 — `distributionRuleId` por línea en los 15 modelos de línea que contabilizan (migración `20260921150000_line_distribution_rules`), expansión **en el punto único** (`_persist`) con el **mismo expandidor** que el asiento manual y medido en el mayor: `test/line-distribution-rules.e2e-spec.ts` **6/6** (60/40, tercios al céntimo, control sin norma y los dos rechazos atómicos). La **captura en la grilla** (columna «Norma de reparto» en los formularios) queda como **C2-UI** (§3.3) |
-| **C3** | **Informes por centro de costo y por norma de reparto** (pantalla + CSV), con filtros por rango, eje, centro y norma | Los importes del informe cuadran con el mayor del mismo rango (test que compara ambos) |
+| **C3** | **Informes por centro de costo y por norma de reparto** (pantalla + CSV), con filtros por rango, eje, centro y norma | ✅ **RESUELTO (2026-09-21)**: ver §3.4 — `GET /reports/cost-centers` y `GET /reports/distribution-rules` con el mismo alcance que el resto de informes (los totales **cuadran con el balance de comprobación**, medido), el eje resuelto con la misma función que el motor, la pantalla con dos pestañas, filtros y CSV; medido en `test/cost-center-reports.e2e-spec.ts` **7/7** y **21** unitarios de frontend |
 | **C4** | **Cierre**: matriz de flujos y guía de configuración actualizadas; `audit` que avise si un builder nuevo se olvida de aplicar el reparto | Los gates en verde y el detector de reparto añadido al `audit:flows` |
 
 ---
@@ -105,6 +105,20 @@ en `costCenterId`) y se aparta del modelo SAP B1 que el ERP sigue en todo lo dem
 ## 3.3 C2-UI — Captura en la grilla (pendiente)
 
 Columna **«Norma de reparto»** por línea en los formularios que contabilizan (ventas, compras, stock, producción) con un selector de las normas del eje de centros de costo, cableada al `distributionRuleId` del payload; la carga de normas entra en `document-form.base.ts` (hoy carga ejes y centros de costo). Cierre con Karma y `e2e:functional`.
+
+---
+
+## 3.4 C3 — Informes por centro de costo y por norma de reparto (RESUELTO, 2026-09-21)
+
+| Pieza | Qué se hizo |
+|---|---|
+| **Dos lecturas del mayor** | `GET /reports/cost-centers` — el mayor del rango agrupado por **(centro de costo × cuenta)** con debe, haber, saldo, el número de líneas de la celda y, separado, cuántas de ellas **nacieron de una norma** (`splitLines`) y cuáles (`rules`); más el resumen **por norma**, los **tramos de documento** repartidos y los totales. `GET /reports/distribution-rules` — el **reparto efectivo** agrupado por **(norma × centro de costo)** con el catálogo de normas del tenant (para el selector) y los mismos tramos. Los dos endpoints cuelgan del controlador de informes (`reports:view`). |
+| **Alcance = el de los demás informes** | La consulta usa la **misma** regla de alcance (`reportableJournalEntryWhere`, T149: contabilizado y no revertido, con el `OR` explícito del `NULL` de Prisma) y el **mismo** filtro de fechas, así que los totales **cuadran con el balance de comprobación** del mismo rango (medido en el E2E). |
+| **El eje, resuelto como lo resuelve el motor** | `_loadAnalyticLedger` usa `resolveCostCenterAxis` —la **misma** función con la que el motor valida el valor capturado (C1)—, así que el informe agrupa por el eje en el que el ERP **escribió** el centro de costo; el filtro `dimensionNumber` permite leer cualquier otro eje (y un eje sin centros de costo devuelve todo en la fila «sin centro»). |
+| **Importe original y reparto efectivo** | Decisión C0 §0: el informe muestra **las dos cosas** — la celda del mayor (el **reparto efectivo**, ya expandido al contabilizar) con la marca de cuántas líneas vinieron de una norma, y el detalle de la **línea de documento** repartida con «**repartido en N centros**», su asiento, su fecha y sus centros. |
+| **Pantalla** | `/reports/cost-centers` (ruta bajo el `reports:view` del padre, tarjeta en el menú de informes y etiqueta de migas «Centros de Costo»): dos pestañas —**Costos por centro** y **Asientos con norma de reparto**—, filtros de rango, **eje**, centro de costo y norma, barra de totales siempre a la vista, las tres tablas (celdas, tramos, reparto por norma) y **exportación CSV** de cada lectura con su fila de `TOTAL`. Los selectores usan el input `[options]` de `luna-select` (no `<option>` proyectados) para que el id numérico viaje tipado. |
+| **Medición** | `test/cost-center-reports.e2e-spec.ts` **7/7**: el informe cuadra **contra el balance de comprobación** del mismo rango; los centros del reparto 60/40 aparecen con su importe y su marca; el filtro por centro acota y sigue cuadrando; el filtro por eje cambia el agrupamiento (eje sin centros → todo «sin centro»); el informe de normas publica los tramos por centro y el catálogo; los filtros por norma y por centro acotan; y un rango sin movimientos devuelve el informe vacío y en cero. Frontend: **21** unitarios nuevos (15 de la pantalla —pestañas, rango del tenant, eje declarado y por nombre, filtros que viajan, filas y totales pintados, CSV de las dos lecturas, fecha del tramo, los dos errores— y 6 del servicio —URL y query string de los dos endpoints, con los filtros vacíos **omitidos**). |
+| **Límites declarados** | (a) El informe lee el **mayor**, no las líneas del documento: un documento **no contabilizado** no aparece (es el alcance de todos los informes contables). (b) El filtro por cuenta existe en el API (`accountId`) pero la pantalla no lo expone todavía. (c) El informe **no** reexpande las normas: muestra el reparto ya escrito en el asiento. |
 
 ---
 
