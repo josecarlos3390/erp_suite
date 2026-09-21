@@ -114,7 +114,7 @@ Orden sugerido (coincide con `seedTenantData`):
 > Opcionales según necesidad: empleados/vendedores, proyectos, dimensiones, motivos de
 > devolución/NC, reglas de alertas y aprobaciones.
 
-### Paso A.4b — Centros de costo y ejes analíticos (opcional, C1)
+### Paso A.4b — Centros de costo, normas de reparto e informes (C1–C3)
 1. **Configuración de Dimensiones** (`/settings/dimensions`, pestaña *Dimensiones*): ponga
    nombre visible y **habilite** los ejes que va a usar y marque **un solo** eje como
    **«Eje de centros de costo»** (el interruptor de la tarjeta). Si no marca ninguno, el ERP
@@ -127,8 +127,22 @@ Orden sugerido (coincide con `seedTenantData`):
    **400** nombrando la línea y el eje—. Con el maestro **vacío** el eje sigue aceptando
    texto libre (una instalación que usa el eje para otra cosa no queda bloqueada).
 4. Pestaña *Normas de Reparto*: reglas por porcentaje sobre los centros de costo del eje
-   (se aplican hoy al asiento manual; su extensión a los documentos es C2 del plan
-   `docs/plans/plan-centros-costo-y-reparto.md`).
+   (la suma debe dar **100 %**). La norma se **captura por línea** en la grilla de **los 15
+   formularios que contabilizan** (columna **«Norma reparto»** en ventas, compras, stock y
+   producción) y al contabilizar el motor **expande la línea en una por centro de costo**
+   con el importe prorrateado al céntimo (el **último tramo absorbe el resto**) y el código
+   del centro en el eje de la norma.
+5. **Dónde se lee**: `Reportes → Centros de costo` (`/reports/cost-centers`) trae las dos
+   lecturas del mayor —**Costos por centro** (centro × cuenta, con cuántas líneas llegaron
+   de una norma) y **Asientos con norma de reparto** (norma × centro)— con filtros de rango,
+   eje, centro y norma, totales a la vista y **exportación CSV**; los totales **cuadran con
+   el balance de comprobación** del mismo rango.
+6. **Qué NO hace** (declarado): el reparto aplica **solo a las patas de resultados**
+   (ingreso, costo, gasto) —una línea de inventario/CxC/IVA con norma capturada se
+   contabiliza entera—, el **traspaso de stock** queda fuera, las normas capturadas en
+   pedidos/cotizaciones no se heredan al documento que los copia y la **vista previa** del
+   asiento no expande (la expansión es al contabilizar). El detector **R17** de
+   `npm run audit:flows` avisa si un builder nuevo deja de transportar la norma al asiento.
 
 ### Paso A.5 — Parametrización fina y usuarios
 | # | Paso | Dónde |

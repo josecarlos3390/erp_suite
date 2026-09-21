@@ -3,7 +3,7 @@
 > **Estado:** propuesto el **2026-09-21** (petición del usuario: «hacer un plan después para adicionar o integrar los
 > centros de costo para utilizar normas de reparto […] y así poder generar informes por centros de costo y normas de
 > reparto»). **C0 RESUELTO (2026-09-21): opción C aprobada por el usuario** —ver §2.1—; **C1 RESUELTO (2026-09-21)** —ver
-> §3.1—; **C2 RESUELTO (2026-09-21)** —ver §3.2, con **C2-UI RESUELTO** también (ver §3.3)—; **C3 RESUELTO (2026-09-21)** —ver §3.4—; C4 pendiente de ejecución.
+> §3.1—; **C2 RESUELTO (2026-09-21)** —ver §3.2, con **C2-UI RESUELTO** también (ver §3.3)—; **C3 RESUELTO (2026-09-21)** —ver §3.4—; **C4 RESUELTO (2026-09-21)** —ver §3.5—. El plan queda **cerrado** (C0–C4 y C2-UI); lo único que sobrevive fuera de él es el barrido de **T170** (los 26 bloques restantes de `[ngValue]` proyectado), planificado para después.
 > Relacionado: `plan-cuentas-contables-editables.md` (la cuenta de la línea viaja por el mismo camino que el centro de
 > costo: `BaseLineItemDto` → documento → asiento → informe).
 
@@ -70,7 +70,7 @@ en `costCenterId`) y se aparta del modelo SAP B1 que el ERP sigue en todo lo dem
 | **C1** | **Validación del valor del eje**: si el eje tiene centros de costo activos, la línea solo acepta códigos del maestro (400 accionable con la línea); el formulario ya usa el selector | ✅ **RESUELTO (2026-09-21)**: ver §3.1 — `DimensionConfig.isCostCenterAxis` (ajuste explícito, único por empresa, con el nombre del eje como respaldo), `assertCostCentersInDimensions` en el **punto único** de todo documento que contabiliza (`AccountingEngineService._persist`) y la marca en la pantalla de Configuración de Dimensiones; medido en `test/cost-centers.e2e-spec.ts` **8/8** |
 | **C2** | **Norma de reparto en documentos**: `distributionRuleId` opcional por línea + el expandidor compartido en los builders que hoy no reparten (ventas, compras, stock, producción) | ✅ **RESUELTO (2026-09-21)**: ver §3.2 — `distributionRuleId` por línea en los 15 modelos de línea que contabilizan (migración `20260921150000_line_distribution_rules`), expansión **en el punto único** (`_persist`) con el **mismo expandidor** que el asiento manual y medido en el mayor: `test/line-distribution-rules.e2e-spec.ts` **7/7** (60/40, tercios al céntimo, control sin norma, los dos rechazos atómicos y el espejo de la NC «desde factura»). La **captura en la grilla** quedó cerrada como **C2-UI** (§3.3) |
 | **C3** | **Informes por centro de costo y por norma de reparto** (pantalla + CSV), con filtros por rango, eje, centro y norma | ✅ **RESUELTO (2026-09-21)**: ver §3.4 — `GET /reports/cost-centers` y `GET /reports/distribution-rules` con el mismo alcance que el resto de informes (los totales **cuadran con el balance de comprobación**, medido), el eje resuelto con la misma función que el motor, la pantalla con dos pestañas, filtros y CSV; medido en `test/cost-center-reports.e2e-spec.ts` **7/7** y **21** unitarios de frontend |
-| **C4** | **Cierre**: matriz de flujos y guía de configuración actualizadas; `audit` que avise si un builder nuevo se olvida de aplicar el reparto | Los gates en verde y el detector de reparto añadido al `audit:flows` |
+| **C4** | **Cierre**: matriz de flujos y guía de configuración actualizadas; `audit` que avise si un builder nuevo se olvida de aplicar el reparto | ✅ **RESUELTO (2026-09-21)**: ver §3.5 — **R17** en `npm run audit:flows` (recorre las **15 familias** y reporta **ERROR** cuando una norma capturada no llegó al asiento existente con patas de resultados; validado con **sonda**: 1 error con la sonda puesta y 0 al deshacerla), `docs/reference/matriz-flujos-documentos.md` **§5.b** y el **paso A.4b** de `docs/guides/guia-implementacion-configuracion.md` reescritos |
 
 ---
 
@@ -130,7 +130,19 @@ en `costCenterId`) y se aparta del modelo SAP B1 que el ERP sigue en todo lo dem
 
 ---
 
-## 4. Preguntas abiertas para el usuario
+## 3.5 C4 — Cierre (RESUELTO, 2026-09-21)
+
+| Pieza | Qué se hizo |
+|---|---|
+| **Detector R17** | `scripts/audit-flow-links.mjs` (`npm run audit:flows`) suma el bloque **R17** —**10 bloques** de reglas—: recorre las **15 familias** que contabilizan y, si una línea de documento tiene `distributionRuleId` capturado y el documento **tiene asiento con al menos una pata de resultados**, exige el rastro (`sourceDistributionRuleId`) en alguna línea del asiento; si no lo lleva, reporta **ERROR** con el documento y la norma (delata al builder que deja de transportarla). **No** marca el borrador (sin asiento) ni el asiento con **solo** patas de activo/pasivo/IVA (el saneador del motor limpia las analíticas: regla declarada de C2). |
+| **Sonda medida** | Con una norma capturada a mano en una línea de factura cuyo asiento no la reparte, `audit:flows` cerró en **1 error exactamente por R17** (exit 1); deshecha la sonda volvió a **0 errores / 4 avisos declarados**. |
+| **Matriz de flujos** | `docs/reference/matriz-flujos-documentos.md` estrena **§5.b Centros de costo y normas de reparto**: eje declarado, validación en el punto único, captura por línea (15 tablas y 15 formularios), expansión, rastro, informes y **R17** con sus límites. |
+| **Guía de configuración** | `docs/guides/guia-implementacion-configuracion.md` reescribe el **paso A.4b** con la secuencia completa (declarar el eje → cargar el maestro → normas al 100 % → captura por línea en la grilla → leer el informe `/reports/cost-centers`) y los **límites declarados**. |
+| **Cierre del gate** | El gate funcional de la ronda cerró **238 passed · 0 fallos · 3 skips** sobre **BD recreada** (30,7 min, 241 programados), incluida `traceability-flow`; los fallos previos quedaron atribuidos al **estado acumulado del arnés** (AUDIT **T172**). |
+
+---
+
+## 4. Preguntas abiertas para el usuario (todas decididas en C0)
 
 1. **¿Opción A, B o C?** (recomendación: **C**, sin columna nueva; B solo si se quiere FK explícita en el asiento).
 2. **¿Qué eje es «Centro de costo»?** El tenant nombra sus 5 ejes; el informe debe saber cuál usar (por nombre

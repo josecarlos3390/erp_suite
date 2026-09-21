@@ -270,6 +270,33 @@ la barrida (`--only=bancos`).
 
 ---
 
+## 5.b Centros de costo y normas de reparto (transversal, C1–C3)
+
+El **centro de costo no es una columna del asiento**: es el **valor de uno de los
+cinco ejes** (`CostCenter.dimensionNumber`, como SAP B1), y la **norma de reparto**
+(`DistributionRule` + líneas por porcentaje) es la que decide cómo se reparte un
+importe entre varios centros.
+
+| Pieza | Dónde vive | Cómo se vigila |
+|---|---|---|
+| **Eje declarado** | `DimensionConfig.isCostCenterAxis` (único por empresa; el nombre «Centro de costo» es el respaldo) | `resolveCostCenterAxis` en el motor y en los informes; se declara en Configuración de Dimensiones |
+| **Validación del valor** | `_persist` del motor contable (punto único de toda línea del mayor) | `assertCostCentersInDimensions`: un código que no sea centro **activo del eje** → 400 con la línea y el eje; **no valida** si el maestro del eje está vacío |
+| **Captura por línea** | `distributionRuleId` en **15 tablas** de línea (ventas, compras, stock y producción; el traspaso queda fuera) y su columna «Norma reparto» en la grilla de los 15 formularios | unitarios por formulario + `test/line-distribution-rules.e2e-spec.ts` |
+| **Expansión** | `_persist` (`distribution-rule.util.ts`): prorrateo en `Decimal`, un redondeo por tramo y el **último cuadrado contra el total** | el mismo expandidor que el asiento manual |
+| **Rastro** | `JournalEntryLine.sourceDistributionRuleId` (y el código del centro en `dimensionN`) | **R17** de `audit:flows` |
+| **Lectura** | `GET /reports/cost-centers` y `GET /reports/distribution-rules` (pantalla `/reports/cost-centers`) | cuadran con el balance de comprobación del mismo rango |
+
+**R17 — el reparto aplicado**: para cada familia, si hay líneas de documento con
+`distributionRuleId` capturado y el documento **tiene asiento con al menos una pata de
+resultados**, el asiento debe llevar el rastro (`sourceDistributionRuleId`) en alguna
+de sus líneas; si no lo lleva, el builder de esa familia se olvidó de transportarla y
+la regla lo reporta como **ERROR** con el documento y la norma. No marca el borrador
+(sin asiento) ni el asiento con **solo** patas de activo/pasivo/IVA, donde el
+saneador del motor limpia las analíticas y el reparto **no aplica** (límite declarado
+de C2).
+
+---
+
 ## 6. Cómo verificarlo
 
 ```bash
@@ -277,7 +304,7 @@ cd backend-erp
 npm run audit:flows            # detector: sale 1 si hay ERROR (0 errores hoy, 4 avisos declarados)
 npm run audit:flows -- --all   # sin límite de escaneo por bloque
 npm run repair:reversals       # dry-run: recrea asientos espejo que falten (--apply para escribir)
-npm run test:e2e               # 15 suites / 104 tests (incluye los flujos y guards por API)
+npm run test:e2e               # 34 suites / 273 tests (incluye los flujos y guards por API)
 ```
 
 Specs de regresión por flujo (frontend, Playwright):
