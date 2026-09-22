@@ -76,8 +76,9 @@ la receta se edita en el maestro y la orden la copia congelada.
 ### Ensamblaje (declaración, sin cambios de código)
 
 - La **orden de ensamblaje** se declara **documento legacy de kits** (armar/desarmar): sus componentes son la receta del
-  kit y no se editan en el documento. Queda escrito en el plan, el ROADMAP y la razón de la excepción del gate
-  `audit:line-accounts`.
+  kit y no se editan en el documento. Queda escrito en el plan y el ROADMAP, y la familia está **registrada** en el gate
+  `audit:line-accounts` (que **sí** valida la cuenta capturada de cada componente del kit: 18 familias / 0 hallazgos); lo
+  que no existe es la **grilla de líneas editable**, que es el límite declarado del frente de cuentas editables.
 
 ---
 
@@ -124,8 +125,9 @@ la receta se edita en el maestro y la orden la copia congelada.
    una operación inexistente.
 5. **`startDate` también viaja en el listado** (columna «Inicio fab.» en el listado de órdenes, además de la cabecera y el
    detalle).
-6. La **orden de ensamblaje** se declara documento legacy de kits: su razón quedó escrita en la excepción del gate
-   `audit:line-accounts` (frontend) y en el ROADMAP.
+6. La **orden de ensamblaje** se declara documento legacy de kits: su razón quedó escrita en este plan y en el ROADMAP,
+   y su familia está **registrada** (no exceptuada) en el gate `audit:line-accounts`, que valida la cuenta capturada de
+   los componentes del kit; lo que falta es la grilla de líneas editable (límite del frente de cuentas editables).
 
 **Evidencia de la implementación (medida):** `npx tsc --noEmit` (proyecto y E2E) sin salida; **jest 183 suites / 2187
 tests** (14 unitarios nuevos en la orden y 2 en los partes); **E2E 31 suites / 251 tests** (2 nuevos y 1 reescrito en
