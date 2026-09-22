@@ -75,6 +75,29 @@ encapsulamiento y no tiene vía alternativa:
 **Métrica reproducible:** `npm run audit:ng-deep` (`scripts/audit-ng-deep.mjs`,
 job `lint-test-build` de CI) cuenta los usos fuera de comentarios en
 `src/**/*.{scss,ts}` y falla si alguno no lleva `// ::ng-deep-ok: <razón>`.
-Resultado actual: **4 usos en 3 archivos, 4 justificados, 0 sin justificar**.
+Resultado actual: **0 usos en 0 archivos · 0 justificados · 0 sin justificar (T180)**.
 Política y recetas de customización: `erp-frontend/src/styles/CSS-ARCHITECTURE.md`
-§5; detalle del cierre en `AUDIT.md` T65.
+§5; detalle del cierre en `AUDIT.md` T65 y **T180**.
+
+---
+
+## Cierre definitivo (T180, 2026-09-21): de 4 a **0** usos
+
+El usuario eligió cerrar la deuda. La migración **no** reescribe los componentes
+LUNA ni cambia ningún pixel: mueve las cuatro reglas a la **capa global**
+`src/styles/_luna-defaults.scss` (forwardeada desde `_index.scss`), que sí alcanza
+el nodo sin perforar la encapsulación, con dos anclajes de customización:
+
+| Caso | Antes | Ahora |
+|------|-------|-------|
+| `luna-action-icon` (×2: tamaño y animación del `<svg>` inyectado) | `:host ::ng-deep .luna-action-icon__svg svg` | `luna-action-icon .luna-action-icon__svg > svg` en la capa global; el tamaño se sigue parametrizando con la CSS var `--luna-action-icon-size` |
+| `section-lock-overlay` (el `<strong>` del mensaje) | `.slo-pill-msg ::ng-deep strong` | `app-section-lock-overlay .slo-pill-msg > strong`; el color pasa a `var(--accent-500)`, el token que en la práctica resolvía (`--color-info` no está declarado) |
+| Mixin `inventory-form-lines` (**4** formularios: entradas, salidas, ajustes y traspasos) | `:host ::ng-deep .inventory-form-lines …` | `.inventory-form-lines.inventory-form-lines …` en la capa global: la clase va **repetida** para conservar exactamente la especificidad (0,3,1)/(0,3,2) y que la regla no dependa del orden de las hojas de estilo |
+
+El mixin `_inventory-form-lines.scss` se retiró junto con sus cuatro
+`@use`/`@include`.
+
+**Evidencia**: `npm run build` 0 errores, `lint` 0/0, `audit:ng-deep` **0 usos**,
+`audit:tokens` sin hallazgos nuevos, `audit:density:ci` en verde, Karma y
+`e2e:visual` sin regresión (la migración es visualmente neutra) — ver AUDIT
+**T180** para los números medidos.
