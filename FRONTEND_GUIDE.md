@@ -1305,9 +1305,11 @@ La densidad global la aplica `DensityService` (clases `density-compact` /
   cualquier uso sin marcar — la marca es `!important-ok: <razón>` /
   `::ng-deep-ok: <razón>` en la misma línea, en las dos anteriores o en las
   primeras 30 líneas del archivo. Estado actual: **7 `!important`** (autofill de
-  WebKit, `prefers-reduced-motion` y el gate funcional de carga) y **4
-  `::ng-deep`** (svg/`<strong>` insertados por `[innerHTML]` y el mixin
-  `inventory-form-lines`). Antes de recurrir a cualquiera de los dos, usar una
+  WebKit, `prefers-reduced-motion` y el gate funcional de carga) y **0
+  `::ng-deep`** —los 4 de T49/T62/T65 (el svg y el `<strong>` insertados por
+  `[innerHTML]` y el mixin `inventory-form-lines`) se mudaron a la capa global
+  `src/styles/_luna-defaults.scss` con la clase repetida para conservar la
+  especificidad exacta, T180—. Antes de recurrir a cualquiera de los dos, usar una
   **receta de customización**: input o variante del componente
   (`[presentation]`, `[wrapDescription]`, `[variant]`, `[size]`), CSS var que el
   primitivo ya consume (`--luna-btn-height`, `--col-min-width`,
@@ -1398,6 +1400,22 @@ La densidad global la aplica `DensityService` (clases `density-compact` /
     (+ la auditoría axe). **No se duplican** aquí.
   - El detector **se autoprueba** (`npm run audit:copy:self-test`, 14 casos positivos y
     negativos —incluidos `...` y una palabra dentro de otra—) **antes** de mirar el número.
+
+- **Aserciones de URL en el E2E (T172, 2026-09-22):** `page.url()` **no** es una
+  lectura viva: es la copia que el cliente de Playwright recibe en el evento
+  `navigated` (que el servidor emite desde los eventos de navegación del CDP), así
+  que bajo carga puede quedar **vacía o desactualizada** mientras la pantalla ya
+  está en el documento recién creado —medido en `traceability-flow`: `toHaveURL`
+  recibía `""` con la F. Reserva creada, cerrada y en pantalla, y el
+  `window.location` del documento ya en `/sale-reserve-invoices/14`—. La verdad
+  viva es el propio documento: afirmar con
+  `await expect.poll(() => page.evaluate(() => window.location.pathname + window.location.search), { timeout }).toMatch(/re/)`
+  (helper `currentPath` de `e2e/traceability-flow.spec.ts`, que además deja el
+  desajuste en el log) y verificar el contenido por **DOM**
+  (`expectDocumentHeader`), que es lo que distingue «no navegó» de «la caché quedó
+  vieja». Un viaje de varios documentos se mide con **cronómetros por paso**
+  (`[T172] N. … listo: Xs de viaje`, medidos 25/43/63/96 s) antes de subir el tope
+  a ciegas.
 
 ## 13. Documentación adicional del frontend
 
