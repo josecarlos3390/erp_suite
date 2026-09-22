@@ -297,6 +297,27 @@ de C2).
 
 ---
 
+## 5.c Alta en borrador y confirmación explícita del stock (T179)
+
+Los tres documentos de stock (entrada, salida y ajuste) tienen **dos estados de
+negocio** además del anulado, y desde el plan `plan-alta-borrador-confirmacion-stock.md`
+los dos son alcanzables **por API**:
+
+| Estado | Cómo se llega | Qué movió |
+|---|---|---|
+| **`OPEN`** (borrador) | `POST /stock-{entries/manual, exits/manual, adjustments}` con **`confirm: false`** | **Nada**: ni stock, ni kardex, ni asiento. Es el estado que el `PATCH :id` acepta para reemplazar las líneas (cuenta capturada y norma incluidas) |
+| **`CONFIRMED`** | el alta **sin** la bandera (default del contrato) o **`POST /stock-…/:id/confirm`** sobre un borrador | Stock (alta o descuento en el almacén), kardex y asiento contable con el reparto de la norma |
+| **`CANCELLED`** | `POST /stock-…/:id/cancel` (solo desde `CONFIRMED`) | Reversa del asiento y del stock (T149/T153) |
+
+| Pieza | Dónde vive | Cómo se vigila |
+|---|---|---|
+| **La bandera** | `confirm?: boolean` en los tres DTO de alta (default `true` = contrato histórico) | unitarios de los tres servicios: `confirm: false` crea el documento y **no** llama a `confirm()` |
+| **La confirmación explícita** | `POST /stock-…/:id/confirm` en los tres controladores, con **permiso propio** (`stock-…:confirm`, ya en el catálogo de permisos) | `test/stock-document-lines-patch.e2e-spec.ts`: alta en borrador → `PATCH` → `:id/confirm` → stock, kardex y asiento; un segundo `:id/confirm` → 400 |
+| **El borrador recuperable** | si el `confirm` automático falla (por ejemplo el período contable cerrado), el documento **queda en `OPEN` sin asiento**, no se borra | medido en `test/posting-date-period-guard.e2e-spec.ts` (T151) y declarado en la fase F2 del plan: las dos transacciones **no** se fusionan (riesgo de `P2028` ya medido en el import masivo) |
+| **La pantalla** | «Guardar borrador» en el alta, «Confirmar …» en el detalle y en el menú de fila del listado (solo `OPEN`) | unitarios de los tres formularios y de los tres listados; `e2e:functional` sobre BD recreada |
+
+---
+
 ## 6. Cómo verificarlo
 
 ```bash

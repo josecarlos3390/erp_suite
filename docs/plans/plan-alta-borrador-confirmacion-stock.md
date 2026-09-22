@@ -1,28 +1,25 @@
 # Plan — Alta en borrador y confirmación explícita en los documentos de stock
 
-> **Estado:** propuesto el **2026-09-21** a pedido del usuario. Origen: el **hallazgo medido** de AUDIT
-> **T177** al cerrar el PATCH con líneas —«hoy **ningún endpoint** crea un documento de stock `OPEN`»—
-> y la decisión del usuario de **planificar antes de tocar código** (opción elegida: «Plan nuevo y lo
-> aprobamos antes de tocar código»).
+> **Estado: RESUELTO el 2026-09-21 (F1–F4 implementadas y verificadas).** El usuario aprobó la
+> **opción A** con los defaults recomendados (§0) y el frente se ejecutó completo. Origen: el
+> **hallazgo medido** de AUDIT **T177** al cerrar el PATCH con líneas —«hoy **ningún endpoint** crea
+> un documento de stock `OPEN`»—, que este frente **cierra**.
 >
-> **No se escribe una línea de código hasta que el usuario decida la opción de §0 y responda las
-> preguntas de §4.**
->
-> Relacionado: AUDIT **T177** (el PATCH con líneas), `docs/plans/plan-cuentas-contables-editables.md`
-> (la cuenta capturada por línea) y `docs/plans/plan-centros-costo-y-reparto.md` (la norma de reparto
-> por línea): las dos capturas **solo se pueden editar en un borrador**, y hoy no hay camino de API
-> que produzca uno.
+> Evidencia y cierre en §6. Relacionado: AUDIT **T179**, `docs/reference/matriz-flujos-documentos.md`
+> **§5.c**, `docs/plans/plan-cuentas-contables-editables.md` (la cuenta capturada por línea) y
+> `docs/plans/plan-centros-costo-y-reparto.md` (la norma de reparto por línea): las dos capturas
+> **solo se pueden editar en un borrador**, y ahora hay camino de API que lo produce.
 
 ---
 
-## 0. Decisión del usuario (pendiente)
+## 0. Decisión del usuario (2026-09-21)
 
 | Pregunta | Decisión |
 |---|---|
-| ¿Opción **A**, **B** o **C** de §2? | **PENDIENTE** (recomendación: **A**) |
-| ¿El default de `confirm` es `true` (compatibilidad) o `false`? | **PENDIENTE** (recomendación: `true`) |
-| ¿«Confirmar» lleva permiso propio o el del alta? | **PENDIENTE** (recomendación: permiso propio `confirm`) |
-| ¿El alta masiva de stock inicial sigue confirmando? | **PENDIENTE** (recomendación: sí, sin cambios) |
+| ¿Opción **A**, **B** o **C** de §2? | **A** — bandera `confirm` + `POST :id/confirm` |
+| ¿El default de `confirm` es `true` (compatibilidad) o `false`? | **`true`** (el contrato observable del alta no cambia) |
+| ¿«Confirmar» lleva permiso propio o el del alta? | **Permiso propio** (`stock-…:confirm`, ya declarado en el catálogo de permisos) |
+| ¿El alta masiva de stock inicial sigue confirmando? | **Sí**, sin cambios |
 
 ---
 
@@ -99,3 +96,17 @@ remotos (backend `origin` + `deploy`; frontend y raíz `origin`), como el resto 
   tocan.
 - **No** se promete edición de líneas de un documento confirmado: sigue prohibida (T177), y este plan
   no la abre.
+
+---
+
+## 6. Cierre (2026-09-21)
+
+| Fase | Qué quedó | Evidencia medida |
+|---|---|---|
+| **F1 — backend** | `confirm?: boolean` en los tres DTO de alta (default `true`) y `POST /stock-{entries,exits,adjustments}/:id/confirm` con el permiso propio `stock-…:confirm` (ya en el catálogo); el alta con `confirm: false` devuelve el documento `OPEN` sin stock, kardex ni asiento | `npx tsc --noEmit` y `npm run build` en 0; **3 unitarios nuevos** (uno por familia: el borrador nace `OPEN` y **no** llama a `confirm()`); suite **185 suites/2238 tests** |
+| **F2 — atomicidad** | **Declarada**, no fusionada: un `confirm` fallido deja el borrador `OPEN` **sin asiento**, recuperable ahora con `POST :id/confirm` (antes solo con `cancel`) | ya medido en `test/posting-date-period-guard.e2e-spec.ts` (T151: todos los documentos quedan `OPEN`, cero asientos) y el comentario del spec apunta a la decisión; la fusión de las dos transacciones se descarta por el `P2028` del import masivo |
+| **F3 — frontend** | «Guardar borrador» en los tres formularios (payload con `confirm: false`) y «Confirmar …» en el detalle y en el menú de fila de los tres listados (solo `OPEN`); `confirm(id)` en los tres servicios | **18 unitarios nuevos** (9 de formulario —el payload del borrador, el alta normal sin la clave y la llamada al endpoint— y 9 de listado —`canConfirm` solo en `OPEN`, la llamada al endpoint con recarga y el diálogo cancelado—); **Karma 2165/2165** |
+| **F4 — E2E y docs** | La suite E2E del PATCH deja de resetear el estado por Prisma: el borrador se crea por API y el ciclo **borrador → `PATCH` → `:id/confirm`** se mide de punta a punta, con el doble confirm en 400 | `test/stock-document-lines-patch.e2e-spec.ts` **7/7** (un caso nuevo); AUDIT **T179**, matriz **§5.c**, AGENTS y CHANGELOG de los dos repos |
+
+**Cierre del hallazgo T177**: «el `PATCH` de borrador solo es alcanzable reseteando el estado por BD»
+queda **resuelto** —la API produce el borrador y lo confirma—, y el arnés que lo simulaba se retiró.
