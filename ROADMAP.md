@@ -490,7 +490,7 @@ que carga las horas y los servicios al mismo WIP y el **cierre** que liquida el 
 cero contra la cuenta de variación, con los reportes de costo/WIP/desviaciones **en pantalla y con
 exportación** y el detector R16, más el E2E de UI del ciclo completo; plan
 `docs/plans/plan-g3-produccion.md` +
-referencia `docs/reference/PRODUCCION_ERP_COMPARATIVA.md`); sigue abierto G4; del grupo 2
+referencia `docs/reference/PRODUCCION_ERP_COMPARATIVA.md`); **G4 quedó cerrado el 2026-09-21** (fila propia más abajo y AUDIT **T166**); del grupo 2
 (features SIN/SAP/CRM/Nómina/localización) sigue todo abierto:**
 
 | Item | Origen | Estado / dueño |
