@@ -40,7 +40,7 @@ en el backend), pipeline de imágenes y **SEO/structured data**.
 ┌──────────────────────────┐        ┌───────────────────────────────────────────┐
 │  storefront/ (Next.js)   │        │  ERP (NestJS + Postgres)                  │
 │  público, SEO, ISR/CDN   │  HTTPS │                                           │
-│                          │ ─────► │  /api/storefront/*   (canal público)      │
+│                          │ ─────► │  /storefront/*   (canal público)          │
 │  catálogo · carrito      │  API   │   · catálogo publicado, categorías,       │
 │  checkout · cuenta       │  key   │     precios de la lista web, stock por    │
 │  seguimiento             │  por   │     ciudad/almacén, sucursales            │
@@ -51,6 +51,13 @@ en el backend), pipeline de imágenes y **SEO/structured data**.
 └──────────────────────────┘        │  (pedidos, stock, factura, cobros, POS)   │
                                     └───────────────────────────────────────────┘
 ```
+
+> **Ruta real de la API (medido el 2026-09-22, F1)**: el ERP **no** monta un prefijo
+> `/api` —`src/main.ts` no llama a `setGlobalPrefix` y el frontend apunta a
+> `http://host:3001` (`environment.ts`); en producción, a la URL de Railway sin
+> sufijo—, así que la tienda llama **`/storefront/…`**. El arnés E2E
+> (`test/test-utils.ts`) sí monta la app bajo `/api`, y por eso los specs escriben
+> `/api/storefront/…`: es una diferencia **del arnés**, no del despliegue.
 
 - **La tienda no toca la BD del ERP**: solo el canal. El ERP sigue siendo la **fuente de
   verdad** de catálogo, precios, stock, pedidos, factura y cobranza.
@@ -190,6 +197,8 @@ de determinación de cuentas. La tienda **no** escribe asientos ni stock: **crea
 | **D4** | Pagos del MVP | **Offline primero**: transferencia/QR con comprobante, pago en sucursal/retiro y contra-entrega, conciliados con `IncomingPayment`; **tarjeta con PSP en F7** |
 | **D5** | Alcance de la primera entrega | **Catálogo + ficha + carrito + checkout guest + pedido + seguimiento + selector de ciudad**; cuenta completa en F4, wishlist/comparador/reviews/marketplace en F6 |
 | **D6** | Facturación | El pedido web **factura en la entrega** con el flujo normal del ERP (entrega → factura), con **serie propia del canal** |
+| **D7** | Ciudades de la tienda (**A1**, aprobada el 2026-09-22) | **La ciudad es configuración del canal, no un maestro del ERP**: el ERP no tiene maestro de ciudades (`Partner.city` y `PartnerAddress.city` son texto libre, con `<luna-input>` en el formulario de terceros), así que `WebCity` es la **zona comercial de entrega** y guarda lo que el ERP resuelve por sucursal/almacén — **qué almacén** manda la existencia (`warehouseId`), **cuánto cuesta y tarda** el envío (`shippingCost`, `freeShippingFrom`, `deliveryDays`) y **desde dónde** se despacha (`branchId`, FK a los dos maestros). Una ciudad puede tener **varias** sucursales y compartir almacén; `branchId` es el **origen por defecto**. Alternativas descartadas: usar la sucursal como ciudad (una ciudad con 5 tiendas se volvería 5 «ciudades» y duplicaría el costo de envío) y crear un maestro `City` en el ERP (obliga a migrar el texto libre existente y a tocar el formulario de terceros para un maestro que hoy usarían 2 pantallas) |
+| **D8** | Retiro en tienda en el MVP | **Fase 2**: el MVP aprobado (D5) envía a domicilio y el checkout no elige sucursal. El modelo **ya está listo** (los campos de retiro de `Branch`: `phone`, `openingHours`, `latitude`/`longitude`, `mapUrl`, `pickupEnabled`) y el vínculo **ciudad → sucursales de retiro** se agrega como tabla del canal cuando entre el retiro, sin cambiar los enlaces actuales |
 
 ## §10 F1 — desglose de trabajo (modelo y API de canal)
 
@@ -223,4 +232,24 @@ de determinación de cuentas. La tienda **no** escribe asientos ni stock: **crea
    publicado con precio de lista web y stock por ciudad; `POST` de pedido crea `WebOrder` +
    `SalesOrder` y **un segundo POST con la misma clave no duplica**; el seguimiento público
    devuelve el estado sin autenticación; y la suite E2E del canal cierra en verde.
+
+### §10.b Estado de F1 (medido el 2026-09-22, T188)
+
+| Punto | Estado | Evidencia / desviación |
+|---|---|---|
+| 1. Modelo + migraciones | **Hecho** | 10 tablas + enum (`20260922180000_storefront_channel`), maestros que ganó el ERP (`Brand`, `ItemImage`, `ItemSpec`, `Seller`, oferta con vigencia, garantía, campos de retiro de `Branch`, dirección de entrega de `PartnerAddress`) en `20260922212644_storefront_masters` y FKs de la ciudad en `20260922213535_storefront_city_links`; `prisma validate` + `migrate status` en verde. `ItemWeb.images`/`specs` (Json) y `WebAddress` **retirados**: la galería y la ficha son maestro y las direcciones del cliente registrado son las del ERP |
+| 2. Serie del canal | **Desviado a F7** | El pedido usa la serie de `SALES_ORDER`. Un `DocumentType` nuevo + arranque operativo pertenece al tramo que emite la **factura del canal** (D6); declarado en CHANGELOG |
+| 3. Módulo y guardia | **Hecho** (salvo CORS/caché) | `GET catalog/categories/cities/products/:slug/products/:slug/related/tracking` + `POST orders`, `@Public()` + `StorefrontApiKeyGuard` (SHA-256 de `x-storefront-key`, el tenant sale de la **clave**, no del `Host`) + `@Throttle` 300/min. **Pendiente declarado**: `WebApiKey.allowedOrigins` existe pero el **CORS por dominio** y la **caché HTTP** (`ETag`/`Cache-Control`) todavía no se cablean; `audit-logs` del canal tampoco |
+| 4. Pedido | **Hecho** (sin TTL) | `POST` idempotente que crea `SalesOrder` (sucursal y almacén de la ciudad, precio efectivo, IVA del motor de ventas) + `WebOrder`, con compensación (anular el pedido de venta) si la proyección falla. **Medido**: el pedido **compromete** existencia (`stockCommitted = 2`) y la libera al anularlo. **Desviado a F3**: la reserva con **TTL** para pedidos abandonados —el `SalesOrder` abierto compromete stock sin vencimiento— |
+| 5. Seguridad de datos | **Hecho** | Proyección pública sin `cost` ni márgenes; sin cookies del ERP; el canal es el único puente. **Defecto medido y corregido**: el CSRF pedía el doble envío de cookie al `POST` público (403) — ahora el canal con clave por cabecera queda excluido como `Bearer` |
+| 6. Seed de tienda | **Hecho** | `prisma/seed-storefront.ts`: 10 marcas, 5 vendedores, 4 grupos nuevos, 15 categorías raíz + 5 hijas, **2 ciudades** (SCZ y LPZ, con sucursal y almacén propios y stock distinto), **108 publicados** (104 de tienda + 4 del catálogo del ERP), 324 imágenes, 540 características, 3 banners, 2 páginas, 3 clientes web, clave del canal; `ensureMasterAccountsForTenant` corrido otra vez (443 matrices artículo-almacén) |
+| 7. Pruebas y gates | **Hecho** | Unitarios **43/43** del canal (`189 suites / 2292 tests` en el backend) y `test/storefront-channel.e2e-spec.ts` **22/22**; `tsc`, `lint`, `build` en 0 |
+| 8. Criterio de cierre | **Medido** | Sonda en vivo sobre la API de desarrollo con el seed real: `GET /storefront/catalog` → **108 publicados** (3 páginas con `limit=48`), **11 con oferta vigente** (precio = oferta, `discountPct` con signo), oferta **vencida** y **futura** con precio de lista y `salePrice = null`; por ciudad **SCZ 9/12/15 vs LPZ 5/7/9** y **20 sin existencia en La Paz**; 15 categorías raíz que suman 108; 2 ciudades con almacén y sucursal; ficha con 3 imágenes, 5 características y marca del maestro; `404` de producto inexistente y `401` sin clave o con clave inválida |
+
+**Riesgos/huecos que abre F1** (a cerrar en F2/F3): CORS por dominio y caché del canal;
+reserva con TTL y cancelación de pedidos abandonados; correo transaccional (no existe
+proveedor en el backend); la tienda debe caer a un **placeholder local** cuando
+`picsum.photos` no cargue (las imágenes del seed son un dato de desarrollo declarado);
+y el checkout solo puede vender artículos que el ERP tenga **habilitados en la matriz
+artículo-almacén** de la ciudad (medido: sin matriz, 400 accionable).
 
