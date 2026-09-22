@@ -1,83 +1,88 @@
 # Plan — Seguimiento por lote/serie: auditoría, costeo y gate preventivo
 
-> Estado: **propuesta para aprobación** (2026-09-22). Nace de la pregunta del usuario:
-> «¿todas las transacciones con artículos de seguimiento por lote/serie asignan bien en alta,
-> reversión, producción, ajustes y revalorizaciones? ¿se puede revalorizar un lote o serie
-> específica? ¿es obligatorio asignar lote/serie para que el costo sea correcto?».
-> **No se escribe código hasta que el usuario decida los puntos de §4.**
+> Estado: **en ejecución** (2026-09-22). Decisiones del usuario tomadas: **D1** mantener el
+> costeo por promedio del artículo+almacén y **arreglar el dato del lote**; **D2** sincronizar el
+> costo de los lotes al revalorizar; **D3** la asignación es obligatoria siempre que el artículo
+> tenga seguimiento; **D4** arrancar por **F1** (gate) + **F4** (evidencia).
+> Nace de la pregunta del usuario: «¿el costo de los lotes en algún momento se desfasa o
+> desincroniza?».
 
-## 0. Lo que se midió (evidencia en código, no en doc)
+## 0. Lo que se midió (evidencia en código + sonda en vivo)
 
 | Pieza | Estado medido |
 |---|---|
-| **Validación de asignación** | `validateDocumentLineTracking` (`src/common/document-stock.helper.ts:251`) exige lote/serie cuando el artículo es `LOT`/`SERIAL` **y** el tenant tiene el ajuste `enableBatchTracking`/`enableSerialTracking` encendido (`settings.service.ts:126-127`; es un ajuste por tenant, no un default de schema), valida que cada asignación exista, que la cantidad sea > 0, que la **suma de asignaciones cuadre con la cantidad de la línea** y, en salidas, que el lote tenga existencia en ese almacén (`validateBatchStock`) |
-| **Cobertura de esa validación** | **15 familias** la llaman: entregas (7 puntos), POS, emisión y recibo de producción, NC y devoluciones de venta y compra, facturas de venta y compra, recepciones (6 puntos), entradas, salidas, ajustes y traspasos. `stock-counts` maneja lote/serie por su propio camino (11 menciones de `batchId`/`serialNumberId` en su servicio) |
-| **Reversión** | El helper tiene `reverseIncomingStock` (`:830`), `reverseOutgoingStock` (`:959`) y `reverseStockTransfer` (`:1088`): las tres **restituyen la cantidad del lote** (`upsertStockBatch` con el signo inverso) y el **estado del número de serie** (`updateSerialNumberStatus`), y escriben el movimiento espejo con el mismo lote/serie |
-| **Existencia por lote** | `StockBatch` (`schema.prisma:2569`) es único por `(tenant, lote, almacén)` y guarda `stockPhysical` y `avgCost` **por lote** |
-| **Existencia y costo del artículo** | `Stock` (`:2457`) es único por `(tenant, artículo, almacén)`: **no tiene dimensión de lote/serie** y ahí vive `avgCost`, el promedio ponderado |
-| **Costeo de salidas** | `getAvgCost` (`src/common/stock.util.ts:765`) documenta y aplica «para movimientos de SALIDA **siempre** el `avgCost` del almacén, fallback a `item.cost`»; hay **79 llamadas** y **ninguna** lee `StockBatch.avgCost` (verificado: los únicos matches de `stockBatch` + `avgCost` son importaciones de `upsertStockBatch`) |
-| **Costo por lote** | Se **escribe** solo si `Item.batchCostingEnabled = true` (default **`false`**, `schema.prisma:1471`): el promedio ponderado del lote lo calcula `upsertStockBatch` (`stock.util.ts:783-827`) y lo pasan 8 servicios (helper ×4, facturas y recepciones de compra, ajustes, entradas, traspasos). **Nadie lo lee para costear** |
-| **Costo por serie** | `SerialNumber.purchaseCost` existe y se edita por su CRUD (`serial-numbers.service.ts:81,95`); **ningún camino contable lo lee** |
-| **Revalorización** | `StockRevaluationItem` (`schema.prisma:9113`) es **artículo + almacén**: no tiene `batchId` ni `serialNumberId`. El servicio **no toca `StockBatch`** (0 usos) y **no valida tracking** (no llama al validador) |
-| **Cobertura de pruebas** | **1 suite E2E** de 4 tests (`test/batch-serial-flow.e2e-spec.ts`): costo a nivel artículo con `batchCostingEnabled=false`, costo por lote con `true`, recálculo del promedio del lote en la segunda compra del mismo lote y baja de existencia del lote al vender. La barrida operativa tiene un escenario «LOTES Y SERIADOS» (entrada, salida y existencias) en `scripts/flow-sweep.mjs:2120-2236` |
-| **Gate preventivo** | **No existe**: `scripts/audit-flow-links.mjs` no tiene ninguna regla de lote/serie (0 coincidencias) |
+| **Validación de asignación** | `validateDocumentLineTracking` (`src/common/document-stock.helper.ts:251`) exige lote/serie cuando el artículo es `LOT`/`SERIAL` **y** el tenant tiene el ajuste `enableBatchTracking`/`enableSerialTracking` encendido (`settings.service.ts:126-127`; ajuste por tenant, no default de schema), valida que cada asignación exista, cantidad > 0, que la **suma cuadre con la cantidad de la línea** y, en salidas, existencia del lote en ese almacén |
+| **Cobertura** | **15 familias** llaman a esa validación (entregas ×7, POS, emisión y recibo de producción, NC y devoluciones de venta y compra, facturas, recepciones ×6, entradas, salidas, ajustes, traspasos). `stock-counts` maneja lote/serie por su propio camino |
+| **Reversión** | `reverseIncomingStock` (`:830`), `reverseOutgoingStock` (`:959`) y `reverseStockTransfer` (`:1088`) restituyen **cantidad del lote** y **estado de la serie** y escriben el espejo con el mismo lote/serie |
+| **Existencia y costo por lote** | `StockBatch` (`schema.prisma:2569`) único por `(tenant, lote, almacén)`, con `stockPhysical` y `avgCost` **por lote**; su promedio se recalcula en `upsertStockBatch` (`stock.util.ts:783-827`) |
+| **Costo del artículo** | `Stock` (`:2457`) único por `(tenant, artículo, almacén)`, sin dimensión de lote: ahí vive el `avgCost` que **usa el COGS** (`getAvgCost`, `stock.util.ts:765`; **79 llamadas**, ninguna lee el lote) |
+| **Costo por lote: quién lo escribe** | Solo con `Item.batchCostingEnabled = true` (default **false**): helper ×4, facturas y recepciones de compra, ajustes, entradas y traspasos pasan el costo; **revalorización, Precio de Entrega y diferencia de cambio no tocan `StockBatch`** (0 usos) |
+| **Costo por serie** | `SerialNumber.purchaseCost` se edita por su CRUD (`serial-numbers.service.ts:81,95`) y **ningún camino contable lo lee** |
+| **Gate preventivo** | **No existía** (0 reglas de tracking en `audit:flow-links.mjs`) → **F1 lo crea** |
 
-## 1. Respuestas a las tres preguntas
+## 0.b Medición en vivo del desfase (H1) — sonda E2E, 2026-09-22
 
-1. **¿La asignación es obligatoria?** Sí, **con dos condiciones**: el artículo debe tener
-   `trackingType = LOT/SERIAL` **y** el tenant debe tener encendido el ajuste de trazabilidad
-   correspondiente. Con el ajuste apagado, un artículo con seguimiento **no exige** lote/serie
-   y el guard no corre. Además, la obligación **no está verificada por ninguna suite amplia**:
-   hay 1 E2E de 4 tests y no hay detector de datos.
-2. **¿Se puede revalorizar un lote o una serie específica?** **Hoy no.** La revalorización es
-   por **artículo + almacén** (no tiene la dimensión) y actualiza el `avgCost` del artículo;
-   el `avgCost` de cada `StockBatch` **queda como estaba**. Lo mismo aplica a la serie
-   (`purchaseCost` nunca entra al costo).
-3. **¿Se necesita el lote para que el costo sea correcto?** **Con el diseño actual, no**: el
-   COGS de cualquier salida es el **promedio ponderado del artículo en el almacén**
-   (`getAvgCost`, 79 llamadas, sin lectura del costo del lote). El lote sirve hoy para
-   **trazabilidad y existencia por lote**, y el costo por lote existe como **dato**
-   (`StockBatch.avgCost`, solo con `batchCostingEnabled = true`) pero no participa del asiento.
-   Costear por lote es una **decisión de producto** con impacto en el motor, la revalorización,
-   los informes y la producción (qué lote consume una emisión).
+Artículo `LOT` con `batchCostingEnabled = true`, almacén único; se lee el costo **del artículo**
+(`Stock.avgCost`, el que usa la contabilidad) y **del lote** (`StockBatch.avgCost`) después de
+cada operación:
 
-## 2. Huecos medidos (a cerrar según §4)
+| Paso | Costo del artículo | Costo del lote | Existencia del lote |
+|---|---|---|---|
+| 0. inicial (100 u @ 50, sin lote) | 50 | — (el stock inicial no está en un lote) | 0 |
+| 1. **compra** 20 u @ 60 al lote L1 | 51,666667 | **60** | 20 |
+| 2. **revalorización** del artículo a 70 (`POST /stock-revaluations`, `mode: PRICE`) | **70** | **60** ← **desfase** | 20 |
+| 3. **segunda compra** 10 u @ 80 al mismo lote | 70,769231 | **66,666667** (exacto: (20·60+10·80)/30) | 30 |
+| 4. **ajuste** de stock +5 u @ 100 al lote | 71,851852 | **71,428572** (exacto: (30·66,67+5·100)/35) | 35 |
 
-| # | Hueco | Severidad |
+**Lectura medida**: el costo por lote **existe y es exacto** para las compras y los ajustes de
+ese lote, pero (a) **no es el costo que usa el asiento** (el COGS sale del promedio del
+artículo+almacén) y (b) **se desfasa cuando una operación mueve el costo del artículo sin tocar
+los lotes**: medido con la revalorización (artículo 70, lote 60), y por lectura de código lo
+mismo aplica al **Precio de Entrega** (`landed-costs` no usa `StockBatch`) y a la
+**revalorización por diferencia de cambio**.
+
+## 1. Respuestas a las tres preguntas del usuario
+
+1. **¿La asignación es obligatoria?** Sí, con **dos condiciones**: artículo con `trackingType`
+   y ajuste del tenant encendido (H3: con el ajuste apagado no se exige nada).
+2. **¿Se puede revalorizar un lote o una serie específica?** **Hoy no**: la revalorización es
+   por artículo + almacén (`StockRevaluationItem` sin dimensión) y no toca el costo del lote.
+3. **¿El costo por lote es exacto y se desfasa?** Exacto **como dato propio del lote** (compras
+   y ajustes) y **no** es el que usa la contabilidad; **sí se desfasa** con la revalorización
+   (medido) y con las otras dos revalorizaciones del artículo (por código).
+
+## 2. Huecos medidos
+
+| # | Hueco | Estado |
 |---|---|---|
-| H1 | **La revalorización ignora los lotes**: revalorizar un artículo con lotes mueve el `avgCost` del artículo pero deja `StockBatch.avgCost` de cada lote desactualizado (hoy sin efecto en el asiento, porque nadie lo lee; sería un dato mentiroso en cuanto se active el costeo por lote) | Media |
-| H2 | **No hay gate preventivo de tracking**: nada detecta en datos reales un movimiento de artículo `LOT`/`SERIAL` sin lote/serie, un `StockBatch` que no cuadra con la existencia del artículo, un serie vendida sin movimiento de salida o un lote con existencia negativa | Alta (es la respuesta a «podemos validar») |
-| H3 | **`enableBatchTracking`/`enableSerialTracking` apagados desactivan la obligación** sin ninguna señal: un tenant puede operar artículos con seguimiento sin asignar nada (y el kardex queda sin trazabilidad) | Media (decisión) |
-| H4 | **Evidencia E2E fina**: 1 suite / 4 tests para 15 familias. No hay E2E de **reversa de un documento con lote/serie**, ni de **producción con lote/serie**, ni de **ajuste/toma con lote** | Media |
-| H5 | **`stock-counts` va por su propio camino** (no usa el validador compartido): hay que medir si exige lote/serie y si cuadra la suma de asignaciones como el resto | A medir |
+| H1 | **La revalorización (y el Precio de Entrega y la diferencia de cambio) no sincronizan el costo del lote** → el lote queda con un costo viejo | **medido en vivo** (§0.b) — a cerrar en F2 |
+| H2 | **No había gate preventivo de tracking** | **cerrado en F1** (este frente) |
+| H3 | El ajuste del tenant puede **desactivar** la obligación sin señal | cerrado con **D3** (F5) |
+| H4 | Evidencia E2E fina (1 suite de 4 tests para 15 familias) | F4 |
+| H5 | `stock-counts` va por su propio camino (no usa el validador compartido) | a medir |
 
-## 3. Fases propuestas
+## 3. Fases
 
-| Fase | Alcance | Verificación |
+| Fase | Alcance | Estado / verificación |
 |---|---|---|
-| **F1 — Gate preventivo `audit:tracking`** (respuesta directa a «podemos validar») | Reglas nuevas sobre **datos reales**: (a) movimiento de artículo `LOT` sin `batchId` o `SERIAL` sin `serialNumberId` (excluyendo los tipos que no mueven mercancía), (b) `StockBatch.stockPhysical` ≠ suma de movimientos del lote en ese almacén, (c) serie `SOLD` sin movimiento de salida (o `AVAILABLE` con salida), (d) lote/serie con existencia negativa, (e) aviso cuando el tenant tiene tracking apagado y hay artículos con `trackingType ≠ NONE` | Autoprueba del detector + **sonda** con datos incoherentes creados a propósito (como R16/R17) + paso en CI; corrida sobre la BD recreada |
-| **F2 — Revalorización y lotes** | Según decisión D2: (a) mínimo, **mantener sincronizado** `StockBatch.avgCost` al revalorizar (el mismo delta por lote); (b) completo, permitir revalorizar **un lote/serie** (schema + DTO + valorización + pantalla) | E2E nuevo de revalorización con lotes (antes/después de cada lote y del artículo) |
-| **F3 — Costeo por lote/serie** (solo si se decide D1 = sí) | El costo de una salida sale del **lote asignado** (o de la serie), con su propia política de promedio; impacto en `getAvgCost`/llamadores, revalorización, informes y emisión de producción | E2E de dos lotes con costos distintos vendidos por separado, con el asiento usando el costo del lote asignado |
-| **F4 — Evidencia E2E por familia** | Suite nueva de tracking: alta, **reversa**, producción (emisión y recibo), ajuste y toma con lote/serie, más la barrida `--only=lotes` | Suites E2E en verde + barrida medida |
-| **F5 — Guardas de obligatoriedad** | Según decisión D3: exigir lote/serie **siempre** que el artículo tenga seguimiento (independiente del ajuste del tenant) o dejar el ajuste pero **avisar** en el gate | E2E del caso «ajuste apagado con artículo LOT» |
+| **F1 — Gate `audit:tracking`** | `scripts/audit-tracking.mjs` (`npm run audit:tracking` + `:self-test`): **T1** movimiento de artículo `LOT` sin `batchId`, **T2** ídem `SERIAL`, **T3** existencia por lote ≠ saldo del kardex (con la clasificación canónica de entradas/salidas del kardex), **T4** existencia por lote negativa, **T5** estado de serie incoherente con su saldo, **T6 INFO** tenant con el ajuste apagado y artículos con seguimiento | ✅ **HECHO**: autoprueba **14/14**; corrida sobre la BD de desarrollo **0 errores / 0 avisos**; **sonda medida**: un movimiento de `ART-00025` (LOT) sin lote produjo **1 error T1** exacto (exit 1) y al retirarlo volvió a 0; autoprueba agregada al job `lint-and-test` de CI (el gate completo necesita BD, como `audit:flows`) |
+| **F2 — Sincronizar el costo del lote** | Al revalorizar el artículo, aplicar el mismo ajuste a `StockBatch.avgCost` de cada lote con existencia; revisar también **Precio de Entrega** y **diferencia de cambio**. **Pendiente de definir la regla**: proporcional al delta (`loteNuevo = loteViejo × costoNuevo/costoViejo`, conserva las diferencias entre lotes) o **fijar** a todos los lotes el costo nuevo del artículo (pierde esas diferencias) | **Propuesta: proporcional.** Se implementa con un E2E de regresión que **hoy falla** (el lote no se sincroniza) y queda verde con el arreglo |
+| **F3 — Costeo por lote** | Fuera de alcance por **D1** (se mantiene el promedio del artículo+almacén) | — |
+| **F4 — Evidencia por familia** | E2E de reversa, producción, ajuste y toma con lote/serie + barrida `--only=lotes` | Pendiente: hoy corren en verde el E2E de lote/serie (**4/4**) y la barrida tiene su escenario de lotes/seriados |
+| **F5 — Obligatoriedad** | Quitar la dependencia del ajuste del tenant: si el artículo tiene seguimiento, la línea exige lote/serie (**D3**) | Pendiente (cambio en `validateDocumentLineTracking` + unitarios) |
 
-## 4. Decisiones que necesito de ti
+## 4. Decisiones tomadas
 
-- **D1 — Costeo**: ¿quieres **costeo por lote/serie** (que el COGS de la venta salga del costo
-  del lote/serie asignado) o mantenemos el **promedio ponderado del artículo+almacén** y el
-  lote queda para trazabilidad y existencias? (Hoy es lo segundo; con `batchCostingEnabled=true`
-  el costo por lote se guarda pero **no se usa**.)
-- **D2 — Revalorización**: ¿basta con **sincronizar** el costo de los lotes al revalorizar el
-  artículo, o quieres poder **revalorizar un lote o una serie específica** (documento nuevo con
-  la dimensión)?
-- **D3 — Obligatoriedad**: ¿el lote/serie debe ser obligatorio **siempre** que el artículo tenga
-  seguimiento, o se mantiene la dependencia del ajuste por tenant (`enableBatchTracking`)?
-- **D4 — Alcance de la evidencia**: ¿arranco por **F1 (gate)** —lo que responde «podemos
-  validar»— y luego F4, dejando F2/F3 para cuando decidas D1/D2?
+- **D1**: se mantiene el costeo por **promedio del artículo+almacén**; el lote queda para
+  trazabilidad y existencias, y su costo se mantiene **confiable como dato** (F2).
+- **D2**: **sincronizar** el costo de los lotes al revalorizar (regla a confirmar en F2).
+- **D3**: obligatorio **siempre** que el artículo tenga seguimiento (F5).
+- **D4**: arrancar por F1 + F4.
 
 ## 5. Lo que **no** se midió todavía (declarado)
 
-- No corrí la barrida operativa (`--only=lotes`) ni el E2E `batch-serial-flow` en esta ronda:
-  el estado de arriba es lectura de código y schema, no una corrida en vivo.
-- No leí en profundidad el camino de `stock-counts` (H5) ni el de ensamblaje con lote.
-- No medí si algún informe de kardex **muestra** el costo por lote (solo que el motor no lo usa).
+- No corrí la barrida operativa `--only=lotes` (el E2E de lote/serie sí: **4/4**).
+- No medí en vivo el desfase por **Precio de Entrega** ni por **diferencia de cambio** (está
+  deducido de que ningún camino toca `StockBatch`; el de revalorización sí está medido).
+- No leí en profundidad `stock-counts` (H5) ni el camino de ensamblaje con lote.
+- No medí si algún informe muestra el costo por lote (solo que el motor no lo usa).
