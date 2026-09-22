@@ -199,6 +199,9 @@ de determinación de cuentas. La tienda **no** escribe asientos ni stock: **crea
 | **D6** | Facturación | El pedido web **factura en la entrega** con el flujo normal del ERP (entrega → factura), con **serie propia del canal** |
 | **D7** | Ciudades de la tienda (**A1**, aprobada el 2026-09-22) | **La ciudad es configuración del canal, no un maestro del ERP**: el ERP no tiene maestro de ciudades (`Partner.city` y `PartnerAddress.city` son texto libre, con `<luna-input>` en el formulario de terceros), así que `WebCity` es la **zona comercial de entrega** y guarda lo que el ERP resuelve por sucursal/almacén — **qué almacén** manda la existencia (`warehouseId`), **cuánto cuesta y tarda** el envío (`shippingCost`, `freeShippingFrom`, `deliveryDays`) y **desde dónde** se despacha (`branchId`, FK a los dos maestros). Una ciudad puede tener **varias** sucursales y compartir almacén; `branchId` es el **origen por defecto**. Alternativas descartadas: usar la sucursal como ciudad (una ciudad con 5 tiendas se volvería 5 «ciudades» y duplicaría el costo de envío) y crear un maestro `City` en el ERP (obliga a migrar el texto libre existente y a tocar el formulario de terceros para un maestro que hoy usarían 2 pantallas) |
 | **D8** | Retiro en tienda en el MVP | **Fase 2**: el MVP aprobado (D5) envía a domicilio y el checkout no elige sucursal. El modelo **ya está listo** (los campos de retiro de `Branch`: `phone`, `openingHours`, `latitude`/`longitude`, `mapUrl`, `pickupEnabled`) y el vínculo **ciudad → sucursales de retiro** se agrega como tabla del canal cuando entre el retiro, sin cambiar los enlaces actuales |
+| **D9** | Dónde vive el código de la tienda (arranque de F2) | **Dentro del repo raíz**, en `storefront/`, versionado junto a la documentación; cuando la tienda tenga su propio remoto se separa. Evita un repo anidado **sin remoto** al que no se pueda empujar (la regla del proyecto es empujar a todos los remotos) |
+| **D10** | Cómo habla la tienda con el ERP | **Solo desde el servidor de Next** (Server Components y route handlers): la clave del canal **nunca llega al navegador** y no hace falta abrir CORS por dominio en el MVP (queda como estaba: declarado). El precio de la decisión: el navegador no llama al canal directamente, todo pasa por Next |
+| **D11** | Bootstrap de la tienda | **npm** (como los otros dos proyectos) con **Next.js 14 App Router + TypeScript + Tailwind 3 + Zustand** (D1) y los **tokens del ERP compilados** por script (`storefront/scripts/sync-tokens.mjs`: `erp-frontend/src/styles/tokens/_0*.scss` → `storefront/src/styles/tokens.css`) con modo **`--check`** para que no se desincronicen: una sola fuente de verdad y un gate que lo comprueba |
 
 ## §10 F1 — desglose de trabajo (modelo y API de canal)
 
@@ -252,4 +255,30 @@ proveedor en el backend); la tienda debe caer a un **placeholder local** cuando
 `picsum.photos` no cargue (las imágenes del seed son un dato de desarrollo declarado);
 y el checkout solo puede vender artículos que el ERP tenga **habilitados en la matriz
 artículo-almacén** de la ciudad (medido: sin matriz, 400 accionable).
+
+## §11 F2 — tienda MVP (catálogo) · desglose
+
+Alcance de la fase (D5): **home, menú de categorías, listado con filtros y orden, ficha,
+búsqueda, selector de ciudad y carrito**. Todo se consume **desde el servidor** (D10) y
+la tienda escribe en el ERP **solo** por el canal público.
+
+| # | Pieza | Contenido | Criterio medible |
+|---|---|---|---|
+| 1 | **Cierre de huecos del canal** (backend) | `GET /storefront/banners` (CMS de la home) y `GET /storefront/pages/:slug` (páginas de servicio) —el modelo y el seed ya existen pero **no se exponían**— y filtro **`brand`** en el catálogo (la ficha del producto ya publica la marca del maestro) | suite del canal **en verde** con los casos nuevos (banners ordenados por `slot`/`sortOrder`, página publicada y 404 de la no publicada, filtro por marca) |
+| 2 | **Bootstrap de la tienda** | `storefront/` con npm, Next 14 App Router + TS + Tailwind 3 + Zustand, ESLint/Prettier alineados con el repo, `.env.example` (`ERP_API_URL`, `STOREFRONT_API_KEY`, `STOREFRONT_CITY`) y `next.config` con los dominios de imagen del seed | `npm run build` en 0 y `npm run lint` en 0 |
+| 3 | **Tokens** | `scripts/sync-tokens.mjs` compila `_01-primitives` → `_05-layout` del ERP a `src/styles/tokens.css`; `--check` falla si están desincronizados; la tienda define su capa de componentes encima (LUNA **no** se usa en la tienda) | `sync-tokens --check` en verde y el CSS de la tienda servido desde la build |
+| 4 | **Cliente del canal** | `src/lib/erp.ts`: fetch tipado al canal (`/storefront/...`, **sin** prefijo `/api`), con la clave **solo en el servidor**, `revalidate` por endpoint, errores tipados y `AbortSignal` con tope | un test unitario del cliente (URL, cabecera, timeout, error) en verde |
+| 5 | **Shell + tema** | Header (logo, buscador, selector de ciudad, carrito), footer, navegación de categorías, y **tema por variables CSS** del tenant encima de los tokens | el shell renderiza en servidor y el tema sale de variables (sin hex en componentes) |
+| 6 | **Home** | Hero con banners del canal, categorías destacadas, carrusel de ofertas (`salePrice` ≠ nulo), «lo más vendido» por categoría con stock de la ciudad | la home lista **las ofertas vigentes** que devuelve el canal y **no** las vencidas |
+| 7 | **Categorías** | `/categorias` y `/categorias/[slug]` con filtros (marca, rango de precio, orden, paginación) y contadores del árbol | la categoría padre trae también lo de sus **subcategorías** (lo que ya mide el canal) |
+| 8 | **Ficha** | `/productos/[slug]`: galería, ficha técnica, insignias, garantía, disponibilidad **de la ciudad**, relacionados, agregar al carrito | la ficha de la ciudad sin stock muestra «sin existencia» y **no** permite agregar |
+| 9 | **Búsqueda** | `/buscar?q=` con el mismo listado y estado vacío accionable | la búsqueda por texto devuelve lo que devuelve el canal (medido en su suite) |
+| 10 | **Carrito** | Estado **Zustand** persistido (localStorage) con precios de referencia de la tienda, drawer + `/carrito`; el precio que manda es el del **checkout** (el canal lo recalcula) | agregar/quitar/cambiar cantidad y que el total de la tienda **coincida** con el del canal al pedir |
+| 11 | **Ciudad** | Selector de ciudad (cookie) que cambia la disponibilidad de todo el catálogo | cambiar de ciudad cambia la existencia mostrada (SCZ vs LPZ del seed) |
+| 12 | **SEO** | `generateMetadata` por ruta + **JSON-LD** (`Product`/`Offer`/`BreadcrumbList`) y `sitemap.ts` desde el catálogo publicado | el HTML servido trae el JSON-LD del producto con precio y disponibilidad |
+| 13 | **Gate de la tienda** | `storefront/e2e` con Playwright propio (`npm run e2e`) sobre `next start` + la API del ERP, arrancando de la BD sembrada | suite verde: home con productos, categoría con subcategorías, ficha, búsqueda, carrito y cambio de ciudad |
+
+**Orden de ejecución**: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13, con los
+gates del repo (backend `npm test`, `lint`, `tsc` y la suite del canal) y de la tienda
+(`build`, `lint`, `e2e`) en verde en cada tramo que los toque.
 
