@@ -34,7 +34,7 @@ cada operación:
 | 3. **segunda compra** 10 u @ 80 al mismo lote | 70,769231 | **66,666667** (exacto: (20·60+10·80)/30) | 30 |
 | 4. **ajuste** de stock +5 u @ 100 al lote | 71,851852 | **71,428572** (exacto: (30·66,67+5·100)/35) | 35 |
 
-**Lectura medida**: el costo por lote **existe y es exacto** para las compras y los ajustes de
+**Lectura medida (y ya corregida en F2)**: el costo por lote **existe y es exacto** para las compras y los ajustes de
 ese lote, pero (a) **no es el costo que usa el asiento** (el COGS sale del promedio del
 artículo+almacén) y (b) **se desfasa cuando una operación mueve el costo del artículo sin tocar
 los lotes**: medido con la revalorización (artículo 70, lote 60), y por lectura de código lo
@@ -66,10 +66,10 @@ mismo aplica al **Precio de Entrega** (`landed-costs` no usa `StockBatch`) y a l
 | Fase | Alcance | Estado / verificación |
 |---|---|---|
 | **F1 — Gate `audit:tracking`** | `scripts/audit-tracking.mjs` (`npm run audit:tracking` + `:self-test`): **T1** movimiento de artículo `LOT` sin `batchId`, **T2** ídem `SERIAL`, **T3** existencia por lote ≠ saldo del kardex (con la clasificación canónica de entradas/salidas del kardex), **T4** existencia por lote negativa, **T5** estado de serie incoherente con su saldo, **T6 INFO** tenant con el ajuste apagado y artículos con seguimiento | ✅ **HECHO**: autoprueba **14/14**; corrida sobre la BD de desarrollo **0 errores / 0 avisos**; **sonda medida**: un movimiento de `ART-00025` (LOT) sin lote produjo **1 error T1** exacto (exit 1) y al retirarlo volvió a 0; autoprueba agregada al job `lint-and-test` de CI (el gate completo necesita BD, como `audit:flows`) |
-| **F2 — Sincronizar el costo del lote** | Al revalorizar el artículo, aplicar el mismo ajuste a `StockBatch.avgCost` de cada lote con existencia; revisar también **Precio de Entrega** y **diferencia de cambio**. **Pendiente de definir la regla**: proporcional al delta (`loteNuevo = loteViejo × costoNuevo/costoViejo`, conserva las diferencias entre lotes) o **fijar** a todos los lotes el costo nuevo del artículo (pierde esas diferencias) | **Propuesta: proporcional.** Se implementa con un E2E de regresión que **hoy falla** (el lote no se sincroniza) y queda verde con el arreglo |
+| **F2 — Sincronizar el costo del lote** | `src/common/stock-batch-cost.util.ts` (`syncBatchCostsOnRevaluation`) aplicado en la revalorización de artículos: cada lote **con existencia** del artículo+almacén revalorizado pasa a `loteViejo × costoNuevo / costoViejo` (regla **proporcional**, así dos lotes comprados a distinto precio siguen costando distinto); sin proporción posible —artículo en costo 0 o lote sin costo— se fija el costo nuevo. Aritmética en `Prisma.Decimal` (6 decimales) y **sin tocar** el valor del inventario ni el asiento | ✅ **HECHO**: **6 unitarios** del util + **5** del contrato de obligatoriedad; `test/batch-cost-revaluation.e2e-spec.ts` **3/3** (un lote queda en el costo nuevo; dos lotes conservan la proporción 50/80 → 75/120 con el artículo en 90; y sin `batchCostingEnabled` el lote **no** se inventa costo). Falta reusar el mismo util en **Precio de Entrega** y **diferencia de cambio** (declarado) |
 | **F3 — Costeo por lote** | Fuera de alcance por **D1** (se mantiene el promedio del artículo+almacén) | — |
 | **F4 — Evidencia por familia** | E2E de reversa, producción, ajuste y toma con lote/serie + barrida `--only=lotes` | Pendiente: hoy corren en verde el E2E de lote/serie (**4/4**) y la barrida tiene su escenario de lotes/seriados |
-| **F5 — Obligatoriedad** | Quitar la dependencia del ajuste del tenant: si el artículo tiene seguimiento, la línea exige lote/serie (**D3**) | Pendiente (cambio en `validateDocumentLineTracking` + unitarios) |
+| **F5 — Obligatoriedad** | `validateDocumentLineTracking`: la obligación la decide el **artículo** (`trackingType`); el ajuste del tenant queda solo en la firma (renombrado `_settings`, los ~26 llamadores no cambian) y **ya no desactiva la guarda** | ✅ **HECHO**: `src/common/document-stock.helper.spec.ts` **5/5** — con el ajuste **apagado** un artículo `LOT` sin lote y uno `SERIAL` sin serie dan **400**, con lote/serie pasan, y un artículo `SIN` seguimiento no exige nada aunque el ajuste esté encendido |
 
 ## 4. Decisiones tomadas
 
