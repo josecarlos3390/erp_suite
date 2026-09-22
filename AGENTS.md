@@ -242,7 +242,9 @@ E2E_TRACEABILITY_TIMEOUT_MS=240000 npx playwright test e2e/traceability-flow.spe
 > (p. ej. el PT de producción, que nace sin existencia) debe **garantizarla** con
 > `ensureItemWarehouseAccounts`, **fijando las cuentas WIP del maestro**: la fila de
 > matriz tiene precedencia contable y una fila con las cuentas por defecto desvía el
-> asiento —medido en el cierre de la orden de producción—.
+> asiento —medido en el cierre de la orden de producción—. **Medido con las dos
+> condiciones**: el gate completo cierra **238 passed · 3 skipped · 0 fallos**
+> (28,9 min, 241 programadas) sobre BD recreada, la primera corrida sin ningún fallo.
 
 ### Git hooks
 
