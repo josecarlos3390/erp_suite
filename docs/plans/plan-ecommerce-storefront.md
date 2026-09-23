@@ -282,6 +282,18 @@ la tienda escribe en el ERP **solo** por el canal público.
 gates del repo (backend `npm test`, `lint`, `tsc` y la suite del canal) y de la tienda
 (`build`, `lint`, `e2e`) en verde en cada tramo que los toque.
 
+### §11.b Estado de F2 (medido el 2026-09-22, T189)
+
+| # | Pieza | Estado | Evidencia / desviación |
+|---|---|---|---|
+| 1 | Huecos del canal (banners, páginas, marcas, `onSale`, orden por precio, `listPrice`, faceta por categoría, índice de páginas) | **Hecho** | Tres tramos: F2.1 (CMS + marca), F2.2 (`onSale`) y F2.3 (**defecto real corregido**: el orden por precio usaba el de lista mientras publicaba el efectivo). Canal **55/55** unitarios y **29/29** E2E; sonda en vivo con orden monótono verificado |
+| 2-5 | Bootstrap, tokens, cliente del canal, shell y tema | **Hecho** | `storefront/` con Next 14 + TS strict + Tailwind 3 + Zustand; `sync-tokens.mjs` (7 módulos del ERP → 621 líneas de CSS, `--check` en verde y probado en rojo); cliente **server-only** con tope de tiempo, `revalidate` por endpoint y errores tipados |
+| 6-11 | Home, categorías, ficha, búsqueda, carrito, ciudad | **Hecho** | Home con banners vigentes y **ofertas por `onSale`**; categorías con filtros por URL y faceta de marcas **de la categoría**; ficha con galería, ficha técnica, disponibilidad por ciudad, relacionados y botón que no deja agregar sin existencia; `/carrito` (Zustand persistido, `skipHydration` + `CartHydration`) declara que el precio final lo fija el ERP (F3) |
+| 12 | SEO | **Hecho** | `generateMetadata` + JSON-LD (`Product`/`Offer`/`BreadcrumbList`), `sitemap.ts` con **131** URLs (3 fijas + 20 categorías + 108 productos) y `robots.ts` |
+| 13 | Gate de la tienda | **Hecho** | `storefront/e2e` (Playwright propio, `next start` en :3100, `actionTimeout` 30 s): **13/13** con **155** aserciones ejecutadas, contra la API del ERP en marcha |
+| — | **Hallazgo de caché** | Declarado | La tienda cachea el canal **60 s** (`revalidate`): un cambio del canal se ve tras la ventana. Un E2E de la tienda falló por eso y pasó al reintentar (no era defecto) |
+| — | **Huecos que quedan** | Declarado | Sin filtro por **rango de precio** (rompería la paginación si se hiciera en cliente); sin **datos de cuotas** (no se calcula `precio/6`; la insignia CUOTAS solo se muestra); las imágenes del seed siguen siendo `picsum.photos` (con **respaldo local** implementado); `NEXT_PUBLIC_SITE_URL` es de build (los canónicos de una build local apuntan a `localhost:3000`); checkout y seguimiento son F3 |
+
 ## §12 F3 — checkout, pedido y seguimiento · huecos medidos al cerrar F1/F2
 
 F3 es «checkout multi-paso (guest), métodos offline, `POST` de pedido, confirmación,
