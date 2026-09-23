@@ -210,6 +210,8 @@ de determinación de cuentas. La tienda **no** escribe asientos ni stock: **crea
 | **D14** | Pedidos abandonados (**F3 #2**, aprobada el 2026-09-23) | **Cancelación por antigüedad**: una tarea (script invocable por cron, con el **plazo configurable por empresa**) anula los pedidos web **sin pago** más antiguos que el plazo usando el `cancel` del flujo de ventas, de modo que el stock comprometido se **libera** y el comprador ve `CANCELLED` (ya derivado del documento). Se descartó la reserva propia del canal con TTL (no comprometer stock hasta el pago): con pago **offline** el comprador puede tardar días y no se puede retener existencia tanto tiempo, y el stock agotado antes de pagar rompería la promesa de la cotización |
 | **D15** | Comprobante del pago offline (**F3 #4**, aprobada el 2026-09-23) | **Referencia de pago escrita por el comprador**: el comprador anota el número de operación (y la fecha) de su transferencia/QR en la confirmación o el seguimiento, y el canal la guarda en la proyección (`WebOrder.paymentReference`) para que la conciliación del back office tenga el dato. Se descartó subir el **archivo** del comprobante: el ERP no tiene almacenamiento de archivos hoy, así que la decisión correcta es no inventar uno; la **conciliación** sigue en el ERP (`IncomingPayment`, D4) |
 | **D16** | Correo transaccional (**F3 #5**, aprobada el 2026-09-23) | **Declarado, sin implementar ahora**: la confirmación en pantalla ya publica número y código de seguimiento y `/seguimiento` se consulta con el número (y el código de pedido). El backend **no tiene proveedor** de correo; se retoma cuando haya credenciales (SMTP por empresa o proveedor externo), y mientras tanto el hueco queda escrito |
+| **D20** | La oferta de catálogo en los canales del ERP (**F8**, aprobada el 2026-09-23) | **Opción A: el ERP honra su oferta** (`Item.salePrice` dentro de su vigencia) en **sus** documentos y en el POS, resuelta en el punto único del precio de catálogo (`price-resolver.util.ts`) y **configurable desde el formulario de artículos** (hoy solo existe en el esquema). Así el mismo artículo cuesta lo mismo en un pedido manual, en el POS y en la web, y se cierra el hueco declarado en T188. Se descartó que la tienda deje de publicar la oferta: el mecanismo de oferta es del ERP, no de la web |
+| **D21** | Descuento de catálogo **solo del canal** (**F8**, aprobada el 2026-09-23) | **Promo del canal configurable**: la publicación web del artículo (`ItemWeb`) gana `channelDiscountPct` + vigencia, que aplica **solo** el canal (ficha, cotización y pedido) como capa propia encima de la oferta de catálogo y antes del descuento de la empresa (D12); el POS y los pedidos del ERP **no** lo leen. Se configura en el back office (**Ventas → Tienda online → Promociones del canal**, permiso propio), así el negocio puede promocionar el ecommerce sin tocar el precio del resto de canales; **sin configurar, el precio es el mismo en todos los canales** |
 
 ## §10 F1 — desglose de trabajo (modelo y API de canal)
 
@@ -609,11 +611,69 @@ Lo que se cerró en T197:
   oferta y el descuento se ven como capas distintas; la confirmación publica el neto y el IVA) y la
   sonda en vivo del pedido `PED-61` (`neto 7603 + IVA 1136,08 = 8739,08`).
 
-**DECISIÓN DE PRODUCTO PENDIENTE — la oferta de catálogo en el ERP.** Un pedido creado **a mano**
-en el ERP cobra **9199,08** (8 % sobre el precio de lista) y la tienda cobra **8739,08** (oferta
-5 % + 8 %): las dos cifras salen de datos del ERP, pero solo la tienda aplica la oferta. Las salidas
-son: **(A)** que el ERP honre su propia oferta en sus documentos y en el POS (recomendada: el mismo
-artículo cuesta lo mismo en la web, en el POS y en un pedido manual; cierra el hueco declarado en
-T188) o **(B)** que la oferta de catálogo deje de publicarse en la tienda (la web cobra lo mismo que
-el ERP de hoy y se pierde el mecanismo de oferta). Mientras no se decida, la tienda **explica las
-dos capas** en el checkout y la confirmación y el pendiente queda escrito.
+**DECIDIDO por el usuario el 2026-09-23 (D20/D21, §13): opción A**, y además que el descuento de
+catálogo **solo del ecommerce** sea **configurable** (hoy no existe dónde: `ItemWeb` no tiene campos
+de descuento y el formulario de artículos no expone `Item.salePrice`). El desarrollo va en **F8**
+(§13): primero la **paridad** —el ERP honra su oferta en sus documentos y en el POS, y el formulario
+de artículos permite configurarla— y después la **promoción del canal** (campos en la publicación
+web + pantalla en el back office), con la regla: **sin configuración, el mismo precio en pedidos,
+POS y web**.
+
+## §13 F8 — Paridad de precios entre canales y promociones del ecommerce (plan aprobado el 2026-09-23)
+
+**El problema medido (T197)**: el mismo artículo (`WEB-0012`) cuesta **9199,08** en un pedido creado
+a mano en el ERP (8 % de grupo sobre el precio de lista) y **8739,08** en la web (oferta de catálogo
+5 % + 8 %). Las dos cifras salen de datos del ERP: la **oferta de catálogo** (`Item.salePrice` con
+vigencia) solo la aplica la tienda, porque el ERP no la usa en sus documentos ni en el POS (hueco
+declarado en T188). Además **no hay ninguna pantalla** para configurar la oferta ni un descuento
+propio del canal: `ItemWeb` no tiene campos de descuento y el formulario de artículos no expone
+`salePrice`.
+
+### D20 — El ERP honra su oferta de catálogo (aprobada el 2026-09-23)
+
+La **oferta de catálogo** (`Item.salePrice` dentro de su vigencia) pasa a ser un **precio vigente
+del maestro** que aplican **todas** las superficies: pedidos de venta, POS, entregas, facturas y la
+web. Es la opción A: el mismo artículo cuesta lo mismo en los tres canales y se cierra el hueco de
+T188.
+
+- **Un solo punto de resolución**: la oferta se resuelve donde el ERP ya resuelve el precio de
+  catálogo (`price-resolver.util.ts`, que usan ventas, entregas y POS), no en cada servicio.
+- **Configurable desde el back office**: el **formulario de artículos** expone la oferta (precio de
+  oferta + desde/hasta), que hoy solo existe en el esquema. Sin oferta configurada, el precio es el
+  de lista.
+- **Aceptación medible**: con una oferta vigente, un pedido creado a mano, una venta del POS y un
+  pedido de la web del mismo artículo y la misma cantidad cobran **la misma** mercancía; con la
+  oferta **vencida** o **futura**, los tres cobran el precio de lista.
+
+### D21 — Descuento de catálogo **solo del canal** (aprobada el 2026-09-23)
+
+Para poder promocionar el ecommerce sin tocar el POS ni los pedidos de venta, la **publicación web**
+del artículo (`ItemWeb`) gana su propio descuento con vigencia, que **solo** aplica el canal:
+
+- **Modelo**: `ItemWeb.channelDiscountPct` + `channelDiscountFrom` / `channelDiscountTo`
+  (migración idempotente). Sin configurar → `null`/`0` y **ningún** efecto.
+- **Quién lo aplica**: el canal (`storefront.service`) lo publica en la ficha, la cotización y el
+  pedido como **capa propia** («Promo online»), encima del precio vigente del ERP (oferta de
+  catálogo) y **antes** del descuento automático de la empresa (D12), que se mantiene acumulativo.
+  El POS y los pedidos del ERP **no** lo ven (no lo leen).
+- **Configurable en el ERP**: pantalla nueva en el back office —**Ventas → Tienda online →
+  Promociones del canal**— con el listado de artículos **publicados**, su precio vigente, el
+  descuento del canal y su vigencia, con permiso propio (`web-promotions:view|edit`). Es el primer
+  pedazo de la administración de la tienda que el plan pide en F5 (merchandising).
+- **Aceptación medible**: con la promo configurada, la web cobra el precio con promo y **el POS y un
+  pedido manual cobran el precio del ERP**; con la promo vencida o sin configurar, las tres
+  superficies cobran **exactamente** lo mismo. El E2E mide las tres (API de ventas, POS y canal).
+
+### Fases y evidencia
+
+| Fase | Alcance | Evidencia exigida |
+|---|---|---|
+| **F8.1** | La oferta de catálogo aplica en documentos y POS + el formulario de artículos la expone | Unitarios del resolver (oferta vigente, vencida, futura, sin oferta) y E2E que compara **el mismo artículo** por las tres superficies; `ng build`/Karma del formulario con los campos nuevos |
+| **F8.2** | `ItemWeb` con descuento del canal + la tienda lo publica y lo aplica como capa propia | Unitarios del canal (promo vigente/vencida/ausente, acumulación con la oferta y con el descuento de empresa) y E2E de la tienda con la promo visible en el desglose |
+| **F8.3** | Pantalla **Ventas → Tienda online → Promociones del canal** (permiso propio) + paridad medida | Karma de la pantalla + spec E2E de UI de la bandeja de promociones, y el E2E de paridad de las tres superficies con y sin promo configurada |
+
+**Declarado**: el descuento del canal se aplica **solo** a la mercancía (el flete sigue siendo el
+importe de la ciudad) y no cambia el IVA —el impuesto lo sigue calculando el motor del ERP sobre el
+precio ya promocionado, como en T197—; la oferta de catálogo y la promo del canal **se acumulan**
+(D12) y el orden de las capas queda publicado en el desglose para que el comprador pueda
+explicárselo.
