@@ -479,3 +479,43 @@ Los tres huecos que quedaban necesitaban decisión de producto y se resolvieron 
   referencia del pago vive en la proyección del canal y la publica la tienda, así que la
   bandeja (con la referencia a la vista) es la pieza natural de F5.
 
+
+### §12.e Estado de F5 — la bandeja de pedidos web del back office (medido el 2026-09-23, T195)
+
+Cerrado el ciclo del comprador (F3), faltaba la **cara del negocio**: sin bandeja, nadie en el back
+office veía los pedidos de la tienda ni la referencia del pago que anota el comprador (D15). Se
+resolvió con tres decisiones del usuario (**D17**, **D18** y **D19**, §9):
+
+- **D17 — ver, conciliar el pago y anular**: módulo `web-orders` **autenticado** (JWT del ERP) con
+  `GET /web-orders` (filtros por estado —**derivado**, D13—, registro del pago, ciudad, fechas,
+  «con referencia» y búsqueda por pedido/correo/nombre/seguimiento, con paginación) y
+  `GET /web-orders/:id` (líneas, dirección de entrega, desglose, referencia del pago y enlace al
+  pedido de venta del ERP), más las **dos acciones**: `POST :id/payment` y `POST :id/cancel`.
+- **D18 — el pago se marca en el pedido web (registro comercial)**: `paymentStatus = paid` con
+  **usuario y fecha** (`paidAt`, `paidById`; migración idempotente
+  `20260923125219_storefront_paid_by`) y **sin contabilizar**: el asiento del cobro sigue siendo del
+  `IncomingPayment` del ERP (D4). No pisa la referencia del comprador y rechaza el pedido anulado o
+  ya conciliado. La vista publica además el pago **según la factura** del ERP, para que la bandeja no
+  confunda «conciliado en la tienda» con «cobrado y asentado».
+- **D19 — vive en Ventas → Pedidos Web**, con su **permiso propio** (`web-orders:view|reconcile|cancel`
+  en el catálogo de permisos) y su tarjeta en el menú. La pantalla es de **solo lectura más las dos
+  acciones**: no hay «Nuevo» porque el pedido lo crea la tienda.
+- **Una sola tabla de traducción del estado**: la derivación se extrajo a
+  `src/common/web-order-state.util.ts` y la usan **las dos** superficies (el seguimiento público y la
+  bandeja), así que no pueden contar cosas distintas. El filtro por estado derivado no puede ir a SQL:
+  se aplica sobre un **barrido acotado** y la respuesta publica `truncated` cuando se queda corto, en
+  vez de mentir con un total corto.
+- **Anular delega en el flujo de ventas** (`salesOrders.cancel`): la existencia comprometida se libera
+  con las reglas del ERP y el comprador lo ve anulado en el seguimiento. Lo que **ya salió del
+  almacén** no se anula desde la bandeja (400 accionable, regla del flujo).
+
+**Evidencia**: backend **12 unitarios** del servicio (estado derivado, filtro por estado, referencia y
+quién concilió, tope del barrido, detalle con líneas/dirección/desglose, 404, conciliar con sus dos
+rechazos y anular con sus tres) y `test/web-orders.e2e-spec.ts` **7/7** con JWT real y datos reales
+(lista con el estado derivado, detalle, conciliar + los filtros del registro comercial, segundo
+conciliado **400**, anular con la **existencia verificada liberada** y el 400 del ya anulado, 404 y
+**401** sin token); frontend **26 unitarios** de Karma (servicio, listado y detalle: permisos, acciones
+ofrecidas solo cuando el pedido las admite, errores del backend tal cual y el desglose cuadrado) y
+`ng build` en **0 errores**. **Declarado**: la pantalla no tiene todavía una spec **E2E de UI** propia
+(el contrato está medido en el E2E del API y en Karma); y la **conciliación contable** del cobro
+(pago entrante contra la factura) sigue siendo del flujo de pagos del ERP, como decidió D18.
