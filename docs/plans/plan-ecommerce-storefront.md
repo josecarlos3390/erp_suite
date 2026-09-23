@@ -178,7 +178,10 @@ de determinación de cuentas. La tienda **no** escribe asientos ni stock: **crea
    pipeline de imágenes (Cloudinary/S3) con `next/image`.
 4. **No hay CMS**: banners, landings y páginas de servicio son trabajo nuevo.
 5. **Reserva de stock**: el ERP tiene `stockCommitted/quoted`; el carrito **no** debe reservar.
-   La reserva del pedido web necesita TTL y liberación explícita.
+   La reserva del pedido web necesita TTL y liberación explícita. **Resuelto con D14 + T196**: la
+   existencia que retiene un pedido impago se libera por **antigüedad** (`webOrderTtlHours`, default
+   48 h) con el `cancel` del flujo de ventas, disparado por el **barrido programado del backend**
+   (03:30, por empresa con canal activo) o por el endpoint manual; el carrito sigue sin reservar.
 6. **Marketplace/vendedores** no existe como tal (hay proveedores y `defaultVendorId`): «Vendido
    por X» es fase 2.
 7. **SEO/rendimiento** son responsabilidad de la tienda (ISR/CDN): el ERP no debe servir tráfico público directo.
@@ -466,7 +469,8 @@ Los tres huecos que quedaban necesitaban decisión de producto y se resolvieron 
 - **Declarado**: el campo en la pantalla de Configuración del frontend (el API ya lo acepta) y
   la línea de cron concreta (el endpoint es el que la ejecuta); el caso «no toca lo pagado»
   está medido en unitarios, no en el E2E (crear la factura y el pago entrante es un flujo con
-  su propia suite).
+  su propia suite). **Los dos primeros quedaron cerrados después**: el campo en Configuración con
+  T195 y el barrido programado con **T196** (§12.f).
 
 **D16 — el correo transaccional.**
 
@@ -523,3 +527,42 @@ anular, contrastado contra el API del ERP— y el ajuste **`webOrderTtlHours`** 
 **Configuración** con su unitario. **Hallazgo de arnés**: en `luna-input` el `placeholder` viaja
 como atributo del host, así que `getByPlaceholder` matchea dos nodos (medido). **Declarado**: y la **conciliación contable** del cobro
 (pago entrante contra la factura) sigue siendo del flujo de pagos del ERP, como decidió D18.
+
+### §12.f Estado del barrido programado (medido el 2026-09-23, T196)
+
+Cierra el hueco que §12.d dejó declarado: **la línea de cron concreta**. Sin ella, la decisión D14
+existía como endpoint «para un cron» que nadie ejecutaba, así que en producción la existencia que
+retiene un pedido que nadie paga se liberaba solo si alguien se acordaba de llamar al endpoint a
+mano.
+
+- **La tarea vive en el backend**, no en un cron externo: `StorefrontMaintenanceService`
+  (`src/storefront/storefront-maintenance.service.ts`) declara **`@Cron('30 3 * * *')`** —03:30,
+  fuera del horario comercial y sin cruzarse con las otras tareas del backend (`billing` 01:00,
+  `tenant-metrics` 00:05, `alerts` 08:00)— con el mismo motor de tareas que el ERP ya usa.
+- **Barre por empresa**: recorre las empresas **con clave de canal activa** (y activas) y llama al
+  `cancelAbandonedOrders` del canal, así que cada pedido se anula con el `cancel` del **flujo de
+  ventas** (existencia liberada y estado derivado del documento, D13). El servicio del canal pasó a
+  recibir el **`tenantId`** —y no el contexto HTTP— para que el barrido no necesite una petición; el
+  endpoint del canal sigue siendo el mismo camino, con la empresa sacada de la clave.
+- **Resumen por empresa**: `swept` / `ttl-zero` / `error`, con lo anulado y lo omitido de cada una, y
+  **una empresa que falla no corta el barrido de las demás** (queda registrada con su motivo).
+- **El plazo `0` no se aplica en automático** (regla nueva, declarada): `0` significa «todos los
+  impagos» y está pensado para una corrida **explícita** (probar el flujo, forzar una limpieza); una
+  tarea nocturna con `0` anularía pedidos de hace minutos, con el comprador a punto de pagar. Esas
+  empresas quedan fuera del barrido automático y se reportan como `ttl-zero`, mientras el
+  **endpoint** sigue respetando el `0` aprobado en D14. Si el negocio quiere que el nocturno también
+  barra todo, es cambiar una condición (y una decisión).
+- **Evidencia**: **8 unitarios nuevos** (la tarea declarada a las 03:30 y de tipo cron, solo empresas
+  con canal activo, sin canales no consulta nada, anula por empresa con su plazo y agrega el
+  resumen, omite la empresa con plazo `0` y sigue con las demás, una empresa que falla no corta el
+  barrido, y un fallo al leer la configuración también se reporta) y **3 casos E2E nuevos** en
+  `test/storefront-channel.e2e-spec.ts` que invocan **el método que dispara el `@Cron`** sobre la
+  base real: el barrido anula el pedido **envejecido 72 h** y libera **exactamente** su cantidad
+  comprometida (2 unidades) **dejando vivo el pedido reciente** del mismo artículo (1 unidad), la
+  segunda corrida no vuelve a anular nada, la empresa con el plazo en `0` queda **intacta**
+  (documento `OPEN` y existencia igual que al crear) y una empresa **sin canal** no aparece en el
+  resumen mientras las dos con clave sí. La suite del canal cierra **38/38**.
+
+**Declarado**: el barrido automático no crea el cron del **sistema operativo** ni una cola de
+reintentos —corre en el proceso del backend, como las otras cuatro tareas del ERP—, y la
+cancelación sigue sin correo al comprador (D16: no hay proveedor).
