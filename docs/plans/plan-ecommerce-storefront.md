@@ -317,3 +317,27 @@ y confirmación en la tienda (#6) → seguimiento (#7) → **gate medido**: una 
 punta (tienda → `WebOrder` → `SalesOrder` del ERP) con el estado visible en el seguimiento y
 el stock comprometido/liberado según el ciclo.
 
+### §12.b Estado de F3.1 — el envío (medido el 2026-09-23, T190)
+
+El hueco **#1** (el canal no cobraba el envío) se cerró **sin** tener que decidir el
+tratamiento contable del flete: se convirtió en **configuración del ERP**.
+
+- **`WebCity.shippingItemId`** (FK al maestro de artículos, migración idempotente
+  `20260923013750_storefront_shipping_item`): la ciudad apunta al **artículo de servicio**
+  con el que cobra el envío. Si no hay artículo, la ciudad **no** lo cobra.
+- **`POST /storefront/quote`**: cotiza el carrito sin crear nada y con el **mismo**
+  `resolveOrderDraft` que el alta, así que lo que ve el comprador y lo que se cobra no
+  pueden discrepar. **No estima impuestos**: los aplica el ERP al documento.
+- **El flete viaja como línea** del pedido del ERP (se factura y contabiliza con las reglas
+  de la empresa, sin columnas nuevas en `SalesOrder`), y el desglose publicado es
+  `subtotal` (mercancías) + `shipping` + `tax` = `total` (del documento).
+- **Defecto real corregido de paso**: con `validateStockOnSalesOrder` encendido, una línea
+  de **servicio** se rechazaba con «disponible 0» porque la guarda de stock no distinguía lo
+  que no maneja inventario (A/B medido: 400 sin la guarda, 201 con ella).
+- **Evidencia**: canal **57/57** unitarios, **31/31** E2E del canal, seed con `WEB-ENVIO` en
+  las 2 ciudades y sonda en vivo (SCZ 1×129 → envío 20; LPZ 3×129 → envío 35; SCZ 2×2.699 →
+  gratis por superar el umbral).
+- **Sigue abierto en F3** (necesita decisión de producto): reserva con **TTL** (#2), **estado**
+  del pedido (#3), **comprobante** offline (#4) y proveedor de **correo** (#5); y en la tienda,
+  las pantallas de **checkout** (#6) y **seguimiento** (#7).
+
