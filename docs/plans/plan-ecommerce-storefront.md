@@ -516,6 +516,10 @@ rechazos y anular con sus tres) y `test/web-orders.e2e-spec.ts` **7/7** con JWT 
 conciliado **400**, anular con la **existencia verificada liberada** y el 400 del ya anulado, 404 y
 **401** sin token); frontend **26 unitarios** de Karma (servicio, listado y detalle: permisos, acciones
 ofrecidas solo cuando el pedido las admite, errores del backend tal cual y el desglose cuadrado) y
-`ng build` en **0 errores**. **Declarado**: la pantalla no tiene todavía una spec **E2E de UI** propia
-(el contrato está medido en el E2E del API y en Karma); y la **conciliación contable** del cobro
+`ng build` en **0 errores**. **Cerrado después (misma fecha)**: la spec **E2E de UI**
+(`erp-frontend/e2e/web-orders.spec.ts`, **3 casos**) recorre la pantalla con el pedido creado por
+el **canal real** —lista con el estado derivado y la referencia, conciliar desde el detalle y
+anular, contrastado contra el API del ERP— y el ajuste **`webOrderTtlHours`** (D14) entra en
+**Configuración** con su unitario. **Hallazgo de arnés**: en `luna-input` el `placeholder` viaja
+como atributo del host, así que `getByPlaceholder` matchea dos nodos (medido). **Declarado**: y la **conciliación contable** del cobro
 (pago entrante contra la factura) sigue siendo del flujo de pagos del ERP, como decidió D18.
