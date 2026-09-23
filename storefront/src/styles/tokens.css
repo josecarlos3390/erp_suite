@@ -1,0 +1,620 @@
+/* ============================================================================
+   GENERADO AUTOMATICAMENTE por storefront/scripts/sync-tokens.mjs
+   NO EDITAR A MANO: los cambios se pisan en la proxima sincronizacion.
+
+   Fuente : erp-frontend/src/styles/tokens/_01-primitives.scss ...
+            _07-sizing.scss  (capa de tokens LUNA del ERP)
+   Regenerar : npm run sync:tokens
+   Verificar : npm run sync:tokens:check
+   ============================================================================ */
+
+:root {
+  --neutral-0: #ffffff;
+  --neutral-50: #f8f9fb;
+  --neutral-100: #f1f3f6;
+  --neutral-200: #e4e7ec;
+  --neutral-300: #d0d5dd;
+  --neutral-400: #98a2b3;
+  --neutral-500: #667085;
+  --neutral-600: #475467;
+  --neutral-700: #344054;
+  --neutral-800: #1d2939;
+  --neutral-900: #101828;
+  --neutral-950: #020617;
+  --accent-50: #eef2ff;
+  --accent-100: #e0e7ff;
+  --accent-200: #c7d2fe;
+  --accent-300: #a5b4fc;
+  --accent-400: #818cf8;
+  --accent-500: #6366f1;
+  --accent-600: #4f46e5;
+  --accent-700: #4338ca;
+  --accent-800: #3730a3;
+  --accent-900: #312e81;
+  --accent-950: #1e1b4b;
+  --purple-50: #faf5ff;
+  --purple-100: #f3e8ff;
+  --purple-200: #e9d5ff;
+  --purple-300: #d8b4fe;
+  --purple-400: #c084fc;
+  --purple-500: #a855f7;
+  --purple-600: #9333ea;
+  --purple-700: #7e22ce;
+  --purple-800: #6b21a8;
+  --purple-900: #581c87;
+  --purple-950: #3b0764;
+  --success-50: #ecfdf5;
+  --success-100: #d1fae5;
+  --success-200: #a7f3d0;
+  --success-300: #6ee7b7;
+  --success-400: #34d399;
+  --success-500: #22c55e;
+  --success-600: #16a34a;
+  --success-700: #15803d;
+  --success-800: #166534;
+  --success-900: #14532d;
+  --success-950: #052e16;
+  --warning-50: #fffbeb;
+  --warning-100: #fef3c7;
+  --warning-200: #fde68a;
+  --warning-300: #fcd34d;
+  --warning-400: #fbbf24;
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+  --warning-700: #b45309;
+  --warning-800: #92400e;
+  --warning-900: #78350f;
+  --warning-950: #451a03;
+  --error-50: #fef2f2;
+  --error-100: #fee2e2;
+  --error-200: #fecaca;
+  --error-300: #fca5a5;
+  --error-400: #f87171;
+  --error-500: #ef4444;
+  --error-600: #dc2626;
+  --error-700: #b91c1c;
+  --error-800: #991b1b;
+  --error-900: #7f1d1d;
+  --error-950: #450a0a;
+  --info-50: #eff6ff;
+  --info-100: #dbeafe;
+  --info-200: #bfdbfe;
+  --info-300: #93c5fd;
+  --info-400: #60a5fa;
+  --info-500: #3b82f6;
+  --info-600: #2563eb;
+  --info-700: #1d4ed8;
+  --info-800: #1e40af;
+  --info-900: #1e3a8a;
+  --info-950: #172554;
+}
+[data-theme=dark] {
+  --neutral-0: #0a0a0f;
+  --neutral-50: #12121a;
+  --neutral-100: #1a1a25;
+  --neutral-200: #242433;
+  --neutral-300: #35354a;
+  --neutral-400: #6e7089;
+  --neutral-500: #8a8ca8;
+  --neutral-600: #a5a7bf;
+  --neutral-700: #c2c4d8;
+  --neutral-800: #e2e4f0;
+  --neutral-900: #ffffff;
+  --neutral-950: #f8f9fb;
+  --accent-50: #1e1b4b;
+  --accent-100: #312e81;
+  --accent-200: #4338ca;
+  --accent-300: #4f46e5;
+  --accent-400: #6366f1;
+  --accent-500: #818cf8;
+  --accent-600: #a5b4fc;
+  --accent-700: #c7d2fe;
+  --accent-800: #e0e7ff;
+  --accent-900: #eef2ff;
+  --accent-950: #f5f7ff;
+  --purple-50: #3b0764;
+  --purple-100: #581c87;
+  --purple-200: #6b21a8;
+  --purple-300: #7e22ce;
+  --purple-400: #9333ea;
+  --purple-500: #a855f7;
+  --purple-600: #c084fc;
+  --purple-700: #d8b4fe;
+  --purple-800: #e9d5fe;
+  --purple-900: #f3e8ff;
+  --purple-950: #faf5ff;
+  --success-50: #052e16;
+  --success-100: #14532d;
+  --success-200: #166534;
+  --success-300: #15803d;
+  --success-400: #16a34a;
+  --success-500: #4ade80;
+  --success-600: #34d399;
+  --success-700: #6ee7b7;
+  --success-800: #a7f3d0;
+  --success-900: #d1fae5;
+  --success-950: #ecfdf5;
+  --warning-50: #451a03;
+  --warning-100: #78350f;
+  --warning-200: #92400e;
+  --warning-300: #b45309;
+  --warning-400: #d97706;
+  --warning-500: #fbbf24;
+  --warning-600: #fcd34d;
+  --warning-700: #fde68a;
+  --warning-800: #fef3c7;
+  --warning-900: #fffbeb;
+  --warning-950: #fffbeb;
+  --error-50: #450a0a;
+  --error-100: #7f1d1d;
+  --error-200: #991b1b;
+  --error-300: #b91c1c;
+  --error-400: #dc2626;
+  --error-500: #f87171;
+  --error-600: #fca5a5;
+  --error-700: #fecaca;
+  --error-800: #fee2e2;
+  --error-900: #fef2f2;
+  --error-950: #fef2f2;
+  --info-50: #172554;
+  --info-100: #1e3a8a;
+  --info-200: #1e40af;
+  --info-300: #1d4ed8;
+  --info-400: #2563eb;
+  --info-500: #60a5fa;
+  --info-600: #93c5fd;
+  --info-700: #bfdbfe;
+  --info-800: #dbeafe;
+  --info-900: #eff6ff;
+  --info-950: #eff6ff;
+}
+:root {
+  --bg-base: var(--neutral-0);
+  --bg-elevated: var(--neutral-50);
+  --bg-surface: var(--neutral-100);
+  --bg-overlay: rgba(255, 255, 255, 0.96);
+  --bg-inset: var(--neutral-50);
+  --bg-hover: var(--neutral-100);
+  --bg-active: var(--neutral-200);
+  --bg-selected: var(--accent-50);
+  --bg-purple-subtle: rgba(147, 51, 234, 0.15);
+  --bg-skeleton: var(--neutral-200);
+  --bg-skeleton-highlight: var(--neutral-100);
+  --text-primary: var(--neutral-900);
+  --text-secondary: var(--neutral-700);
+  --text-tertiary: var(--neutral-600);
+  --text-inverse: var(--neutral-0);
+  --text-accent: var(
+    --accent-600
+  );
+  --text-success: var(--success-800);
+  --text-warning: var(--warning-800);
+  --text-purple: var(--purple-600);
+  --text-error: var(--error-700);
+  --text-disabled: var(--neutral-400);
+  --border-default: var(--neutral-200);
+  --border-subtle: var(--neutral-100);
+  --border-strong: var(--neutral-300);
+  --border-accent: var(--accent-300);
+  --border-error: var(--error-300);
+  --border-focus: var(--accent-500);
+}
+[data-theme=dark] {
+  --bg-base: var(--neutral-0);
+  --bg-elevated: var(--neutral-50);
+  --bg-surface: var(--neutral-100);
+  --bg-overlay: rgba(18, 18, 26, 0.96);
+  --bg-inset: var(--neutral-0);
+  --bg-hover: var(--neutral-50);
+  --bg-active: var(--neutral-100);
+  --bg-selected: rgba(30, 27, 75, 0.2);
+  --bg-purple-subtle: rgba(168, 85, 247, 0.15);
+  --bg-skeleton: var(--neutral-200);
+  --bg-skeleton-highlight: var(--neutral-300);
+  --text-primary: var(--neutral-900);
+  --text-secondary: var(--neutral-500);
+  --text-tertiary: var(--neutral-400);
+  --text-inverse: var(--neutral-0);
+  --text-accent: var(--accent-500);
+  --text-success: var(--success-500);
+  --text-warning: var(--warning-500);
+  --text-error: var(--error-500);
+  --text-purple: var(--purple-400);
+  --text-disabled: var(--neutral-400);
+  --border-default: var(--neutral-200);
+  --border-subtle: var(--neutral-100);
+  --border-strong: var(--neutral-300);
+  --border-accent: var(--accent-700);
+  --border-error: var(--error-700);
+  --border-focus: var(--accent-400);
+}
+:root {
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.07);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.16);
+  --shadow-inner: inset 0 2px 4px rgba(16, 24, 40, 0.04);
+  --shadow-ambient-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-directional-sm: 0 1px 4px rgba(0, 0, 0, 0.03);
+  --shadow-layered-sm: var(--shadow-ambient-sm), var(--shadow-directional-sm);
+  --shadow-ambient-md: 0 4px 6px rgba(0, 0, 0, 0.02);
+  --shadow-directional-md: 0 8px 16px rgba(0, 0, 0, 0.06);
+  --shadow-layered-md: var(--shadow-ambient-md), var(--shadow-directional-md);
+  --shadow-ambient-lg: 0 8px 16px rgba(0, 0, 0, 0.04);
+  --shadow-directional-lg: 0 16px 32px rgba(0, 0, 0, 0.08);
+  --shadow-layered-lg: var(--shadow-ambient-lg), var(--shadow-directional-lg);
+  --shadow-ambient-xl: 0 16px 32px rgba(0, 0, 0, 0.06);
+  --shadow-directional-xl: 0 32px 64px rgba(0, 0, 0, 0.1);
+  --shadow-layered-xl: var(--shadow-ambient-xl), var(--shadow-directional-xl);
+  --shadow-inner-strong: inset 0 2px 8px rgba(16, 24, 40, 0.08);
+  --shadow-accent-lg: 0 8px 24px rgba(79, 70, 229, 0.15);
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-border-strong: rgba(255, 255, 255, 0.3);
+  --glass-backdrop: blur(20px) saturate(180%);
+  --glass-backdrop-heavy: blur(32px) saturate(200%);
+  --glow-accent: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  --glow-accent-strong: 0 0 0 4px rgba(99, 102, 241, 0.25);
+  --glow-error: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  --glow-success: 0 0 0 3px rgba(34, 197, 94, 0.15);
+  --glow-focus: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--accent-500);
+  --gradient-accent: linear-gradient(
+    180deg,
+    var(--accent-500),
+    var(--accent-600)
+  );
+  --gradient-accent-hover: linear-gradient(
+    180deg,
+    var(--accent-400),
+    var(--accent-500)
+  );
+  --gradient-accent-active: linear-gradient(
+    180deg,
+    var(--accent-600),
+    var(--accent-700)
+  );
+  --gradient-surface: linear-gradient(
+    180deg,
+    var(--neutral-0),
+    var(--neutral-50)
+  );
+  --gradient-overlay: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(255, 255, 255, 0.95)
+  );
+  --gradient-shimmer: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  --border-glass: var(--glass-border);
+  --surface-glass: var(--glass-bg);
+  --surface-glass-elevated: var(--glass-bg-elevated);
+}
+[data-theme=dark] {
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.6);
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  --shadow-ambient-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-directional-sm: 0 1px 4px rgba(0, 0, 0, 0.25);
+  --shadow-layered-sm: var(--shadow-ambient-sm), var(--shadow-directional-sm);
+  --shadow-ambient-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-directional-md: 0 8px 16px rgba(0, 0, 0, 0.4);
+  --shadow-layered-md: var(--shadow-ambient-md), var(--shadow-directional-md);
+  --shadow-ambient-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
+  --shadow-directional-lg: 0 16px 32px rgba(0, 0, 0, 0.5);
+  --shadow-layered-lg: var(--shadow-ambient-lg), var(--shadow-directional-lg);
+  --shadow-ambient-xl: 0 16px 32px rgba(0, 0, 0, 0.5);
+  --shadow-directional-xl: 0 32px 64px rgba(0, 0, 0, 0.6);
+  --shadow-layered-xl: var(--shadow-ambient-xl), var(--shadow-directional-xl);
+  --shadow-inner-strong: inset 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-accent-lg: 0 8px 24px rgba(129, 140, 248, 0.2);
+  --glass-bg: rgba(18, 18, 26, 0.85);
+  --glass-bg-elevated: rgba(26, 26, 37, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-strong: rgba(255, 255, 255, 0.12);
+  --glass-backdrop: blur(24px) saturate(160%);
+  --glass-backdrop-heavy: blur(40px) saturate(180%);
+  --glow-accent: 0 0 0 3px rgba(129, 140, 248, 0.2);
+  --glow-accent-strong: 0 0 0 4px rgba(129, 140, 248, 0.3);
+  --glow-error: 0 0 0 3px rgba(248, 113, 113, 0.2);
+  --glow-success: 0 0 0 3px rgba(74, 222, 128, 0.2);
+  --glow-focus: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--accent-400);
+  --gradient-accent: linear-gradient(
+    180deg,
+    var(--accent-400),
+    var(--accent-500)
+  );
+  --gradient-accent-hover: linear-gradient(
+    180deg,
+    var(--accent-300),
+    var(--accent-400)
+  );
+  --gradient-accent-active: linear-gradient(
+    180deg,
+    var(--accent-500),
+    var(--accent-600)
+  );
+  --gradient-surface: linear-gradient(
+    180deg,
+    var(--neutral-0),
+    var(--neutral-50)
+  );
+  --gradient-overlay: linear-gradient(
+    180deg,
+    rgba(10, 10, 15, 0.98),
+    rgba(10, 10, 15, 0.95)
+  );
+  --gradient-shimmer: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+}
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out-smooth: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-in-out-sine: cubic-bezier(0.37, 0, 0.63, 1);
+  --duration-instant: 0ms;
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 400ms;
+  --duration-slowest: 500ms;
+  --transition-fast: 150ms ease-out;
+  --transition-base: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-width: 200ms ease-in-out;
+  --transform-hover-lift: translateY(-1px);
+  --transform-active-press: scale(0.98);
+  --transform-modal-enter: scale(0.95);
+  --transform-modal-active: scale(1);
+  --transform-drawer-enter: translateX(100%);
+  --transform-drawer-active: translateX(0);
+  --transform-toast-enter: translateX(100%);
+  --transform-toast-active: translateX(0);
+}
+@keyframes luna-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes luna-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes luna-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes luna-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes luna-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes luna-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes luna-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes luna-scale-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+@keyframes luna-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes luna-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes luna-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+@keyframes luna-pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+@keyframes luna-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes luna-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+@keyframes luna-count-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --duration-slower: 0ms;
+    --duration-slowest: 0ms;
+    --transition-fast: 0ms;
+    --transition-base: 0ms;
+    --transition-slow: 0ms;
+    --transition-width: 0ms;
+  }
+}
+:root {
+  --space-0: 0px;
+  --space-px: 1px;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --radius-none: 0px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+  --z-local: 1;
+  --z-sticky-content: 10;
+  --z-page-panel: 200;
+  --z-overlay: 1050;
+  --z-sidebar-overlay: 999;
+  --z-sidebar-overlay-active: 1000;
+  --z-layout-toggle: 1001;
+  --z-sidebar: 1100;
+  --z-modal: 1200;
+  --z-dropdown-in-modal: 1250;
+  --z-tooltip: 1300;
+  --z-toast: 1400;
+}
+:root {
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+  --font-display: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-numeric: "Inter", -apple-system, sans-serif;
+  --font-variant-numeric: tabular-nums;
+  --font-variant-proportional: proportional-nums;
+  --text-2xs: 10px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  --text-4xl: 36px;
+  --text-5xl: 48px;
+  --lh-2xs: 14px;
+  --lh-xs: 16px;
+  --lh-sm: 18px;
+  --lh-base: 20px;
+  --lh-md: 24px;
+  --lh-lg: 28px;
+  --lh-xl: 30px;
+  --lh-2xl: 32px;
+  --lh-3xl: 38px;
+  --lh-4xl: 44px;
+  --lh-5xl: 56px;
+  --ls-2xs: 0.02em;
+  --ls-xs: 0.01em;
+  --ls-sm: 0;
+  --ls-base: 0;
+  --ls-md: -0.01em;
+  --ls-lg: -0.02em;
+  --ls-xl: -0.02em;
+  --ls-2xl: -0.02em;
+  --ls-3xl: -0.03em;
+  --ls-4xl: -0.03em;
+  --ls-5xl: -0.04em;
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+}
+:root {
+  --size-control-xs: 28px;
+  --size-control-sm: 32px;
+  --size-control-md: 36px;
+  --size-control-lg: 40px;
+}

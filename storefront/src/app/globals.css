@@ -1,0 +1,77 @@
+@import '../styles/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Capa propia de la tienda encima de los tokens del ERP.
+ * Regla: ningun color hexadecimal literal en los componentes; todo sale de las
+ * variables --* que emite scripts/sync-tokens.mjs.
+ */
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--lh-base);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: var(--ls-md);
+  }
+
+  ::selection {
+    background-color: var(--accent-100);
+    color: var(--accent-900);
+  }
+}
+
+@layer components {
+  /* Boton primario de la tienda (compra movil, no la densidad del back office). */
+  .sf-btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-5 text-sm font-semibold transition-colors duration-fast;
+  }
+
+  .sf-btn-primary {
+    @apply sf-btn bg-primary text-primary-fg hover:bg-primary-hover;
+  }
+
+  .sf-btn-secondary {
+    @apply sf-btn border border-line bg-base text-fg hover:bg-hover;
+  }
+
+  .sf-btn:disabled {
+    @apply cursor-not-allowed bg-surface text-fg-disabled;
+  }
+
+  .sf-chip {
+    @apply inline-flex items-center rounded-full border border-line bg-elevated px-3 py-1 text-xs font-medium text-fg-secondary;
+  }
+
+  .sf-card {
+    @apply rounded-lg border border-line bg-base transition-shadow duration-base hover:shadow-layered;
+  }
+
+  .sf-field {
+    @apply min-h-[40px] w-full rounded-md border border-line bg-base px-3 text-sm text-fg placeholder:text-fg-tertiary;
+  }
+
+  .sf-link {
+    @apply rounded text-fg-accent underline-offset-2 hover:underline;
+  }
+}
