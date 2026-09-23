@@ -672,6 +672,51 @@ del artículo (`ItemWeb`) gana su propio descuento con vigencia, que **solo** ap
 | **F8.2** | `ItemWeb` con descuento del canal + la tienda lo publica y lo aplica como capa propia | Unitarios del canal (promo vigente/vencida/ausente, acumulación con la oferta y con el descuento de empresa) y E2E de la tienda con la promo visible en el desglose |
 | **F8.3** | Pantalla **Ventas → Tienda online → Promociones del canal** (permiso propio) + paridad medida | Karma de la pantalla + spec E2E de UI de la bandeja de promociones, y el E2E de paridad de las tres superficies con y sin promo configurada |
 
+### §13.b Estado de F8.1 — el motor de precios es uno y la paridad está medida (2026-09-23, T198)
+
+**Implementado (backend)**:
+
+- **La oferta de catálogo entra al motor del ERP**: `resolveCatalogPrice` (en
+  `price-resolver.util.ts`) es la **única** regla de la oferta (`Item.salePrice` dentro de su
+  vigencia, evaluada con el **día del tenant** y con la **fecha del documento**); la usa el
+  canal de la tienda y el resolver de precios, así que no pueden divergir.
+- **`resolveItemPriceForPartner` aplica la oferta como precio base** de toda la jerarquía
+  (acuerdo fijo → acuerdo % → grupo → precio especial de lista → lista del tercero → **precio
+  vigente**), y el descuento se calcula sobre ella. Ventas, entregas y POS pasan por ahí: un
+  pedido manual, una venta del POS y un pedido web del mismo artículo cobran lo mismo. El
+  resolver devuelve además `listPrice` y `offerPct` (las capas, para publicarlas).
+- **El canal ya no replica la jerarquía**: la cotización y el alta usan el **mismo**
+  `resolveItemPriceForPartner` (antes usaba `resolveAutoDiscount` por su cuenta), así que
+  cualquier ganador (acuerdo, grupo, lista, oferta) es idéntico al del documento; el descuento
+  ganador viaja **explícito** (`discountPct` o `discountAmt`) y publica su `source`.
+- **El POS resuelve el impuesto como el resto del ERP** (defecto medido, ver abajo) y evalúa
+  las vigencias con la **fecha del tenant**.
+- **La oferta es configurable por API**: `salePrice` + `salePriceFrom`/`salePriceTo` en el
+  alta y la edición de artículos, y `GET /items/:id/effective-price?partnerId=&quantity=`
+  devuelve el precio vigente que el ERP aplicaría (lo que la pantalla debe **proponer**).
+
+**DEFECTO MEDIDO Y CERRADO (el que la validación de paridad destapó)**: el POS resolvía el
+impuesto con el indicador del **tercero** a secas (`partner.defaultTaxIndicator`) y, sin
+indicador por defecto (el caso del consumidor final de la tienda), emitía la factura **sin
+IVA**: `FVE-1` con `subtotal 810 / tax 0 / total 810` mientras el pedido de venta y la web del
+mismo artículo cobraban `810 + 105,30 = 915,30`. Ahora cada línea usa
+`resolveLineTaxIndicator` (línea → tercero → artículo → global), el mismo motor que los
+documentos.
+
+**Evidencia**: **E2E de paridad** en `test/storefront-channel.e2e-spec.ts` (caso «el mismo
+artículo se cobra EXACTAMENTE igual en pedido de venta, POS y tienda»): artículo con **oferta
+vigente** (1000 → 900) en un grupo con 10 % → el precio resuelto es `900 / 810` y las tres
+superficies coinciden en `price`, `discountPct`, `priceNet`, `taxAmount` y **total** (POS con
+sesión de caja real, creada por el caso); **unitarios**: 5 casos nuevos del resolver (oferta
+vigente/vencida/futura, la oferta como base del descuento de grupo, el acuerdo fijo que sigue
+ganando y `resolveCatalogPrice` con los extremos de vigencia), 1 del POS (impuesto del
+artículo sin indicador del tercero) y el canal **40/40**.
+
+**Pendiente de F8.1 (declarado)**: que el **formulario de artículos** del back office exponga
+la oferta (`salePrice` + vigencia) y que las pantallas de ventas/POS **propongan** el precio
+con `GET /items/:id/effective-price` en lugar de tomar el precio de lista del maestro; el
+backend ya lo resuelve y lo publica, así que es trabajo de UI sin cambios de contrato.
+
 **Declarado**: el descuento del canal se aplica **solo** a la mercancía (el flete sigue siendo el
 importe de la ciudad) y no cambia el IVA —el impuesto lo sigue calculando el motor del ERP sobre el
 precio ya promocionado, como en T197—; la oferta de catálogo y la promo del canal **se acumulan**
