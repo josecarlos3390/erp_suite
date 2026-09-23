@@ -93,6 +93,14 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
             {paymentStatusLabel(order.paymentStatus)} ·{' '}
             {paymentMethodLabel(order.paymentMethod)}
           </dd>
+          {order.paymentReference !== null ? (
+            <>
+              <dt className="mt-2 text-fg-secondary">Referencia del pago</dt>
+              <dd className="font-medium text-fg" data-testid="order-payment-reference">
+                {order.paymentReference}
+              </dd>
+            </>
+          ) : null}
           {order.erp !== null ? (
             <>
               <dt className="mt-2 text-fg-secondary">Estado en el ERP</dt>

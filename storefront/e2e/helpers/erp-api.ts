@@ -98,6 +98,9 @@ export interface ApiOrder {
   total: number;
   salesOrderId: number | null;
   salesOrderCode: string | null;
+  /** Referencia del pago offline que anoto el comprador (null mientras no la anote). */
+  paymentReference: string | null;
+  paymentReferenceAt: string | null;
   /** Estado crudo del documento del ERP del que se deriva el del comprador. */
   erp: {
     status: string;

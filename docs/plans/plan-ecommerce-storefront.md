@@ -187,7 +187,7 @@ de determinación de cuentas. La tienda **no** escribe asientos ni stock: **crea
 9. **Doble escritura**: el pedido web y el `SalesOrder` se crean en **una** transacción del ERP
    (idempotente por `idempotencyKey`); la tienda nunca corrige el pedido por su cuenta.
 
-## §9 Decisiones tomadas (D1–D13)
+## §9 Decisiones tomadas (D1–D16)
 
 | # | Decisión | Elegido |
 |---|---|---|
@@ -204,6 +204,9 @@ de determinación de cuentas. La tienda **no** escribe asientos ni stock: **crea
 | **D11** | Bootstrap de la tienda | **npm** (como los otros dos proyectos) con **Next.js 14 App Router + TypeScript + Tailwind 3 + Zustand** (D1) y los **tokens del ERP compilados** por script (`storefront/scripts/sync-tokens.mjs`: `erp-frontend/src/styles/tokens/_0*.scss` → `storefront/src/styles/tokens.css`) con modo **`--check`** para que no se desincronicen: una sola fuente de verdad y un gate que lo comprueba |
 | **D12** | Los precios de la tienda y los descuentos del ERP (**A**, aprobada el 2026-09-23) | **La tienda respeta el descuento automático del ERP y lo muestra**: la cotización corre el **mismo** motor (`resolveAutoDiscount`: grupo de artículos, acuerdo del tercero, precio especial de su lista) para el tercero del comprador y publica el descuento por línea; el alta manda el `%` **explícito**, así que lo cotizado y lo cobrado no pueden discrepar. Se descartó que la tienda fije su propio precio (`discountPct: 0`): el mismo artículo costaría distinto en la web que en el POS del ERP, que sí aplica el descuento. **Consecuencia declarada**: el descuento de empresa se **acumula** con la oferta de catálogo (`salePrice`), y el **flete** no participa (es un importe configurado por la ciudad) |
 | **D13** | De dónde sale el estado del pedido (aprobada el 2026-09-23) | **Derivado en vivo del documento del ERP**: el canal lee el pedido de venta y sus cantidades entregadas/facturadas (`deliveredQty`/`invoicedQty`) y el estado del documento, y publica el estado del comprador **y** el estado crudo del ERP. Se descartó copiarlo a `WebOrder.status` (dos verdades que se desfasan) y una bandeja manual de pedidos web (más control comercial, pero puede contradecir al flujo). El **pago** se deriva de la factura del pedido |
+| **D14** | Pedidos abandonados (**F3 #2**, aprobada el 2026-09-23) | **Cancelación por antigüedad**: una tarea (script invocable por cron, con el **plazo configurable por empresa**) anula los pedidos web **sin pago** más antiguos que el plazo usando el `cancel` del flujo de ventas, de modo que el stock comprometido se **libera** y el comprador ve `CANCELLED` (ya derivado del documento). Se descartó la reserva propia del canal con TTL (no comprometer stock hasta el pago): con pago **offline** el comprador puede tardar días y no se puede retener existencia tanto tiempo, y el stock agotado antes de pagar rompería la promesa de la cotización |
+| **D15** | Comprobante del pago offline (**F3 #4**, aprobada el 2026-09-23) | **Referencia de pago escrita por el comprador**: el comprador anota el número de operación (y la fecha) de su transferencia/QR en la confirmación o el seguimiento, y el canal la guarda en la proyección (`WebOrder.paymentReference`) para que la conciliación del back office tenga el dato. Se descartó subir el **archivo** del comprobante: el ERP no tiene almacenamiento de archivos hoy, así que la decisión correcta es no inventar uno; la **conciliación** sigue en el ERP (`IncomingPayment`, D4) |
+| **D16** | Correo transaccional (**F3 #5**, aprobada el 2026-09-23) | **Declarado, sin implementar ahora**: la confirmación en pantalla ya publica número y código de seguimiento y `/seguimiento` se consulta con el número (y el código de pedido). El backend **no tiene proveedor** de correo; se retoma cuando haya credenciales (SMTP por empresa o proveedor externo), y mientras tanto el hueco queda escrito |
 
 ## §10 F1 — desglose de trabajo (modelo y API de canal)
 
@@ -407,4 +410,72 @@ decisiones de producto que quedaban pendientes se tomaron con el usuario:
 pago offline (#4) y proveedor de **correo** transaccional (#5) —los tres, decisiones de
 producto—; el E2E de la **conciliación del pago** (factura + pago entrante) queda declarado: la
 derivación del pago está medida en unitarios, y el flujo de cobros tiene su propia suite.
+
+### §12.d Estado de F3.3 — pedidos abandonados, referencia del pago y correo (medido el 2026-09-23, T193/T194)
+
+Los tres huecos que quedaban necesitaban decisión de producto y se resolvieron con el usuario
+(**D14**, **D15** y **D16**, §9). Dos se implementaron y se midieron; el tercero queda
+**declarado**.
+
+**D15 — la referencia del pago offline (T193).**
+
+- `WebOrder` gana `paymentReference` + `paymentReferenceAt` (migración idempotente
+  `20260923110644_storefront_payment_reference`, dos columnas) y el canal estrena
+  **`POST /storefront/payment-reference`**: el comprador anota el número de operación de su
+  transferencia/QR **después** de confirmar, y el canal la guarda para que el back office
+  encuentre el pago al conciliarlo. **No cobra**: el pago lo registra el ERP
+  (`IncomingPayment`, D4) y el estado del pago se sigue **derivando** de la factura (D13).
+- Se **exige el correo del pedido** para escribir (conocer el número de pedido no basta) y se
+  rechaza escribir en un pedido **anulado** (no admite pago) o ya **pagado**. El mismo mensaje
+  que el seguimiento cuando el correo no corresponde: no se confirma si el pedido existe.
+- En la tienda, el formulario vive en la confirmación y en el seguimiento (solo cuando el
+  pedido no tiene referencia), el desglose muestra la referencia guardada y el texto dice
+  **lo que la referencia no hace** (no marca el pedido como pagado).
+- **DEFECTO REAL, hallado por el E2E de la tienda**: `getTracking` cacheaba el pedido **30 s**
+  (`REVALIDATE.tracking`), así que al anotar la referencia y recargar, la confirmación servía
+  el pedido **anterior** (sin la referencia) —el comprador habría visto que su dato «no se
+  guardó»—. El estado del pedido es justo lo que el ERP mueve y lo que el comprador acaba de
+  cambiar: ahora se lee **sin caché** (`no-store`, `REVALIDATE.tracking = 0`), con el porqué
+  anotado en el código.
+- **Evidencia**: **5 unitarios nuevos** del canal (guarda la referencia sin cobrar, exige el
+  correo del pedido, rechaza el anulado y el pagado, 404 del ajeno) y un caso E2E del canal
+  (correo ajeno → 404, correo del pedido → referencia publicada por el seguimiento y pago
+  **sigue** pendiente, referencia corta → 400) más un caso E2E de la tienda que la anota con el
+  formulario real, comprueba que el canal la publica y que al volver a la confirmación aparece
+  en el desglose (y el formulario ya no se ofrece).
+
+**D14 — los pedidos abandonados (T194).**
+
+- Ajuste nuevo **`SystemSettings.webOrderTtlHours`** (default **48 h**; `0` = todos los
+  impagos) expuesto en el `PUT /settings` del ERP, y tarea del canal
+  **`POST /storefront/maintenance/cancel-abandoned`** (con la clave, para que la dispare un
+  cron) que anula los pedidos web **sin pago** más antiguos que el plazo con el `cancel` del
+  **flujo de ventas**: así la existencia comprometida **se libera** y el comprador ve
+  «Anulado» (derivado del documento, D13).
+- Es **conservadora e idempotente**: omite lo que el ERP ya dio por pagado, lo que **ya salió
+  del almacén** (`SHIPPED`/`DELIVERED`: el flujo de ventas rechaza anular un pedido con
+  entregas, medido **400**) y lo que ya estaba anulado, y devuelve el detalle de cada omisión
+  con su motivo en vez de fallar la corrida.
+- **Evidencia**: **6 unitarios nuevos** (anula con el `cancel` del flujo, no toca lo pagado, no
+  anula lo entregado, es idempotente, una anulación rechazada no corta la corrida y usa el
+  plazo configurado filtrando por ese corte) y un caso E2E que **configura el plazo por la vía
+  real** (la pantalla de ajustes del ERP, `PUT /settings`) con `0`, crea un pedido por el
+  canal, mide que el documento pasa de `OPEN` a **`CANCELLED`** con la existencia comprometida
+  **liberada**, que el seguimiento lo publica como anulado y que una segunda barrida **no**
+  vuelve a anularlo; el plazo se restaura al terminar.
+- **Declarado**: el campo en la pantalla de Configuración del frontend (el API ya lo acepta) y
+  la línea de cron concreta (el endpoint es el que la ejecuta); el caso «no toca lo pagado»
+  está medido en unitarios, no en el E2E (crear la factura y el pago entrante es un flujo con
+  su propia suite).
+
+**D16 — el correo transaccional.**
+
+- **Declarado, sin implementar**: el backend no tiene proveedor de correo. La confirmación en
+  pantalla publica número y código de seguimiento y `/seguimiento` se consulta con el número
+  (y el código), así que el comprador no queda sin su pedido; cuando haya credenciales (SMTP
+  por empresa o proveedor externo) se retoma.
+- **Lo que tampoco existe todavía**: una **bandeja de pedidos web** en el back office (hueco
+  declarado desde F1). Hoy el back office ve el **pedido de venta** del ERP y su detalle; la
+  referencia del pago vive en la proyección del canal y la publica la tienda, así que la
+  bandeja (con la referencia a la vista) es la pieza natural de F5.
 

@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { OrderSummary } from '@/components/order-summary';
+import { PaymentReferenceForm } from '@/components/payment-reference-form';
 import { CHECKOUT_LIMITS } from '@/lib/checkout';
 import { ErpError, getTracking } from '@/lib/erp';
 import type { OrderView } from '@/lib/order-view';
@@ -156,6 +157,13 @@ export default async function TrackingPage({ searchParams }: TrackingPageProps):
 
       {lookupResult?.order !== null && lookupResult?.order !== undefined ? (
         <OrderSummary order={lookupResult.order} />
+      ) : null}
+
+      {lookupResult?.order !== null &&
+      lookupResult?.order !== undefined &&
+      lookupResult.order.paymentReference === null &&
+      lookupResult.order.status !== 'CANCELLED' ? (
+        <PaymentReferenceForm orderNumber={lookupResult.order.orderNumber} />
       ) : null}
     </div>
   );

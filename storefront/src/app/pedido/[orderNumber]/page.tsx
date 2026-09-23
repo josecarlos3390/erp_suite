@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { OrderSummary } from '@/components/order-summary';
+import { PaymentReferenceForm } from '@/components/payment-reference-form';
 import { getTracking } from '@/lib/erp';
 
 export const metadata: Metadata = {
@@ -54,6 +55,10 @@ export default async function OrderPage({ params }: OrderPageProps): Promise<JSX
       </header>
 
       <OrderSummary order={order} />
+
+      {order.paymentReference === null && order.status !== 'CANCELLED' ? (
+        <PaymentReferenceForm orderNumber={order.orderNumber} />
+      ) : null}
 
       <nav aria-label="Siguientes pasos" className="flex flex-wrap gap-2">
         <Link href="/seguimiento" className="sf-btn-primary">

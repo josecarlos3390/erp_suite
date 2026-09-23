@@ -240,6 +240,46 @@ test.describe('Checkout de invitado', () => {
     expect(await readMoney(page.getByTestId('order-total'))).toBe(stored.total);
   });
 
+  test('el comprador anota la referencia de su pago offline y queda guardada en el pedido', async ({
+    page,
+  }) => {
+    // El pago offline ocurre **despues** de confirmar (D15): el pedido existe y la
+    // referencia se anota aparte, sin que eso marque el pedido como pagado.
+    const { order, buyer } = await createRealOrder('referencia');
+
+    await page.goto(`/pedido/${order.orderNumber}`);
+    await expect(page.getByTestId('order-number')).toHaveText(order.orderNumber);
+    await expect(page.getByTestId('order-payment-reference')).toHaveCount(0);
+    await expect(page.getByTestId('payment-reference-form')).toBeVisible();
+
+    // Con un correo que no es el del pedido, el canal corta con 404 (no se confirma si el
+    // numero existe) y la tienda muestra ese mensaje tal cual.
+    await page.getByTestId('payment-reference-email').fill('ajeno@example.com');
+    await page.getByTestId('payment-reference-input').fill('TRANSF-000001');
+    await page.getByTestId('payment-reference-submit').click();
+    await expect(page.getByTestId('payment-reference-error')).toContainText(order.orderNumber);
+
+    // Con el correo del pedido, la referencia se guarda.
+    await page.getByTestId('payment-reference-email').fill(buyer.email);
+    await page.getByTestId('payment-reference-input').fill('TRANSF-884422');
+    await page.getByTestId('payment-reference-submit').click();
+    await expect(page.getByTestId('payment-reference-saved')).toBeVisible();
+    await expect(page.getByTestId('payment-reference-value')).toHaveText('TRANSF-884422');
+
+    // El pedido del canal la publica (no es solo pantalla) y sigue **sin pagar**: la
+    // conciliacion es del ERP y el estado del pago se deriva de su factura.
+    const stored = await trackOrder(order.orderNumber);
+    expect(stored?.paymentReference).toBe('TRANSF-884422');
+    expect(stored?.paymentReferenceAt).not.toBeNull();
+    expect(stored?.paymentStatus).toBe('pending');
+
+    // Al volver a la confirmacion, la referencia aparece en el desglose y el formulario
+    // ya no se ofrece (no hay nada que anotar dos veces).
+    await page.goto(`/pedido/${order.orderNumber}`);
+    await expect(page.getByTestId('order-payment-reference')).toHaveText('TRANSF-884422');
+    await expect(page.getByTestId('payment-reference-form')).toHaveCount(0);
+  });
+
   test('dos envios con la misma clave de idempotencia devuelven el mismo pedido', async ({
     page,
   }) => {

@@ -74,6 +74,9 @@ export interface OrderView {
   total: number;
   salesOrderId: number | null;
   salesOrderCode: string | null;
+  /** Referencia del pago offline que anoto el comprador (null mientras no la anote). */
+  paymentReference: string | null;
+  paymentReferenceAt: string | null;
   /** Estado crudo del documento del ERP (null si el pedido no tiene documento). */
   erp: {
     status: string;

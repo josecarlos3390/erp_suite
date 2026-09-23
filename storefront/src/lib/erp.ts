@@ -254,7 +254,13 @@ const REVALIDATE = {
   cities: 3600,
   product: 60,
   related: 120,
-  tracking: 30,
+  /**
+   * El **pedido** no se cachea (`0`): su estado es lo que el ERP acaba de mover (entrega,
+   * factura) y lo que el comprador acaba de cambiar (la referencia de su pago). Una
+   * respuesta vieja aqui no es rapidez, es mentira: medido, tras anotar la referencia la
+   * confirmacion servia el pedido anterior.
+   */
+  tracking: 0,
 } as const;
 
 type QueryValue = string | number | undefined;
@@ -317,7 +323,11 @@ async function erpGet<T>(
         'x-storefront-key': apiKey(),
       },
       signal: AbortSignal.timeout(timeout),
-      next: { revalidate },
+      // `revalidate: 0` = **sin cache**: el estado del pedido es lo que el comprador
+      // acaba de cambiar (su referencia de pago) y lo que el ERP mueve al entregar; una
+      // respuesta vieja aqui no es rapidez, es mentira (defecto medido: tras anotar la
+      // referencia, la confirmacion servia el pedido anterior).
+      ...(revalidate > 0 ? { next: { revalidate } } : { cache: 'no-store' as const }),
     });
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
@@ -591,6 +601,25 @@ export async function getTracking(order: string, email?: string): Promise<OrderV
     { order: order.trim(), email: email?.trim() },
     REVALIDATE.tracking,
   );
+}
+
+/**
+ * POST /storefront/payment-reference — anota la referencia del pago offline (D15).
+ *
+ * El comprador paga **despues** de confirmar, asi que no cabe en el alta: este POST
+ * escribe solo esa referencia. **No cobra** (el pago lo registra el ERP y el estado se
+ * deriva de su factura) y el canal exige el correo del pedido para escribir en el.
+ */
+export async function registerPaymentReference(request: {
+  order: string;
+  email: string;
+  reference: string;
+}): Promise<OrderView> {
+  return erpPost<OrderView>('/storefront/payment-reference', {
+    order: request.order.trim(),
+    email: request.email.trim(),
+    reference: request.reference.trim(),
+  });
 }
 
 /** Busca un nodo de categoria por slug en el arbol (raices y descendientes). */
