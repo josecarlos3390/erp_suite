@@ -282,3 +282,26 @@ la tienda escribe en el ERP **solo** por el canal público.
 gates del repo (backend `npm test`, `lint`, `tsc` y la suite del canal) y de la tienda
 (`build`, `lint`, `e2e`) en verde en cada tramo que los toque.
 
+## §12 F3 — checkout, pedido y seguimiento · huecos medidos al cerrar F1/F2
+
+F3 es «checkout multi-paso (guest), métodos offline, `POST` de pedido, confirmación,
+seguimiento público y correo». La pieza de **alta de pedido del canal ya existe** desde
+F1 (§10.b punto 4), así que F3 empieza por los huecos que el código de hoy **no** cubre,
+medidos en `storefront.service.ts`:
+
+| # | Hueco medido | Qué falta (decisión o trabajo) |
+|---|---|---|
+| 1 | **El canal no cobra el envío**: `createOrder` fija `shipping = 0` y `total = total del SalesOrder`, aunque `WebCity` ya publica `shippingCost` y `freeShippingFrom` | Calcular el envío por ciudad (y el envío gratis por umbral) y decidir **dónde entra** en el ERP: ¿gasto de cabecera / línea de servicio del pedido / solo en `WebOrder`? El `SalesOrder` tiene sus propios totales y el asiento de la venta no debe descuadrar → **decisión de producto** |
+| 2 | **Reserva con TTL**: el `SalesOrder` abierto **compromete existencia sin vencimiento** (medido: `stockCommitted = 2`) | Cancelar automáticamente los pedidos abandonados (job por antigüedad + `salesOrders.cancel`) o reservar con TTL propio del canal; **decisión de producto** (plazo y si el carrito reserva) |
+| 3 | **Quién mueve el estado del pedido**: `WebOrder.status` nace `PENDING` y **ninguna pantalla del ERP lo cambia** (el back office no tiene bandeja de pedidos web) | Decidir: (a) **derivar** el estado del flujo del ERP (sin entrega → `PENDING`; con entrega abierta → `SHIPPED`; con factura contabilizada → `DELIVERED`; `SalesOrder` anulado → `CANCELLED`) o (b) **bandeja de pedidos web** en el ERP que lo mueva a mano. La derivación no necesita pantalla nueva y es imposible de desincronizar; la bandeja permite estados comerciales que el ERP no tiene |
+| 4 | **Pago offline sin comprobante**: no hay dónde guardar el comprobante de la transferencia/QR | Añadir a `WebOrder` (`paymentReference`, `paymentProofUrl`, `paidAt`) o dejar la conciliación **solo** en `IncomingPayment` del back office (D4); **decisión de producto** |
+| 5 | **Correo transaccional**: el backend **no tiene proveedor** (no hay nodemailer) | Declarar el hueco o elegir proveedor (SMTP/SES/Resend) + plantillas; **decisión del usuario** |
+| 6 | **`/checkout` no existe**: la tienda aún no tiene pasos, ni resumen, ni confirmación | Construir el checkout de invitado (datos, ciudad, entrega, método de pago, confirmación con número y código de seguimiento), con la clave del canal **solo** server-side (D10) |
+| 7 | **Seguimiento**: el endpoint público existe (`GET /storefront/tracking?order=&email=`) | Página `/seguimiento` en la tienda con la línea de tiempo del estado y el detalle de líneas |
+
+**Orden de ejecución de F3**: decidir 1–5 (con el usuario) → implementar el envío (#1) y la
+cancelación por antigüedad (#2) con su E2E en el canal → estado del pedido (#3) → checkout
+y confirmación en la tienda (#6) → seguimiento (#7) → **gate medido**: una compra de punta a
+punta (tienda → `WebOrder` → `SalesOrder` del ERP) con el estado visible en el seguimiento y
+el stock comprometido/liberado según el ciclo.
+
