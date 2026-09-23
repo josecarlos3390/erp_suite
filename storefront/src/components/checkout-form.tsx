@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { ProductImage } from '@/components/product-image';
+import { TotalsBreakdown } from '@/components/totals-breakdown';
 import {
   CHECKOUT_LIMITS,
   CHECKOUT_PAYMENT_METHODS,
@@ -46,6 +47,17 @@ interface BuyerForm {
   street: string;
   district: string;
   reference: string;
+}
+
+/**
+ * Tasa del impuesto de la cotizacion cuando **todas** las lineas con impuesto comparten
+ * la misma (es la unica que se puede rotular sin mentir con tasas mixtas: `null`).
+ */
+function quoteTaxRate(items: QuoteView['items']): number | null {
+  const rates = items.filter((line) => line.taxRate > 0).map((line) => line.taxRate);
+  if (rates.length === 0) return null;
+  const [first] = rates;
+  return rates.every((rate) => rate === first) ? (first ?? null) : null;
 }
 
 const EMPTY_BUYER: BuyerForm = {
@@ -723,13 +735,33 @@ export function CheckoutForm({
                             {formatMoney(line.price, quoteState.quote.currency)} · disponible{' '}
                             {line.available}
                           </span>
+                          {line.offerDiscount > 0 ? (
+                            <span
+                              className="text-xs font-medium text-ok"
+                              data-testid="checkout-quote-line-offer"
+                            >
+                              Oferta de catalogo {line.offerPct}% · −
+                              {formatMoney(line.offerDiscount, quoteState.quote.currency)} · antes{' '}
+                              {formatMoney(line.listPrice, quoteState.quote.currency)}
+                            </span>
+                          ) : null}
                           {line.discount > 0 ? (
                             <span
                               className="text-xs font-medium text-ok"
                               data-testid="checkout-quote-line-discount"
                             >
-                              Descuento {line.discountPct}% · −
+                              Descuento de la empresa {line.discountPct}% · −
                               {formatMoney(line.discount, quoteState.quote.currency)}
+                            </span>
+                          ) : null}
+                          {line.taxAmount > 0 ? (
+                            <span
+                              className="text-xs text-fg-tertiary"
+                              data-testid="checkout-quote-line-tax"
+                            >
+                              Incluye {formatMoney(line.taxAmount, quoteState.quote.currency)} de
+                              impuesto · sin impuesto{' '}
+                              {formatMoney(line.netTotal, quoteState.quote.currency)}
                             </span>
                           ) : null}
                         </div>
@@ -741,44 +773,33 @@ export function CheckoutForm({
                   })}
                 </ul>
 
-                <dl className="flex flex-col gap-2 rounded-md border border-line bg-elevated p-4 text-sm">
-                  <div className="flex items-center justify-between">
-                    <dt className="text-fg-secondary">Subtotal</dt>
-                    <dd className="font-medium text-fg" data-testid="checkout-quote-subtotal">
-                      {formatMoney(quoteState.quote.subtotal, quoteState.quote.currency)}
-                    </dd>
-                  </div>
-                  {quoteState.quote.discount > 0 ? (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-fg-secondary">Descuento de la empresa</dt>
-                      <dd className="font-medium text-ok" data-testid="checkout-quote-discount">
-                        −{formatMoney(quoteState.quote.discount, quoteState.quote.currency)}
-                      </dd>
-                    </div>
-                  ) : null}
-                  <div className="flex items-center justify-between">
-                    <dt className="text-fg-secondary">
-                      Envio
-                      {quoteState.quote.freeShippingApplied
-                        ? ' (gratis por superar el umbral)'
-                        : quoteState.quote.shippingCharged
-                          ? ''
-                          : ' (esta ciudad no lo cobra)'}
-                    </dt>
-                    <dd className="font-medium text-fg" data-testid="checkout-quote-shipping">
-                      {formatMoney(quoteState.quote.shipping, quoteState.quote.currency)}
-                    </dd>
-                  </div>
-                  <div className="flex items-center justify-between border-t border-line pt-2">
-                    <dt className="font-semibold text-fg">Total de la cotizacion</dt>
-                    <dd
-                      className="text-lg font-bold text-fg"
-                      data-testid="checkout-quote-total"
-                    >
-                      {formatMoney(quoteState.quote.total, quoteState.quote.currency)}
-                    </dd>
-                  </div>
-                </dl>
+                <TotalsBreakdown
+                  currency={quoteState.quote.currency}
+                  listSubtotal={
+                    quoteState.quote.offerDiscount > 0
+                      ? quoteState.quote.listSubtotal
+                      : null
+                  }
+                  offerDiscount={quoteState.quote.offerDiscount}
+                  subtotal={quoteState.quote.subtotal}
+                  companyDiscount={quoteState.quote.discount}
+                  netSubtotal={quoteState.quote.netSubtotal}
+                  taxAmount={quoteState.quote.taxAmount}
+                  taxRate={quoteTaxRate(quoteState.quote.items)}
+                  taxInclusive={quoteState.quote.items.some(
+                    (line) => line.taxAmount > 0 && line.taxInclusive,
+                  )}
+                  shipping={quoteState.quote.shipping}
+                  shippingNote={
+                    quoteState.quote.freeShippingApplied
+                      ? 'gratis por superar el umbral'
+                      : quoteState.quote.shippingCharged
+                        ? undefined
+                        : 'esta ciudad no lo cobra'
+                  }
+                  total={quoteState.quote.total}
+                  prefix="checkout-quote"
+                />
 
                 <p
                   className="rounded-md border border-warn bg-warn-soft p-3 text-xs text-fg"

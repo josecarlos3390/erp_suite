@@ -450,11 +450,13 @@ export function paymentMethodInfo(code: string): PaymentMethodInfo | null {
 }
 
 /**
- * Aviso obligatorio del checkout: la cotizacion **no** incluye impuestos.
- * El impuesto lo aplica el ERP al confirmar y se ve en la confirmacion.
+ * Aviso fiscal del checkout: el desglose (**subtotal sin IVA, IVA y total**) lo calcula el
+ * ERP con la configuracion fiscal de la empresa y es el importe que se cobra al confirmar
+ * (mismo motor que el documento del pedido). Antes este aviso decia que la cotizacion no
+ * incluia impuestos, porque el canal no los publicaba (T197).
  */
 export const TAX_NOTICE =
-  'El total de la cotizacion no incluye impuestos: el ERP aplica el impuesto de la empresa al confirmar el pedido y el desglose real aparece en la confirmacion.';
+  'El desglose —subtotal sin IVA, IVA y total— lo calcula el ERP con la configuracion fiscal de la empresa, con el mismo motor que usa al confirmar: el importe que ves es el que se cobra. La confirmacion y el seguimiento publican los numeros del documento del ERP.';
 
 /** Aviso de donde se sigue el pedido despues de confirmarlo. */
 export const TRACKING_NOTICE =

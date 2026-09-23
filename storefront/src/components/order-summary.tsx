@@ -9,11 +9,25 @@ import {
   TRACKING_NOTICE,
 } from '@/lib/checkout';
 import { formatMoney } from '@/lib/format';
+import { TotalsBreakdown } from './totals-breakdown';
 
 interface OrderSummaryProps {
   order: OrderView;
   /** Nombre de la ciudad de entrega cuando la pagina lo conoce (opcional). */
   cityName?: string | undefined;
+}
+
+/**
+ * Tasa del impuesto cuando **todas** las lineas con impuesto comparten la misma: es la
+ * unica que se puede rotular sin mentir en un pedido con tasas mixtas (`null` entonces).
+ */
+function taxRateOf(items: OrderLine[]): number | null {
+  const rates = items
+    .filter((line) => line.taxRate > 0)
+    .map((line) => line.taxRate);
+  if (rates.length === 0) return null;
+  const [first] = rates;
+  return rates.every((rate) => rate === first) ? (first ?? null) : null;
 }
 
 /** Progreso de la entrega del documento del ERP, en palabras del comprador. */
@@ -44,22 +58,15 @@ function invoiceLabel(status: string): string {
  * Desglose de un pedido del canal, compartido por la confirmacion
  * (`/pedido/[orderNumber]`) y el seguimiento (`/seguimiento`).
  *
- * Se pintan **los numeros que devuelve el ERP**, sin recalcular nada en la
- * tienda: `subtotal` son las mercancias (con el descuento automatico de la empresa
- * ya aplicado, que es el que el canal cotizo), `shipping` el flete (que viaja como
- * una linea mas, `WEB-ENVIO`) y `tax` el impuesto que el motor del ERP sumo al
- * documento por encima de mercancias y envio. Las tres cifras suman el total por
- * construccion (`tax = total − subtotal − envio`): con el precio ya incluyendo el
- * impuesto, `tax` es cero porque va dentro del precio, cosa que decide la
- * configuracion fiscal de la empresa en el ERP, no la tienda.
+ * Se pintan **los numeros que devuelve el ERP**, sin recalcular nada en la tienda: el
+ * canal publica la mercancia sin impuestos, el impuesto y el descuento de la empresa tal
+ * como quedaron en el documento del pedido de venta, mas la oferta de catalogo que la
+ * tienda aplico (`listPrice` por linea). El desglose lo pinta `TotalsBreakdown`, el
+ * **mismo** componente que usa el checkout, asi que las dos pantallas no pueden contar
+ * cosas distintas.
  */
 export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Element {
   const paid = order.paymentStatus.toLowerCase() === 'paid';
-  // El ERP publica `tax` como lo que el documento suma por encima de mercancias y
-  // envio. Con la configuracion fiscal boliviana habitual (precio con el IVA incluido)
-  // el impuesto va **dentro** del precio, asi que aparece en cero: el desglose no lo
-  // inventa la tienda, sale del documento del ERP.
-  const taxLabel = 'Impuesto aplicado por el ERP';
 
   return (
     <div className="flex flex-col gap-4" data-testid="order-summary">
@@ -167,39 +174,23 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
 
       <section aria-label="Desglose" className="rounded-lg border border-line bg-elevated p-4">
         <h2 className="text-sm font-semibold text-fg">Desglose</h2>
-        <dl className="mt-3 flex flex-col gap-2 text-sm">
-          <div className="flex items-center justify-between">
-            <dt className="text-fg-secondary">Subtotal (mercancias)</dt>
-            <dd className="font-medium text-fg" data-testid="order-subtotal">
-              {formatMoney(order.subtotal, order.currency)}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt className="text-fg-secondary">Envio</dt>
-            <dd className="font-medium text-fg" data-testid="order-shipping">
-              {formatMoney(order.shipping, order.currency)}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt className="text-fg-secondary">{taxLabel}</dt>
-            <dd className="font-medium text-fg" data-testid="order-tax">
-              {formatMoney(order.tax, order.currency)}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between border-t border-line pt-2">
-            <dt className="font-semibold text-fg">Total</dt>
-            <dd className="text-lg font-bold text-fg" data-testid="order-total">
-              {formatMoney(order.total, order.currency)}
-            </dd>
-          </div>
-        </dl>
-
-        <p className="mt-3 text-xs text-fg-tertiary">
-          El subtotal son las mercancias ya con los descuentos de la empresa (los aplica el canal
-          del ERP al cotizar, asi que son los mismos que se cobraron). El impuesto lo calcula el
-          motor del ERP con la configuracion fiscal de la empresa: cuando el precio del articulo ya
-          lo trae incluido, el importe del impuesto aparece en cero porque va dentro del precio.
-        </p>
+        <div className="mt-3">
+          <TotalsBreakdown
+            currency={order.currency}
+            listSubtotal={order.offerDiscount > 0 ? order.listSubtotal : null}
+            offerDiscount={order.offerDiscount}
+            subtotal={order.subtotal}
+            companyDiscount={order.companyDiscount}
+            netSubtotal={order.netSubtotal}
+            taxAmount={order.tax}
+            taxRate={taxRateOf(order.items)}
+            taxInclusive={order.taxInclusive}
+            shipping={order.shipping}
+            shippingNote={order.shipping === 0 ? 'no se cobra' : undefined}
+            total={order.total}
+            prefix="order"
+          />
+        </div>
 
         <p
           className={`mt-3 rounded-md border p-3 text-xs ${

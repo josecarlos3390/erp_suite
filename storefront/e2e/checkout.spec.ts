@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import {
   findDiscountedProduct,
+  findOfferProduct,
   findShippableProduct,
   findUnquotableProduct,
   placeOrder,
@@ -131,8 +132,20 @@ test.describe('Checkout de invitado', () => {
     expect(expected.shippingCharged).toBe(true);
     expect(expected.subtotal).toBe(target.price);
 
-    // Y el aviso obligatorio: la cotizacion no incluye impuestos.
-    await expect(page.getByTestId('checkout-tax-notice')).toContainText('no incluye impuestos');
+    // El desglose fiscal **completo** (T197): mercancia sin IVA e IVA, con el mismo motor
+    // que el documento del ERP, y las cifras suman el total a pagar.
+    expect(await readMoney(page.getByTestId('checkout-quote-net-subtotal'))).toBe(
+      expected.netSubtotal,
+    );
+    expect(await readMoney(page.getByTestId('checkout-quote-tax'))).toBe(expected.taxAmount);
+    expect(Math.round((expected.netSubtotal + expected.taxAmount) * 100) / 100).toBe(
+      expected.total,
+    );
+
+    // Y el aviso: el desglose lo calcula el ERP y es el importe que se cobra.
+    await expect(page.getByTestId('checkout-tax-notice')).toContainText(
+      'lo calcula el ERP',
+    );
   });
 
   test('confirmar crea un pedido real y la confirmacion publica numero y codigo de seguimiento', async ({
@@ -172,6 +185,11 @@ test.describe('Checkout de invitado', () => {
     expect(await readMoney(page.getByTestId('order-shipping'))).toBe(stored.shipping);
     expect(await readMoney(page.getByTestId('order-tax'))).toBe(stored.tax);
     expect(await readMoney(page.getByTestId('order-total'))).toBe(stored.total);
+    // La confirmacion publica el desglose del **documento del ERP** (T197): la mercancia
+    // sin impuestos y el impuesto ya no salen en cero, y las dos cifras suman el total.
+    expect(await readMoney(page.getByTestId('order-net-subtotal'))).toBe(stored.netSubtotal);
+    expect(stored.tax).toBeGreaterThan(0);
+    expect(Math.round((stored.netSubtotal + stored.tax) * 100) / 100).toBe(stored.total);
 
     // El envio viaja como una linea mas del pedido (`WEB-ENVIO`) cuando la ciudad lo cobra.
     expect(stored.items.some((item) => item.sku === 'WEB-ENVIO')).toBe(true);
@@ -183,6 +201,46 @@ test.describe('Checkout de invitado', () => {
     await expect(page.getByTestId('cart-count')).toHaveText('0');
     await page.goto('/carrito');
     await expect(page.getByRole('heading', { name: 'Tu carrito esta vacio' })).toBeVisible();
+  });
+
+  test('la oferta de catalogo del ERP se muestra como oferta y el descuento de la empresa aparte', async ({
+    page,
+  }) => {
+    // Las dos capas del precio (T197): la **oferta de catalogo** del ERP (`Item.salePrice`
+    // vigente) y el **descuento de la empresa** se publican por separado, y el desglose
+    // muestra la mercancia sin IVA y el IVA del mismo motor que el documento. Antes el
+    // checkout mostraba un subtotal ya con la oferta y el descuento encima, sin impuestos:
+    // el comprador no podia explicarse de donde salia cada cifra.
+    const target = await findOfferProduct(CITY);
+    const buyer = defaultBuyer('oferta');
+
+    await addToCart(page, target.slug, '1');
+    await page.goto('/checkout');
+    await fillBuyer(page, buyer);
+    await chooseDeliveryAndPayment(page, 'TRANSFER');
+    await waitForQuote(page);
+
+    const line = page.getByTestId('checkout-quote-line').first();
+    await expect(line.getByTestId('checkout-quote-line-offer')).toContainText(
+      `Oferta de catalogo ${target.offerPct}%`,
+    );
+    expect(await readMoney(page.getByTestId('checkout-quote-list-subtotal'))).toBe(
+      target.listPrice,
+    );
+    expect(await readMoney(page.getByTestId('checkout-quote-offer-discount'))).toBe(
+      target.offerDiscount,
+    );
+    expect(await readMoney(page.getByTestId('checkout-quote-subtotal'))).toBe(target.price);
+    expect(await readMoney(page.getByTestId('checkout-quote-net-subtotal'))).toBe(
+      target.netSubtotal,
+    );
+    expect(await readMoney(page.getByTestId('checkout-quote-tax'))).toBe(target.taxAmount);
+    expect(await readMoney(page.getByTestId('checkout-quote-total'))).toBe(target.quoteTotal);
+    // El desglose **suma**: lista − oferta = subtotal, y neto + IVA (más envío) = total.
+    expect(Math.round((target.listPrice - target.offerDiscount) * 100) / 100).toBe(target.price);
+    expect(
+      Math.round((target.netSubtotal + target.taxAmount) * 100) / 100,
+    ).toBe(target.quoteTotal);
   });
 
   test('el descuento de la empresa que cotiza el ERP se ve en el checkout y se cobra igual', async ({
@@ -204,7 +262,7 @@ test.describe('Checkout de invitado', () => {
     // La pantalla publica el descuento del ERP, linea a linea y en el total.
     const line = page.getByTestId('checkout-quote-line').first();
     await expect(line.getByTestId('checkout-quote-line-discount')).toContainText(
-      `Descuento ${target.discountPct}%`,
+      `Descuento de la empresa ${target.discountPct}%`,
     );
     expect(await readMoney(page.getByTestId('checkout-quote-subtotal'))).toBe(target.price);
     expect(await readMoney(page.getByTestId('checkout-quote-discount'))).toBe(target.discount);
@@ -225,18 +283,20 @@ test.describe('Checkout de invitado', () => {
       lineTotal: target.lineTotal,
     });
     expect(stored.subtotal).toBe(target.lineTotal);
-    // Lo cotizado (mercancia + envio) es lo que el ERP cobra: el IVA va aparte y **nunca**
-    // sale negativo (era el sintoma medido del defecto).
-    expect(Math.round((stored.subtotal + stored.shipping) * 100) / 100).toBe(
-      Math.round(target.quoteTotal * 100) / 100,
-    );
+    // El desglose del documento **suma** (neto + impuesto = total) y el impuesto **nunca**
+    // sale negativo (era el sintoma medido del defecto del ERP re-preciando el pedido).
     expect(stored.tax).toBeGreaterThanOrEqual(0);
-    expect(Math.round((stored.subtotal + stored.shipping + stored.tax) * 100) / 100).toBe(
+    expect(Math.round((stored.netSubtotal + stored.tax) * 100) / 100).toBe(
       Math.round(stored.total * 100) / 100,
+    );
+    // Lo cotizado es lo que el ERP cobra: el total de la cotizacion es el del documento.
+    expect(Math.round(stored.total * 100) / 100).toBe(
+      Math.round(target.quoteTotal * 100) / 100,
     );
     // La confirmacion muestra los mismos numeros que el canal.
     expect(await readMoney(page.getByTestId('order-subtotal'))).toBe(stored.subtotal);
     expect(await readMoney(page.getByTestId('order-tax'))).toBe(stored.tax);
+    expect(await readMoney(page.getByTestId('order-net-subtotal'))).toBe(stored.netSubtotal);
     expect(await readMoney(page.getByTestId('order-total'))).toBe(stored.total);
   });
 

@@ -566,3 +566,54 @@ mano.
 **Declarado**: el barrido automático no crea el cron del **sistema operativo** ni una cola de
 reintentos —corre en el proceso del backend, como las otras cuatro tareas del ERP—, y la
 cancelación sigue sin correo al comprador (D16: no hay proveedor).
+
+### §12.g Estado del desglose fiscal del canal (medido el 2026-09-23, T197)
+
+La pregunta del usuario al probar el checkout fue directa: **por qué el ERP y la tienda mostraban
+cifras distintas del mismo artículo y qué lógica seguía el e-commerce**. Se midió con el artículo
+del seed antes de tocar nada:
+
+| Dato | Valor medido (WEB-0012, Laptop HP Victus) |
+|---|---|
+| Precio de lista del ERP | **9999** |
+| Oferta de catálogo vigente (`Item.salePrice`) | **9499** (5 %) |
+| Descuento del grupo `INFO` (`ItemGroupDiscount`) | **8 %** |
+| Indicador fiscal del artículo | `IVA13SIN`: 13 %, `isInclusive: true`, método **`BOLIVIA_SIN`** |
+| Pedido creado **a mano** en el ERP | 9999 − 799,92 = **9199,08** → `Subtotal 8003,20 + IVA 1195,88` |
+| Cotización de la tienda (antes) | 9999 → oferta **9499** → −8 % **−759,92** → **8739,08**, **sin impuesto** |
+| Seguimiento (antes) | `subtotal 8739,08`, **`tax 0`** (derivado de la copia del canal) |
+
+**La lógica del e-commerce, explícita**: la tienda **respeta el precio de catálogo del ERP** —que
+puede traer una **oferta vigente** (`salePrice`) y el **descuento automático** de la empresa (D12,
+que se **acumulan**)— y **el impuesto lo calcula el motor del ERP** con el indicador del artículo y
+del tercero; la tienda no inventa ninguna cifra. La diferencia con el pedido manual del ERP estaba
+en **qué capas aplica el ERP en sus propios documentos**: el descuento de grupo **sí**, la oferta de
+catálogo **no** (hueco declarado desde T188: «el POS todavía no la usa»).
+
+Lo que se cerró en T197:
+
+- **El desglose es el del documento**: la cotización publica precio de **lista**, **oferta de
+  catálogo** con su %, **descuento de la empresa**, subtotal, **subtotal sin IVA**, **IVA** (con
+  tasa y método), **envío** y **total a pagar** (`neto + impuesto`), y el pedido publica el desglose
+  del **documento del ERP** (neto, IVA, descuento de la empresa y, por línea, neto, tasa e
+  impuesto) más la **oferta** que aplicó la tienda (`WebOrderItem.listPrice`, migración
+  `20260923174211_web_order_item_list_price`).
+- **El mismo motor**: `resolveLineTaxIndicator` (línea → tercero → artículo → indicador global) y
+  `calcLineWithIndicator`, los que usa el documento, así que el IVA publicado no puede discrepar del
+  contabilizado. El **flete** es una línea más del documento y su impuesto entra en el desglose.
+- **DEFECTO de paso, medido y cerrado**: con un indicador de IVA **sumado** (el del arnés E2E) la
+  cotización publicaba el importe **sin** el impuesto (320 cotizado vs 361,60 cobrado); ahora el
+  total cotizado es el del documento en los dos modos.
+- **Evidencia**: **4 unitarios nuevos**, canal **39/39** E2E (el desglose publicado es
+  **exactamente** el del documento, por línea y en los totales), tienda **24/24** Playwright (la
+  oferta y el descuento se ven como capas distintas; la confirmación publica el neto y el IVA) y la
+  sonda en vivo del pedido `PED-61` (`neto 7603 + IVA 1136,08 = 8739,08`).
+
+**DECISIÓN DE PRODUCTO PENDIENTE — la oferta de catálogo en el ERP.** Un pedido creado **a mano**
+en el ERP cobra **9199,08** (8 % sobre el precio de lista) y la tienda cobra **8739,08** (oferta
+5 % + 8 %): las dos cifras salen de datos del ERP, pero solo la tienda aplica la oferta. Las salidas
+son: **(A)** que el ERP honre su propia oferta en sus documentos y en el POS (recomendada: el mismo
+artículo cuesta lo mismo en la web, en el POS y en un pedido manual; cierra el hueco declarado en
+T188) o **(B)** que la oferta de catálogo deje de publicarse en la tienda (la web cobra lo mismo que
+el ERP de hoy y se pierde el mecanismo de oferta). Mientras no se decida, la tienda **explica las
+dos capas** en el checkout y la confirmación y el pendiente queda escrito.

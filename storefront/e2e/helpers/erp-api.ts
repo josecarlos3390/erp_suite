@@ -56,7 +56,7 @@ export interface ApiCity {
   branch: { id: number; code: string; name: string } | null;
 }
 
-/** Cotizacion del canal (`POST /storefront/quote`), sin impuestos. */
+/** Cotizacion del canal (`POST /storefront/quote`), con su desglose fiscal (T197). */
 export interface ApiQuote {
   city: { code: string; name: string; deliveryDays: number; freeShippingFrom: number | null };
   currency: string;
@@ -66,20 +66,35 @@ export interface ApiQuote {
     name: string;
     quantity: number;
     price: number;
+    /** Precio de lista del catalogo (mayor que `price` si hay oferta vigente). */
+    listPrice: number;
+    offerPct: number;
+    offerDiscount: number;
     /** Descuento automatico del ERP sobre `price`, en porcentaje (0 si no hay). */
     discountPct: number;
     /** Importe del descuento de la linea (0 si no hay). */
     discount: number;
     lineTotal: number;
+    /** Mercancia de la linea sin impuestos y su impuesto (motor del ERP). */
+    netTotal: number;
+    taxRate: number;
+    taxInclusive: boolean;
+    taxMethod: string;
+    taxAmount: number;
     available: number;
   }>;
   /** Mercancia antes de descuentos. */
   subtotal: number;
   /** Descuentos automaticos del ERP ya aplicados por el canal. */
   discount: number;
+  /** Mercancia + envio **sin impuestos**. */
+  netSubtotal: number;
+  /** Impuesto total (mercancia + envio), calculado por el motor del ERP. */
+  taxAmount: number;
   shipping: number;
   shippingCharged: boolean;
   freeShippingApplied: boolean;
+  /** Total a pagar: `netSubtotal + taxAmount` (el total del documento). */
   total: number;
 }
 
@@ -94,7 +109,14 @@ export interface ApiOrder {
   currency: string;
   subtotal: number;
   shipping: number;
+  /** Impuesto del documento del ERP. */
   tax: number;
+  /** Mercancia sin impuestos, descuento de la empresa y oferta de catalogo (T197). */
+  netSubtotal: number;
+  companyDiscount: number;
+  offerDiscount: number;
+  listSubtotal: number;
+  taxInclusive: boolean;
   total: number;
   salesOrderId: number | null;
   salesOrderCode: string | null;
@@ -116,8 +138,14 @@ export interface ApiOrder {
     name: string;
     quantity: number;
     price: number;
+    listPrice: number | null;
+    offerDiscount: number;
     discount: number;
     lineTotal: number;
+    /** Neto e impuesto de la linea segun el documento del ERP. */
+    netTotal: number;
+    taxRate: number;
+    taxAmount: number;
   }>;
 }
 
@@ -405,6 +433,80 @@ export async function findDiscountedProduct(cityCode: string): Promise<Discounte
   throw new Error(
     `El ERP no tiene ningun descuento automatico configurado para el catalogo de ${cityCode}: ` +
       'la prueba necesita uno para medir que la tienda cotiza y cobra lo mismo.',
+  );
+}
+
+export interface OfferCase {
+  slug: string;
+  name: string;
+  itemId: number;
+  /** Precio de lista del catalogo (antes de la oferta). */
+  listPrice: number;
+  /** Precio efectivo con la oferta vigente. */
+  price: number;
+  offerPct: number;
+  offerDiscount: number;
+  /** Descuento de la empresa que se aplique **ademas** de la oferta (0 si no hay). */
+  discountPct: number;
+  discount: number;
+  lineTotal: number;
+  cityCode: string;
+  cityName: string;
+  shipping: number;
+  netSubtotal: number;
+  taxAmount: number;
+  quoteTotal: number;
+}
+
+/**
+ * Descubre un articulo publicado con **oferta de catalogo vigente** (`Item.salePrice`)
+ * cotizandolo de verdad: el precio de lista y la oferta son datos del ERP, asi que se
+ * preguntan al canal en vez de deducirlos del catalogo. Si ningun articulo tiene oferta
+ * vigente, la prueba falla con un mensaje claro en vez de saltarse.
+ */
+export async function findOfferProduct(cityCode: string): Promise<OfferCase> {
+  const [pages, cities] = await Promise.all([
+    Promise.all(
+      [1, 2, 3].map((page) =>
+        getCatalog({ city: cityCode, limit: MAX_PAGE_SIZE, page, sort: 'price_asc' }),
+      ),
+    ),
+    getCities(),
+  ]);
+  const cityName = cities.find((city) => city.code === cityCode)?.name ?? cityCode;
+
+  for (const page of pages) {
+    for (const product of page.data) {
+      if (!product.availability.inStock) continue;
+      const result = await quote(cityCode, [{ itemId: product.itemId, quantity: 1 }]).catch(
+        () => null,
+      );
+      const line = result?.items[0];
+      if (result === null || line === undefined || line.offerDiscount <= 0) continue;
+      return {
+        slug: product.slug,
+        name: product.name,
+        itemId: product.itemId,
+        listPrice: line.listPrice,
+        price: line.price,
+        offerPct: line.offerPct,
+        offerDiscount: line.offerDiscount,
+        discountPct: line.discountPct,
+        discount: line.discount,
+        lineTotal: line.lineTotal,
+        cityCode,
+        cityName,
+        shipping: result.shipping,
+        netSubtotal: result.netSubtotal,
+        taxAmount: result.taxAmount,
+        quoteTotal: result.total,
+      };
+    }
+  }
+
+  throw new Error(
+    `El ERP no tiene ningun articulo con oferta de catalogo vigente en ${cityCode}: ` +
+      'la prueba necesita uno para medir como la tienda explica la oferta.',
   );
 }
 
