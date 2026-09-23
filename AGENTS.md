@@ -225,6 +225,14 @@ npm run sync:tokens:check# gate: falla si los tokens del ERP y los de la tienda 
 npm run e2e              # Playwright — 24 casos; sirve el BUILD de producción (next start -p 3100)
 ```
 
+> **Regla medida del entorno de la tienda (T198, 2026-09-23):** el **E2E de la tienda** corre
+> `next build` (escribe `.next`) y el **servidor de desarrollo** (`npm run dev`, puerto 3000) usa el
+> **mismo** `.next`: si el dev server está levantado mientras se corre el E2E o el build, su
+> `.next` queda pisado y **empieza a responder 500** (`/` y `/categorias` incluidos) aunque el
+> proceso siga vivo y la API esté en pie —medido—. La receta: parar el proceso que escucha en 3000
+> (el `EADDRINUSE` al intentar levantarlo de nuevo es la señal de que sigue vivo) y arrancar
+> `npm run dev` limpio; verificar con `/categorias` → **200**.
+
 > **Regla medida del motor de precios (T198, 2026-09-23):** el precio de venta lo resuelve **un solo
 > motor** para todas las superficies (`resolveItemPriceForPartner` + `resolveCatalogPrice` en
 > `price-resolver.util.ts`): la **oferta de catálogo** (`Item.salePrice` dentro de su vigencia,
