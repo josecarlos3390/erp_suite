@@ -16,24 +16,50 @@ interface OrderSummaryProps {
   cityName?: string | undefined;
 }
 
+/** Progreso de la entrega del documento del ERP, en palabras del comprador. */
+function deliveryLabel(status: string): string {
+  switch (status) {
+    case 'FULL':
+      return 'entrega completa';
+    case 'PARTIAL':
+      return 'entrega parcial';
+    default:
+      return 'sin entregar';
+  }
+}
+
+/** Progreso de la facturacion del documento del ERP. */
+function invoiceLabel(status: string): string {
+  switch (status) {
+    case 'FULL':
+      return 'facturado';
+    case 'PARTIAL':
+      return 'factura parcial';
+    default:
+      return 'sin facturar';
+  }
+}
+
 /**
  * Desglose de un pedido del canal, compartido por la confirmacion
  * (`/pedido/[orderNumber]`) y el seguimiento (`/seguimiento`).
  *
  * Se pintan **los numeros que devuelve el ERP**, sin recalcular nada en la
- * tienda: `subtotal` son las mercancias, `shipping` el flete (que viaja como una
- * linea mas, `WEB-ENVIO`) y `tax` el impuesto que el motor del ERP aplico al
- * documento. La suma de las lineas puede no cuadrar con el total si el articulo
- * trae el impuesto incluido en el precio: eso lo decide la configuracion fiscal
- * de la empresa en el ERP, no la tienda, y por eso no se "arregla" aqui.
+ * tienda: `subtotal` son las mercancias (con el descuento automatico de la empresa
+ * ya aplicado, que es el que el canal cotizo), `shipping` el flete (que viaja como
+ * una linea mas, `WEB-ENVIO`) y `tax` el impuesto que el motor del ERP sumo al
+ * documento por encima de mercancias y envio. Las tres cifras suman el total por
+ * construccion (`tax = total − subtotal − envio`): con el precio ya incluyendo el
+ * impuesto, `tax` es cero porque va dentro del precio, cosa que decide la
+ * configuracion fiscal de la empresa en el ERP, no la tienda.
  */
 export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Element {
   const paid = order.paymentStatus.toLowerCase() === 'paid';
   // El ERP publica `tax` como lo que el documento suma por encima de mercancias y
-  // envio, asi que puede ser **negativo** cuando el precio ya trae el impuesto
-  // incluido (lo resta en vez de sumarlo). Se etiqueta sin reescribir el numero.
-  const taxLabel =
-    order.tax < 0 ? 'Impuesto incluido en el precio (lo resta el ERP)' : 'Impuesto aplicado por el ERP';
+  // envio. Con la configuracion fiscal boliviana habitual (precio con el IVA incluido)
+  // el impuesto va **dentro** del precio, asi que aparece en cero: el desglose no lo
+  // inventa la tienda, sale del documento del ERP.
+  const taxLabel = 'Impuesto aplicado por el ERP';
 
   return (
     <div className="flex flex-col gap-4" data-testid="order-summary">
@@ -67,6 +93,15 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
             {paymentStatusLabel(order.paymentStatus)} ·{' '}
             {paymentMethodLabel(order.paymentMethod)}
           </dd>
+          {order.erp !== null ? (
+            <>
+              <dt className="mt-2 text-fg-secondary">Estado en el ERP</dt>
+              <dd className="font-medium text-fg" data-testid="order-erp-state">
+                {deliveryLabel(order.erp.deliveryStatus)} ·{' '}
+                {invoiceLabel(order.erp.invoiceStatus)}
+              </dd>
+            </>
+          ) : null}
         </dl>
         <dl className="flex flex-col gap-1 text-sm">
           <dt className="text-fg-secondary">Entrega</dt>
@@ -109,6 +144,9 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
                 <span className="font-medium text-fg">{line.name}</span>
                 <span className="text-xs text-fg-tertiary">
                   SKU {line.sku} · {line.quantity} × {formatMoney(line.price, order.currency)}
+                  {line.discount > 0
+                    ? ` · descuento −${formatMoney(line.discount, order.currency)}`
+                    : ''}
                 </span>
               </div>
               <span className="font-semibold text-fg" data-testid="order-line-total">
@@ -149,9 +187,10 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
         </dl>
 
         <p className="mt-3 text-xs text-fg-tertiary">
-          El subtotal son las mercancias y el impuesto lo calcula el motor del ERP con la
-          configuracion fiscal de la empresa: si el precio del articulo ya trae el impuesto
-          incluido, el total puede quedar por debajo de subtotal + envio.
+          El subtotal son las mercancias ya con los descuentos de la empresa (los aplica el canal
+          del ERP al cotizar, asi que son los mismos que se cobraron). El impuesto lo calcula el
+          motor del ERP con la configuracion fiscal de la empresa: cuando el precio del articulo ya
+          lo trae incluido, el importe del impuesto aparece en cero porque va dentro del precio.
         </p>
 
         <p

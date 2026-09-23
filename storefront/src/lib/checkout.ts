@@ -92,6 +92,12 @@ export interface CheckoutRequestBody {
   intent: CheckoutIntent;
   cityCode: string;
   items: CheckoutItemInput[];
+  /**
+   * Correo del comprador en la **cotizacion**: el canal lo usa (solo lectura) para
+   * resolver el precio del cliente registrado —su tercero, su lista y sus acuerdos—
+   * antes de confirmar. Sin el, la cotizacion resuelve como invitado.
+   */
+  customerEmail?: string;
   idempotencyKey?: string;
   deliveryType?: CheckoutDeliveryType;
   paymentMethod?: CheckoutPaymentMethod;
@@ -108,6 +114,7 @@ export type SanitizedCheckout =
       intent: 'quote';
       cityCode: string;
       items: CheckoutItemInput[];
+      customerEmail?: string;
     }
   | {
       intent: 'order';
@@ -254,7 +261,21 @@ export function validateCheckoutBody(body: unknown): ValidationResult {
   }
 
   if (intent === 'quote') {
-    return { ok: true, value: { intent: 'quote', cityCode: cityCode.toUpperCase(), items } };
+    // El correo viaja **solo** si es un correo plausible: la cotizacion es de lectura,
+    // asi que uno mal escrito no se rechaza —se cotiza como invitado— y el checkout ya
+    // no deja confirmar con el campo invalido.
+    const rawEmail = optionalText(body['customerEmail'], CHECKOUT_LIMITS.email);
+    const customerEmail =
+      rawEmail !== undefined && isDeliverableEmail(rawEmail) ? rawEmail : undefined;
+    return {
+      ok: true,
+      value: {
+        intent: 'quote',
+        cityCode: cityCode.toUpperCase(),
+        items,
+        ...(customerEmail === undefined ? {} : { customerEmail }),
+      },
+    };
   }
 
   const idempotencyKey = optionalText(body['idempotencyKey'], CHECKOUT_LIMITS.idempotencyKey);

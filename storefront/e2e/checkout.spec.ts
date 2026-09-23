@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import {
+  findDiscountedProduct,
   findShippableProduct,
   findUnquotableProduct,
   placeOrder,
@@ -184,6 +185,61 @@ test.describe('Checkout de invitado', () => {
     await expect(page.getByRole('heading', { name: 'Tu carrito esta vacio' })).toBeVisible();
   });
 
+  test('el descuento de la empresa que cotiza el ERP se ve en el checkout y se cobra igual', async ({
+    page,
+  }) => {
+    // El descuento automatico es configuracion del ERP (grupo de articulos, acuerdo del
+    // tercero): se descubre cotizando de verdad. Antes del arreglo la tienda cotizaba el
+    // precio de lista y el ERP cobraba el descontado (el comprador veia un importe y
+    // pagaba otro, y el desglose publicaba un impuesto negativo).
+    const target = await findDiscountedProduct(CITY);
+    const buyer = defaultBuyer('descuento');
+
+    await addToCart(page, target.slug, '1');
+    await page.goto('/checkout');
+    await fillBuyer(page, buyer);
+    await chooseDeliveryAndPayment(page, 'TRANSFER');
+    await waitForQuote(page);
+
+    // La pantalla publica el descuento del ERP, linea a linea y en el total.
+    const line = page.getByTestId('checkout-quote-line').first();
+    await expect(line.getByTestId('checkout-quote-line-discount')).toContainText(
+      `Descuento ${target.discountPct}%`,
+    );
+    expect(await readMoney(page.getByTestId('checkout-quote-subtotal'))).toBe(target.price);
+    expect(await readMoney(page.getByTestId('checkout-quote-discount'))).toBe(target.discount);
+    expect(await readMoney(page.getByTestId('checkout-quote-total'))).toBe(target.quoteTotal);
+
+    await page.getByTestId('checkout-confirm').click();
+    await expect(page.getByTestId('order-number')).toBeVisible();
+    const orderNumber = (await page.getByTestId('order-number').innerText()).trim();
+
+    // Y el pedido real cobra esa misma mercancia descontada.
+    const stored = await trackOrder(orderNumber);
+    expect(stored).not.toBeNull();
+    if (stored === null) return;
+    const goods = stored.items.find((item) => item.itemId === target.itemId);
+    expect(goods).toMatchObject({
+      price: target.price,
+      discount: target.discount,
+      lineTotal: target.lineTotal,
+    });
+    expect(stored.subtotal).toBe(target.lineTotal);
+    // Lo cotizado (mercancia + envio) es lo que el ERP cobra: el IVA va aparte y **nunca**
+    // sale negativo (era el sintoma medido del defecto).
+    expect(Math.round((stored.subtotal + stored.shipping) * 100) / 100).toBe(
+      Math.round(target.quoteTotal * 100) / 100,
+    );
+    expect(stored.tax).toBeGreaterThanOrEqual(0);
+    expect(Math.round((stored.subtotal + stored.shipping + stored.tax) * 100) / 100).toBe(
+      Math.round(stored.total * 100) / 100,
+    );
+    // La confirmacion muestra los mismos numeros que el canal.
+    expect(await readMoney(page.getByTestId('order-subtotal'))).toBe(stored.subtotal);
+    expect(await readMoney(page.getByTestId('order-tax'))).toBe(stored.tax);
+    expect(await readMoney(page.getByTestId('order-total'))).toBe(stored.total);
+  });
+
   test('dos envios con la misma clave de idempotencia devuelven el mismo pedido', async ({
     page,
   }) => {
@@ -301,6 +357,8 @@ test.describe('Seguimiento publico', () => {
     await expect(page.getByTestId('order-tracking-code')).toHaveText(order.trackingCode ?? '—');
     await expect(page.getByTestId('order-status')).toContainText('Pendiente');
     await expect(page.getByTestId('order-payment-status')).toContainText('Pago pendiente');
+    // El estado del documento del ERP viaja con el pedido: la tienda no lo inventa.
+    await expect(page.getByTestId('order-erp-state')).toContainText('sin entregar');
     await expect(page.getByTestId('order-summary').getByTestId('order-line')).toHaveCount(
       order.items.length,
     );

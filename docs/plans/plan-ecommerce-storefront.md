@@ -187,7 +187,7 @@ de determinación de cuentas. La tienda **no** escribe asientos ni stock: **crea
 9. **Doble escritura**: el pedido web y el `SalesOrder` se crean en **una** transacción del ERP
    (idempotente por `idempotencyKey`); la tienda nunca corrige el pedido por su cuenta.
 
-## §9 Decisiones tomadas (D1–D6, aprobadas el 2026-09-22)
+## §9 Decisiones tomadas (D1–D13)
 
 | # | Decisión | Elegido |
 |---|---|---|
@@ -202,6 +202,8 @@ de determinación de cuentas. La tienda **no** escribe asientos ni stock: **crea
 | **D9** | Dónde vive el código de la tienda (arranque de F2) | **Dentro del repo raíz**, en `storefront/`, versionado junto a la documentación; cuando la tienda tenga su propio remoto se separa. Evita un repo anidado **sin remoto** al que no se pueda empujar (la regla del proyecto es empujar a todos los remotos) |
 | **D10** | Cómo habla la tienda con el ERP | **Solo desde el servidor de Next** (Server Components y route handlers): la clave del canal **nunca llega al navegador** y no hace falta abrir CORS por dominio en el MVP (queda como estaba: declarado). El precio de la decisión: el navegador no llama al canal directamente, todo pasa por Next |
 | **D11** | Bootstrap de la tienda | **npm** (como los otros dos proyectos) con **Next.js 14 App Router + TypeScript + Tailwind 3 + Zustand** (D1) y los **tokens del ERP compilados** por script (`storefront/scripts/sync-tokens.mjs`: `erp-frontend/src/styles/tokens/_0*.scss` → `storefront/src/styles/tokens.css`) con modo **`--check`** para que no se desincronicen: una sola fuente de verdad y un gate que lo comprueba |
+| **D12** | Los precios de la tienda y los descuentos del ERP (**A**, aprobada el 2026-09-23) | **La tienda respeta el descuento automático del ERP y lo muestra**: la cotización corre el **mismo** motor (`resolveAutoDiscount`: grupo de artículos, acuerdo del tercero, precio especial de su lista) para el tercero del comprador y publica el descuento por línea; el alta manda el `%` **explícito**, así que lo cotizado y lo cobrado no pueden discrepar. Se descartó que la tienda fije su propio precio (`discountPct: 0`): el mismo artículo costaría distinto en la web que en el POS del ERP, que sí aplica el descuento. **Consecuencia declarada**: el descuento de empresa se **acumula** con la oferta de catálogo (`salePrice`), y el **flete** no participa (es un importe configurado por la ciudad) |
+| **D13** | De dónde sale el estado del pedido (aprobada el 2026-09-23) | **Derivado en vivo del documento del ERP**: el canal lee el pedido de venta y sus cantidades entregadas/facturadas (`deliveredQty`/`invoicedQty`) y el estado del documento, y publica el estado del comprador **y** el estado crudo del ERP. Se descartó copiarlo a `WebOrder.status` (dos verdades que se desfasan) y una bandeja manual de pedidos web (más control comercial, pero puede contradecir al flujo). El **pago** se deriva de la factura del pedido |
 
 ## §10 F1 — desglose de trabajo (modelo y API de canal)
 
@@ -340,4 +342,69 @@ tratamiento contable del flete: se convirtió en **configuración del ERP**.
 - **Sigue abierto en F3** (necesita decisión de producto): reserva con **TTL** (#2), **estado**
   del pedido (#3), **comprobante** offline (#4) y proveedor de **correo** (#5); y en la tienda,
   las pantallas de **checkout** (#6) y **seguimiento** (#7).
+
+### §12.c Estado de F3.2 — el cobro y el estado del pedido (medido el 2026-09-23, T191/T192)
+
+El checkout de la tienda (#6), la confirmación y el seguimiento (#7) están construidos y
+medidos (T190 cerrado con el **commit raíz `08cf201`**: 15 archivos, 21/21 E2E de Playwright).
+Al medirlos apareció un **defecto real del canal** que la cotización no podía tapar, y las dos
+decisiones de producto que quedaban pendientes se tomaron con el usuario:
+
+**Decisión A (T191) — la tienda respeta el descuento automático del ERP y lo muestra.**
+
+- **Defecto medido**: el ERP **re-precifica** sus documentos con los descuentos automáticos del
+  tercero (`ItemGroupDiscount`, `SpecialPrice`, lista de precios). En el seed real, el grupo
+  `ELEC` tiene un **5 %** activo, así que `WEB-0026` (129 con IVA incluido) se cotizaba en la
+  tienda a **129 + 20 = 149** y el ERP creaba el pedido a **122,55 + 20 = 142,55** —el POS del
+  ERP cobra esos 122,55: es el mismo motor—, y el desglose publicaba un **impuesto negativo
+  (−6,45)**. El comprador veía un precio y pagaba otro.
+- **El canal corre el MISMO motor** (`resolveAutoDiscount`, el util compartido que ya usan
+  ventas, entregas y POS) al cotizar, **publica el descuento** por línea y en el total, y manda
+  el `%` **explícito** en el alta (`discountPct`), de modo que el documento **no puede**
+  re-preciificar lo cotizado. El **flete no se descuenta** (`discountPct: 0`): es un importe
+  configurado por la ciudad, no un precio de catálogo.
+- **El correo del comprador entra en la cotización** (`StorefrontQuoteDto.customer.email`,
+  opcional): un **cliente registrado** tiene su tercero, su lista de precios y sus acuerdos, y
+  sin ese dato la cotización resolvería como invitado y volvería a discrepar. La tienda lo manda
+  con un rebote corto (400 ms) y vuelve a cotizar cuando cambia.
+- **El umbral de envío gratis** se compara contra el subtotal **ya con descuentos** (lo que el
+  comprador paga), que es la lectura correcta de «envío gratis desde X de compra».
+- **Evidencia**: canal **65/65** unitarios (5 nuevos: descuento global, `%` explícito en el
+  alta, tercero del cliente registrado, sin descuento, y el flete sin descontar) y **33/33** E2E
+  del canal (el caso nuevo descubre el descuento **cotizando de verdad** y comprueba en la base
+  el `discountPct` de la línea de mercancía y el `0` del flete), con **A/B medido**: sin el
+  arreglo el caso nuevo **falla** («Expected −4 / Received +5», la cotización no trae el 10 %).
+  **Sonda en vivo** sobre el seed: pedido `PED-36` → `subtotal 122,55 + envío 35 + impuesto 0 =
+  157,55` (antes: cotización 164 y cobro 157,55, con impuesto −6,45).
+
+**Decisión B (T192) — el estado del pedido se deriva en vivo del documento del ERP.**
+
+- `WebOrder.status` nace en `PENDING` y **nada** del ERP lo mueve: el seguimiento habría
+  mostrado «Pendiente» para siempre. El canal ahora **deriva** el estado que ve el comprador
+  del pedido de venta y de sus cantidades (`deliveredQty`/`invoicedQty` contra `quantity`, que
+  es la verdad viva del flujo) y del estado del documento, y publica además el **estado crudo**
+  del ERP (`erp.salesOrderStatus`, `deliveryStatus`, `invoiceStatus`) para que la tienda pueda
+  explicarlo sin inventarlo:
+
+  | Documento del ERP | Tienda |
+  |---|---|
+  | pedido `CANCELLED` | `CANCELLED` |
+  | entrega completa o factura completa (D6: la factura sale con la entrega) | `DELIVERED` |
+  | entrega parcial | `SHIPPED` |
+  | pedido `CONFIRMED` | `CONFIRMED` |
+  | pedido `CLOSED` sin entrega registrada | `PROCESSING` |
+  | cualquier otro caso | `PENDING` |
+
+- El **pago** sale de la factura del pedido (`balanceDue` a cero con algo cobrado ⇒ «pagado»):
+  los cobros offline se concilian en el ERP, así que la tienda no puede darlos por hechos.
+- **Evidencia**: **9 unitarios nuevos** (la tabla completa, incluido el pago y el caso sin
+  documento) y un **E2E con el flujo real del ERP**: se crea el pedido por el canal, se entrega
+  **parcial** con `POST /delivery-orders/from-order/:id` (la misma petición que hace la pantalla)
+  → `SHIPPED`, se entrega el resto → `DELIVERED`, y la anulación de **otro** pedido (el ERP no
+  deja anular uno con entregas: 400, regla correcta) → `CANCELLED`.
+
+**Sigue abierto en F3**: reserva con **TTL** de pedidos abandonados (#2), **comprobante** del
+pago offline (#4) y proveedor de **correo** transaccional (#5) —los tres, decisiones de
+producto—; el E2E de la **conciliación del pago** (factura + pago entrante) queda declarado: la
+derivación del pago está medida en unitarios, y el flujo de cobros tiene su propia suite.
 

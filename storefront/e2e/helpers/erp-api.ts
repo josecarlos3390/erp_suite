@@ -66,10 +66,17 @@ export interface ApiQuote {
     name: string;
     quantity: number;
     price: number;
+    /** Descuento automatico del ERP sobre `price`, en porcentaje (0 si no hay). */
+    discountPct: number;
+    /** Importe del descuento de la linea (0 si no hay). */
+    discount: number;
     lineTotal: number;
     available: number;
   }>;
+  /** Mercancia antes de descuentos. */
   subtotal: number;
+  /** Descuentos automaticos del ERP ya aplicados por el canal. */
+  discount: number;
   shipping: number;
   shippingCharged: boolean;
   freeShippingApplied: boolean;
@@ -91,6 +98,14 @@ export interface ApiOrder {
   total: number;
   salesOrderId: number | null;
   salesOrderCode: string | null;
+  /** Estado crudo del documento del ERP del que se deriva el del comprador. */
+  erp: {
+    status: string;
+    paymentStatus: string;
+    salesOrderStatus: string;
+    deliveryStatus: string;
+    invoiceStatus: string;
+  } | null;
   createdAt: string;
   items: Array<{
     itemId: number;
@@ -98,6 +113,7 @@ export interface ApiOrder {
     name: string;
     quantity: number;
     price: number;
+    discount: number;
     lineTotal: number;
   }>;
 }
@@ -319,6 +335,73 @@ export async function findShippableProduct(cityCode: string): Promise<ShippableC
 
   throw new Error(
     `No hay ningun articulo con existencia y precio por debajo de ${threshold} en ${cityCode}.`,
+  );
+}
+
+export interface DiscountedCase {
+  slug: string;
+  name: string;
+  itemId: number;
+  /** Precio de catalogo de la tienda, **antes** del descuento del ERP. */
+  price: number;
+  /** Descuento automatico del ERP que publica la cotizacion. */
+  discountPct: number;
+  discount: number;
+  /** Mercancia a cobrar (`price − discount`). */
+  lineTotal: number;
+  cityCode: string;
+  cityName: string;
+  shipping: number;
+  quoteTotal: number;
+}
+
+/**
+ * Descubre un articulo publicado al que el ERP le aplique un **descuento automatico**
+ * (grupo de articulos, acuerdo del tercero o lista) cotizandolo de verdad.
+ *
+ * Es la unica forma honesta de montar el caso: el descuento es configuracion del ERP
+ * —no de la tienda—, asi que no se puede deducir del catalogo; se pregunta al canal,
+ * que es el mismo endpoint que usa el checkout. Si el ERP no tiene ningun descuento
+ * configurado, la prueba falla con un mensaje claro en vez de saltarse.
+ */
+export async function findDiscountedProduct(cityCode: string): Promise<DiscountedCase> {
+  const [pages, cities] = await Promise.all([
+    Promise.all(
+      [1, 2, 3].map((page) =>
+        getCatalog({ city: cityCode, limit: MAX_PAGE_SIZE, page, sort: 'price_asc' }),
+      ),
+    ),
+    getCities(),
+  ]);
+  const cityName = cities.find((city) => city.code === cityCode)?.name ?? cityCode;
+
+  for (const page of pages) {
+    for (const product of page.data) {
+      if (!product.availability.inStock) continue;
+      const result = await quote(cityCode, [{ itemId: product.itemId, quantity: 1 }]).catch(
+        () => null,
+      );
+      const line = result?.items[0];
+      if (result === null || line === undefined || line.discount <= 0) continue;
+      return {
+        slug: product.slug,
+        name: product.name,
+        itemId: product.itemId,
+        price: line.price,
+        discountPct: line.discountPct,
+        discount: line.discount,
+        lineTotal: line.lineTotal,
+        cityCode,
+        cityName,
+        shipping: result.shipping,
+        quoteTotal: result.total,
+      };
+    }
+  }
+
+  throw new Error(
+    `El ERP no tiene ningun descuento automatico configurado para el catalogo de ${cityCode}: ` +
+      'la prueba necesita uno para medir que la tienda cotiza y cobra lo mismo.',
   );
 }
 

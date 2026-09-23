@@ -15,12 +15,18 @@ export interface QuoteLine {
   sku: string;
   name: string;
   quantity: number;
+  /** Precio unitario del catalogo (oferta vigente o lista), antes del descuento. */
   price: number;
+  /** Descuento automatico del ERP sobre `price`, en porcentaje (0 si no hay). */
+  discountPct: number;
+  /** Importe del descuento de la linea (0 si no hay). */
+  discount: number;
+  /** `price × quantity − discount`: lo que se cobra por la mercancia. */
   lineTotal: number;
   available: number;
 }
 
-/** `POST /storefront/quote`: `total` es subtotal + envio, **sin** impuestos. */
+/** `POST /storefront/quote`: `total` es subtotal − descuentos + envio, **sin** impuestos. */
 export interface QuoteView {
   city: {
     code: string;
@@ -30,7 +36,10 @@ export interface QuoteView {
   };
   currency: string;
   items: QuoteLine[];
+  /** Mercancia antes de descuentos (Σ `price × quantity`). */
   subtotal: number;
+  /** Descuentos automaticos del ERP ya aplicados por el canal (0 si no hay). */
+  discount: number;
   shipping: number;
   shippingCharged: boolean;
   freeShippingApplied: boolean;
@@ -43,6 +52,8 @@ export interface OrderLine {
   name: string;
   quantity: number;
   price: number;
+  /** Descuento automatico del ERP aplicado a la linea (0 si no hubo). */
+  discount: number;
   lineTotal: number;
 }
 
@@ -50,6 +61,7 @@ export interface OrderLine {
 export interface OrderView {
   orderNumber: string;
   trackingCode: string | null;
+  /** Estado derivado del documento del ERP (no de la copia de la tienda). */
   status: string;
   paymentStatus: string;
   paymentMethod: string;
@@ -62,6 +74,14 @@ export interface OrderView {
   total: number;
   salesOrderId: number | null;
   salesOrderCode: string | null;
+  /** Estado crudo del documento del ERP (null si el pedido no tiene documento). */
+  erp: {
+    status: string;
+    paymentStatus: string;
+    salesOrderStatus: string;
+    deliveryStatus: string;
+    invoiceStatus: string;
+  } | null;
   createdAt: string;
   items: OrderLine[];
 }

@@ -38,7 +38,13 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   try {
     if (body.intent === 'quote') {
-      const quote = await quoteOrder({ cityCode: body.cityCode, items: body.items });
+      const quote = await quoteOrder({
+        cityCode: body.cityCode,
+        items: body.items,
+        ...(body.customerEmail === undefined
+          ? {}
+          : { customerEmail: body.customerEmail }),
+      });
       return NextResponse.json({ quote });
     }
 

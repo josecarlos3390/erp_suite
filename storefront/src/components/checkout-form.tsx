@@ -79,11 +79,28 @@ type QuoteState =
   | { status: 'error'; message: string };
 
 /**
- * Cotiza una vez por combinacion (ciudad + lineas) y expone un `reload` para el
- * reintento manual. `lines` se lee por referencia para no volver a disparar la
+ * Valor con rebote: devuelve el ultimo valor recibido cuando deja de cambiar durante
+ * `delayMs`. Se usa para no pedir una cotizacion por cada tecla del correo.
+ */
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return settled;
+}
+
+/**
+ * Cotiza una vez por combinacion (ciudad + lineas + correo) y expone un `reload` para
+ * el reintento manual. `lines` se lee por referencia para no volver a disparar la
  * peticion cuando el array cambia de identidad sin cambiar de contenido.
  */
-function useQuote(cityCode: string, enabled: boolean): {
+function useQuote(
+  cityCode: string,
+  enabled: boolean,
+  customerEmail: string,
+): {
   state: QuoteState;
   reload: () => void;
 } {
@@ -91,14 +108,14 @@ function useQuote(cityCode: string, enabled: boolean): {
   const linesRef = useRef(lines);
   linesRef.current = lines;
 
-  // Firma estable: ciudad + articulos + cantidades (el orden no importa).
+  // Firma estable: ciudad + articulos + cantidades (el orden no importa) + correo.
   const signature = useMemo(() => {
     const items = lines
       .map((line) => `${line.itemId}x${line.quantity}`)
       .sort()
       .join(',');
-    return `${cityCode}|${items}`;
-  }, [cityCode, lines]);
+    return `${cityCode}|${items}|${customerEmail}`;
+  }, [cityCode, lines, customerEmail]);
 
   const [state, setState] = useState<QuoteState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -115,6 +132,7 @@ function useQuote(cityCode: string, enabled: boolean): {
         const quote = await requestQuote(
           cityCode,
           linesRef.current.map((line) => ({ itemId: line.itemId, quantity: line.quantity })),
+          customerEmail,
         );
         if (requestRef.current === requestId) setState({ status: 'ready', quote });
       } catch (error) {
@@ -126,7 +144,7 @@ function useQuote(cityCode: string, enabled: boolean): {
         setState({ status: 'error', message });
       }
     })();
-  }, [enabled, signature, cityCode, attempt]);
+  }, [enabled, signature, cityCode, customerEmail, attempt]);
 
   const reload = useCallback(() => {
     setAttempt((value) => value + 1);
@@ -236,7 +254,15 @@ export function CheckoutForm({
     return useCartStore.persist.onFinishHydration(() => setHydrated(true));
   }, []);
 
-  const { state: quoteState, reload: reloadQuote } = useQuote(cityCode, hydrated && step >= 3);
+  // La cotizacion sigue al correo (con rebote corto): un cliente registrado tiene su
+  // propio tercero, su lista de precios y sus acuerdos, asi que el precio que ve en la
+  // revision tiene que ser el suyo. Sin correo, la cotizacion es de invitado.
+  const quoteEmail = useDebouncedValue(buyer.email.trim(), 400);
+  const { state: quoteState, reload: reloadQuote } = useQuote(
+    cityCode,
+    hydrated && step >= 3,
+    quoteEmail,
+  );
 
   const itemCount = cartItemCount(lines);
   const currency = lines[0]?.currency ?? 'BOB';
@@ -697,6 +723,15 @@ export function CheckoutForm({
                             {formatMoney(line.price, quoteState.quote.currency)} · disponible{' '}
                             {line.available}
                           </span>
+                          {line.discount > 0 ? (
+                            <span
+                              className="text-xs font-medium text-ok"
+                              data-testid="checkout-quote-line-discount"
+                            >
+                              Descuento {line.discountPct}% · −
+                              {formatMoney(line.discount, quoteState.quote.currency)}
+                            </span>
+                          ) : null}
                         </div>
                         <span className="text-sm font-semibold text-fg">
                           {formatMoney(line.lineTotal, quoteState.quote.currency)}
@@ -713,6 +748,14 @@ export function CheckoutForm({
                       {formatMoney(quoteState.quote.subtotal, quoteState.quote.currency)}
                     </dd>
                   </div>
+                  {quoteState.quote.discount > 0 ? (
+                    <div className="flex items-center justify-between">
+                      <dt className="text-fg-secondary">Descuento de la empresa</dt>
+                      <dd className="font-medium text-ok" data-testid="checkout-quote-discount">
+                        −{formatMoney(quoteState.quote.discount, quoteState.quote.currency)}
+                      </dd>
+                    </div>
+                  ) : null}
                   <div className="flex items-center justify-between">
                     <dt className="text-fg-secondary">
                       Envio

@@ -80,12 +80,21 @@ function readOrder(payload: unknown): OrderView {
   throw new CheckoutRequestError('La tienda no devolvio el pedido creado.', 502);
 }
 
-/** Cotiza el carrito sin crear nada. */
+/** Cotiza el carrito sin crear nada. El correo (si se conoce) cotiza como cliente. */
 export async function requestQuote(
   cityCode: string,
   items: CheckoutRequestBody['items'],
+  customerEmail?: string,
 ): Promise<QuoteView> {
-  return readQuote(await postCheckout({ intent: 'quote', cityCode, items }));
+  const email = customerEmail?.trim();
+  return readQuote(
+    await postCheckout({
+      intent: 'quote',
+      cityCode,
+      items,
+      ...(email === undefined || email === '' ? {} : { customerEmail: email }),
+    }),
+  );
 }
 
 /** Crea el pedido. Repetir con la misma clave devuelve el mismo pedido. */

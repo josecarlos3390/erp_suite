@@ -180,6 +180,8 @@ export interface OrderCustomer {
 export interface QuoteRequest {
   cityCode: string;
   items: QuoteRequestLine[];
+  /** Correo del comprador: con el, la cotizacion usa el precio del cliente registrado. */
+  customerEmail?: string;
 }
 
 export interface CreateOrderRequest extends QuoteRequest {
@@ -545,15 +547,19 @@ export async function getRelated(slug: string, city?: string): Promise<Product[]
  *
  * Es la fuente unica de los importes que el checkout muestra: usa el mismo
  * `resolveOrderDraft` que el alta, asi que lo que ve el comprador y lo que se
- * cobra no pueden discrepar.
+ * cobra no pueden discrepar. El correo (opcional) es lo que permite cotizar con el
+ * precio del **cliente registrado** —su tercero, su lista de precios y sus acuerdos
+ * automaticos— en vez de con el de invitado.
  */
 export async function quoteOrder(request: QuoteRequest): Promise<QuoteView> {
+  const email = request.customerEmail?.trim();
   return erpPost<QuoteView>('/storefront/quote', {
     cityCode: request.cityCode.trim().toUpperCase(),
     items: request.items.map((line) => ({
       itemId: Math.trunc(line.itemId),
       quantity: line.quantity,
     })),
+    ...(email === undefined || email === '' ? {} : { customer: { email } }),
   });
 }
 
