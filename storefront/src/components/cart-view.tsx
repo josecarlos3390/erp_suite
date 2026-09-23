@@ -150,13 +150,17 @@ export function CartView(): JSX.Element {
           className="mt-4 rounded-md border border-warn bg-warn-soft p-3 text-xs text-fg"
           data-testid="cart-checkout-note"
         >
-          El precio final, la existencia y el costo de envio los confirma el ERP al crear el pedido
-          (checkout de la fase F3). Este subtotal es solo una referencia de la tienda.
+          El precio final, la existencia y el costo de envio los confirma el ERP en el checkout. El
+          subtotal de arriba es solo una referencia de la tienda.
         </p>
 
-        <button type="button" className="sf-btn mt-4 w-full" disabled aria-disabled="true">
-          Ir al checkout (F3 · no disponible)
-        </button>
+        <Link
+          href="/checkout"
+          className="sf-btn-primary mt-4 w-full"
+          data-testid="cart-checkout-link"
+        >
+          Ir al checkout
+        </Link>
 
         <Link href="/categorias" className="sf-link mt-3 inline-block text-sm">
           Seguir comprando

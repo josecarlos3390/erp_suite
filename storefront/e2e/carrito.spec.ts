@@ -65,4 +65,23 @@ test.describe('Carrito', () => {
     await expect(page.getByTestId('cart-line')).toHaveCount(1);
     await expect(page.getByTestId('cart-line')).toHaveAttribute('data-slug', target.slug);
   });
+
+  test('desde el carrito se entra al checkout con el articulo cargado', async ({ page }) => {
+    const products = await getAllProducts();
+    const target = products.find((product) => product.availability.inStock);
+    if (target === undefined) return;
+
+    await page.goto(`/productos/${target.slug}`);
+    await page.getByTestId('add-to-cart').click();
+    await expect(page.getByTestId('cart-count')).toHaveText('1');
+
+    await page.goto('/carrito');
+    await page.getByTestId('cart-checkout-link').click();
+
+    await expect(page).toHaveURL(/\/checkout$/);
+    // El checkout arranca con el articulo del carrito y la ciudad elegida.
+    await expect(page.getByTestId('checkout-cart-line')).toContainText(target.name);
+    await expect(page.getByTestId('checkout-step-1')).toHaveAttribute('data-state', 'current');
+    await expect(page.getByTestId('checkout-city-name')).toContainText('Santa Cruz');
+  });
 });

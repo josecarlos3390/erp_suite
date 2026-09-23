@@ -145,6 +145,62 @@ export interface City {
   branch: CityBranch | null;
 }
 
+/** Formas de entrega que acepta el canal (D4: domicilio; el retiro es fase 2). */
+export type DeliveryType = 'HOME' | 'STORE';
+
+/** Metodos de pago offline del MVP. El canal **no** conoce datos de tarjeta. */
+export type PaymentMethod = 'TRANSFER' | 'QR' | 'CASH_ON_DELIVERY' | 'STORE_PICKUP';
+
+export const DELIVERY_TYPES: readonly DeliveryType[] = ['HOME', 'STORE'];
+
+export const PAYMENT_METHODS: readonly PaymentMethod[] = [
+  'TRANSFER',
+  'QR',
+  'CASH_ON_DELIVERY',
+  'STORE_PICKUP',
+];
+
+/** Linea que envia la tienda al canal: solo articulo y cantidad. */
+export interface QuoteRequestLine {
+  itemId: number;
+  quantity: number;
+}
+
+/** Datos del comprador invitado tal como los acepta el canal. */
+export interface OrderCustomer {
+  email?: string;
+  name?: string;
+  phone?: string;
+  taxId?: string;
+  street?: string;
+  district?: string;
+  reference?: string;
+}
+
+export interface QuoteRequest {
+  cityCode: string;
+  items: QuoteRequestLine[];
+}
+
+export interface CreateOrderRequest extends QuoteRequest {
+  idempotencyKey: string;
+  deliveryType: DeliveryType;
+  paymentMethod: PaymentMethod;
+  customer: OrderCustomer;
+  notes?: string;
+}
+
+/**
+ * Cotizacion del carrito (`POST /storefront/quote`) y pedido (`POST /storefront/orders`).
+ *
+ * Las dos vistas viven en `./order-view` (modulo puro) porque tambien las consume
+ * el navegador en el checkout y el seguimiento; aqui se importan para tipar las
+ * funciones del canal y se re-exportan para el resto del servidor.
+ */
+import type { OrderView, QuoteView } from './order-view';
+
+export type { OrderLine, OrderView, QuoteLine, QuoteView } from './order-view';
+
 export interface CatalogQuery {
   page?: number;
   limit?: number;
@@ -196,6 +252,7 @@ const REVALIDATE = {
   cities: 3600,
   product: 60,
   related: 120,
+  tracking: 30,
 } as const;
 
 type QueryValue = string | number | undefined;
@@ -305,6 +362,59 @@ async function erpGetOrNull<T>(
     }
     throw error;
   }
+}
+
+/**
+ * POST tipado al canal.
+ *
+ * Nunca se cachea (`cache: 'no-store'`): una cotizacion o un alta de pedido no
+ * pueden servirse de una respuesta vieja. El cuerpo ya viene **saneado** por el
+ * route handler; este modulo solo transporta.
+ */
+async function erpPost<T>(endpoint: string, body: unknown): Promise<T> {
+  const timeout = Number.isFinite(TIMEOUT_MS) && TIMEOUT_MS > 0 ? TIMEOUT_MS : 8000;
+
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'x-storefront-key': apiKey(),
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeout),
+      cache: 'no-store',
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new ErpError(
+      `No se pudo consultar el ERP en ${endpoint} (${detail}).`,
+      0,
+      endpoint,
+    );
+  }
+
+  const raw = await response.text();
+  let parsed: unknown = null;
+  if (raw !== '') {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = null;
+    }
+  }
+
+  if (!response.ok) {
+    throw new ErpError(
+      readErpMessage(parsed, `El ERP respondio ${response.status} en ${endpoint}.`),
+      response.status,
+      endpoint,
+    );
+  }
+
+  return parsed as T;
 }
 
 /** Normaliza la ciudad: el canal solo acepta codigos cargados por el tenant. */
@@ -428,6 +538,53 @@ export async function getRelated(slug: string, city?: string): Promise<Product[]
     }
     throw error;
   }
+}
+
+/**
+ * POST /storefront/quote — cotiza el carrito **sin crear nada**.
+ *
+ * Es la fuente unica de los importes que el checkout muestra: usa el mismo
+ * `resolveOrderDraft` que el alta, asi que lo que ve el comprador y lo que se
+ * cobra no pueden discrepar.
+ */
+export async function quoteOrder(request: QuoteRequest): Promise<QuoteView> {
+  return erpPost<QuoteView>('/storefront/quote', {
+    cityCode: request.cityCode.trim().toUpperCase(),
+    items: request.items.map((line) => ({
+      itemId: Math.trunc(line.itemId),
+      quantity: line.quantity,
+    })),
+  });
+}
+
+/**
+ * POST /storefront/orders — crea el pedido (idempotente por `idempotencyKey`).
+ *
+ * La clave la genera la tienda **una vez por intento de compra**: repetir el
+ * POST con la misma clave devuelve el mismo pedido en vez de crear otro.
+ */
+export async function createOrder(request: CreateOrderRequest): Promise<OrderView> {
+  return erpPost<OrderView>('/storefront/orders', {
+    idempotencyKey: request.idempotencyKey,
+    cityCode: request.cityCode.trim().toUpperCase(),
+    deliveryType: request.deliveryType,
+    paymentMethod: request.paymentMethod,
+    items: request.items.map((line) => ({
+      itemId: Math.trunc(line.itemId),
+      quantity: line.quantity,
+    })),
+    customer: request.customer,
+    ...(request.notes === undefined ? {} : { notes: request.notes }),
+  });
+}
+
+/** GET /storefront/tracking?order=&email= — null si el pedido no existe (404). */
+export async function getTracking(order: string, email?: string): Promise<OrderView | null> {
+  return erpGetOrNull<OrderView>(
+    '/storefront/tracking',
+    { order: order.trim(), email: email?.trim() },
+    REVALIDATE.tracking,
+  );
 }
 
 /** Busca un nodo de categoria por slug en el arbol (raices y descendientes). */

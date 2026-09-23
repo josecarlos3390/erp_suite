@@ -90,7 +90,22 @@ test.describe('Listado por categoria', () => {
     const renderedPrices = await page
       .getByTestId('product-price')
       .evaluateAll((nodes) =>
-        nodes.map((node) => Number((node.textContent ?? '').replace(/[^\d.]/g, ''))),
+        nodes.map((node) => {
+          // El navegador del gate corre en `es-BO`: `Bs 1.499,00`. El ultimo separador
+          // (`.` o `,`) es el decimal y los anteriores son de miles. Quitarlos todos
+          // como si fueran miles convierte 1.499,00 en 149900 y rompe el orden.
+          const text = (node.textContent ?? '').replace(/[^\d.,]/g, '');
+          const lastDot = text.lastIndexOf('.');
+          const lastComma = text.lastIndexOf(',');
+          const decimalAt = Math.max(lastDot, lastComma);
+          let digits = '';
+          for (let index = 0; index < text.length; index += 1) {
+            const char = text.charAt(index);
+            if (char >= '0' && char <= '9') digits += char;
+            else if (index === decimalAt) digits += '.';
+          }
+          return Number.parseFloat(digits);
+        }),
       );
     expect(renderedPrices.length).toBeGreaterThan(1);
     expect(renderedPrices).toStrictEqual([...renderedPrices].sort((a, b) => a - b));
