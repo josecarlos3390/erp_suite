@@ -712,10 +712,24 @@ vigente/vencida/futura, la oferta como base del descuento de grupo, el acuerdo f
 ganando y `resolveCatalogPrice` con los extremos de vigencia), 1 del POS (impuesto del
 artículo sin indicador del tercero) y el canal **40/40**.
 
-**Pendiente de F8.1 (declarado)**: que el **formulario de artículos** del back office exponga
-la oferta (`salePrice` + vigencia) y que las pantallas de ventas/POS **propongan** el precio
-con `GET /items/:id/effective-price` en lugar de tomar el precio de lista del maestro; el
-backend ya lo resuelve y lo publica, así que es trabajo de UI sin cambios de contrato.
+**F8.1 — cerrado por partes**: el **formulario de artículos** ya expone la oferta (T198, UI):
+fila de tres campos —**Precio de oferta**, **Oferta desde**, **Oferta hasta**— bajo el precio de
+venta, con una nota que explica el alcance (mientras esté vigente ese es el precio de pedidos, POS y
+tienda; fuera de la vigencia manda el precio de venta), hidratación del ISO al día del tenant y
+`null` al vaciarla para quitarla; evidencia: **4 unitarios nuevos** de Karma (Karma completo
+**2198**), `ng build` 0 y `lint` 0/0.
+
+**Pendiente de F8.1 (declarado, trabajo de UI sin cambios de contrato)**: que las pantallas de
+**ventas y POS propongan** el precio vigente al capturar la línea con
+`GET /items/:id/effective-price?partnerId=&quantity=`. El plan exacto: `PriceResolutionService`
+(`shared/document-form/price-resolution.service.ts`) es el punto único que hoy llama a
+`POST /special-prices/resolve`; se cambia esa llamada por el endpoint nuevo y se mapea su respuesta
+al shape de `ResolvedSpecialPrice` que ya consume el flujo (`basePrice` → precio base del
+documento, `discountPct`/`discountAmt` → descuento ganador explícito, `price` → precio fijo cuando
+no hay descuento), pasando `res.basePrice` a `applyResolvedSpecialPrice` para que el `%` se aplique
+sobre el **precio vigente** (oferta) y no sobre la lista; las compras siguen usando
+`resolvePriceList` (no llevan descuentos de venta) y hay que actualizar las ~7 expectativas del spec
+que hoy afirman la URL `special-prices/resolve`.
 
 **Declarado**: el descuento del canal se aplica **solo** a la mercancía (el flete sigue siendo el
 importe de la ciudad) y no cambia el IVA —el impuesto lo sigue calculando el motor del ERP sobre el

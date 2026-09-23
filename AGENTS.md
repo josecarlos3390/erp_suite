@@ -178,7 +178,7 @@ npm run watch            # ng build --watch --configuration development
 npm run serve:ssr:erp-frontend   # SSR local
 npm run format           # prettier --write
 npm run lint             # ng lint — 0 errores, 0 warnings
-npm test                 # Karma + Jasmine — 2193 tests
+npm test                 # Karma + Jasmine — 2198 tests
 npm run e2e              # playwright test — suite completa (incluye capturas y diagnósticos)
 npm run e2e:functional   # gate funcional de escritorio (241 tests) en una sola pasada — config propia
 npm run e2e:mobile       # gate móvil/tablet: lista curada de 12 specs en mobile-chrome + tablet-safari
