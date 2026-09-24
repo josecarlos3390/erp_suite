@@ -175,9 +175,11 @@ test.describe('Checkout de invitado', () => {
     const orderNumber = (await page.getByTestId('order-number').innerText()).trim();
     const trackingCode = (await page.getByTestId('order-tracking-code').innerText()).trim();
 
-    // El numero sigue la serie del ERP (prefijo + consecutivo), no un id de la tienda.
+    // El numero sigue la serie del ERP (prefijo + consecutivo), no un id de la tienda. Desde
+    // F7 el canal numera **sus** pedidos con la serie `WEB-` (antes usaba la serie por defecto
+    // de pedidos de venta), asi que el prefijo es el del canal.
     expect(orderNumber).toMatch(/^[A-Z]{2,6}-\d+$/);
-    expect(orderNumber.startsWith('PED-')).toBe(true);
+    expect(orderNumber.startsWith('WEB-')).toBe(true);
     expect(trackingCode).not.toBe('—');
     expect(trackingCode.length).toBeGreaterThan(0);
     await expect(page).toHaveURL(new RegExp(`/pedido/${orderNumber}$`));
@@ -199,6 +201,11 @@ test.describe('Checkout de invitado', () => {
     expect(stored.tax).toBeGreaterThan(0);
     expect(Math.round((stored.netSubtotal + stored.tax) * 100) / 100).toBe(stored.total);
 
+    // F7: la modalidad por defecto es «pagar al recibir», asi que el canal **no** emite ningun
+    // documento fiscal al confirmar (la factura nace de la entrega).
+    expect(stored.webInvoicingMode).toBe('PAY_ON_DELIVERY');
+    expect(stored.reserveInvoiceCode).toBeNull();
+
     // El envio viaja como una linea mas del pedido (`WEB-ENVIO`) cuando la ciudad lo cobra…
     expect(stored.items.some((item) => item.sku === 'WEB-ENVIO')).toBe(true);
     // …y la confirmacion la **especifica como envio** (T200): el canal publica con que
@@ -216,6 +223,46 @@ test.describe('Checkout de invitado', () => {
     await expect(page.getByTestId('cart-count')).toHaveText('0');
     await page.goto('/carrito');
     await expect(page.getByRole('heading', { name: 'Tu carrito esta vacio' })).toBeVisible();
+  });
+
+  /**
+   * F7: la **modalidad de facturacion la elige el comprador** y decide la cadena del pedido.
+   * Con «pagar ahora» el canal emite la **factura de reserva** al confirmar —es el documento
+   * contra el que el ERP registra el cobro— y la confirmacion publica su numero.
+   */
+  test('el comprador elige «pagar ahora» y el canal emite su factura de reserva', async ({
+    page,
+  }) => {
+    const target = await findShippableProduct(CITY);
+    const buyer = defaultBuyer('pagarnacion');
+
+    await addToCart(page, target.slug, '1');
+    await page.goto('/checkout');
+    await fillBuyer(page, buyer);
+    // Paso 2, a mano: el campo de la modalidad vive aqui y el helper ya avanzaria al resumen.
+    await page.getByTestId('checkout-delivery-home').check();
+    await page.getByTestId('checkout-payment-transfer').check();
+    // El defecto de la tienda es «pagar al recibir»: aqui el comprador elige lo contrario.
+    await expect(page.getByTestId('checkout-invoicing-pay_on_delivery')).toBeChecked();
+    await page.getByTestId('checkout-invoicing-pay_now').check();
+    await page.getByTestId('checkout-next-2').click();
+    await expect(page.getByTestId('checkout-step-3')).toHaveAttribute('data-state', 'current');
+    await waitForQuote(page);
+
+    await page.getByTestId('checkout-confirm').click();
+    await expect(page.getByTestId('order-number')).toBeVisible();
+    const orderNumber = (await page.getByTestId('order-number').innerText()).trim();
+
+    const stored = await trackOrder(orderNumber);
+    expect(stored).not.toBeNull();
+    if (stored === null) return;
+    expect(stored.webInvoicingMode).toBe('PAY_NOW');
+    // La reserva existe **de verdad** en el ERP y el comprador ve su numero.
+    expect(stored.reserveInvoiceCode).not.toBeNull();
+    await expect(page.getByTestId('order-invoicing-mode')).toContainText('Pagar ahora');
+    await expect(page.getByTestId('order-invoicing-mode')).toContainText(
+      stored.reserveInvoiceCode ?? '',
+    );
   });
 
   test('la oferta de catalogo del ERP se muestra como oferta y el descuento de la empresa aparte', async ({

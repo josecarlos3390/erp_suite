@@ -10,17 +10,20 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { BagIcon } from '@/components/ui/icons';
 import { Skeleton, SkeletonCheckout } from '@/components/ui/skeleton';
 import {
+  CHECKOUT_INVOICING_MODES,
   CHECKOUT_LIMITS,
   CHECKOUT_PAYMENT_METHODS,
   TAX_NOTICE,
   TRACKING_NOTICE,
   buyerErrorsAreClear,
   deliveryTypeLabel,
+  invoicingModeLabel,
   paymentMethodInfo,
   validateBuyer,
   type BuyerFieldErrors,
   type CheckoutCustomerInput,
   type CheckoutDeliveryType,
+  type CheckoutInvoicingMode,
   type CheckoutPaymentMethod,
 } from '@/lib/checkout';
 import { CheckoutRequestError, requestOrder, requestQuote } from '@/lib/checkout-client';
@@ -249,6 +252,14 @@ export function CheckoutForm({
   const [buyerErrors, setBuyerErrors] = useState<BuyerFieldErrors>({});
   const [deliveryType, setDeliveryType] = useState<CheckoutDeliveryType>('HOME');
   const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>('TRANSFER');
+  /**
+   * F7: **cuando** quiere facturar el comprador. Con «pagar ahora» el ERP emite la factura de
+   * reserva al confirmar el pedido (y el cobro se registra contra ella); con «pagar al recibir»
+   * el pedido se entrega primero y la factura nace de la entrega. Es una eleccion del
+   * comprador, no una configuracion de la tienda.
+   */
+  const [invoicingMode, setInvoicingMode] =
+    useState<CheckoutInvoicingMode>('PAY_ON_DELIVERY');
   const [sending, setSending] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   // Clave del intento de compra: se genera una vez y **no** cambia al reintentar.
@@ -351,6 +362,7 @@ export function CheckoutForm({
         cityCode,
         deliveryType,
         paymentMethod,
+        webInvoicingMode: invoicingMode,
         items: lines.map((line) => ({ itemId: line.itemId, quantity: line.quantity })),
         customer,
       });
@@ -619,6 +631,49 @@ export function CheckoutForm({
                 La tienda no publica numeros de cuenta ni codigos QR propios: te los envia al
                 confirmar el pedido. Nunca te pediremos datos de tarjeta por esta pagina.
               </p>
+            </fieldset>
+
+            {/*
+              F7: la modalidad de facturacion la elige el comprador. No cambia el importe,
+              cambia **cuando** el ERP emite el documento y en que orden se entrega y se cobra.
+            */}
+            <fieldset className="mt-5" data-testid="checkout-invoicing">
+              <legend className="sf-eyebrow">Cuando quieres tu factura</legend>
+              <div className="mt-2 flex flex-col gap-2">
+                {CHECKOUT_INVOICING_MODES.map((code) => {
+                  const inputId = `factura-${code.toLowerCase()}`;
+                  const copy =
+                    code === 'PAY_NOW'
+                      ? {
+                          title: 'Pagar ahora',
+                          detail:
+                            'Confirmamos tu pedido y emitimos la factura de reserva; pagas contra ella y despues lo despachamos.',
+                        }
+                      : {
+                          title: 'Pagar al recibir',
+                          detail:
+                            'Entregamos tu pedido primero y la factura nace de la entrega; pagas al recibirlo.',
+                        };
+                  return (
+                    <label key={code} htmlFor={inputId} className="sf-option">
+                      <input
+                        id={inputId}
+                        type="radio"
+                        name="modalidad-factura"
+                        value={code}
+                        checked={invoicingMode === code}
+                        onChange={() => setInvoicingMode(code)}
+                        data-testid={`checkout-invoicing-${code.toLowerCase()}`}
+                        className="mt-0.5 accent-primary"
+                      />
+                      <span>
+                        <span className="block font-semibold text-fg">{copy.title}</span>
+                        <span className="block text-xs text-fg-secondary">{copy.detail}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </fieldset>
 
             {orderError !== null ? (
@@ -891,6 +946,12 @@ export function CheckoutForm({
                 <dd className="font-medium text-fg" data-testid="checkout-summary-payment">
                   {paymentInfo?.label ?? paymentMethod}
                   {paymentInfo?.phaseTwo === true ? ' · fase 2' : ''}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-fg-secondary">Facturacion</dt>
+                <dd className="font-medium text-fg" data-testid="checkout-summary-invoicing">
+                  {invoicingModeLabel(invoicingMode)}
                 </dd>
               </div>
             </dl>

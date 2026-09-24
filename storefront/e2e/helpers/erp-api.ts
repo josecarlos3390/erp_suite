@@ -151,6 +151,9 @@ export interface ApiOrder {
   shippingItemId: number | null;
   salesOrderId: number | null;
   salesOrderCode: string | null;
+  /** F7: modalidad de facturacion elegida por el comprador y la reserva que emitio su cadena. */
+  webInvoicingMode: string;
+  reserveInvoiceCode: string | null;
   /** Referencia del pago offline que anoto el comprador (null mientras no la anote). */
   paymentReference: string | null;
   paymentReferenceAt: string | null;

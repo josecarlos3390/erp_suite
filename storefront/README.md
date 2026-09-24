@@ -164,11 +164,27 @@ Los cuatro gates nuevos **no** miden contra el seed: el gate funcional es el uni
 
 Las fases del plan `docs/plans/plan-ecommerce-storefront.md` estan entregadas: **F1/F2** (catalogo,
 ficha, busqueda, carrito y ciudad, con SEO), **F3** (checkout de invitado, confirmacion y
-seguimiento publico), **F5** (bandeja de pedidos web en el back office), **F8.1/F8.2** (un solo
+seguimiento publico), **F5** (bandeja de pedidos web en el back office), **F7** (la **modalidad de
+facturacion la elige el comprador** en el checkout), **F8.1/F8.2** (un solo
 motor de precios, paridad entre pedidos, POS y tienda, y la **promo exclusiva del canal**) y **F9**
 (identidad visual de la tienda, fases F9.1–F9.6). La promo se administra desde el back office
 (`GET/PATCH /web-promotions`, permiso `web-promotions:view|edit`) y la tienda la pinta como capa
 propia en la ficha, el carrito y el desglose del checkout.
+
+### Modalidad de facturacion (F7)
+
+En el **paso 2** del checkout el comprador elige **cuando** quiere su factura, y esa eleccion viaja
+con el pedido (`webInvoicingMode`):
+
+- **«Pagar al recibir»** (por defecto): el canal **no** emite ningun documento fiscal al confirmar;
+  el pedido se entrega y la factura nace de la entrega.
+- **«Pagar ahora»**: el canal emite la **factura de reserva** al confirmar el pedido, el cobro se
+  registra contra ella y la entrega sale de esa reserva.
+
+La confirmacion y el seguimiento publican la modalidad elegida y, si existe, el numero de la
+factura de reserva (`order-invoicing-mode`). El cobro sigue siendo **offline** (transferencia, QR o
+contra entrega): no hay PSP, por decision del usuario.
+
 
 **Declarado (cache)**: el catalogo y la ficha del canal se cachean **60 s** (`src/lib/erp.ts`:
 `catalog: 60`, `product: 60`), asi que **una promo recien configurada tarda esa ventana en verse**

@@ -53,6 +53,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       cityCode: body.cityCode,
       deliveryType: body.deliveryType,
       paymentMethod: body.paymentMethod,
+      // F7: la modalidad elegida por el comprador decide la cadena (y cuando nace la factura).
+      webInvoicingMode: body.webInvoicingMode,
       items: body.items,
       customer: body.customer,
       ...(body.notes === undefined ? {} : { notes: body.notes }),

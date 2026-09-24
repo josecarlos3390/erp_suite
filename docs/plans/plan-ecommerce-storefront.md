@@ -988,6 +988,24 @@ F7 queda así, **sin ninguna decisión abierta**:
    y la bandeja publicando la modalidad. Lo que **no** se hace: cobro con tarjeta, cuotas de
    tarjeta y correo al comprador (D16) — siguen declarados.
 
+### §15.d Tramo 2 ENTREGADO — F7: modalidad elegida por el comprador, serie `WEB-` y barrido endurecido (2026-09-24, T222)
+
+El plan de §15.c se implementó **completo y sin decisiones abiertas**:
+
+| Punto | Entregado | Evidencia |
+|---|---|---|
+| La modalidad viaja con el pedido | `WebOrder.webInvoicingMode` (`PAY_NOW` / `PAY_ON_DELIVERY`, enum + migración idempotente) elegida en el checkout y publicada con la reserva emitida (`reserveInvoiceId`, `reserveInvoiceCode`) | unitarios del canal + canal E2E **44/44** |
+| Cadena A — «pagar ahora» | El alta emite la **factura de reserva** (todas las líneas: mercancía y flete) antes de publicar la proyección; el cobro se registra **contra ella** y la entrega sale de la reserva | E2E: `WEB-1` → reserva de 2 líneas → cobro → entrega → `DELIVERED` |
+| Cadena B — «pagar al recibir» | La entrega nace del pedido, la reserva nace **de la entrega** y el cobro se registra contra ella | E2E: sin documento al crear (`invoicedQty 0` en todas las líneas) → entrega → reserva (`invoiceStatus: PARTIAL`, el flete aún sin facturar) → cobro → `paid` |
+| Serie del canal | `WEB-` se **resuelve por empresa y se crea si falta** (requiere gestión vigente; sin ella cae a la serie por defecto, declarado) y se asigna explícitamente al pedido | E2E: el pedido sale `WEB-1`; unitarios de los tres caminos |
+| Barrido endurecido | Anula **primero la reserva y después el pedido** (el `cancel` del pedido falla con documentos posteriores, T192) y tolera una reserva ya anulada | unitarios de las dos formas |
+
+**Lo que NO se hizo, y sigue declarado**: cobro con tarjeta (sin PSP, decisión del usuario),
+cuotas de tarjeta y correo al comprador (**D16**, que es lo que bloquea F4). El retiro en tienda
+sigue en fase 2. La entrega de la cadena A la **dispara el back office**: el canal emite el
+documento, cobra contra él y el despacho se registra desde el ERP (es el mismo camino que ya
+existía y no se automatiza un despacho físico).
+
 ## §14 F9 — Identidad visual y experiencia premium de la tienda (plan aprobado el 2026-09-23)
 
 

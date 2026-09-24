@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { OrderLine, OrderView } from '@/lib/order-view';
 import {
   deliveryTypeLabel,
+  invoicingModeLabel,
   paymentMethodLabel,
   paymentStatusLabel,
   statusLabel,
@@ -99,6 +100,18 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
           <dd className="font-medium text-fg" data-testid="order-payment-status">
             {paymentStatusLabel(order.paymentStatus)} ·{' '}
             {paymentMethodLabel(order.paymentMethod)}
+          </dd>
+          {/*
+            F7: lo que el comprador eligio en el checkout, y con ello el documento que su
+            cadena ya emitio («pagar ahora» factura el pedido al confirmarlo). Se publica tal
+            cual: la tienda no deduce la modalidad del estado.
+          */}
+          <dt className="mt-2 text-fg-secondary">Facturacion</dt>
+          <dd className="font-medium text-fg" data-testid="order-invoicing-mode">
+            {invoicingModeLabel(order.webInvoicingMode)}
+            {order.reserveInvoiceCode !== null
+              ? ` · factura ${order.reserveInvoiceCode}`
+              : ''}
           </dd>
           {order.paymentReference !== null ? (
             <>

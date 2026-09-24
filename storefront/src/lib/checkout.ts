@@ -44,6 +44,21 @@ export const DELIVERY_TYPE_LABELS: Readonly<Record<string, string>> = {
 };
 
 /**
+ * **Modalidad de facturacion** que elige el comprador (F7): define la cadena del pedido.
+ *
+ * - `PAY_NOW` — «pagar ahora»: el pedido se factura (reserva) al confirmarlo, el cobro se
+ *   registra contra esa factura y la entrega sale de ella.
+ * - `PAY_ON_DELIVERY` — «pagar al recibir»: el pedido se entrega primero y la factura nace
+ *   de la entrega; despues se cobra contra ella.
+ */
+export type CheckoutInvoicingMode = 'PAY_NOW' | 'PAY_ON_DELIVERY';
+
+export const INVOICING_MODE_LABELS: Readonly<Record<string, string>> = {
+  PAY_NOW: 'Pagar ahora',
+  PAY_ON_DELIVERY: 'Pagar al recibir',
+};
+
+/**
  * Limites del canal. `quantity` coincide ademas con el tope del carrito
  * (`MAX_LINE_QUANTITY`), para que el checkout no pueda pedir mas de lo que el
  * carrito deja agregar.
@@ -101,6 +116,8 @@ export interface CheckoutRequestBody {
   idempotencyKey?: string;
   deliveryType?: CheckoutDeliveryType;
   paymentMethod?: CheckoutPaymentMethod;
+  /** F7: como quiere pagar el comprador (decide la cadena de facturacion del pedido). */
+  webInvoicingMode?: CheckoutInvoicingMode;
   customer?: CheckoutCustomerInput;
   notes?: string;
 }
@@ -122,6 +139,11 @@ export type SanitizedCheckout =
       cityCode: string;
       deliveryType: CheckoutDeliveryType;
       paymentMethod: CheckoutPaymentMethod;
+      /**
+       * F7: la modalidad la **elige el comprador** y viaja con el pedido. Por defecto
+       * «pagar al recibir»: la tienda no factura el pedido si el comprador no lo pidio.
+       */
+      webInvoicingMode: CheckoutInvoicingMode;
       items: CheckoutItemInput[];
       customer: CheckoutCustomerInput;
       notes?: string;
@@ -231,6 +253,18 @@ function readPaymentMethod(value: unknown): CheckoutPaymentMethod | undefined {
 }
 
 /**
+ * Modalidad de facturacion (F7). Ausente = `PAY_ON_DELIVERY`, que es el mismo defecto que
+ * aplica el canal; presente pero invalida = error, para que una errata no cambie en silencio
+ * cuando nace el documento fiscal del pedido.
+ */
+function readInvoicingMode(value: unknown): CheckoutInvoicingMode | undefined {
+  if (value === undefined || value === null || value === '') {
+    return 'PAY_ON_DELIVERY';
+  }
+  return value === 'PAY_NOW' || value === 'PAY_ON_DELIVERY' ? value : undefined;
+}
+
+/**
  * Valida y **reconstruye** el cuerpo del checkout.
  *
  * Nunca devuelve el objeto que llego: arma uno nuevo con los campos conocidos, de
@@ -299,6 +333,16 @@ export function validateCheckoutBody(body: unknown): ValidationResult {
     };
   }
 
+  // F7: la modalidad decide **cuando** nace el documento fiscal del pedido. La tienda siempre
+  // la manda; si un cliente del API no la manda, el canal (y aqui) asume «pagar al recibir».
+  const webInvoicingMode = readInvoicingMode(body['webInvoicingMode']);
+  if (webInvoicingMode === undefined) {
+    return {
+      ok: false,
+      error: 'La modalidad de pago debe ser PAY_NOW o PAY_ON_DELIVERY.',
+    };
+  }
+
   const customer = sanitizeCustomer(body['customer']);
   const notes = optionalText(body['notes'], CHECKOUT_LIMITS.notes);
 
@@ -310,6 +354,7 @@ export function validateCheckoutBody(body: unknown): ValidationResult {
       cityCode: cityCode.toUpperCase(),
       deliveryType,
       paymentMethod,
+      webInvoicingMode,
       items,
       customer,
       ...(notes === undefined ? {} : { notes }),
@@ -393,6 +438,16 @@ export function deliveryTypeLabel(delivery: string): string {
 }
 
 /**
+ * Etiqueta legible de la **modalidad de facturacion** (F7): lo que el comprador eligio en el
+ * checkout y lo que el pedido publica despues. Un codigo desconocido se muestra crudo, no se
+ * traduce a algo que el comprador no eligio.
+ */
+export function invoicingModeLabel(mode: string | null | undefined): string {
+  if (mode === null || mode === undefined) return 'Sin definir';
+  return INVOICING_MODE_LABELS[mode] ?? mode;
+}
+
+/**
  * Instrucciones **honestas** por metodo de pago (decision D4: offline primero).
  *
  * La tienda no publica numeros de cuenta ni QR propios: no los tiene —el canal no
@@ -443,6 +498,12 @@ export const PAYMENT_METHOD_INFO: readonly PaymentMethodInfo[] = [
 /** Metodos de pago ofrecidos en el paso 2, en el orden del canal. */
 export const CHECKOUT_PAYMENT_METHODS: readonly CheckoutPaymentMethod[] =
   PAYMENT_METHOD_INFO.map((info) => info.code);
+
+/** Modalidades de facturacion ofrecidas en el paso 2 (F7), en el orden del canal. */
+export const CHECKOUT_INVOICING_MODES: readonly CheckoutInvoicingMode[] = [
+  'PAY_ON_DELIVERY',
+  'PAY_NOW',
+];
 
 /** Instrucciones de un metodo (o `null` si el codigo no es del contrato). */
 export function paymentMethodInfo(code: string): PaymentMethodInfo | null {

@@ -160,6 +160,13 @@ export type DeliveryType = 'HOME' | 'STORE';
 /** Metodos de pago offline del MVP. El canal **no** conoce datos de tarjeta. */
 export type PaymentMethod = 'TRANSFER' | 'QR' | 'CASH_ON_DELIVERY' | 'STORE_PICKUP';
 
+/**
+ * F7: **modalidad de facturacion** que elige el comprador en el checkout. Define la cadena
+ * del pedido: `PAY_NOW` factura (reserva) al confirmar y cobra contra esa factura; con
+ * `PAY_ON_DELIVERY` el pedido se entrega primero y la factura nace de la entrega.
+ */
+export type InvoicingMode = 'PAY_NOW' | 'PAY_ON_DELIVERY';
+
 export const DELIVERY_TYPES: readonly DeliveryType[] = ['HOME', 'STORE'];
 
 export const PAYMENT_METHODS: readonly PaymentMethod[] = [
@@ -197,6 +204,8 @@ export interface CreateOrderRequest extends QuoteRequest {
   idempotencyKey: string;
   deliveryType: DeliveryType;
   paymentMethod: PaymentMethod;
+  /** F7: la modalidad la elige el comprador y decide la cadena de facturacion. */
+  webInvoicingMode: InvoicingMode;
   customer: OrderCustomer;
   notes?: string;
 }
@@ -594,6 +603,9 @@ export async function createOrder(request: CreateOrderRequest): Promise<OrderVie
     cityCode: request.cityCode.trim().toUpperCase(),
     deliveryType: request.deliveryType,
     paymentMethod: request.paymentMethod,
+    // F7: la modalidad elegida por el comprador viaja con el pedido (el canal decide con ella
+    // si emite la factura de reserva al crear o la deja para la entrega).
+    webInvoicingMode: request.webInvoicingMode,
     items: request.items.map((line) => ({
       itemId: Math.trunc(line.itemId),
       quantity: line.quantity,

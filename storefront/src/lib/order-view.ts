@@ -171,6 +171,12 @@ export interface OrderView {
   total: number;
   salesOrderId: number | null;
   salesOrderCode: string | null;
+  /**
+   * F7: **modalidad de facturacion que eligio el comprador** y la factura de **reserva** que
+   * su cadena emitio (null en «pagar al recibir», donde el documento nace de la entrega).
+   */
+  webInvoicingMode: string;
+  reserveInvoiceCode: string | null;
   /** Referencia del pago offline que anoto el comprador (null mientras no la anote). */
   paymentReference: string | null;
   paymentReferenceAt: string | null;
