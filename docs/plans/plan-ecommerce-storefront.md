@@ -929,7 +929,67 @@ opciones de pago: «pago ahora» vs «pago al recibir») o se **configura por em
 3. **Correo (D16)**: ¿hay proveedor/credenciales (SMTP/SES/Resend) para desbloquear F4, o F4 espera?
 4. **Orden**: mientras se decide, ¿cierro el hueco **de prueba** de la conciliación del cobro (sin decisiones) y sigo con F6, o prefieres otro orden?
 
+### §15.b Tramo 1 CERRADO — la duplicación del progreso del canal (2026-09-24, T221)
+
+**Lo que se buscaba**: antes de tocar F7 había que cerrar la deuda que T220 dejó declarada —la
+regla del progreso vivía **tres veces** (el recálculo del ERP, la lectura del pedido y el canal)—
+porque F7 mueve pedidos por cadenas nuevas y con tres copias cualquier cadena nueva se leería
+distinto en cada superficie.
+
+**Medido antes** (`PED-237`/`PED-238`, pedidos reales con el flete `WEB-ENVIO` como línea de
+**servicio**): el documento ya publicaba `deliveryStatus: FULL` con `invoiceStatus: FULL` y la
+línea de servicio en `delivered=0`; el **seguimiento del comprador** devolvía `"status":"SHIPPED"`
+y la **bandeja** derivaba su estado sumando `deliveredQty` de **todas** las líneas.
+
+**Entregado (T221)**: el canal **traduce** el progreso del ERP y no lo recalcula — el util
+compartido recibe `{status, deliveryStatus, invoiceStatus, saleInvoices}`; las dos consultas que
+lo alimentan piden las **columnas del documento** en vez de sus líneas; y la regla queda **una
+sola** en `computeSalesOrderProgress` (T220).
+
+**Medido después**: en vivo, `GET /storefront/tracking?order=PED-237` → `"status":"DELIVERED"`
+(A/B: antes `"SHIPPED"`); unitarios del util **9/9**, las tres suites tocadas **114/114** y el
+canal E2E **43/43** con el caso nuevo del flete —que con el código anterior falla con
+`deliveryStatus: PARTIAL`—; backend **198 suites / 2467 tests**.
+
+**Declarado**: `deliveryStatus`/`openQty` siguen siendo datos **denormalizados** (necesitan el
+backfill `scripts/recalc-order-progress.mjs` cuando la regla cambia) y el canal publica el
+progreso **tal como lo tiene el documento**.
+
+### §15.c Tramo 2 — F7, plan de implementación (modalidad elegida por el comprador + serie `WEB-` + barrido)
+
+Con la decisión del usuario (**el comprador elige**, sin PSP) y el tramo 1 cerrado, el trabajo de
+F7 queda así, **sin ninguna decisión abierta**:
+
+1. **La modalidad viaja con el pedido**: `WebOrder.webInvoicingMode` (`PAY_NOW` =
+   «pagar ahora» / `PAY_ON_DELIVERY` = «pagar al recibir»), elegida en el checkout, con su
+   migración idempotente, su validación en el DTO del canal y su publicación en la confirmación,
+   el seguimiento y la bandeja (lo que el comprador eligió se ve, no se adivina).
+2. **Cadena A (`PAY_NOW`)** — `pedido → reserva → cobro → entrega`: el canal emite la **factura
+   de reserva** desde el pedido (`sale-reserve-invoices/from-order/:orderId`) al crear el pedido
+   —es la reserva de la mercancía—, el cobro lo registra el ERP contra la reserva
+   (`incoming-payments` con `lines[].saleReserveInvoiceId`) y la entrega sale **de la reserva**.
+   La opción de pago del checkout se limita a los medios **offline** que ya existen (transferencia,
+   QR, contra entrega) porque no hay PSP (decisión del usuario).
+3. **Cadena B (`PAY_ON_DELIVERY`)** — `pedido → entrega → reserva desde la entrega → cobro`: la
+   entrega nace del **pedido** (`delivery-orders/from-order/:orderId`), la reserva nace **de la
+   entrega** (`sale-reserve-invoices/from-delivery/:deliveryOrderId`) y el cobro se registra
+   contra esa reserva.
+4. **Serie del canal**: se **asegura** una `DocumentSeries` con prefijo `WEB-` (por empresa) para
+   el documento del pedido web y se asigna **explícitamente** al crear el pedido
+   (`nextDocumentCode(..., requestedSeriesId)`), en vez de depender de la serie por defecto. Si la
+   serie no existe se **crea** con los datos del tenant (y se verifica en vivo que el pedido sale
+   con el correlativo `WEB-`).
+5. **Barrido de abandonados (D14) endurecido**: con la cadena A el pedido tiene **reserva
+   emitida**, así que el `cancel` del pedido **falla con documentos posteriores** (medido en
+   T192); el barrido anula **primero la reserva y después el pedido**, y lo deja medido con un
+   caso E2E (pedido impago con reserva → anulado, existencia liberada, sin `error` en el resumen).
+6. **Evidencia**: unitarios del canal por modalidad (los dos caminos), el E2E del canal con **las
+   dos cadenas** de punta a punta (estado derivado en cada paso), la tienda mostrando la elección,
+   y la bandeja publicando la modalidad. Lo que **no** se hace: cobro con tarjeta, cuotas de
+   tarjeta y correo al comprador (D16) — siguen declarados.
+
 ## §14 F9 — Identidad visual y experiencia premium de la tienda (plan aprobado el 2026-09-23)
+
 
 **La pregunta del usuario**: la tienda «se ve algo básica, no parece tener un estilo premium».
 **Medido antes de proponer** (no es una impresión): la estructura funciona y la **capa de tokens es
