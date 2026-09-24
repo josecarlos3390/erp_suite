@@ -15,15 +15,15 @@ export default function CategoryLoading(): JSX.Element {
 
       <div className="flex flex-col gap-2">
         <Skeleton shape="line" className="w-24" />
-        <Skeleton className="h-9 w-72" />
+        <Skeleton shape="custom" className="h-9 w-72" />
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="sf-card flex flex-col gap-4 p-4 lg:w-72 lg:shrink-0">
           <Skeleton shape="line" className="w-20" />
-          <Skeleton className="h-11 w-full" />
-          <Skeleton className="h-11 w-full" />
-          <Skeleton className="h-11 w-32" />
+          <Skeleton shape="custom" className="h-11 w-full" />
+          <Skeleton shape="custom" className="h-11 w-full" />
+          <Skeleton shape="custom" className="h-11 w-32" />
         </div>
         <div className="flex-1">
           <SkeletonProductGrid />

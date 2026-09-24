@@ -61,10 +61,10 @@ export default async function OrderPage({ params }: OrderPageProps): Promise<JSX
       ) : null}
 
       <nav aria-label="Siguientes pasos" className="flex flex-wrap gap-2">
-        <Link href="/seguimiento" className="sf-btn-primary">
+        <Link href="/seguimiento" className="sf-btn sf-btn-primary">
           Consultar el seguimiento
         </Link>
-        <Link href="/categorias" className="sf-btn-secondary">
+        <Link href="/categorias" className="sf-btn sf-btn-secondary">
           Seguir comprando
         </Link>
       </nav>

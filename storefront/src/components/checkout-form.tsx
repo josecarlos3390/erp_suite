@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { CheckoutProgress } from '@/components/checkout-progress';
 import { ProductImage } from '@/components/product-image';
 import { TotalsBreakdown } from '@/components/totals-breakdown';
+import { EmptyState } from '@/components/ui/empty-state';
+import { BagIcon } from '@/components/ui/icons';
+import { Skeleton, SkeletonCheckout } from '@/components/ui/skeleton';
 import {
   CHECKOUT_LIMITS,
   CHECKOUT_PAYMENT_METHODS,
@@ -69,12 +73,6 @@ const EMPTY_BUYER: BuyerForm = {
   district: '',
   reference: '',
 };
-
-const STEPS: readonly { number: number; label: string }[] = [
-  { number: 1, label: 'Datos del comprador' },
-  { number: 2, label: 'Entrega y pago' },
-  { number: 3, label: 'Resumen y confirmacion' },
-];
 
 /** Clave de idempotencia del intento de compra (una por checkout). */
 function newIdempotencyKey(): string {
@@ -266,6 +264,27 @@ export function CheckoutForm({
     return useCartStore.persist.onFinishHydration(() => setHydrated(true));
   }, []);
 
+  // Al cambiar de paso el foco viaja al panel del paso nuevo, asi que el lector de
+  // pantalla anuncia el cambio en vez de dejar al comprador al final del documento
+  // (el panel no es alcanzable con Tab: el anillo se apaga a proposito y la barra de
+  // pasos ya marca donde esta). El desplazamiento se hace a mano —`preventScroll`
+  // mas `scrollIntoView` sobre la barra— para que el paso quede **debajo** del
+  // encabezado pegajoso (`scroll-mt-32`: medido, el encabezado mide 124 px y la
+  // barra 54 px, asi que el paso arranca visible y no escondido detras).
+  const stepTop = useRef<HTMLDivElement | null>(null);
+  const stepPanel = useRef<HTMLElement | null>(null);
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    stepPanel.current?.focus({ preventScroll: true });
+    // `behavior: instant` a proposito: el documento declara `scroll-behavior: smooth`
+    // y aqui el salto tiene que ser inmediato —el paso ya cambio—, no una animacion.
+    stepTop.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }, [step]);
+
   // La cotizacion sigue al correo (con rebote corto): un cliente registrado tiene su
   // propio tercero, su lista de precios y sus acuerdos, asi que el precio que ve en la
   // revision tiene que ser el suyo. Sin correo, la cotizacion es de invitado.
@@ -347,62 +366,45 @@ export function CheckoutForm({
 
   if (!hydrated) {
     return (
-      <p className="text-sm text-fg-secondary" data-testid="checkout-loading">
-        Cargando tu carrito…
-      </p>
+      <div data-testid="checkout-loading" aria-busy="true" aria-live="polite">
+        <span className="sr-only">Cargando tu carrito</span>
+        <SkeletonCheckout />
+      </div>
     );
   }
 
   if (lines.length === 0) {
     return (
-      <section
-        className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-line bg-elevated p-6"
-        data-testid="checkout-empty"
-      >
-        <h2 className="text-lg font-semibold text-fg">No hay nada que confirmar</h2>
-        <p className="text-sm text-fg-secondary">
-          Tu carrito esta vacio, asi que no hay pedido que crear. Agrega productos del catalogo y
-          vuelve al checkout.
-        </p>
-        <a href="/categorias" className="sf-btn-primary">
-          Ver categorias
-        </a>
-      </section>
+      <EmptyState
+        testId="checkout-empty"
+        title="No hay nada que confirmar"
+        description="Tu carrito esta vacio, asi que no hay pedido que crear. Agrega productos del catalogo y vuelve al checkout."
+        icon={<BagIcon />}
+        actions={[
+          { href: '/categorias', label: 'Ver categorias', primary: true },
+          { href: '/buscar', label: 'Buscar productos' },
+        ]}
+      />
     );
   }
 
   const paymentInfo = paymentMethodInfo(paymentMethod);
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row" data-testid="checkout-form">
-      <div className="flex-1">
-        <ol className="mb-5 flex flex-wrap gap-2" aria-label="Pasos del checkout">
-          {STEPS.map((item) => {
-            const current = item.number === step;
-            const done = item.number < step;
-            return (
-              <li key={item.number}>
-                <span
-                  aria-current={current ? 'step' : undefined}
-                  data-testid={`checkout-step-${item.number}`}
-                  data-state={current ? 'current' : done ? 'done' : 'pending'}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${
-                    current
-                      ? 'border-line-accent bg-primary-soft text-fg'
-                      : 'border-line bg-base text-fg-secondary'
-                  }`}
-                >
-                  <span aria-hidden="true">{item.number}</span>
-                  {item.label}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start" data-testid="checkout-form">
+      <div className="flex flex-1 flex-col gap-4">
+        <div className="scroll-mt-32" ref={stepTop}>
+          <CheckoutProgress current={step} />
+        </div>
 
         {step === 1 ? (
-          <section aria-labelledby="paso-datos" className="rounded-lg border border-line bg-base p-4">
-            <h2 id="paso-datos" className="text-sm font-semibold text-fg">
+          <section
+            ref={stepPanel}
+            tabIndex={-1}
+            aria-labelledby="paso-datos"
+            className="sf-card flex flex-col p-4 focus:outline-none sm:p-5"
+          >
+            <h2 id="paso-datos" className="sf-h3 text-fg">
               Datos del comprador y direccion
             </h2>
             <p className="mt-1 text-xs text-fg-secondary">
@@ -494,14 +496,9 @@ export function CheckoutForm({
               </div>
             </div>
 
-            <div
-              className="mt-4 rounded-md border border-line bg-elevated p-3"
-              data-testid="checkout-city"
-            >
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-fg-tertiary">
-                Ciudad de entrega
-              </h3>
-              <p className="mt-1 text-sm font-medium text-fg" data-testid="checkout-city-name">
+            <div className="sf-panel mt-4" data-testid="checkout-city">
+              <h3 className="sf-eyebrow">Ciudad de entrega</h3>
+              <p className="mt-1 text-sm font-semibold text-fg" data-testid="checkout-city-name">
                 {cityName} ({cityCode})
               </p>
               <p className="mt-1 text-xs text-fg-secondary">
@@ -512,10 +509,10 @@ export function CheckoutForm({
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" className="sf-btn-primary" onClick={goToStep2} data-testid="checkout-next-1">
+              <button type="button" className="sf-btn sf-btn-primary" onClick={goToStep2} data-testid="checkout-next-1">
                 Continuar a entrega y pago
               </button>
-              <a href="/carrito" className="sf-btn-secondary">
+              <a href="/carrito" className="sf-btn sf-btn-secondary">
                 Volver al carrito
               </a>
             </div>
@@ -524,22 +521,19 @@ export function CheckoutForm({
 
         {step === 2 ? (
           <section
+            ref={stepPanel}
+            tabIndex={-1}
             aria-labelledby="paso-entrega"
-            className="rounded-lg border border-line bg-base p-4"
+            className="sf-card flex flex-col p-4 focus:outline-none sm:p-5"
           >
-            <h2 id="paso-entrega" className="text-sm font-semibold text-fg">
+            <h2 id="paso-entrega" className="sf-h3 text-fg">
               Forma de entrega y metodo de pago
             </h2>
 
             <fieldset className="mt-4" data-testid="checkout-delivery">
-              <legend className="text-xs font-semibold uppercase tracking-wide text-fg-tertiary">
-                Entrega
-              </legend>
+              <legend className="sf-eyebrow">Entrega</legend>
               <div className="mt-2 flex flex-col gap-2">
-                <label
-                  htmlFor="entrega-home"
-                  className="flex cursor-pointer items-start gap-3 rounded-md border border-line bg-elevated p-3 text-sm"
-                >
+                <label htmlFor="entrega-home" className="sf-option">
                   <input
                     id="entrega-home"
                     type="radio"
@@ -548,10 +542,10 @@ export function CheckoutForm({
                     checked={deliveryType === 'HOME'}
                     onChange={() => setDeliveryType('HOME')}
                     data-testid="checkout-delivery-home"
-                    className="mt-0.5"
+                    className="mt-0.5 accent-primary"
                   />
                   <span>
-                    <span className="block font-medium text-fg">
+                    <span className="block font-semibold text-fg">
                       {deliveryTypeLabel('HOME')}
                     </span>
                     <span className="block text-xs text-fg-secondary">
@@ -560,10 +554,7 @@ export function CheckoutForm({
                     </span>
                   </span>
                 </label>
-                <label
-                  htmlFor="entrega-store"
-                  className="flex cursor-pointer items-start gap-3 rounded-md border border-dashed border-line bg-elevated p-3 text-sm"
-                >
+                <label htmlFor="entrega-store" className="sf-option sf-option-soft">
                   <input
                     id="entrega-store"
                     type="radio"
@@ -572,10 +563,10 @@ export function CheckoutForm({
                     checked={deliveryType === 'STORE'}
                     onChange={() => setDeliveryType('STORE')}
                     data-testid="checkout-delivery-store"
-                    className="mt-0.5"
+                    className="mt-0.5 accent-primary"
                   />
                   <span>
-                    <span className="block font-medium text-fg">
+                    <span className="block font-semibold text-fg">
                       {deliveryTypeLabel('STORE')} · fase 2
                     </span>
                     <span className="block text-xs text-fg-secondary">
@@ -588,22 +579,14 @@ export function CheckoutForm({
             </fieldset>
 
             <fieldset className="mt-5" data-testid="checkout-payment">
-              <legend className="text-xs font-semibold uppercase tracking-wide text-fg-tertiary">
-                Metodo de pago (sin tarjeta)
-              </legend>
+              <legend className="sf-eyebrow">Metodo de pago (sin tarjeta)</legend>
               <div className="mt-2 flex flex-col gap-2">
                 {CHECKOUT_PAYMENT_METHODS.map((code) => {
                   const info = paymentMethodInfo(code);
                   if (info === null) return null;
                   const inputId = `pago-${code.toLowerCase()}`;
                   return (
-                    <label
-                      key={code}
-                      htmlFor={inputId}
-                      className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm ${
-                        paymentMethod === code ? 'border-line-accent bg-primary-soft' : 'border-line bg-elevated'
-                      }`}
-                    >
+                    <label key={code} htmlFor={inputId} className="sf-option">
                       <input
                         id={inputId}
                         type="radio"
@@ -612,10 +595,10 @@ export function CheckoutForm({
                         checked={paymentMethod === code}
                         onChange={() => setPaymentMethod(code)}
                         data-testid={`checkout-payment-${code.toLowerCase()}`}
-                        className="mt-0.5"
+                        className="mt-0.5 accent-primary"
                       />
                       <span>
-                        <span className="block font-medium text-fg">
+                        <span className="block font-semibold text-fg">
                           {info.label}
                           {info.phaseTwo ? ' · fase 2' : ''}
                         </span>
@@ -644,7 +627,7 @@ export function CheckoutForm({
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
-                className="sf-btn-secondary"
+                className="sf-btn sf-btn-secondary"
                 onClick={() => setStep(1)}
                 data-testid="checkout-back-1"
               >
@@ -652,7 +635,7 @@ export function CheckoutForm({
               </button>
               <button
                 type="button"
-                className="sf-btn-primary"
+                className="sf-btn sf-btn-primary"
                 onClick={goToStep3}
                 data-testid="checkout-next-2"
               >
@@ -664,11 +647,13 @@ export function CheckoutForm({
 
         {step === 3 ? (
           <section
+            ref={stepPanel}
+            tabIndex={-1}
             aria-labelledby="paso-resumen"
-            className="flex flex-col gap-4 rounded-lg border border-line bg-base p-4"
+            className="sf-card flex flex-col gap-4 p-4 focus:outline-none sm:p-5"
           >
             <div>
-              <h2 id="paso-resumen" className="text-sm font-semibold text-fg">
+              <h2 id="paso-resumen" className="sf-h3 text-fg">
                 Resumen y confirmacion
               </h2>
               <p className="mt-1 text-xs text-fg-secondary">
@@ -678,18 +663,24 @@ export function CheckoutForm({
             </div>
 
             {quoteState.status === 'loading' ? (
-              <p role="status" className="text-sm text-fg-secondary" data-testid="checkout-quote-loading">
-                Cotizando con el ERP…
-              </p>
+              <div
+                role="status"
+                className="flex flex-col gap-3"
+                data-testid="checkout-quote-loading"
+              >
+                <span className="sr-only">Cotizando con el ERP</span>
+                <Skeleton shape="custom" className="h-20 w-full rounded-card" />
+                <Skeleton shape="custom" className="h-36 w-full rounded-card" />
+              </div>
             ) : null}
 
             {quoteState.status === 'error' ? (
               <div
                 role="alert"
-                className="flex flex-col gap-3 rounded-md border border-line-error bg-danger-soft p-3"
+                className="flex flex-col gap-3 rounded-card border border-line-error bg-danger-soft p-3"
                 data-testid="checkout-quote-error"
               >
-                <p className="text-sm font-medium text-fg">{quoteState.message}</p>
+                <p className="text-sm font-semibold text-fg">{quoteState.message}</p>
                 <ul className="list-inside list-disc text-xs text-fg-secondary">
                   <li>Revisa la existencia de la ciudad de entrega o quita esa linea del carrito.</li>
                   <li>Si el articulo se despublico, la tienda no puede venderlo.</li>
@@ -697,13 +688,13 @@ export function CheckoutForm({
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="sf-btn-secondary"
+                    className="sf-btn sf-btn-secondary"
                     onClick={reloadQuote}
                     data-testid="checkout-quote-reload"
                   >
                     Volver a cotizar
                   </button>
-                  <a href="/carrito" className="sf-btn-secondary" data-testid="checkout-quote-cart">
+                  <a href="/carrito" className="sf-btn sf-btn-secondary" data-testid="checkout-quote-cart">
                     Ir al carrito
                   </a>
                 </div>
@@ -712,7 +703,7 @@ export function CheckoutForm({
 
             {quoteState.status === 'ready' ? (
               <>
-                <ul className="divide-y divide-line rounded-md border border-line" data-testid="checkout-quote-lines">
+                <ul className="divide-y divide-line overflow-hidden rounded-card border border-line" data-testid="checkout-quote-lines">
                   {quoteState.quote.items.map((line) => {
                     const snapshot = linesByItemId.get(line.itemId);
                     return (
@@ -726,10 +717,10 @@ export function CheckoutForm({
                           src={snapshot?.image ?? null}
                           alt={line.name}
                           sizes="64px"
-                          className="h-16 w-16 shrink-0 rounded-md bg-elevated"
+                          className="h-16 w-16 shrink-0 rounded-btn"
                         />
                         <div className="flex flex-1 flex-col">
-                          <span className="text-sm font-medium text-fg">{line.name}</span>
+                          <span className="text-sm font-semibold text-fg">{line.name}</span>
                           <span className="text-xs text-fg-tertiary">
                             SKU {line.sku} · {line.quantity} ×{' '}
                             {formatMoney(line.price, quoteState.quote.currency)} · disponible{' '}
@@ -780,7 +771,7 @@ export function CheckoutForm({
                       data-testid="checkout-quote-line-shipping"
                     >
                       <div className="flex flex-1 flex-col">
-                        <span className="text-sm font-medium text-fg">
+                        <span className="text-sm font-semibold text-fg">
                           Envio · {quoteState.quote.shippingItem.name}
                         </span>
                         <span className="text-xs text-fg-tertiary">
@@ -839,7 +830,7 @@ export function CheckoutForm({
               </>
             ) : null}
 
-            <dl className="flex flex-col gap-2 rounded-md border border-line p-4 text-sm">
+            <dl className="sf-panel flex flex-col gap-2 text-sm">
               <div className="flex items-center justify-between">
                 <dt className="text-fg-secondary">Unidades del carrito</dt>
                 <dd className="font-medium text-fg" data-testid="checkout-items">
@@ -888,10 +879,10 @@ export function CheckoutForm({
             {orderError !== null ? (
               <div
                 role="alert"
-                className="rounded-md border border-line-error bg-danger-soft p-3"
+                className="rounded-card border border-line-error bg-danger-soft p-3"
                 data-testid="checkout-order-error"
               >
-                <p className="text-sm font-medium text-fg">{orderError}</p>
+                <p className="text-sm font-semibold text-fg">{orderError}</p>
                 <p className="mt-1 text-xs text-fg-secondary">
                   El pedido no se creo. Revisa el mensaje, corrige lo que indique y vuelve a
                   intentar: el reintento usa la misma operacion, asi que no puede duplicar el
@@ -903,7 +894,7 @@ export function CheckoutForm({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="sf-btn-secondary"
+                className="sf-btn sf-btn-secondary"
                 onClick={() => setStep(2)}
                 disabled={sending}
                 data-testid="checkout-back-2"
@@ -912,7 +903,7 @@ export function CheckoutForm({
               </button>
               <button
                 type="button"
-                className="sf-btn-primary"
+                className="sf-btn sf-btn-primary sf-btn-lg"
                 onClick={() => {
                   void confirmOrder();
                 }}
@@ -940,17 +931,17 @@ export function CheckoutForm({
 
       <aside
         aria-label="Tu carrito"
-        className="h-fit rounded-lg border border-line bg-elevated p-4 lg:w-80"
+        className="sf-card flex h-fit flex-col gap-3 p-4 lg:sticky lg:top-32 lg:w-80"
       >
-        <h2 className="text-sm font-semibold text-fg">Tu carrito</h2>
-        <ul className="mt-3 flex flex-col gap-3">
+        <h2 className="sf-h3 text-fg">Tu carrito</h2>
+        <ul className="flex flex-col gap-3">
           {lines.map((line) => (
             <li key={line.itemId} className="flex items-center gap-3" data-testid="checkout-cart-line">
               <ProductImage
                 src={line.image}
                 alt={line.name}
                 sizes="48px"
-                className="h-12 w-12 shrink-0 rounded-md bg-base"
+                className="h-12 w-12 shrink-0 rounded-btn"
               />
               <div className="flex flex-1 flex-col">
                 <span className="text-xs font-medium text-fg">{line.name}</span>
@@ -961,11 +952,11 @@ export function CheckoutForm({
             </li>
           ))}
         </ul>
-        <p className="mt-3 text-xs text-fg-tertiary">
+        <p className="text-xs text-fg-tertiary">
           Precios de referencia del carrito (maximo {MAX_LINE_QUANTITY} unidades por articulo). El
           importe que se cobra es el que cotiza el ERP en el resumen.
         </p>
-        <a href="/carrito" className="sf-link mt-3 inline-block text-xs">
+        <a href="/carrito" className="sf-link text-xs">
           Editar el carrito
         </a>
       </aside>

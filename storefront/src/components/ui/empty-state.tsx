@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { SearchIcon } from './icons';
+
 interface EmptyStateProps {
   title: string;
   description: string;
@@ -37,7 +39,12 @@ export function EmptyState({
         <ul className="mt-1 flex flex-wrap justify-center gap-2">
           {actions.map((action) => (
             <li key={action.href}>
-              <Link href={action.href} className={action.primary === true ? 'sf-btn sf-btn-primary' : 'sf-btn sf-btn-secondary'}>
+              <Link
+                href={action.href}
+                className={
+                  action.primary === true ? 'sf-btn sf-btn-primary' : 'sf-btn sf-btn-secondary'
+                }
+              >
                 {action.label}
               </Link>
             </li>
@@ -45,14 +52,5 @@ export function EmptyState({
         </ul>
       ) : null}
     </section>
-  );
-}
-
-function SearchIcon(): JSX.Element {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-3.6-3.6" />
-    </svg>
   );
 }

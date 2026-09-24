@@ -110,11 +110,11 @@ export default async function TrackingPage({ searchParams }: TrackingPageProps):
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="submit" className="sf-btn-primary" data-testid="tracking-submit">
+          <button type="submit" className="sf-btn sf-btn-primary" data-testid="tracking-submit">
             Consultar pedido
           </button>
           {orderNumber !== undefined ? (
-            <Link href="/seguimiento" className="sf-btn-secondary">
+            <Link href="/seguimiento" className="sf-btn sf-btn-secondary">
               Limpiar
             </Link>
           ) : null}

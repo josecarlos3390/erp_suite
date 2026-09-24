@@ -1123,3 +1123,71 @@ patron que el testid `quick-add` de F9.3: **el contrato se conserva y se vuelve 
 pedido (D14/`webOrderTtlHours`); el zoom es de escritorio (en tactil no hay puntero, asi que la
 imagen se queda en su tamano); y la ficha de un articulo **sin** caracteristicas sigue diciendolo en
 un panel, no en un acordeon vacio.
+
+### §14.f Estado de F9.5 — carrito y checkout (medido el 2026-09-23, T207)
+
+**Lo medido antes de rehacerlo** (todo sobre la tienda en marcha, no por lectura):
+
+- **(a)** El HTML del servidor de `/carrito` ya traia **«Tu carrito esta vacio»**: el store rehidrata
+  con `skipHydration` despues del montaje, asi que el primer pintado era el estado vacio y el
+  comprador con carrito veia un parpadeo. El checkout **si** tenia guarda (`hydrated`), el carrito no.
+- **(b)** El HTML del servidor de `/checkout` traia **una sola linea de texto**
+  (`Cargando tu carrito…`): medido, **1** aparicion de `Cargando tu carrito` y **0** de «Datos del
+  comprador» y de «Pasos del checkout». De la pantalla entera no habia nada.
+- **(c)** Los pasos eran **pildoras** en un `<ol>` sin barra de avance: el comprador no veia cuanto
+  le quedaba.
+- **(d)** Ninguno de los dos resumenes laterales era **pegajoso**: medido, **0** apariciones de
+  `lg:sticky` en las dos paginas (la ficha de compra si lo trae desde F9.4).
+- **(e)** La clase base del boton se usaba a medias: **17** atributos de clase con
+  `sf-btn-primary`/`sf-btn-secondary` **sin** `sf-btn` (7 primarios + 10 secundarios) en
+  `cart-view`, `checkout-form`, `payment-reference-form`, `seguimiento`, `pedido` y `not-found`. La
+  base es la que aporta `min-height: 44px`, el relleno, `inline-flex` y el radio, asi que esos
+  botones salian con el relleno del navegador. Cerrado: medido despues, **0** atributos sin base.
+- **(f)** Dos utilidades de Tailwind compitiendo en el mismo elemento: los skeletons de F9.3 pedian
+  `h-9 w-72` / `h-11 w-32` sobre la forma `block`, que ya emite `h-24 w-full`. **Medido en la hoja
+  compilada**: `.h-11` se emite antes que `.h-24` (52247 < 52351) y `.w-full` despues de
+  `.w-24`/`.w-72`/`.w-80` (53329 > 53136), asi que la altura pedida se perdia en unos casos y **el
+  ancho en todos**. Se cierra por construccion con la forma `custom` del `Skeleton`, que no emite
+  ninguna de las dos.
+
+**Lo entregado**:
+
+- **Barra de progreso de la compra** (`checkout-progress.tsx`): cuatro nodos —carrito y los tres
+  pasos del checkout— con nodo numerado, marca de completado, barra que los une y
+  `aria-current="step"`. El **carrito es el nodo 0 y no lleva `data-testid`**: el numero visible de
+  cada paso coincide con el del contrato del E2E (`checkout-step-1..3`) y el `data-state`
+  (`done`/`current`/`pending`) se conserva tal cual. En pantalla estrecha el nombre del paso actual
+  va en su propia linea (antes el `truncate` dejaba «Res…»).
+- **Resumen pegajoso** en el carrito y en el checkout (`lg:sticky lg:top-32`). Medido: la `y` del
+  resumen se queda en **128 px** tras desplazar 800 px, mientras la columna izquierda sigue subiendo.
+- **Carga y errores cuidados**: el carrito estrena **guarda de rehidratacion** con un esqueleto de la
+  forma real (`cart-loading`), el checkout cambia la linea de texto por el **esqueleto completo** del
+  formulario (`SkeletonCheckout`), la cotizacion muestra esqueletos mientras el ERP responde
+  (conservando `checkout-quote-loading`, `checkout-quote-error` y sus dos salidas) y los vacios pasan
+  al `EmptyState` unico (`cart-empty`, `checkout-empty`). Las dos rutas estrenan `loading.tsx`.
+- **El foco viaja al panel del paso nuevo** (`focus({ preventScroll })` + `scrollIntoView` sobre la
+  barra, con `scroll-mt-32`): el lector de pantalla anuncia donde esta el comprador. Medido: la barra
+  queda en **128 px** con el encabezado pegajoso terminando en **124 px**, asi que el paso no arranca
+  escondido debajo.
+- **Tarjetas de opcion** (`.sf-option`, nuevo en la capa de componentes) para entrega y pago: el
+  estado elegido sale del radio real con `:has(input:checked)`, sin duplicarlo en JavaScript, y la
+  opcion declarada de fase 2 (retiro en tienda) queda con borde discontinuo.
+- **Iconos compartidos** (`ui/icons.tsx`): bolsa, marca de completado y busqueda dejan de estar
+  repetidos en tres componentes.
+
+**Evidencia medida**: `typecheck` **0**, `lint` **0/0**, `build` **0** (First Load JS compartido
+**87,1 kB**), `sync:tokens:check` y `sync:fonts:check` OK y **E2E de la tienda 27/27**, con dos casos
+nuevos: uno mide la barra en las dos paginas, el resumen pegajoso (`toHaveCSS('position','sticky')`),
+el `data-state` al cambiar de paso y que el foco quede en el panel nuevo; el otro mide **sin
+JavaScript** que la primera pintada es el esqueleto (`cart-loading`, `checkout-loading`) y **no** el
+estado vacio. Capturas revisadas: carrito lleno y vacio (claro y oscuro), carrito movil, checkout
+paso 2, paso 3 y paso 3 movil en oscuro.
+
+**Medido despues, en el HTML del servidor** (la misma sonda del punto (a)/(b)): `/carrito` trae
+`cart-loading` con **38** bloques de esqueleto y **ya no** trae «Tu carrito esta vacio»; `/checkout`
+trae `checkout-loading` con **35** bloques, frente a la unica linea de texto anterior.
+
+**Declarado**: el carrito sigue siendo del comprador (snapshot en `localStorage`, D2) y el pago lo
+registra el ERP (D18); el `loading.tsx` del checkout tapa la resolucion de la ciudad en el servidor,
+no la hidratacion (que la cubren las guardas); y la barra de pasos no se colapsa ni se convierte en
+menu en pantallas muy estrechas: se queda en la linea de nodos con el nombre encima.

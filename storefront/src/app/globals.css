@@ -366,6 +366,51 @@
     box-shadow: 0 0 0 3px var(--sf-brand-100);
   }
 
+  /* ── Opciones (entrega, pago): tarjeta con radio nativo ───────────────── */
+  .sf-option {
+    display: flex;
+    cursor: pointer;
+    align-items: flex-start;
+    gap: 0.75rem;
+    border-radius: var(--sf-radius-card);
+    border: 1px solid var(--border-default);
+    background-color: var(--bg-base);
+    padding: 0.75rem;
+    font-size: var(--text-sm);
+    transition:
+      border-color var(--duration-fast) var(--ease-in-out-smooth),
+      background-color var(--duration-fast) var(--ease-in-out-smooth),
+      box-shadow var(--duration-fast) var(--ease-in-out-smooth);
+  }
+
+  .sf-option:hover {
+    border-color: var(--border-strong);
+    background-color: var(--bg-hover);
+  }
+
+  /* El estado elegido sale del radio real (`:has`), no de una copia en JavaScript. */
+  .sf-option:has(input[type='radio']:checked) {
+    border-color: var(--sf-brand-300);
+    background-color: var(--sf-brand-50);
+    box-shadow: 0 0 0 1px var(--sf-brand-300);
+  }
+
+  .sf-option:has(input:focus-visible) {
+    outline: 2px solid var(--sf-brand-600);
+    outline-offset: 2px;
+  }
+
+  .sf-option:has(input:disabled) {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  /* La opcion anunciada sin implementar (retiro en tienda, fase 2) no compite. */
+  .sf-option-soft {
+    border-style: dashed;
+    background-color: var(--bg-elevated);
+  }
+
   /* ── Enlaces ──────────────────────────────────────────────────────────── */
   .sf-link {
     color: var(--sf-brand-700);

@@ -152,7 +152,7 @@ export function PaymentReferenceForm({
 
         <button
           type="submit"
-          className="sf-btn-secondary w-fit"
+          className="sf-btn sf-btn-secondary w-fit"
           disabled={sending}
           data-testid="payment-reference-submit"
         >
