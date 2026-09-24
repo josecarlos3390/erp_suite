@@ -873,6 +873,36 @@ pedido la lleva congelada por línea) y la ventana de 60 s de la caché de la ti
 ritmo de publicación; **F8.3** (pantalla **Ventas → Tienda online → Promociones del canal**)
 se entrega con la API ya cerrada.
 
+## §15 F7 y F4 — estado medido y decisiones pendientes (2026-09-24, T217)
+
+Los dos tramos que quedan del orden acordado **necesitan decisiones de producto**, así que
+antes de tocar nada se midió el estado real (no se asumió nada del plan):
+
+### F7 — Pagos y fiscal
+
+| Punto | Estado medido |
+|---|---|
+| **PSP de tarjeta** | **No existe nada**: 0 coincidencias de `stripe`/`paypal`/`mercado pago`/`pasarela`/`paymentGateway` en `backend-erp/src`; el checkout solo cobra **offline** (transferencia, QR, contra entrega) y el pago se concilia a mano. Es greenfield: hay que elegir proveedor (y su modo de integración: hosted fields/redirect) |
+| **Serie propia del canal** | **La infraestructura ya lo permite**: `DocumentSeriesService.nextDocumentCode(..., requestedSeriesId)` acepta una serie **por documento** y `DocumentSeries` admite **varias series por `docType`** (con prefijos distintos); el `DocumentType` es un enum cerrado y **no hace falta un valor nuevo** — la serie del canal puede ser una `DocumentSeries` de `SALE_INVOICE` (o de `SALES_ORDER`) con prefijo propio. Hoy el pedido web usa la serie por defecto de `SALES_ORDER` (declarado desde T188) |
+| **Factura del pedido** | **Existe el flujo**: `POST /sale-invoices/from-order/:orderId`. Lo que **no** está decidido es **cuándo** la emite el canal (al confirmar el pago, al despachar, o a mano desde el back office) ni quién la dispara |
+| **Cuotas** | El canal **no las calcula** y lo dice en la propia fuente (`storefront/src/lib/format.ts`: «NO se calculan cuotas… el canal no publica un plan de cuotas»); la insignia `CUOTAS` viene del ERP como **dato del artículo**, no como plan. Ojo con la homonimia: `InvoiceInstallment` del ERP son **cuotas de la factura** (plan de pago del `PaymentTerm`), **no** cuotas de tarjeta |
+| **Conciliación del cobro** | **Sin medir de punta a punta**: el canal verifica `paymentStatus: 'pending'` en varios E2E, pero **ningún** caso cierra el ciclo (factura del pedido → `IncomingPayment` del ERP → el seguimiento pasa a `paid`, que es lo que deriva D13). Es un hueco **de prueba**, no de producto, y se puede cerrar sin ninguna decisión |
+
+### F4 — Cuenta del cliente
+
+| Punto | Estado medido |
+|---|---|
+| Rutas y endpoints | **Ninguno**: 0 rutas de cuenta en la tienda (11 `page.tsx`, ninguno de cuenta) y **0 endpoints de cliente** en el canal (los 15 del controlador son catálogo, cotización, pedido, seguimiento, referencia de pago y barrido) |
+| Identidad | D1/D2 fijan que la tienda **no usa cookies del ERP** y que el carrito es del comprador; `WebCustomer` existe (3 clientes en el seed) y la cotización ya resuelve el precio del **cliente registrado por correo** (D12), pero **no hay credenciales ni sesión** de comprador |
+| Dependencia dura | El **correo transaccional (D16) sigue sin proveedor**: sin él no hay verificación de correo, ni recuperación de contraseña, ni aviso de pedido. Cualquier F4 con registro real queda a medias |
+
+### Preguntas para decidir (antes de escribir código)
+
+1. **PSP**: ¿se integra una pasarela ahora (**cuál** y con qué modo: hosted fields o redirect?) o F7 se queda en offline y se salta a F4?
+2. **Factura del canal**: ¿**cuándo** se emite (`from-order`) y con **qué prefijo de serie** (p. ej. `WEB-`)? ¿La emite el canal al confirmarse el pago o el back office a mano?
+3. **Correo (D16)**: ¿hay proveedor/credenciales (SMTP/SES/Resend) para desbloquear F4, o F4 espera?
+4. **Orden**: mientras se decide, ¿cierro el hueco **de prueba** de la conciliación del cobro (sin decisiones) y sigo con F6, o prefieres otro orden?
+
 ## §14 F9 — Identidad visual y experiencia premium de la tienda (plan aprobado el 2026-09-23)
 
 **La pregunta del usuario**: la tienda «se ve algo básica, no parece tener un estilo premium».
