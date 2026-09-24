@@ -668,7 +668,7 @@ del artículo (`ItemWeb`) gana su propio descuento con vigencia, que **solo** ap
 
 | Fase | Alcance | Evidencia exigida |
 |---|---|---|
-| **F8.1** | La oferta de catálogo aplica en documentos y POS + el formulario de artículos la expone | Unitarios del resolver (oferta vigente, vencida, futura, sin oferta) y E2E que compara **el mismo artículo** por las tres superficies; `ng build`/Karma del formulario con los campos nuevos |
+| **F8.1** | La oferta de catálogo aplica en documentos y POS + el formulario de artículos la expone + las pantallas **proponen** el precio vigente | Unitarios del resolver (oferta vigente, vencida, futura, sin oferta) y E2E que compara **el mismo artículo** por las tres superficies; `ng build`/Karma del formulario con los campos nuevos y del POS con el precio del motor |
 | **F8.2** | `ItemWeb` con descuento del canal + la tienda lo publica y lo aplica como capa propia | Unitarios del canal (promo vigente/vencida/ausente, acumulación con la oferta y con el descuento de empresa) y E2E de la tienda con la promo visible en el desglose |
 | **F8.3** | Pantalla **Ventas → Tienda online → Promociones del canal** (permiso propio) + paridad medida | Karma de la pantalla + spec E2E de UI de la bandeja de promociones, y el E2E de paridad de las tres superficies con y sin promo configurada |
 
@@ -712,7 +712,8 @@ vigente/vencida/futura, la oferta como base del descuento de grupo, el acuerdo f
 ganando y `resolveCatalogPrice` con los extremos de vigencia), 1 del POS (impuesto del
 artículo sin indicador del tercero) y el canal **40/40**.
 
-**F8.1 — cerrado por partes**: el **formulario de artículos** ya expone la oferta (T198, UI):
+**F8.1 — cerrado por partes**: el **formulario de artículos** ya expone la oferta (T198, UI; el
+resto de F8.1 —que las pantallas propongan el precio vigente— se cierra en **§13.c/T199**):
 fila de tres campos —**Precio de oferta**, **Oferta desde**, **Oferta hasta**— bajo el precio de
 venta, con una nota que explica el alcance (mientras esté vigente ese es el precio de pedidos, POS y
 tienda; fuera de la vigencia manda el precio de venta), hidratación del ISO al día del tenant y
@@ -729,7 +730,54 @@ documento, `discountPct`/`discountAmt` → descuento ganador explícito, `price`
 no hay descuento), pasando `res.basePrice` a `applyResolvedSpecialPrice` para que el `%` se aplique
 sobre el **precio vigente** (oferta) y no sobre la lista; las compras siguen usando
 `resolvePriceList` (no llevan descuentos de venta) y hay que actualizar las ~7 expectativas del spec
-que hoy afirman la URL `special-prices/resolve`.
+que hoy afirman la URL `special-prices/resolve`. → **CERRADO en §13.c (T199)**.
+
+### §13.c F8.1 cerrada — la pantalla propone el precio que el ERP cobra (2026-09-23, T199)
+
+**Lo implementado (frontend, sin cambios de contrato en los documentos)**:
+
+- **`PriceResolutionService` consulta el motor único**: `resolve()` (líneas de venta) llama a
+  `GET /items/:id/effective-price` en vez de a `POST /special-prices/resolve` y traduce la
+  respuesta al shape que ya consumen los formularios, pasando **`res.basePrice`** a
+  `applyResolvedSpecialPrice`: sin ganador el precio vigente entra como precio de la línea, con
+  ganador `%` la línea queda `base vigente + %` y con ganador en monto viaja `discountAmt` (por
+  unidad). Si el motor no resuelve nada (o falla) se conserva el respaldo de siempre
+  (`GET /price-lists/resolve`). Las **compras** siguen con `resolvePriceList`.
+- **`POST /items/effective-prices`** (nuevo, en lote, `items:view`): el POS pinta el catálogo y
+  recalcula el carrito entero, así que resolver artículo por artículo multiplicaría las consultas;
+  lee los precios de lista en **una** consulta y cada artículo pasa por el **mismo**
+  `resolveItemPriceForPartner`. Sin `partnerId` la base es la **lista por defecto** de la empresa
+  (también en el endpoint de a uno): así el catálogo del POS sin cliente muestra el precio vigente
+  —oferta incluida— y no el de lista. Un artículo de otra empresa se **omite** del resultado.
+- **El POS dejó de replicar el precio**: `PosService.getDefaultPrices`/`resolvePriceBulk` se
+  retiraron (proponían el precio de lista) y el componente usa el motor para el catálogo, el modal y
+  el carrito; el descuento que aplica el motor se marca `autoDiscount` y un recálculo lo descarta y
+  lo vuelve a resolver, mientras que un descuento capturado por el cajero se respeta (defecto
+  colateral que se cierra: al cambiar de cliente el carrito conservaba el `%` del anterior).
+
+**DEFECTO MEDIDO Y CERRADO (el que la UI dejó a la vista)**: el carrito del POS se armaba con el
+**precio de lista** y le aplicaba el descuento ganador, mientras la factura cobra el **precio
+vigente** con ese descuento. Sonda sobre el seed real (`WEB-0004`, lista **2899**, oferta vigente
+**2699**, grupo con **5 %**): la pantalla proponía `2899 − 5 % = 2754,05` y el ERP cobra
+`2699 − 5 % = 2564,05`; el cajero cobraba de más y el POS respondía **400 «El pago excede el total
+de la venta»**. Ahora la pantalla propone `2699 + 5 %` → **2564,05 = la factura** (misma sonda,
+«coincide con la factura: SI»). El E2E de paridad fija el contrato con una venta pagada con la
+cuenta vieja (`1000 − 10 %`): **400 medido** con ese mensaje.
+
+**Evidencia**: **6 unitarios nuevos** del servicio de items (una sola consulta de precios de lista
+para el lote, el lote con el mismo motor, la lista por defecto sin tercero, la lista explícita, la
+omisión de artículos ajenos y la cantidad mínima), **Karma 2205** (spec del servicio de resolución
+reescrito al endpoint nuevo: URL, parámetros y la traducción de `basePrice`/`%`/monto; 6 casos
+nuevos del POS: oferta como base + ganador, el descuento manual respetado, el descuento automático
+anterior descartado, el precio vigente en el modal y en el quick-add), `test/storefront-channel.e2e-spec.ts`
+**40/40** (el caso de paridad añade el **lote** con la misma resolución exacta que el endpoint de a
+uno y la venta rechazada con la cuenta vieja), `ng build` 0, `lint` 0/0, gates estáticos en verde y
+la **sonda en vivo** del seed arriba. `npm run format:check:touched` OK.
+
+**Declarado**: la resolución de la UI usa el **día del tenant** (lo resuelve el backend), así que un
+documento **retroactivo** (fecha anterior o posterior a hoy) se propone con la vigencia de hoy: el
+motor del documento sí evalúa su propia fecha. Queda como hueco menor hasta que el endpoint acepte
+la fecha del documento.
 
 **Declarado**: el descuento del canal se aplica **solo** a la mercancía (el flete sigue siendo el
 importe de la ciudad) y no cambia el IVA —el impuesto lo sigue calculando el motor del ERP sobre el
