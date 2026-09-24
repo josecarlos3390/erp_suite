@@ -878,7 +878,31 @@ se entrega con la API ya cerrada.
 Los dos tramos que quedan del orden acordado **necesitan decisiones de producto**, así que
 antes de tocar nada se midió el estado real (no se asumió nada del plan):
 
-### F7 — Pagos y fiscal
+### F7 — decisión del usuario (2026-09-24): DOS modalidades de facturación
+
+El usuario eligió **sin PSP** (el checkout sigue offline) y **dos modalidades**, con la
+**factura de reserva** como documento fiscal del canal y serie **`WEB-`** para los pedidos web
+(que es configuración, no migración: el `DocumentType` `SALES_ORDER` existe y el modelo admite
+varias series por tipo). Las dos cadenas **ya tienen sus endpoints** (medidos):
+
+| Modalidad | Cadena | Endpoints medidos | Consecuencia medida |
+|---|---|---|---|
+| **A — facturar al pedir y pagar** | pedido → **reserva** → cobro | `sale-reserve-invoices/from-order/:orderId` ✓, `incoming-payments` con `lines[].saleReserveInvoiceId` ✓ | **Choca con el barrido de abandonados (D14)**: el `cancel` del pedido **falla con documentos posteriores** (medido en T192), así que un pedido impago con reserva emitida dejaría el barrido en `error`; hay que anular **también la reserva** (o emitir la reserva solo al cobrar) |
+| **B — facturar al recibir** | pedido → **entrega** → **reserva desde la entrega** → cobro | `delivery-orders/from-order/:orderId` ✓, `sale-reserve-invoices/from-delivery/:deliveryOrderId` ✓, `incoming-payments` ✓ | La entrega **no** debe nacer de la reserva (la reserva no existe todavía): nace del pedido, y la reserva **de la entrega** |
+
+**DEFECTO QUE LA MEDICIÓN DESTAPÓ (T218, corregido)**: con la modalidad A, el seguimiento del
+comprador publicaba **`DELIVERED`** (con `deliveryStatus = PENDING` y **ninguna entrega**) porque
+la tabla de traducción daba por entregado a un pedido **facturado** —y la reserva factura sin
+entregar—. Ahora `DELIVERED` **exige entrega** y la facturación se publica aparte
+(`invoiceStatus`), con el pago en `paymentStatus`: medido en vivo (`PED-235` / `FRV-48` /
+`COB-1058`).
+
+**Pregunta pendiente (una sola)**: ¿la modalidad la elige el **comprador en el checkout** (dos
+opciones de pago: «pago ahora» vs «pago al recibir») o se **configura por empresa** (ajuste
+`webInvoicingMode`, con el mismo patrón que `webOrderTtlHours`)? Y en cualquiera de los dos:
+¿cuál es la **modalidad por defecto**?
+
+### F7 — estado medido (2026-09-24, T217)
 
 | Punto | Estado medido |
 |---|---|
