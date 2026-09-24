@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 
 import { isPlaceholderImage } from '@/lib/media';
 
@@ -20,6 +20,8 @@ interface ProductImageProps {
   priority?: boolean;
   className?: string;
   imageClassName?: string;
+  /** Estilos de la imagen real (la galeria los usa para el origen del zoom). */
+  imageStyle?: CSSProperties;
   /**
    * `true` para el arte de campana del CMS (`home-hero`/`home-strip`): una foto de
    * marcador ahi es arte intencional de la campana, no una foto de producto
@@ -51,6 +53,7 @@ export function ProductImage({
   priority = false,
   className,
   imageClassName,
+  imageStyle,
   allowStockHost = false,
 }: ProductImageProps): JSX.Element {
   const [failed, setFailed] = useState(false);
@@ -69,6 +72,7 @@ export function ProductImage({
           sizes={sizes}
           priority={priority}
           className={`object-contain ${imageClassName ?? ''}`}
+          style={imageStyle}
           onError={() => setFailed(true)}
         />
       )}

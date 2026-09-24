@@ -86,7 +86,11 @@ test.describe('Ficha de producto', () => {
 
     // Ficha tecnica: todas las caracteristicas publicadas.
     if (detail.specs.length > 0) {
-      await expect(page.getByTestId('specs-table').locator('tbody tr')).toHaveCount(
+      // La ficha (F9.4) pinta un acordeon por GRUPO de caracteristicas, asi que hay
+      // una tabla por grupo: se cuentan las filas de todas con un selector CSS —con
+      // `getByTestId(...).locator(...)` el padre resolveria a varios elementos y
+      // Playwright fallaria en modo estricto cuando el articulo tiene 2+ grupos—.
+      await expect(page.locator('[data-testid="specs-table"] tbody tr')).toHaveCount(
         detail.specs.length,
       );
       for (const spec of detail.specs) {

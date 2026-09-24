@@ -1086,3 +1086,40 @@ carril de la home, los conteos exactos, `filtros-resumen`, `pager-next`, `search
 el panel de filtros no se colapsa en movil (no hay islote para eso: se prefirio no anadir JavaScript
 y el canal **no** acepta rango de precios, hueco ya declarado); y el skeleton solo cubre las dos
 pantallas de catalogo, porque la home se pinta de una pieza.
+
+### §14.e Estado de F9.4 — ficha de producto (medido el 2026-09-23, T206)
+
+**Lo entregado**: la ficha pasa de dos columnas planas a una pagina de compra.
+
+- **Caja de compra pegajosa** (`lg:sticky`): marca, titulo en la escala `sf-h1`, SKU, insignias del
+  ERP, **panel de precio** con el importe protagonista, la etiqueta de descuento, el «antes» y el
+  **ahorro calculado** (de dos importes del ERP, no inventado), la leyenda de que el importe final lo
+  confirma el ERP, la disponibilidad con punto de estado y el boton de compra.
+- **Cantidad con tope real**: el stepper respeta `MAX_LINE_QUANTITY` **y la existencia publicada**
+  («Puedes agregar hasta N unidades»), asi que la tienda nunca ofrece comprar mas de lo que hay. El
+  boton sigue agregando con cantidad por defecto 1, de modo que el E2E no cambia de semantica.
+- **Tarjetas de entrega, envio, garantia y pago** en lugar de la lista de texto: plazo en dias
+  habiles de la ciudad, `describeShipping` con el umbral de envio gratis, los meses de garantia que
+  publica el ERP y los medios de pago del checkout. La tarjeta de pago menciona las **cuotas solo si
+  el ERP publica la insignia `CUOTAS`** («se eligen y confirman en el checkout»): la tienda **no
+  inventa planes de cuota** (regla de honestidad de `src/lib/format.ts`).
+- **Galeria con zoom** (`product-gallery.tsx`): la imagen principal se amplia al pasar el puntero con
+  el **origen siguiendo al puntero** y un contador `n / total`; miniaturas con estado activo. El zoom
+  solo se ofrece con **foto real** (con el placeholder del seed no aporta y no se insinua).
+- **Ficha tecnica en acordeones** (`<details open>` por grupo, sin JavaScript) con el conteo de
+  caracteristicas por grupo, conservando `specs-table` y el `rowheader` por caracteristica.
+
+**Evidencia medida**: `typecheck` **0**, `lint` **0/0**, `build` **0** y **E2E de la tienda 25/25**
+(42,3 s). Captura revisada de la ficha completa (galeria, caja de compra con las cuatro tarjetas y el
+stepper, acordeones de ficha tecnica y relacionados con quick-add).
+
+**MEJORA DE ARNES MEDIDA (en esta fase)**: la ficha pinta **una tabla por grupo** de caracteristicas,
+asi que `getByTestId('specs-table').locator('tbody tr')` resolvia a **varios** elementos y Playwright
+habria fallado en modo estricto en cuanto un articulo tuviera 2+ grupos; el E2E cuenta ahora las
+filas de todas las tablas con un selector CSS (`[data-testid="specs-table"] tbody tr`). Es el mismo
+patron que el testid `quick-add` de F9.3: **el contrato se conserva y se vuelve determinista**.
+
+**Declarado**: el stepper topa con la existencia publicada, pero la reserva real ocurre al crear el
+pedido (D14/`webOrderTtlHours`); el zoom es de escritorio (en tactil no hay puntero, asi que la
+imagen se queda en su tamano); y la ficha de un articulo **sin** caracteristicas sigue diciendolo en
+un panel, no en un acordeon vacio.
