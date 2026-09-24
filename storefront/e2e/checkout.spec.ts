@@ -132,6 +132,14 @@ test.describe('Checkout de invitado', () => {
     expect(expected.shippingCharged).toBe(true);
     expect(expected.subtotal).toBe(target.price);
 
+    // El flete se **especifica** en la lista como envio, con el articulo de servicio de la
+    // ciudad (T200): es una linea mas del documento del ERP, no un producto del carrito.
+    const shippingLine = page.getByTestId('checkout-quote-line-shipping');
+    await expect(shippingLine).toHaveCount(1);
+    await expect(shippingLine).toContainText('Envio ·');
+    await expect(shippingLine).toContainText('Servicio de entrega de la ciudad');
+    expect(await readMoney(shippingLine.locator('span').last())).toBe(expected.shipping);
+
     // El desglose fiscal **completo** (T197): mercancia sin IVA e IVA, con el mismo motor
     // que el documento del ERP, y las cifras suman el total a pagar.
     expect(await readMoney(page.getByTestId('checkout-quote-net-subtotal'))).toBe(
@@ -191,8 +199,15 @@ test.describe('Checkout de invitado', () => {
     expect(stored.tax).toBeGreaterThan(0);
     expect(Math.round((stored.netSubtotal + stored.tax) * 100) / 100).toBe(stored.total);
 
-    // El envio viaja como una linea mas del pedido (`WEB-ENVIO`) cuando la ciudad lo cobra.
+    // El envio viaja como una linea mas del pedido (`WEB-ENVIO`) cuando la ciudad lo cobra…
     expect(stored.items.some((item) => item.sku === 'WEB-ENVIO')).toBe(true);
+    // …y la confirmacion la **especifica como envio** (T200): el canal publica con que
+    // articulo de servicio se cobro, y esa linea no se pinta como si fuera un producto.
+    expect(stored.shippingItemId).not.toBeNull();
+    const shippingLine = page.getByTestId('order-line-shipping');
+    await expect(shippingLine).toHaveCount(1);
+    await expect(shippingLine).toContainText('Envio ·');
+    await expect(shippingLine).toHaveAttribute('data-sku', 'WEB-ENVIO');
 
     // La confirmacion dice donde se consulta el estado despues.
     await expect(page.getByTestId('order-tracking-notice')).toContainText('/seguimiento');
@@ -230,6 +245,11 @@ test.describe('Checkout de invitado', () => {
     expect(await readMoney(page.getByTestId('checkout-quote-offer-discount'))).toBe(
       target.offerDiscount,
     );
+    // El desglose **explica** cada capa con su tasa: la de la oferta la publica el ERP y es
+    // el % efectivo sobre el precio de lista (no un % reconstruido por la tienda).
+    await expect(page.getByTestId('checkout-quote-offer-rate')).toHaveText(
+      `${String(target.offerPct).replace('.', ',')}%`,
+    );
     expect(await readMoney(page.getByTestId('checkout-quote-subtotal'))).toBe(target.price);
     expect(await readMoney(page.getByTestId('checkout-quote-net-subtotal'))).toBe(
       target.netSubtotal,
@@ -266,6 +286,10 @@ test.describe('Checkout de invitado', () => {
     );
     expect(await readMoney(page.getByTestId('checkout-quote-subtotal'))).toBe(target.price);
     expect(await readMoney(page.getByTestId('checkout-quote-discount'))).toBe(target.discount);
+    // …y con la tasa efectiva que el ERP publica junto a la etiqueta (T200).
+    await expect(page.getByTestId('checkout-quote-discount-rate')).toHaveText(
+      `${String(target.discountPct).replace('.', ',')}%`,
+    );
     expect(await readMoney(page.getByTestId('checkout-quote-total'))).toBe(target.quoteTotal);
 
     await page.getByTestId('checkout-confirm').click();
@@ -298,6 +322,11 @@ test.describe('Checkout de invitado', () => {
     expect(await readMoney(page.getByTestId('order-tax'))).toBe(stored.tax);
     expect(await readMoney(page.getByTestId('order-net-subtotal'))).toBe(stored.netSubtotal);
     expect(await readMoney(page.getByTestId('order-total'))).toBe(stored.total);
+    // La tasa efectiva viaja con el pedido y la confirmacion la pinta igual (T200).
+    expect(stored.companyDiscountPct).toBe(target.discountPct);
+    await expect(page.getByTestId('order-discount-rate')).toHaveText(
+      `${String(target.discountPct).replace('.', ',')}%`,
+    );
   });
 
   test('el comprador anota la referencia de su pago offline y queda guardada en el pedido', async ({
@@ -459,9 +488,17 @@ test.describe('Seguimiento publico', () => {
     await expect(page.getByTestId('order-payment-status')).toContainText('Pago pendiente');
     // El estado del documento del ERP viaja con el pedido: la tienda no lo inventa.
     await expect(page.getByTestId('order-erp-state')).toContainText('sin entregar');
+    // La mercancia se lista como producto y el flete como **envio** (T200), asi que las
+    // lineas de producto son las del pedido **menos** el articulo de servicio del envio.
+    const shippingLines = order.items.filter(
+      (item) => item.itemId === order.shippingItemId,
+    ).length;
     await expect(page.getByTestId('order-summary').getByTestId('order-line')).toHaveCount(
-      order.items.length,
+      order.items.length - shippingLines,
     );
+    await expect(
+      page.getByTestId('order-summary').getByTestId('order-line-shipping'),
+    ).toHaveCount(shippingLines);
     expect(await readMoney(page.getByTestId('order-subtotal'))).toBe(order.subtotal);
     expect(await readMoney(page.getByTestId('order-shipping'))).toBe(order.shipping);
     expect(await readMoney(page.getByTestId('order-tax'))).toBe(order.tax);

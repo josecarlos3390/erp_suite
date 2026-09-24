@@ -771,6 +771,33 @@ export function CheckoutForm({
                       </li>
                     );
                   })}
+                  {quoteState.quote.shippingItem !== null ? (
+                    // El flete es una **linea mas** del documento del ERP: se especifica como
+                    // envio en la lista (con el articulo de servicio de la ciudad) para que el
+                    // comprador vea que esa linea no es un producto.
+                    <li
+                      className="flex items-center justify-between gap-3 p-3"
+                      data-testid="checkout-quote-line-shipping"
+                    >
+                      <div className="flex flex-1 flex-col">
+                        <span className="text-sm font-medium text-fg">
+                          Envio · {quoteState.quote.shippingItem.name}
+                        </span>
+                        <span className="text-xs text-fg-tertiary">
+                          Servicio de entrega de la ciudad (SKU{' '}
+                          {quoteState.quote.shippingItem.code})
+                          {quoteState.quote.freeShippingApplied
+                            ? ' · gratis por superar el umbral'
+                            : quoteState.quote.shippingCharged
+                              ? ''
+                              : ' · esta ciudad no lo cobra'}
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-fg">
+                        {formatMoney(quoteState.quote.shipping, quoteState.quote.currency)}
+                      </span>
+                    </li>
+                  ) : null}
                 </ul>
 
                 <TotalsBreakdown
@@ -781,8 +808,10 @@ export function CheckoutForm({
                       : null
                   }
                   offerDiscount={quoteState.quote.offerDiscount}
+                  offerPct={quoteState.quote.offerPct}
                   subtotal={quoteState.quote.subtotal}
                   companyDiscount={quoteState.quote.discount}
+                  companyDiscountPct={quoteState.quote.companyDiscountPct}
                   netSubtotal={quoteState.quote.netSubtotal}
                   taxAmount={quoteState.quote.taxAmount}
                   taxRate={quoteTaxRate(quoteState.quote.items)}

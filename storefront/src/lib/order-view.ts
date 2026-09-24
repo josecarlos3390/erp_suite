@@ -60,15 +60,28 @@ export interface QuoteView {
   listSubtotal: number;
   /** Oferta de catalogo ya incluida en `subtotal` (0 si no hay). */
   offerDiscount: number;
+  /**
+   * **% efectivo** de la oferta de catalogo sobre el precio de lista (0 si no hay). Lo
+   * calcula el ERP: con varias lineas es la tasa del carrito, no la de un articulo suelto.
+   */
+  offerPct: number;
   /** Mercancia antes del descuento de la empresa (Σ `price × quantity`). */
   subtotal: number;
   /** Descuento de la empresa ya aplicado por el canal (0 si no hay). */
   discount: number;
+  /** **% efectivo** de ese descuento sobre la mercancia (lo calcula el ERP). */
+  companyDiscountPct: number;
   /** Mercancia **sin impuestos**. */
   netSubtotal: number;
   /** Impuesto total (mercancia + envio). */
   taxAmount: number;
   shipping: number;
+  /**
+   * Articulo de servicio con el que la ciudad cobra el envio (null si no lo cobra). El flete
+   * viaja como una **linea mas** del documento: con esto el checkout lo especifica como envio
+   * en vez de pintarlo como un producto.
+   */
+  shippingItem: { id: number; code: string; name: string } | null;
   shippingCharged: boolean;
   freeShippingApplied: boolean;
   /** **Total a pagar** (neto + impuesto): el total del documento del ERP. */
@@ -109,14 +122,23 @@ export interface OrderView {
   /** Mercancia del canal tal como se cobro (con el impuesto incluido si lo es). */
   subtotal: number;
   shipping: number;
+  /**
+   * Articulo con el que se cobro el envio (null si no se cobro): identifica **cual** de las
+   * lineas del pedido es el flete, para especificarla como envio en la confirmacion.
+   */
+  shippingItemId: number | null;
   /** Impuesto del **documento del ERP** (el mismo que ve el back office). */
   tax: number;
   /** Mercancia **sin impuestos** segun el documento del ERP. */
   netSubtotal: number;
   /** Descuento de la empresa aplicado por el documento del ERP. */
   companyDiscount: number;
+  /** **% efectivo** de ese descuento sobre la mercancia (lo calcula el ERP). */
+  companyDiscountPct: number;
   /** Oferta de catalogo que aplico la tienda (0 si no hubo). */
   offerDiscount: number;
+  /** **% efectivo** de esa oferta sobre el precio de lista (lo calcula el ERP). */
+  offerPct: number;
   /** Mercancia a **precio de lista** del catalogo (Σ lineas). */
   listSubtotal: number;
   /** `true` cuando el precio ya incluia el impuesto (el documento lo extrae del precio). */

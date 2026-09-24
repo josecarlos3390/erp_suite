@@ -779,6 +779,52 @@ documento **retroactivo** (fecha anterior o posterior a hoy) se propone con la v
 motor del documento sí evalúa su propia fecha. Queda como hueco menor hasta que el endpoint acepte
 la fecha del documento.
 
+### §13.d El desglose del comprador explica cada capa con su tasa (2026-09-23, T200)
+
+**Lo que preguntó el usuario, medido con `WEB-0012`** (lista **9.999**, oferta vigente **9.499**,
+grupo `INFO` con **8 %** global 2025–2030): «¿por qué me muestra todos esos datos? ¿los −500 son el
+descuento del grupo? ¿de dónde salen los −759,92?». Respuesta con la cuenta real:
+
+| Capa | Importe | De dónde sale |
+|---|---|---|
+| Precio de lista | 9.999 | `Item.price` del maestro |
+| Oferta de catálogo | −500 | **diferencia exacta** `9.999 − 9.499` (el precio de oferta del artículo). El 5 % que publica el motor es `500 ÷ 9.999 = 5,0005 %` **redondeado**; aplicar el 5 % daría 499,95 y dejaría el precio en 9.499,05 |
+| Subtotal | 9.499 | precio vigente (oferta) |
+| Descuento de la empresa | −759,92 | **8 % del grupo `INFO`** (`Catálogo Comercial → Grupos de Descuento`) calculado **sobre el precio de oferta**: `9.499 × 8 %` (sobre la lista serían 799,92). Las capas **se acumulan** (D12), y por eso la web y el pedido del ERP cuadran |
+| Neto + IVA | 7.603 + 1.136,08 | el IVA 13 % `BOLIVIA_SIN` incluido se **extrae** del importe ya descontado |
+| Total | 8.739,08 | neto + impuesto = el total del documento |
+
+**Decisiones del usuario (2026-09-23)**: **(a)** dejar el desglose completo pero **mostrar la tasa de
+cada capa**, y **(b)** **mantener la base** del descuento de la empresa sobre el precio de oferta (no
+sobre la lista) —cambiarla obligaría a cambiar el motor único de pedidos, POS y tienda a la vez—.
+
+**Lo implementado**:
+- El **canal publica el % efectivo** de cada capa, calculado por el ERP con `Money`: `offerPct`
+  (Σ oferta ÷ Σ precio de lista de las líneas que traen oferta) y `companyDiscountPct` (Σ descuento ÷
+  Σ `price × cantidad` de las líneas que traen descuento), en la **cotización** y en el **pedido**; la
+  tienda los pinta junto a la etiqueta (`checkout-quote-offer-rate`, `checkout-quote-discount-rate`,
+  `order-offer-rate`, `order-discount-rate`) sin derivar ninguna cifra.
+- **DEFECTOS MEDIDOS Y CERRADOS** (los destapó el E2E de la tienda al medir la tasa): la base del
+  descuento se tomaba del `subtotal` del canal, que guarda el importe **ya descontado** → el 5 % se
+  publicaba como **5,26 %**; y el **flete viaja como una línea más** del pedido → entraba en la base y
+  el descuento real (12,45 sobre 249) salía **4,63 %**. Cada tasa se calcula ahora sobre la mercancía
+  que **lleva** esa capa, así que el checkout y la confirmación publican la misma.
+- **El flete queda especificado como envío** (petición del usuario: «está bien que el flete aparezca
+  en una línea adicional pero que lo especifique al momento del cobro»): el canal publica
+  `shippingItem` (cotización) y `shippingItemId` (pedido, resuelto con la ciudad de entrega) y la
+  tienda pinta esa línea como **envío** —«Envio · <artículo de la ciudad> · Servicio de entrega de la
+  ciudad (SKU …)» en el checkout y «Envio · <artículo>» en la confirmación y el seguimiento— en vez
+  de como un producto (`checkout-quote-line-shipping`, `order-line-shipping`).
+
+**Evidencia**: canal **81/81** unitarios (tasas del pedido del seed —5 % y 8 %— con las dos trampas
+documentadas en el test), **tienda E2E 24/24** (las tasas en el checkout y la confirmación y la línea
+de envío en las tres pantallas, con el pedido real del canal), `tsc`/`lint`/`build` de la tienda en 0
+y **sonda en vivo** del canal (`offerPct 5`, `companyDiscountPct 8`, importes sin cambios).
+
+**Declarado**: la oferta se guarda como **precio** (`Item.salePrice`), no como porcentaje; y con
+varias líneas la tasa publicada es la **efectiva del carrito** (ponderada por importe), no la de un
+artículo suelto.
+
 **Declarado**: el descuento del canal se aplica **solo** a la mercancía (el flete sigue siendo el
 importe de la ciudad) y no cambia el IVA —el impuesto lo sigue calculando el motor del ERP sobre el
 precio ya promocionado, como en T197—; la oferta de catálogo y la promo del canal **se acumulan**

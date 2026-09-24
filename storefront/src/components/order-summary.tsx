@@ -148,15 +148,21 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
           Productos y envio
         </h2>
         <ul className="divide-y divide-line">
-          {order.items.map((line: OrderLine) => (
+          {order.items.map((line: OrderLine) => {
+            // El flete viaja como una linea mas del documento: se especifica como envio (con
+            // el articulo de servicio del ERP) para no pintarlo como un producto del pedido.
+            const isShipping = line.itemId === order.shippingItemId;
+            return (
             <li
               key={`${line.itemId}-${line.sku}`}
               className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
-              data-testid="order-line"
+              data-testid={isShipping ? 'order-line-shipping' : 'order-line'}
               data-sku={line.sku}
             >
               <div className="flex flex-col">
-                <span className="font-medium text-fg">{line.name}</span>
+                <span className="font-medium text-fg">
+                  {isShipping ? `Envio · ${line.name}` : line.name}
+                </span>
                 <span className="text-xs text-fg-tertiary">
                   SKU {line.sku} · {line.quantity} × {formatMoney(line.price, order.currency)}
                   {line.discount > 0
@@ -168,7 +174,8 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
                 {formatMoney(line.lineTotal, order.currency)}
               </span>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </section>
 
@@ -179,8 +186,10 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
             currency={order.currency}
             listSubtotal={order.offerDiscount > 0 ? order.listSubtotal : null}
             offerDiscount={order.offerDiscount}
+            offerPct={order.offerPct}
             subtotal={order.subtotal}
             companyDiscount={order.companyDiscount}
+            companyDiscountPct={order.companyDiscountPct}
             netSubtotal={order.netSubtotal}
             taxAmount={order.tax}
             taxRate={taxRateOf(order.items)}

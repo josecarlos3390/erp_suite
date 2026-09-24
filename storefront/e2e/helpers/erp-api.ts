@@ -87,6 +87,10 @@ export interface ApiQuote {
   subtotal: number;
   /** Descuentos automaticos del ERP ya aplicados por el canal. */
   discount: number;
+  /** % efectivo del descuento de la empresa, calculado por el ERP (T200). */
+  companyDiscountPct: number;
+  /** % efectivo de la oferta de catalogo sobre el precio de lista (T200). */
+  offerPct: number;
   /** Mercancia + envio **sin impuestos**. */
   netSubtotal: number;
   /** Impuesto total (mercancia + envio), calculado por el motor del ERP. */
@@ -114,7 +118,11 @@ export interface ApiOrder {
   /** Mercancia sin impuestos, descuento de la empresa y oferta de catalogo (T197). */
   netSubtotal: number;
   companyDiscount: number;
+  /** % efectivo del descuento de la empresa, calculado por el ERP (T200). */
+  companyDiscountPct: number;
   offerDiscount: number;
+  /** % efectivo de la oferta de catalogo sobre el precio de lista (T200). */
+  offerPct: number;
   listSubtotal: number;
   taxInclusive: boolean;
   total: number;

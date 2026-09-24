@@ -21,10 +21,17 @@ export interface TotalsBreakdownProps {
   listSubtotal: number | null;
   /** Oferta de catalogo ya incluida en el precio (0 si no hay). */
   offerDiscount: number;
+  /**
+   * % **efectivo** de la oferta sobre el precio de lista, calculado por el ERP (0 si no hay).
+   * Se pinta junto a la etiqueta para que el comprador vea de donde sale el importe.
+   */
+  offerPct?: number;
   /** Mercancia antes del descuento de la empresa (Σ precio efectivo × cantidad). */
   subtotal: number;
   /** Descuento de la empresa aplicado por el canal (0 si no hay). */
   companyDiscount: number;
+  /** % **efectivo** del descuento de la empresa, calculado por el ERP (0 si no hay). */
+  companyDiscountPct?: number;
   /** Mercancia **sin impuestos**. */
   netSubtotal: number;
   /** Impuesto total (mercancia + envio). */
@@ -48,12 +55,23 @@ function formatTaxRate(taxRate: number | null): string {
   return `${Math.round(taxRate * 100)}%`;
 }
 
+/**
+ * Tasa de una capa de descuento tal como la publica el ERP: `8%` (o `6,9%` si trae decimales,
+ * con la coma que usa el resto de la tienda). `null` cuando no hay capa que mostrar.
+ */
+function layerRateLabel(pct: number | undefined): string | null {
+  if (pct === undefined || !Number.isFinite(pct) || pct <= 0) return null;
+  return `${String(pct).replace('.', ',')}%`;
+}
+
 export function TotalsBreakdown({
   currency,
   listSubtotal,
   offerDiscount,
+  offerPct,
   subtotal,
   companyDiscount,
+  companyDiscountPct,
   netSubtotal,
   taxAmount,
   taxRate,
@@ -64,6 +82,8 @@ export function TotalsBreakdown({
   prefix,
 }: TotalsBreakdownProps): JSX.Element {
   const hasOffer = offerDiscount > 0 && listSubtotal !== null;
+  const offerRate = layerRateLabel(offerPct);
+  const companyRate = layerRateLabel(companyDiscountPct);
   const rate = formatTaxRate(taxRate);
   const taxLabel = taxInclusive
     ? `IVA${rate ? ` ${rate}` : ''} (incluido en el precio)`
@@ -81,7 +101,16 @@ export function TotalsBreakdown({
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-fg-secondary">Oferta de catalogo</dt>
+              <dt className="text-fg-secondary">
+                Oferta de catalogo
+                {offerRate ? (
+                  <>
+                    {' ('}
+                    <span data-testid={`${prefix}-offer-rate`}>{offerRate}</span>
+                    {')'}
+                  </>
+                ) : null}
+              </dt>
               <dd className="font-medium text-ok" data-testid={`${prefix}-offer-discount`}>
                 −{formatMoney(offerDiscount, currency)}
               </dd>
@@ -96,7 +125,16 @@ export function TotalsBreakdown({
         </div>
         {companyDiscount > 0 ? (
           <div className="flex items-center justify-between">
-            <dt className="text-fg-secondary">Descuento de la empresa</dt>
+            <dt className="text-fg-secondary">
+              Descuento de la empresa
+              {companyRate ? (
+                <>
+                  {' ('}
+                  <span data-testid={`${prefix}-discount-rate`}>{companyRate}</span>
+                  {')'}
+                </>
+              ) : null}
+            </dt>
             <dd className="font-medium text-ok" data-testid={`${prefix}-discount`}>
               −{formatMoney(companyDiscount, currency)}
             </dd>
