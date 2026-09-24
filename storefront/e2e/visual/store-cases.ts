@@ -69,6 +69,25 @@ export const FIXED_COMPARE = {
   version: 1,
 };
 
+/**
+ * Favoritos fijos (F6): la lista del dispositivo, con los dos articulos del catalogo grabado
+ * (los mismos del carrito y del comparador, para no pedirle al fixture fichas nuevas).
+ */
+export const FIXED_WISHLIST = {
+  state: {
+    entries: [
+      { itemId: 36, slug: 'iphone-15-128gb', name: 'iPhone 15 128GB', image: null },
+      {
+        itemId: 35,
+        slug: 'smartphone-poco-x6-pro-512gb',
+        name: 'Smartphone Poco X6 Pro 512GB',
+        image: null,
+      },
+    ],
+  },
+  version: 1,
+};
+
 export interface StorePageCase {
   name: string;
   route: string;
@@ -77,6 +96,8 @@ export interface StorePageCase {
   cart?: boolean;
   /** `true` inyecta la lista del comparador antes de cargar la pagina (F6). */
   compare?: boolean;
+  /** `true` inyecta los favoritos antes de cargar la pagina (F6). */
+  wishlist?: boolean;
   /** Selector (testid) que confirma que la pantalla termino de pintarse. */
   waitForTestId?: string;
   /** Texto del `h1` que confirma la pantalla (la 404 no tiene testid). */
@@ -166,6 +187,13 @@ export const VISUAL_CASES: readonly StorePageCase[] = [
     compare: true,
     waitForTestId: 'compare-table',
   },
+  {
+    name: 'favoritos-claro',
+    route: '/favoritos',
+    theme: 'light',
+    wishlist: true,
+    waitForTestId: 'wishlist-grid',
+  },
 ];
 
 /**
@@ -236,6 +264,13 @@ export const AUDIT_CASES: readonly StorePageCase[] = [
     compare: true,
     waitForTestId: 'compare-table',
   },
+  {
+    name: 'favoritos',
+    route: '/favoritos',
+    theme: 'light',
+    wishlist: true,
+    waitForTestId: 'wishlist-grid',
+  },
 ];
 
 /**
@@ -247,7 +282,7 @@ export async function openStorePage(
   item: StorePageCase,
 ): Promise<Page> {
   await context.addInitScript(
-    ({ theme, cart, compare }) => {
+    ({ theme, cart, compare, wishlist }) => {
       window.localStorage.setItem('sf-theme', theme);
       if (cart) {
         window.localStorage.setItem('storefront_cart_v1', JSON.stringify(cart));
@@ -255,11 +290,15 @@ export async function openStorePage(
       if (compare) {
         window.localStorage.setItem('storefront_compare_v1', JSON.stringify(compare));
       }
+      if (wishlist) {
+        window.localStorage.setItem('storefront_wishlist_v1', JSON.stringify(wishlist));
+      }
     },
     {
       theme: item.theme,
       cart: item.cart === true ? FIXED_CART : null,
       compare: item.compare === true ? FIXED_COMPARE : null,
+      wishlist: item.wishlist === true ? FIXED_WISHLIST : null,
     },
   );
   const page = await context.newPage();

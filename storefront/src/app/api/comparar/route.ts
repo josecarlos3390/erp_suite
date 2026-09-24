@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 
-import { parseCompareSlugs } from '@/lib/compare';
-import { ErpError, getProduct } from '@/lib/erp';
+import { MAX_COMPARE_SLUGS } from '@/lib/compare';
+import {
+  loadProductsBySlugs,
+  lookupErrorStatus,
+  parseSlugs,
+} from '@/lib/product-lookup';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +23,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: Request): Promise<NextResponse> {
   const url = new URL(request.url);
-  const slugs = parseCompareSlugs(url.searchParams.get('slugs'));
+  const slugs = parseSlugs(url.searchParams.get('slugs'), MAX_COMPARE_SLUGS);
   if (slugs.length === 0) {
     return NextResponse.json(
       { error: 'Indica al menos un producto valido para comparar.' },
@@ -28,32 +32,8 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
   const city = (url.searchParams.get('city') ?? '').trim().slice(0, 20);
 
-  const settled = await Promise.all(
-    slugs.map(async (slug) => {
-      try {
-        return { slug, product: await getProduct(slug, city) };
-      } catch (error) {
-        return { slug, error };
-      }
-    }),
-  );
-
-  const products = settled.flatMap((row) =>
-    'product' in row ? [row.product] : [],
-  );
-  const missing = settled.flatMap((row) =>
-    'product' in row ? [] : [row.slug],
-  );
+  const { products, missing, firstError } = await loadProductsBySlugs(slugs, city);
   if (products.length === 0) {
-    // Ninguno se pudo leer: se conserva el motivo del canal (404 accionable) si es un error
-    // del ERP, y si no se responde 502 (fallo de red, no culpa de los datos).
-    const firstError = settled.find((row) => 'error' in row)?.error;
-    const status =
-      firstError instanceof ErpError &&
-      firstError.status >= 400 &&
-      firstError.status <= 599
-        ? firstError.status
-        : 502;
     return NextResponse.json(
       {
         error:
@@ -62,7 +42,7 @@ export async function GET(request: Request): Promise<NextResponse> {
             : 'No se pudo leer el catalogo del ERP.',
         missing,
       },
-      { status },
+      { status: lookupErrorStatus(firstError) },
     );
   }
 

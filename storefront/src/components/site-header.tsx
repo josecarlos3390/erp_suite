@@ -8,6 +8,7 @@ import { CitySelector } from './city-selector';
 import { CompareLink } from './compare-link';
 import { SearchBox } from './search-box';
 import { ThemeToggle } from './theme-toggle';
+import { WishlistLink } from './wishlist-link';
 
 /**
  * Encabezado de la tienda (F9.1), renderizado en el servidor.
@@ -40,8 +41,9 @@ export async function SiteHeader(): Promise<JSX.Element> {
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             <CitySelector cities={cityContext.cities} selectedCode={cityContext.selectedCode} />
             <ThemeToggle />
-            {/* F6: el comparador aparece solo cuando hay algo que comparar (si no, la cabecera
-                ya lleva buscador, ciudad, tema y carrito). */}
+            {/* F6: favoritos y comparador aparecen solo cuando hay algo guardado (si no, la
+                cabecera ya lleva buscador, ciudad, tema y carrito). */}
+            <WishlistLink />
             <CompareLink />
             <CartLink />
           </div>

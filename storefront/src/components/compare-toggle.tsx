@@ -35,8 +35,8 @@ export function CompareToggle({
   const selected = hydrated && isCompared(entries, item.itemId);
   const full = hydrated && isCompareFull(entries, item.itemId);
   const classes = [
-    'sf-compare-toggle',
-    selected ? 'sf-compare-toggle--on' : '',
+    'sf-toggle-pill',
+    selected ? 'sf-toggle-pill--on' : '',
     size === 'sm' ? 'text-2xs' : 'text-sm',
     className ?? '',
   ]
@@ -59,7 +59,7 @@ export function CompareToggle({
       data-slug={item.slug}
       data-selected={selected ? 'true' : 'false'}
     >
-      <span aria-hidden="true" className="sf-compare-toggle__icon">
+      <span aria-hidden="true">
         <svg
           viewBox="0 0 24 24"
           className="h-4 w-4"

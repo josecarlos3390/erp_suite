@@ -881,7 +881,7 @@ se entrega con la API ya cerrada.
 |---|---|---|---|
 | 1 | **Vendedores** («Vendido por …») | Mostrarlo en **ficha y catálogo** + **filtro por vendedor** + **`GET /sellers`** en el ERP (sin pantalla de administración: el marketplace del plan es ligero, sin comisiones ni liquidación) | **ENTREGADO (T223)** |
 | 2 | **Comparador** | Productos lado a lado con lo que el canal ya publica (precio, existencia, marca, garantía y las características compartidas) | **ENTREGADO (T224)** |
-| 3 | **Wishlist** | **Local del dispositivo** ahora (como el carrito) y se migra a la cuenta cuando exista F4 | pendiente |
+| 3 | **Wishlist** | **Local del dispositivo** ahora (como el carrito) y se migra a la cuenta cuando exista F4 | **ENTREGADO (T225)** |
 | 4 | **Reseñas** | Solo **compradores con un pedido ENTREGADO** (verificado por su correo) y **moderación** en el back office | pendiente |
 | 5 | **Garantía extendida e instalación** | Como **artículos de servicio publicados** en el canal, que el comprador agrega al carrito desde la ficha (reutiliza lo medido en T220/T221: los servicios se facturan y no se entregan) | pendiente |
 | 6 | **Servicio técnico** | Reutilizar **`Seller`** como partner de servicio (con ciudad y especialidad), sin maestro nuevo | pendiente |
@@ -913,6 +913,41 @@ silencio. Medido: tienda **35/35** (3 casos nuevos), **a11y 18/18** (la página 
 barrido de axe), **visual 16/16** con captura nueva revisada, y los gates estáticos en 0.
 Declarado: sin URL compartible ni sincronización (llegan con F4) y el comparador no añade al
 carrito desde la tabla.
+
+**Tramo 3 entregado (T225)**: la **lista de deseos** vuelve a usar la misma regla que el comparador
+—la lista vive en el navegador (`localStorage`) y guarda **solo la identidad** del producto; los
+datos vigentes se piden por el puente `GET /api/favoritos`, con el saneo de slugs y el **tope de
+24**— y la búsqueda por lote se extrajo a **una sola** pieza (`lib/product-lookup.ts`), que ahora
+comparten las dos rutas (`/api/comparar` y `/api/favoritos`): no hay dos formas de leer una lista de
+slugs. `/favoritos` **reutiliza la tarjeta del catálogo** (con su compra rápida y su control de
+comparar) y añade «Quitar de favoritos» por producto, «Vaciar favoritos» y «Comparar los guardados»
+(con dos o más); la lista que excede el tope lo **dice** (`wishlist-truncated`) en vez de recortar en
+silencio, un producto que ya no se puede leer se **nombra** (`wishlist-missing`) y un producto que se
+despublicó se puede quitar desde la propia página. El control «Guardar/En favoritos» está en cada
+tarjeta y en la ficha (`aria-pressed`), y el enlace de la cabecera —con su contador— **solo aparece
+cuando hay algo guardado**. Medido: tienda funcional **38/38** (3 casos nuevos: el ciclo
+guardar/quitar/vaciar con el contador de la cabecera, la persistencia entre contextos con el salto al
+comparador, y el saneo del API con el tope de 24 —`400` sin slugs o con basura, `200` con el válido
+de una lista sucia—), **a11y 19/19** (la página entra en el barrido de axe) y **visual 17/17** con
+captura nueva (`favoritos-claro`, revisada) y la de `categoria-claro` **regenerada desde el fixture**
+—las seis capturas que cambian son las de tarjeta/ficha, y el cambio se revisó en imagen: la línea
+«Guardar» nueva—, más `typecheck`/`lint`/`build`/`sync:tokens:check`/`sync:fonts:check`/
+`audit:contrast` (34/34) en 0. Declarado: la lista es de **este dispositivo**
+(sin cuenta ni sincronización: llegan con F4), el tope de 24 no se puede subir sin cambiar el API y
+la cabecera no ofrece el enlace hasta que hay algo guardado (a propósito: sin ruido para quien no la
+usa).
+
+**Dos defectos medidos en el camino**: (a) el islote importaba su tope desde el módulo que carga
+`server-only` (la regla D10) y el `build` lo rechazaba; la parte pura (`MAX_WISHLIST_SLUGS`,
+`wishlistApiHref`) se separó a `lib/wishlist.ts`. (b) La corrida de grabación del gate visual
+reescribió dos fixtures del catálogo con la existencia viva del día (el teclado `WEB-0027` de **3** a
+**1**) y la captura de `categoria-claro` se quedó con el dígito nuevo: devueltos los fixtures a su
+versión registrada, la comparación **seguía verde** porque un dígito cabe en la tolerancia de **220
+px** —un falso verde del contrato «la captura representa al fixture»—; la captura se **regeneró desde
+el fixture versionado** (borrada y reescrita: `--update-snapshots` no reescribe lo que ya considera
+dentro de la tolerancia) y la imagen nueva dice el `Disponible: 3` del fixture. La lección queda
+anotada: **regrabar el fixture y regenerar la captura son actos distintos**, y el segundo no siempre
+reescribe.
 
 ## §15 F7 y F4 — estado medido y decisiones pendientes (2026-09-24, T217)
 

@@ -167,7 +167,8 @@ ficha, busqueda, carrito y ciudad, con SEO), **F3** (checkout de invitado, confi
 seguimiento publico), **F5** (bandeja de pedidos web en el back office), **F7** (la **modalidad de
 facturacion la elige el comprador** en el checkout), **F8.1/F8.2** (un solo
 motor de precios, paridad entre pedidos, POS y tienda, y la **promo exclusiva del canal**) y **F9**
-(identidad visual de la tienda, fases F9.1–F9.6). La promo se administra desde el back office
+(identidad visual de la tienda, fases F9.1–F9.6) y **F6** en sus tres primeros tramos (vendedores,
+comparador y favoritos). La promo se administra desde el back office
 (`GET/PATCH /web-promotions`, permiso `web-promotions:view|edit`) y la tienda la pinta como capa
 propia en la ficha, el carrito y el desglose del checkout.
 
@@ -208,13 +209,30 @@ control «Comparar» esta en cada tarjeta (`compare-toggle`) y en la ficha, el c
 la cabecera cuando hay algo que comparar (`compare-link`) y con la lista llena el control se
 deshabilita diciendo por que.
 
+### Favoritos (wishlist, F6)
+
+`/favoritos` es la **lista de deseos** del comprador: hasta **24** productos a la vez. Igual que el
+comparador, la lista vive en el **navegador** (`localStorage`) y guarda **solo la identidad** de
+cada producto (no una copia del precio); los datos que se ven —precio con su oferta y su «antes»,
+existencia de la ciudad elegida— se piden al abrir la pagina por el puente **`GET /api/favoritos`**,
+con el mismo saneo de slugs y el mismo tope que el comparador (la clave del canal no sale del
+servidor, D10). El boton «Guardar» / «En favoritos» esta en cada tarjeta (`wishlist-button`) y en la
+ficha; el enlace de la cabecera (`wishlist-link`, con su contador) aparece **solo cuando hay algo
+guardado**, y la grilla **reutiliza la tarjeta del catalogo**, asi que la compra rapida y el control
+de comparar siguen ahi. Cada tarjeta tiene su «Quitar de favoritos», la pagina ofrece «Vaciar
+favoritos» y, con dos o mas guardados, «Comparar los guardados» (que lleva al comparador, donde
+manda su tope de 4). Si la lista pasa de 24 se dice (`wishlist-truncated`) y se muestran los 24
+primeros; si un producto guardado ya no se puede leer, se nombra en vez de desaparecer en silencio
+(`wishlist-missing`). La pagina es `noindex`: cada visitante ve su propia lista.
+
 **Declarado (cache)**: el catalogo y la ficha del canal se cachean **60 s** (`src/lib/erp.ts`:
 `catalog: 60`, `product: 60`), asi que **una promo recien configurada tarda esa ventana en verse**
 en la tienda (el E2E de la promo lo mide: 18,3 s en una corrida con la cache caliente). La
 cotizacion y el alta de pedido **no** se cachean (`cache: 'no-store'`), de modo que el importe que
 se cobra siempre es el vigente.
 
-Siguen **declarados**: el correo transaccional (D16, el backend no tiene proveedor), el
-retiro en tienda (fase 2), el CORS por dominio y la cache HTTP del canal, la serie propia del canal
-(F7, con la factura), la rotulacion de la promo en la bandeja de pedidos del back office y la
-pantalla de promociones del canal (F8.3).
+Siguen **declarados**: el correo transaccional (**D16**, el backend no tiene proveedor, y es lo que
+bloquea **F4**), el retiro en tienda (fase 2), los favoritos y la comparacion como datos de **este
+dispositivo** (se migran a la cuenta con F4), la rotulacion de la promo en la bandeja de pedidos del
+back office, y los tramos de F6 que faltan (**reseñas**, **garantia extendida e instalacion** y
+**servicio tecnico**).

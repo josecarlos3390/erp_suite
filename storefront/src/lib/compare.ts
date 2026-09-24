@@ -1,40 +1,14 @@
 /**
- * Reglas del **comparador** (F6): que slugs se aceptan, como se piden al canal y **que
- * caracteristicas se comparan**.
+ * Reglas del **comparador** (F6): cuantos productos se comparan y **que caracteristicas se
+ * comparan**.
  *
  * Es un modulo **puro** (sin `server-only` ni navegador) porque lo usan los dos lados: el
- * route handler `/api/comparar` valida con el lo que le llega del navegador y el islote de la
- * pagina lo usa para armar la tabla.
+ * route handler `/api/comparar` y el islote de la pagina. El **saneo de los slugs** vive en
+ * `lib/product-lookup.ts`, que comparten el comparador y los favoritos: la regla es una sola.
  */
 
 /** Tope de productos comparados (el mismo que el store del navegador). */
 export const MAX_COMPARE_SLUGS = 4;
-
-/** Un slug publicado: minusculas, numeros y guiones (el que genera el canal). */
-const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,119}$/;
-
-/**
- * Sanea la lista de slugs que llega por la querystring: **unica**, con forma de slug y
- * recortada al tope. Lo que no pasa el patron se descarta en vez de reenviarse al canal: el
- * navegador no dicta que se consulta.
- */
-export function parseCompareSlugs(value: unknown): string[] {
-  const raw = Array.isArray(value)
-    ? value.flatMap((item) => String(item).split(','))
-    : typeof value === 'string'
-      ? value.split(',')
-      : [];
-  const seen = new Set<string>();
-  const valid: string[] = [];
-  for (const item of raw) {
-    const slug = item.trim().toLowerCase();
-    if (slug === '' || !SLUG_PATTERN.test(slug) || seen.has(slug)) continue;
-    seen.add(slug);
-    valid.push(slug);
-    if (valid.length >= MAX_COMPARE_SLUGS) break;
-  }
-  return valid;
-}
 
 /** Lo minimo de un `spec` para comparar (lo publica el canal en cada producto). */
 export interface CompareSpec {

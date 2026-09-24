@@ -423,14 +423,15 @@
     color: var(--sf-brand-800);
   }
 
-  /* ── Comparador (F6) ─────────────────────────────────────────────────── */
+  /* ── Comparador y favoritos (F6) ─────────────────────────────────────── */
   /*
-   * El control de comparar es una accion **secundaria**: no compite con el precio ni con la
-   * disponibilidad de la tarjeta, pero tiene que ser alcanzable con el pulgar (alto minimo de
-   * 32 px en la tarjeta y 44 px en la ficha) y decir su estado sin depender del color
-   * (`aria-pressed` + `data-selected` + texto).
+   * Los dos controles de lista («Comparar» y «Guardar») son acciones **secundarias**: no
+   * compiten con el precio ni con la disponibilidad de la tarjeta, pero tienen que ser
+   * alcanzables con el pulgar (alto minimo de 32 px en la tarjeta y 44 px en la ficha) y decir
+   * su estado sin depender del color (`aria-pressed` + `data-selected` + texto). Comparten la
+   * misma pildora para que se lean como la misma familia de acciones.
    */
-  .sf-compare-toggle {
+  .sf-toggle-pill {
     display: inline-flex;
     min-height: 32px;
     align-items: center;
@@ -445,18 +446,18 @@
       color 150ms var(--ease-in-out-smooth);
   }
 
-  .sf-compare-toggle:hover:not(:disabled) {
+  .sf-toggle-pill:hover:not(:disabled) {
     border-color: var(--border-strong);
     color: var(--text-primary);
   }
 
-  .sf-compare-toggle--on {
+  .sf-toggle-pill--on {
     border-color: var(--sf-brand-600);
     color: var(--sf-brand-700);
     background-color: var(--bg-selected);
   }
 
-  .sf-compare-toggle:disabled {
+  .sf-toggle-pill:disabled {
     cursor: not-allowed;
     opacity: 0.55;
   }
