@@ -880,6 +880,8 @@ antes de tocar nada se midió el estado real (no se asumió nada del plan):
 
 ### F7 — decisión del usuario (2026-09-24): DOS modalidades de facturación
 
+**Elegidas por el COMPRADOR en el checkout** (respuesta del usuario al cierre del tramo): la elección viaja como modalidad de pago — «pagar ahora» ⇒ `pedido web → factura → pago → entrega`; «pagar al recibir» ⇒ `pedido → entrega → factura → pago` — y **no** es un ajuste por empresa. El canal **reutiliza los flujos de Ventas** del ERP y asigna la serie **`WEB-`** a los pedidos del canal; con «facturar primero», el **barrido de abandonados** tiene que anular **reserva y luego pedido** (medido: el `cancel` del pedido falla con documentos posteriores).
+
 El usuario eligió **sin PSP** (el checkout sigue offline) y **dos modalidades**, con la
 **factura de reserva** como documento fiscal del canal y serie **`WEB-`** para los pedidos web
 (que es configuración, no migración: el `DocumentType` `SALES_ORDER` existe y el modelo admite
