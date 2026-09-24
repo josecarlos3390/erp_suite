@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CompareToggle } from "@/components/compare-toggle";
 import { JsonLd } from "@/components/json-ld";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductGrid } from "@/components/product-grid";
@@ -349,6 +350,19 @@ export default async function ProductPage({
             available={product.availability.available}
             cityCode={city.code}
             cityName={city.name}
+          />
+
+          {/* F6: comparar desde la ficha. La lista vive en el navegador y guarda solo la
+              identidad del producto; los datos se piden vigentes al abrir /comparar. */}
+          <CompareToggle
+            item={{
+              itemId: product.itemId,
+              slug: product.slug,
+              name: product.name,
+              image: product.image,
+            }}
+            size="md"
+            className="w-fit"
           />
 
           {product.shortDescription !== null ? (

@@ -48,12 +48,35 @@ export const BUYER = {
   district: 'Equipetrol',
 };
 
+/**
+ * Comparador fijo (F6): la lista que el comprador guarda en **este dispositivo**. Los dos
+ * articulos son los del catalogo grabado, asi que la tabla del comparador se pinta con las
+ * fichas que el fixture ya tiene (si pidiera otras, el proxy respondería **599** y la captura
+ * seria una pantalla de error).
+ */
+export const FIXED_COMPARE = {
+  state: {
+    entries: [
+      { itemId: 36, slug: 'iphone-15-128gb', name: 'iPhone 15 128GB', image: null },
+      {
+        itemId: 35,
+        slug: 'smartphone-poco-x6-pro-512gb',
+        name: 'Smartphone Poco X6 Pro 512GB',
+        image: null,
+      },
+    ],
+  },
+  version: 1,
+};
+
 export interface StorePageCase {
   name: string;
   route: string;
   theme: 'light' | 'dark';
   /** `true` inyecta el carrito fijo antes de cargar la pagina. */
   cart?: boolean;
+  /** `true` inyecta la lista del comparador antes de cargar la pagina (F6). */
+  compare?: boolean;
   /** Selector (testid) que confirma que la pantalla termino de pintarse. */
   waitForTestId?: string;
   /** Texto del `h1` que confirma la pantalla (la 404 no tiene testid). */
@@ -136,6 +159,13 @@ export const VISUAL_CASES: readonly StorePageCase[] = [
     waitForText: 'No encontramos esta pagina',
   },
   { name: 'seguimiento-vacio-claro', route: '/seguimiento', theme: 'light', waitForTestId: 'tracking-empty' },
+  {
+    name: 'comparador-claro',
+    route: '/comparar',
+    theme: 'light',
+    compare: true,
+    waitForTestId: 'compare-table',
+  },
 ];
 
 /**
@@ -199,6 +229,13 @@ export const AUDIT_CASES: readonly StorePageCase[] = [
   },
   { name: 'seguimiento-vacio', route: '/seguimiento', theme: 'light', waitForTestId: 'tracking-empty' },
   { name: 'carrito-vacio', route: '/carrito', theme: 'light', waitForTestId: 'cart-empty' },
+  {
+    name: 'comparador',
+    route: '/comparar',
+    theme: 'light',
+    compare: true,
+    waitForTestId: 'compare-table',
+  },
 ];
 
 /**
@@ -210,13 +247,20 @@ export async function openStorePage(
   item: StorePageCase,
 ): Promise<Page> {
   await context.addInitScript(
-    ({ theme, cart }) => {
+    ({ theme, cart, compare }) => {
       window.localStorage.setItem('sf-theme', theme);
       if (cart) {
         window.localStorage.setItem('storefront_cart_v1', JSON.stringify(cart));
       }
+      if (compare) {
+        window.localStorage.setItem('storefront_compare_v1', JSON.stringify(compare));
+      }
     },
-    { theme: item.theme, cart: item.cart === true ? FIXED_CART : null },
+    {
+      theme: item.theme,
+      cart: item.cart === true ? FIXED_CART : null,
+      compare: item.compare === true ? FIXED_COMPARE : null,
+    },
   );
   const page = await context.newPage();
   await page.goto(item.route);

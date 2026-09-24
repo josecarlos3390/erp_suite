@@ -5,6 +5,7 @@ import { formatDiscount } from "@/lib/format";
 
 import { ProductImage } from "./product-image";
 import { QuickAdd } from "./quick-add";
+import { CompareToggle } from "./compare-toggle";
 import { Badge } from "./ui/badge";
 import { Price } from "./ui/price";
 
@@ -187,6 +188,18 @@ export function ProductCard({
               ? `Disponible: ${product.availability.available}`
               : `Sin existencia en ${cityName}`}
           </p>
+
+          {/* F6: agregar/quitar del comparador sin salir del listado. Se guarda solo la
+              identidad del producto: el comparador pide los datos vigentes al abrir /comparar. */}
+          <CompareToggle
+            item={{
+              itemId: product.itemId,
+              slug: product.slug,
+              name: product.name,
+              image: product.image,
+            }}
+            className="mt-0.5 w-fit"
+          />
         </div>
       </div>
     </article>

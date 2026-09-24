@@ -195,6 +195,19 @@ cuando se esta dentro de una—. El filtro del listado es `?seller=<codigo>`: se
 **codigo** del maestro, no por el nombre. El `Seller.logoUrl` se publica pero no se pinta: la
 semilla no trae logos.
 
+### Comparador (F6)
+
+`/comparar` pone hasta **4** productos lado a lado. La lista vive en el **navegador**
+(`localStorage`, como el carrito: no hay cuenta de cliente hasta F4) y guarda **solo la
+identidad** de cada producto; los datos que se comparan —precio con su «antes» y su ahorro,
+existencia de la ciudad elegida, marca, vendedor, garantia, categoria, SKU y la ficha tecnica— se
+piden al abrir la pagina por el puente **`GET /api/comparar`** (sanea los slugs, tope 4, y
+mantiene la clave del canal en el servidor, D10). Solo se comparan las caracteristicas que
+**comparten todos** los productos elegidos; las que son propias de uno se listan aparte. El
+control «Comparar» esta en cada tarjeta (`compare-toggle`) y en la ficha, el contador aparece en
+la cabecera cuando hay algo que comparar (`compare-link`) y con la lista llena el control se
+deshabilita diciendo por que.
+
 **Declarado (cache)**: el catalogo y la ficha del canal se cachean **60 s** (`src/lib/erp.ts`:
 `catalog: 60`, `product: 60`), asi que **una promo recien configurada tarda esa ventana en verse**
 en la tienda (el E2E de la promo lo mide: 18,3 s en una corrida con la cache caliente). La

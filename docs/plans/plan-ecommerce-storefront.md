@@ -880,7 +880,7 @@ se entrega con la API ya cerrada.
 | # | Pieza | Decisión | Estado |
 |---|---|---|---|
 | 1 | **Vendedores** («Vendido por …») | Mostrarlo en **ficha y catálogo** + **filtro por vendedor** + **`GET /sellers`** en el ERP (sin pantalla de administración: el marketplace del plan es ligero, sin comisiones ni liquidación) | **ENTREGADO (T223)** |
-| 2 | **Comparador** | Productos lado a lado con lo que el canal ya publica (precio, existencia, marca, garantía y las características compartidas) | pendiente |
+| 2 | **Comparador** | Productos lado a lado con lo que el canal ya publica (precio, existencia, marca, garantía y las características compartidas) | **ENTREGADO (T224)** |
 | 3 | **Wishlist** | **Local del dispositivo** ahora (como el carrito) y se migra a la cuenta cuando exista F4 | pendiente |
 | 4 | **Reseñas** | Solo **compradores con un pedido ENTREGADO** (verificado por su correo) y **moderación** en el back office | pendiente |
 | 5 | **Garantía extendida e instalación** | Como **artículos de servicio publicados** en el canal, que el comprador agrega al carrito desde la ficha (reutiliza lo medido en T220/T221: los servicios se facturan y no se entregan) | pendiente |
@@ -899,6 +899,20 @@ Medido en vivo sobre el seed: **5 vendedores** (22/21/22/22/21 = 108 publicados)
 `seller` (el filtro se pintaba y no llegaba al canal) y la ficha **reventaba con 500** si la
 respuesta del canal no traía la clave (caché de una versión anterior) — la comprobación pasó a
 `typeof === 'string'`.
+
+**Tramo 2 entregado (T224)**: el **comparador** compara **datos vigentes**, no una copia: la
+lista del navegador guarda solo la **identidad** de cada producto (localStorage, como el carrito,
+porque no hay cuenta hasta F4) y la tabla se pide al canal por el puente `GET /api/comparar`, que
+**sanea** los slugs (patrón de slug publicado, únicos, tope 4) y deja la clave del canal en el
+servidor (D10). La tabla publica precio (con «antes» y ahorro), existencia de la ciudad, marca,
+**vendedor**, garantía, categoría y SKU, y **solo las características que comparten todos** los
+productos (las que ya son fila fija se excluyen para no repetir información), con las propias de
+cada uno aparte. El control «Comparar» está en cada tarjeta y en la ficha, el contador de la
+cabecera aparece solo con algo que comparar y el tope de 4 se explica en vez de fallar en
+silencio. Medido: tienda **35/35** (3 casos nuevos), **a11y 18/18** (la página entra en el
+barrido de axe), **visual 16/16** con captura nueva revisada, y los gates estáticos en 0.
+Declarado: sin URL compartible ni sincronización (llegan con F4) y el comparador no añade al
+carrito desde la tabla.
 
 ## §15 F7 y F4 — estado medido y decisiones pendientes (2026-09-24, T217)
 

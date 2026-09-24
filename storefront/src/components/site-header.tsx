@@ -5,6 +5,7 @@ import { BrandMark } from './brand-mark';
 import { CartLink } from './cart-link';
 import { CategoryNav } from './category-nav';
 import { CitySelector } from './city-selector';
+import { CompareLink } from './compare-link';
 import { SearchBox } from './search-box';
 import { ThemeToggle } from './theme-toggle';
 
@@ -39,6 +40,9 @@ export async function SiteHeader(): Promise<JSX.Element> {
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             <CitySelector cities={cityContext.cities} selectedCode={cityContext.selectedCode} />
             <ThemeToggle />
+            {/* F6: el comparador aparece solo cuando hay algo que comparar (si no, la cabecera
+                ya lleva buscador, ciudad, tema y carrito). */}
+            <CompareLink />
             <CartLink />
           </div>
         </div>
