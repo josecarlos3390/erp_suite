@@ -85,9 +85,7 @@ hace mejor con `ensureContrast`.
 
 1. **Arreglar la deuda medida** (tabla de §3), empezando por los 116 usos de primitivas y el punto de
    estado: es la mayor ganancia de contraste real.
-2. **Aserción de recorte de overlays** (el defecto del menú de la tienda, T209): intersectar las cajas
-   de recorte de los ancestros sobre `luna-dropdown`, `luna-select`, `luna-modal`, `luna-date-picker`
-   y `luna-command-palette`; hoy ningún gate detecta un panel recortado.
+2. ~~**Aserción de recorte de overlays**~~ — **HECHO en T212** (`e2e/overlay-clipping.spec.ts`, 2 casos): recorre los ancestros del panel abierto, intersecta sus cajas de recorte, exige que la caja esté dentro de la ventana y que su centro sea lo que se pinta. **Alcance corregido con la medición** (el de este plan era incorrecto): los overlays reales son **`luna-menu`** y **`luna-modal`**; **`luna-select`** usa el desplegable **nativo** (nada que recortar) y **`luna-dropdown`/`luna-date-picker`/`luna-command-palette` no existen** en la app (espejo de la raíz, 0 referencias). Los 2 casos **pasan**: el ERP no tenía el defecto de la tienda; quedan como guardia.
 3. **Baselines visuales deterministas**: el ERP tiene **85** capturas contra la BD sembrada y ya sufrió
    el fallo (T195: el baseline del formulario de usuario quedó obsoleto porque el seed añadió un
    almacén). Alternativas: fixture grabado como el de la tienda o sellar el baseline con la versión
