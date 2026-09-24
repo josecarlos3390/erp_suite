@@ -118,6 +118,29 @@ resumen por entrega, en el mismo formato que los de `backend-erp/` y `erp-fronte
 
 ### Fixed
 
+- **El menú de categorías del encabezado se abría recortado y no se veía (2026-09-23, T209)**. Lo
+  reportó el usuario: al pulsar una categoría con subcategorías el menú «se despliega dentro de su
+  contenedor y no se puede visualizar». **Medido con una sonda** (`Celulares`, la primera de las
+  **3** raíces con hijas): la fila de categorías es un carril con scroll horizontal
+  (`overflow-x-auto`, porque las raíces no caben: `scrollWidth 1688` contra `clientWidth 1280`) y en
+  CSS **`overflow-x: auto` obliga a `overflow-y: auto`**, así que el panel del `<details>`
+  (`position: absolute`, `z-index 200`) quedaba recortado por la caja del carril: **110 px de sus
+  108 px de alto** caían fuera — **0 px visibles**. El panel deja de vivir dentro del carril y pasa a
+  ser **hermano** suyo, anclado a la barra (`absolute inset-x-0 top-full`), así que **ningún ancestro
+  con scroll lo recorta** (medido después: alto visible **121 px de 121 px** y `elementFromPoint` en
+  su centro devuelve el panel, antes devolvía el hero). El disparador pasa de `<summary>` a
+  **enlace + botón** con `aria-expanded` y `aria-controls` (el IDREF solo mientras el panel existe,
+  porque uno colgado lo marcaría el gate de accesibilidad), de modo que sin JavaScript el enlace a la
+  categoría y `/categorias` siguen funcionando. El `▾` tipográfico pasa a **icono SVG** (era
+  ilegible y contaba como nodo de contraste no medible), el panel es un **menú ancho** con el árbol
+  del ERP («Todo en X» + cada hija con su conteo), **Escape** cierra y devuelve el foco, el clic
+  fuera y la navegación lo cierran, y **`ArrowDown` entra al panel**. **Evidencia**: **2 casos E2E
+  nuevos** (`e2e/navegacion.spec.ts`; la suite funcional pasa de 27 a **29/29**) —uno mide que nada
+  recorta el panel intersectando las cajas de recorte de sus ancestros (con el marcado anterior da
+  0 px y falla) y otro el recorrido de teclado—, `typecheck` 0, `lint` 0/0, `build` 0,
+  `e2e:a11y` **17/17** (los nodos de contraste no medible bajan de 67 a 65), `e2e:perf` 5/5 y
+  `e2e:visual` **15/15** con las capturas regeneradas por el cambio de encabezado.
+
 - **El paso 3 cotizaba dos veces y podía pintar un error transitorio (2026-09-23, T208)**. Defecto
   **real** que destapó el fixture del gate visual (el E2E funcional no lo veía): al entrar al resumen,
   el checkout pedía **dos** cotizaciones al canal, la primera **sin comprador**

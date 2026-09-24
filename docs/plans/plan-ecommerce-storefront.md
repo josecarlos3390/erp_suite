@@ -1288,3 +1288,51 @@ se dispara a proposito (`$env:STORE_VISUAL_RECORD='1'`); el presupuesto de rendi
 **ratchet** medido en `localhost`, no una medida de campo; y la correccion de contraste se aplica a la
 **tienda** (el back office conserva los tokens oscuros de LUNA, con el mismo defecto medido, fuera del
 alcance de D22–D26).
+
+### §14.h Correccion del menu de categorias (medido el 2026-09-23, T209)
+
+**Lo que reporto el usuario**: al pulsar una categoria con subcategorias, el menu «no se despliega
+fuera»: se abre dentro de su contenedor y no se puede visualizar.
+
+**Lo medido con una sonda** (`Celulares`, la primera de las **3** raices con hijas que publica el
+canal):
+
+- La fila de categorias es un **carril con scroll horizontal** (`overflow-x-auto`) porque las raices
+  no caben a lo ancho: `scrollWidth 1688` contra `clientWidth 1280`, medido.
+- En CSS, **`overflow-x: auto` obliga a `overflow-y: auto`** (el valor calculado medido es `auto`),
+  asi que el panel del `<details>` —`position: absolute`, `z-index 200`— quedaba **recortado por la
+  caja del carril**: el panel medía 108 px de alto y **110 px** caian por debajo de su borde
+  inferior, es decir **0 px visibles** (el `z-index` no compite contra el recorte de un ancestro con
+  scroll). El carril mide 48 px (de `y 75` a `y 123`) y el panel empezaba en `y 125`.
+
+**Lo entregado**:
+
+- **El panel deja de vivir dentro del carril**: pasa a ser **hermano** suyo, anclado a la barra
+  (`absolute inset-x-0 top-full`, `z-panel`), de modo que ningun ancestro con scroll lo recorta.
+  Medido despues: `clippers: []`, alto visible **121 px de 121 px** y `elementFromPoint` en su centro
+  devuelve el propio panel (antes devolvia el hero de la home).
+- **El disparador** deja de ser un `<summary>` y pasa a ser **enlace a la categoria + boton de
+  despliegue** con `aria-expanded` y `aria-controls` (el IDREF **solo mientras el panel existe**: uno
+  colgado lo marcaria el gate de accesibilidad). Asi, **sin JavaScript el enlace a la categoria y la
+  pagina `/categorias` siguen funcionando** (el arbol completo esta ahi); lo que no se abre es el
+  panel, que antes se abria pero recortado.
+- **El `▾` tipografico pasa a icono SVG** (`ChevronDownIcon`): era ilegible a 0,6875 rem y contaba
+  como nodo de contraste no medible (los nodos *incomplete* de la home bajan de 67 a **65**).
+- **Menu ancho con el arbol del ERP**: «Todo en X» mas cada hija con su conteo, en rejilla de 2 a 4
+  columnas; **Escape** cierra y devuelve el foco al boton, el clic fuera y la navegacion lo cierran
+  (la ruta esta en las dependencias del efecto), y **`ArrowDown` entra al panel** —necesario porque
+  el panel esta fuera del carril: sin eso el teclado tendria que atravesar el resto de categorias—.
+
+**Evidencia**: **2 casos E2E nuevos** (`e2e/navegacion.spec.ts`; la suite funcional pasa de 27 a
+**29/29**). El primer caso no mira el pixel: recorre los ancestros, **intersecta sus cajas de
+recorte** y exige que el area visible del panel sea su area completa —con el marcado anterior esa
+cuenta da 0 px de alto y el caso falla—, comprueba que el centro del panel es lo que se pinta, que el
+panel trae «Todo en X» mas una entrada por hija y que al pulsar una navega y el panel se cierra. El
+segundo mide el recorrido de teclado (Enter abre, `ArrowDown` entra, Escape cierra y devuelve el
+foco). Ademas: `typecheck` **0**, `lint` **0/0**, `build` **0**, `audit:contrast` **34/34**,
+`e2e:a11y` **17/17** sin hallazgos, `e2e:perf` **5/5** y `e2e:visual` **15/15** con las capturas
+**regeneradas** por el cambio de encabezado (revisada la del listado).
+
+**Declarado**: el desplegable es un **islote cliente** (la nav ya lo era, para el `aria-current`); sin
+JavaScript el panel no se abre. El carril sigue teniendo scroll horizontal en pantallas estrechas, que
+es lo que permite que el panel viva fuera de el.
