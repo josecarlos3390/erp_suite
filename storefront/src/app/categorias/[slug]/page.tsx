@@ -97,7 +97,8 @@ export default async function CategoryPage({
       <Breadcrumbs items={crumbs} />
 
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold text-fg" data-testid="category-title">
+        <p className="sf-eyebrow">Categoria</p>
+        <h1 className="sf-h1 text-fg" data-testid="category-title">
           {node.name}
         </h1>
         <p className="text-sm text-fg-secondary">
@@ -126,6 +127,7 @@ export default async function CategoryPage({
         page={page}
         result={result}
         cityName={city.name}
+        cityCode={city.code}
         gridLabel={`Productos de ${node.name}`}
         emptyMessage={`No hay productos publicados en ${node.name} con los filtros elegidos.`}
       />

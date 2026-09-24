@@ -14,13 +14,18 @@ interface CatalogSectionProps {
   page: number;
   result: CatalogPage;
   cityName: string;
+  /** Codigo de la ciudad elegida (quick-add de cada tarjeta). */
+  cityCode: string;
   gridLabel: string;
   emptyMessage: string;
 }
 
 /**
- * Listado del catalogo: filtros (formulario GET), grilla y paginacion.
+ * Listado del catalogo (F9.3): panel de filtros, grilla y paginacion.
  * Lo comparten `/categorias/[slug]` y `/buscar`.
+ *
+ * En escritorio el panel queda **pegado** (`sticky`) mientras se recorre la
+ * grilla; en movil va arriba, con la misma estructura.
  */
 export function CatalogSection({
   action,
@@ -31,12 +36,13 @@ export function CatalogSection({
   page,
   result,
   cityName,
+  cityCode,
   gridLabel,
   emptyMessage,
 }: CatalogSectionProps): JSX.Element {
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
-      <div className="lg:w-72 lg:shrink-0">
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      <div className="lg:sticky lg:top-32 lg:w-72 lg:shrink-0">
         <ProductFilters
           action={action}
           brands={brands}
@@ -47,10 +53,11 @@ export function CatalogSection({
         />
       </div>
 
-      <div className="flex-1">
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
         <ProductGrid
           products={result.data}
           cityName={cityName}
+          cityCode={cityCode}
           label={gridLabel}
           emptyMessage={emptyMessage}
           priorityCount={4}

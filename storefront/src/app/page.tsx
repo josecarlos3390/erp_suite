@@ -69,6 +69,7 @@ export default async function HomePage(): Promise<JSX.Element> {
           <ProductGrid
             products={offers}
             cityName={city.name}
+            cityCode={city.code}
             label="Ofertas vigentes"
             priorityCount={2}
             variant="carousel"
@@ -96,7 +97,12 @@ export default async function HomePage(): Promise<JSX.Element> {
           actionHref="/categorias"
           actionLabel="Ver catalogo"
         />
-        <ProductGrid products={featured.data} cityName={city.name} label="Productos destacados" />
+        <ProductGrid
+          products={featured.data}
+          cityName={city.name}
+          cityCode={city.code}
+          label="Productos destacados"
+        />
       </section>
 
       <PromoBand city={city} />

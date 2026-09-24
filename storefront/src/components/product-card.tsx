@@ -4,30 +4,48 @@ import type { Product } from '@/lib/erp';
 import { formatDiscount } from '@/lib/format';
 
 import { ProductImage } from './product-image';
+import { QuickAdd } from './quick-add';
 import { Badge } from './ui/badge';
 import { Price } from './ui/price';
 
 interface ProductCardProps {
   product: Product;
   cityName: string;
+  /** Codigo de la ciudad elegida: lo necesita el quick-add para el snapshot del carrito. */
+  cityCode: string;
   priority?: boolean;
 }
 
 const MAX_VISIBLE_BADGES = 3;
 
+/** Insignias del ERP → variante visual (lo que no este aqui se pinta neutro). */
+const BADGE_VARIANTS: Record<string, 'ok' | 'promo' | 'soft' | 'brand'> = {
+  'ENVIO GRATIS': 'ok',
+  OFERTA: 'promo',
+  CUOTAS: 'soft',
+  NUEVO: 'brand',
+};
+
 /**
  * Tarjeta de producto de la tienda (F9.1/F9.3).
  *
- * Es la pieza que mas se repite en la tienda, asi que concentra la jerarquia:
- * **imagen** (o el placeholder propio, D24), **descuento** como etiqueta,
- * **marca** como antetitulo, **nombre** a dos lineas y **precio protagonista**
- * con el «antes» y el ahorro. Se eleva al pasar el puntero (`sf-card-hover`) y la
- * imagen hace un zoom sutil.
+ * Es la pieza que mas se repite, asi que concentra la jerarquia: **imagen** (o el
+ * placeholder propio, D24) con **acciones rapidas** (F9.3), **descuento** como
+ * etiqueta, **marca** como antetitulo, **nombre** a dos lineas, **insignias del
+ * ERP** con su variante y **precio protagonista** con el «antes» y el ahorro. Se
+ * eleva al pasar el puntero (`sf-card-hover`) y la imagen hace un zoom sutil.
  *
  * Los `data-testid` son contrato con el E2E de la tienda (`product-card`,
- * `product-price`, `product-list-price`, `discount-badge`, `product-availability`).
+ * `product-price`, `product-list-price`, `discount-badge`, `product-availability`);
+ * el quick-add usa `quick-add` **a proposito** para no volver ambiguo el
+ * `add-to-cart` de la ficha.
  */
-export function ProductCard({ product, cityName, priority = false }: ProductCardProps): JSX.Element {
+export function ProductCard({
+  product,
+  cityName,
+  cityCode,
+  priority = false,
+}: ProductCardProps): JSX.Element {
   const href = `/productos/${product.slug}`;
   const discount = formatDiscount(product.discountPct);
   const hasOffer = product.salePrice !== null;
@@ -52,19 +70,34 @@ export function ProductCard({ product, cityName, priority = false }: ProductCard
           />
         </Link>
 
-        {discount !== null ? (
-          <span className="absolute left-2 top-2 flex flex-col items-start gap-1">
+        <span className="pointer-events-none absolute inset-x-2 top-2 flex items-start justify-between gap-2">
+          {discount !== null ? (
             <Badge variant="deal" testId="discount-badge" srLabel={`Descuento de ${discount}`}>
               {discount}
             </Badge>
-          </span>
-        ) : null}
+          ) : (
+            <span />
+          )}
+          {!product.availability.inStock ? <Badge variant="outline">Agotado</Badge> : null}
+        </span>
 
-        {!product.availability.inStock ? (
-          <span className="absolute right-2 top-2">
-            <Badge variant="outline">Agotado</Badge>
-          </span>
-        ) : null}
+        {/* Acciones rapidas: fuera del enlace de la imagen para que no naveguen. */}
+        <span className="absolute bottom-2 right-2 flex translate-y-1 gap-2 opacity-100 transition-all duration-base group-hover:translate-y-0">
+          <QuickAdd
+            product={{
+              itemId: product.itemId,
+              slug: product.slug,
+              name: product.name,
+              sku: product.sku,
+              price: product.price,
+              currency: product.currency,
+              image: product.image,
+            }}
+            inStock={product.availability.inStock}
+            cityCode={cityCode}
+            cityName={cityName}
+          />
+        </span>
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
@@ -80,7 +113,9 @@ export function ProductCard({ product, cityName, priority = false }: ProductCard
           <ul className="flex flex-wrap gap-1">
             {badges.map((badge) => (
               <li key={badge}>
-                <span className="sf-chip px-2 py-0.5 text-2xs">{badge}</span>
+                <Badge variant={BADGE_VARIANTS[badge.trim().toUpperCase()] ?? 'outline'} className="px-2 py-0.5">
+                  {badge}
+                </Badge>
               </li>
             ))}
           </ul>

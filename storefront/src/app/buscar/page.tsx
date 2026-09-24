@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { CatalogSection } from '@/components/catalog-section';
 import { JsonLd } from '@/components/json-ld';
+import { EmptyState } from '@/components/ui/empty-state';
 import { getCityContext } from '@/lib/city';
 import {
   SORT_OPTIONS,
@@ -49,30 +49,22 @@ export default async function SearchPage({ searchParams }: SearchPageProps): Pro
       <div className="flex flex-col gap-6">
         <Breadcrumbs items={crumbs} />
         <header className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-fg">Buscar productos</h1>
+          <p className="sf-eyebrow">Busqueda</p>
+          <h1 className="sf-h1 text-fg">Buscar productos</h1>
           <p className="text-sm text-fg-secondary">
             Escribe lo que buscas en el buscador de arriba (nombre, marca o SKU).
           </p>
         </header>
 
-        <section
-          className="rounded-lg border border-dashed border-line bg-elevated p-6"
-          data-testid="search-empty-state"
-        >
-          <h2 className="text-sm font-semibold text-fg">Sugerencias</h2>
-          <ul className="mt-2 flex flex-col gap-1 text-sm">
-            <li>
-              <Link href="/categorias" className="sf-link">
-                Recorrer todas las categorias
-              </Link>
-            </li>
-            <li>
-              <Link href="/" className="sf-link">
-                Ver las ofertas vigentes de la home
-              </Link>
-            </li>
-          </ul>
-        </section>
+        <EmptyState
+          testId="search-empty-state"
+          title="Que estas buscando?"
+          description="El buscador consulta el catalogo publicado en el ERP por nombre, marca o SKU. Tambien puedes recorrer las categorias."
+          actions={[
+            { href: '/categorias', label: 'Recorrer todas las categorias', primary: true },
+            { href: '/', label: 'Ver las ofertas de la home' },
+          ]}
+        />
 
         <JsonLd data={breadcrumbJsonLd(crumbs)} id="jsonld-buscar" />
       </div>
@@ -96,7 +88,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps): Pro
       <Breadcrumbs items={crumbs} />
 
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-fg">
+        <p className="sf-eyebrow">Busqueda</p>
+        <h1 className="sf-h1 text-fg">
           Resultados para <span className="text-fg-accent">{query}</span>
         </h1>
         <p className="text-sm text-fg-secondary" data-testid="search-summary">
@@ -105,28 +98,15 @@ export default async function SearchPage({ searchParams }: SearchPageProps): Pro
       </header>
 
       {result.total === 0 ? (
-        <section
-          className="flex flex-col gap-3 rounded-lg border border-dashed border-line bg-elevated p-6"
-          data-testid="search-empty-state"
-        >
-          <h2 className="text-lg font-semibold text-fg">No encontramos productos para esa busqueda</h2>
-          <p className="max-w-xl text-sm text-fg-secondary">
-            Revisa la ortografia, prueba con menos palabras o recorre las categorias publicadas. La
-            busqueda la resuelve el ERP sobre el catalogo publicado.
-          </p>
-          <ul className="flex flex-wrap gap-2">
-            <li>
-              <Link href="/categorias" className="sf-btn-secondary">
-                Ver categorias
-              </Link>
-            </li>
-            <li>
-              <Link href="/" className="sf-btn-secondary">
-                Volver al inicio
-              </Link>
-            </li>
-          </ul>
-        </section>
+        <EmptyState
+          testId="search-empty-state"
+          title="No encontramos productos para esa busqueda"
+          description="Revisa la ortografia, prueba con menos palabras o recorre las categorias publicadas. La busqueda la resuelve el ERP sobre el catalogo publicado."
+          actions={[
+            { href: '/categorias', label: 'Ver categorias', primary: true },
+            { href: '/', label: 'Volver al inicio' },
+          ]}
+        />
       ) : (
         <CatalogSection
           action={action}
@@ -137,6 +117,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps): Pro
           page={page}
           result={result}
           cityName={city.name}
+          cityCode={city.code}
           gridLabel={`Resultados de ${query}`}
           emptyMessage="No hay resultados en esta pagina con los filtros elegidos."
         />

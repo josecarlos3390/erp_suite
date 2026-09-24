@@ -227,6 +227,7 @@ export default async function ProductPage({ params }: ProductPageProps): Promise
           <ProductGrid
             products={related.slice(0, RELATED_LIMIT)}
             cityName={city.name}
+            cityCode={city.code}
             label="Productos relacionados"
           />
         )}

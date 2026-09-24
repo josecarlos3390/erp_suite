@@ -1,10 +1,13 @@
 import type { Product } from '@/lib/erp';
 
 import { ProductCard } from './product-card';
+import { EmptyState } from './ui/empty-state';
 
 interface ProductGridProps {
   products: readonly Product[];
   cityName: string;
+  /** Codigo de la ciudad elegida (lo necesita el quick-add de cada tarjeta). */
+  cityCode: string;
   label: string;
   emptyMessage?: string;
   priorityCount?: number;
@@ -20,6 +23,7 @@ interface ProductGridProps {
 export function ProductGrid({
   products,
   cityName,
+  cityCode,
   label,
   emptyMessage = 'No hay productos para mostrar.',
   priorityCount = 0,
@@ -27,12 +31,15 @@ export function ProductGrid({
 }: ProductGridProps): JSX.Element {
   if (products.length === 0) {
     return (
-      <p
-        className="sf-panel text-center text-sm text-fg-secondary"
-        data-testid="empty-grid"
-      >
-        {emptyMessage}
-      </p>
+      <EmptyState
+        testId="empty-grid"
+        title="No hay productos para mostrar"
+        description={emptyMessage}
+        actions={[
+          { href: '/categorias', label: 'Ver todas las categorias', primary: true },
+          { href: '/', label: 'Volver al inicio' },
+        ]}
+      />
     );
   }
 
@@ -54,6 +61,7 @@ export function ProductGrid({
             <ProductCard
               product={product}
               cityName={cityName}
+              cityCode={cityCode}
               priority={index < priorityCount}
             />
           </div>

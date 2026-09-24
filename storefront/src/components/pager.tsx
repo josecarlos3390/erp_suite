@@ -11,7 +11,12 @@ interface PagerProps {
 
 const MAX_LINKS = 5;
 
-/** Paginacion server-rendered: enlaces reales, sin JavaScript. */
+/**
+ * Paginacion server-rendered (F9.3): enlaces reales, sin JavaScript.
+ *
+ * El `nav` conserva el nombre accesible **`Paginacion`** y el enlace de avance su
+ * `data-testid="pager-next"`: son contrato con el E2E de la tienda.
+ */
 export function Pager({ basePath, params, page, totalPages }: PagerProps): JSX.Element | null {
   if (totalPages <= 1) return null;
 
@@ -22,16 +27,13 @@ export function Pager({ basePath, params, page, totalPages }: PagerProps): JSX.E
     pages.push(current);
   }
 
-  const linkClass = 'inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md border border-line px-2 text-sm';
+  const linkClass =
+    'inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-btn border border-line bg-base px-3 text-sm font-medium text-fg transition-colors duration-fast hover:border-primary hover:text-fg-accent';
 
   return (
     <nav aria-label="Paginacion" className="flex flex-wrap items-center justify-center gap-2 py-6">
       {page > 1 ? (
-        <Link
-          href={buildHref(basePath, { ...params, page: page - 1 })}
-          className={`${linkClass} text-fg hover:bg-hover`}
-          rel="prev"
-        >
+        <Link href={buildHref(basePath, { ...params, page: page - 1 })} className={linkClass} rel="prev">
           Anterior
         </Link>
       ) : null}
@@ -41,7 +43,7 @@ export function Pager({ basePath, params, page, totalPages }: PagerProps): JSX.E
           <span
             key={current}
             aria-current="page"
-            className={`${linkClass} bg-primary font-semibold text-primary-fg`}
+            className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-btn bg-primary px-3 text-sm font-semibold text-primary-fg"
           >
             {current}
           </span>
@@ -49,7 +51,7 @@ export function Pager({ basePath, params, page, totalPages }: PagerProps): JSX.E
           <Link
             key={current}
             href={buildHref(basePath, { ...params, page: current })}
-            className={`${linkClass} text-fg hover:bg-hover`}
+            className={linkClass}
           >
             {current}
           </Link>
@@ -59,7 +61,7 @@ export function Pager({ basePath, params, page, totalPages }: PagerProps): JSX.E
       {page < totalPages ? (
         <Link
           href={buildHref(basePath, { ...params, page: page + 1 })}
-          className={`${linkClass} text-fg hover:bg-hover`}
+          className={linkClass}
           rel="next"
           data-testid="pager-next"
         >

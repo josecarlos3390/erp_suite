@@ -66,6 +66,36 @@ test.describe('Carrito', () => {
     await expect(page.getByTestId('cart-line')).toHaveAttribute('data-slug', target.slug);
   });
 
+  test('agregar desde la grilla (quick-add) no navega y suma al carrito', async ({ page }) => {
+    const products = await getAllProducts();
+    const target = products.find((product) => product.availability.inStock);
+    expect(target, 'El catalogo no tiene ningun producto con existencia').toBeDefined();
+    if (target === undefined) return;
+
+    const category = target.category?.slug;
+    expect(category, 'El producto elegido no tiene categoria publicada').toBeDefined();
+    if (category === undefined) return;
+
+    await page.goto(`/categorias/${category}`);
+    await expect(page.getByTestId('cart-count')).toHaveText('0');
+
+    // La tarjeta del articulo trae su boton de compra rapida (F9.3).
+    const card = page.locator(`[data-testid="product-card"][data-slug="${target.slug}"]`);
+    await expect(card).toBeVisible();
+    const quickAdd = card.getByTestId('quick-add');
+    await expect(quickAdd).toBeEnabled();
+    await quickAdd.click();
+
+    // No navega (el boton vive fuera del enlace de la imagen) y el contador sube.
+    await expect(page).toHaveURL(new RegExp(`/categorias/${category}$`));
+    await expect(page.getByTestId('cart-count')).toHaveText('1');
+
+    await page.goto('/carrito');
+    const line = page.getByTestId('cart-line');
+    await expect(line).toHaveCount(1);
+    await expect(line).toHaveAttribute('data-slug', target.slug);
+  });
+
   test('desde el carrito se entra al checkout con el articulo cargado', async ({ page }) => {
     const products = await getAllProducts();
     const target = products.find((product) => product.availability.inStock);

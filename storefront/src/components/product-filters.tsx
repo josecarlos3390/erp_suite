@@ -15,9 +15,10 @@ interface ProductFiltersProps {
 const QUICK_BRANDS = 8;
 
 /**
- * Filtros del listado: formulario GET (funciona sin JavaScript) + atajos de
- * marca como enlaces reales. Todo el estado vive en la URL y la lista la vuelve
- * a renderizar el servidor.
+ * Filtros del listado (F9.1/F9.3): formulario GET (funciona sin JavaScript) con
+ * los `select` **nativos** que el E2E maneja (`filtro-marca`, `filtro-orden`) mas
+ * atajos de marca como enlaces reales. Todo el estado vive en la URL y la lista la
+ * vuelve a renderizar el servidor.
  *
  * Hueco declarado: el canal no acepta rango de precios, asi que la tienda no
  * ofrece ese filtro (no se filtra en el cliente porque romperia la paginacion).
@@ -32,22 +33,30 @@ export function ProductFilters({
 }: ProductFiltersProps): JSX.Element {
   const quickBrands = brands.slice(0, QUICK_BRANDS);
   const clearHref = buildHref(action, { ...hidden, brand: undefined, sort: undefined, page: undefined });
+  const hasFilters = brand !== undefined || sort !== 'relevance';
 
   return (
-    <section aria-labelledby="filtros-titulo" className="rounded-lg border border-line bg-base p-4">
-      <h2 id="filtros-titulo" className="text-sm font-semibold text-fg">
-        Filtros
-      </h2>
+    <section className="sf-card flex flex-col gap-4 p-4" aria-labelledby="filtros-titulo">
+      <header className="flex items-center justify-between gap-2">
+        <h2 id="filtros-titulo" className="sf-h3 text-fg">
+          Filtros
+        </h2>
+        <span aria-hidden="true" className="text-fg-tertiary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+            <path d="M4 6h16M7 12h10M10 18h4" />
+          </svg>
+        </span>
+      </header>
 
-      <form method="get" action={action} className="mt-3 flex flex-col gap-3">
+      <form method="get" action={action} className="flex flex-col gap-4">
         {Object.entries(hidden).map(([name, value]) =>
           value === undefined || value === '' ? null : (
             <input key={name} type="hidden" name={name} value={String(value)} />
           ),
         )}
 
-        <div className="flex flex-col gap-1">
-          <label htmlFor="filtro-marca" className="text-xs font-medium text-fg-secondary">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="filtro-marca" className="sf-eyebrow">
             Marca
           </label>
           <select
@@ -66,8 +75,8 @@ export function ProductFilters({
           </select>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label htmlFor="filtro-orden" className="text-xs font-medium text-fg-secondary">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="filtro-orden" className="sf-eyebrow">
             Orden
           </label>
           <select
@@ -86,39 +95,47 @@ export function ProductFilters({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <button type="submit" className="sf-btn bg-primary text-primary-fg hover:bg-primary-hover">
-            Aplicar filtros
+          <button type="submit" className="sf-btn sf-btn-primary flex-1">
+            Aplicar
           </button>
-          <Link href={clearHref} className="sf-link text-sm">
-            Limpiar filtros
-          </Link>
+          {hasFilters ? (
+            <Link href={clearHref} className="sf-link text-sm font-medium">
+              Limpiar
+            </Link>
+          ) : null}
         </div>
       </form>
 
       {quickBrands.length > 0 ? (
-        <div className="mt-4 border-t border-line-subtle pt-3">
-          <p className="text-xs font-medium text-fg-secondary">Marcas frecuentes</p>
-          <ul className="mt-2 flex flex-wrap gap-2">
-            {quickBrands.map((item) => (
-              <li key={item.code}>
-                <Link
-                  href={buildHref(action, {
-                    ...hidden,
-                    brand: brand === item.code ? undefined : item.code,
-                    sort,
-                  })}
-                  className={`sf-chip ${brand === item.code ? 'border-primary border bg-primary-soft text-fg-accent' : ''}`}
-                  aria-current={brand === item.code ? 'true' : undefined}
-                >
-                  {item.name}
-                </Link>
-              </li>
-            ))}
+        <div className="border-t border-line-subtle pt-3">
+          <p className="sf-eyebrow">Marcas frecuentes</p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {quickBrands.map((item) => {
+              const active = brand === item.code;
+              return (
+                <li key={item.code}>
+                  <Link
+                    href={buildHref(action, {
+                      ...hidden,
+                      brand: active ? undefined : item.code,
+                      sort,
+                    })}
+                    className={`sf-chip ${active ? 'border-primary bg-primary-soft font-semibold text-fg-accent' : ''}`}
+                    aria-current={active ? 'true' : undefined}
+                  >
+                    {item.name}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}
 
-      <p className="mt-4 text-xs text-fg-secondary" data-testid="filtros-resumen">
+      <p
+        className="border-t border-line-subtle pt-3 text-xs font-medium text-fg-secondary"
+        data-testid="filtros-resumen"
+      >
         {totalLabel}
       </p>
     </section>

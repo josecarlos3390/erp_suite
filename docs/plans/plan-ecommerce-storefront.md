@@ -1045,3 +1045,44 @@ misma leccion de F9.1.
 necesita mas banners en el ERP, no codigo); el carril se navega con scroll nativo (sin flechas ni
 autoplay) y la barra de beneficios repite los datos de la ciudad elegida, no promociones por
 categoria.
+
+### §14.d Estado de F9.3 — tarjeta y catalogo (medido el 2026-09-23, T205)
+
+**Lo entregado**: la grilla deja de ser una lista de enlaces y el listado deja de ser un formulario.
+
+- **Compra rapida desde la grilla** (`quick-add.tsx`): islote cliente nuevo (declarado) que escribe
+  el **snapshot** del carrito (D2) sin hablar con el ERP; el boton vive **fuera** del enlace de la
+  imagen, asi que un clic **no navega**, y queda **deshabilitado** sin existencia en la ciudad
+  elegida. Usa `data-testid="quick-add"` **a proposito**: la ficha ya tiene `add-to-cart` y su grilla
+  de relacionados tambien lleva quick-add, de modo que compartir testid volveria ambiguo el locator
+  del E2E. Requiere `cityCode` en `ProductGrid`/`ProductCard` y en las cuatro pantallas que los usan.
+- **Insignias con jerarquia**: las del ERP se pintan con variante (`ENVIO GRATIS` beneficio verde,
+  `OFERTA` promocion naranja, `CUOTAS` suave, `NUEVO` marca; lo desconocido queda neutro) en vez de
+  chips iguales.
+- **Skeletons de carga**: `categorias/[slug]/loading.tsx` y `buscar/loading.tsx` con la **misma
+  estructura** que la pagina real (migas, titulo, panel de filtros y grilla) para que no haya salto
+  de layout.
+- **Panel de filtros y orden** (`product-filters.tsx`): cabecera con icono, etiquetas de eyebrow,
+  boton **Aplicar** de ancho completo, **Limpiar** solo cuando hay filtros, chips de marca con estado
+  activo y el resumen (`filtros-resumen`). Sigue siendo un **formulario GET** con `select` **nativos**
+  (sin JavaScript, y los que el E2E maneja). En escritorio el panel queda **pegado** (`lg:sticky`).
+- **Estados vacios unificados** (`ui/empty-state.tsx`): catalogo, busqueda sin resultados y busqueda
+  sin termino comparten pieza (icono, titulo, explicacion de que el catalogo lo publica el ERP y dos
+  salidas), conservando los testids `empty-grid` y `search-empty-state`.
+- **Paginacion y cabeceras**: paginador con el mismo lenguaje visual (conserva `aria-label`
+  «Paginacion» y `pager-next`), y las cabeceras de categoria y busqueda pasan a la escala `sf-h1` con
+  antetitulo.
+
+**Evidencia medida**: `npm run typecheck` **0**, `npm run lint` **0/0**, `npm run build` **0** y el
+**E2E de la tienda 25/25** (40,9 s). El caso nuevo —`Carrito › agregar desde la grilla (quick-add) no
+navega y suma al carrito`— descubre el articulo y su categoria **por la API**, comprueba que el
+`quick-add` esta habilitado, que al pulsarlo **la URL no cambia** y que el contador sube a 1, y que
+la linea del carrito es la del articulo. Los casos previos siguen verdes sin cambios (la grilla del
+carril de la home, los conteos exactos, `filtros-resumen`, `pager-next`, `search-empty-state` y el
+`add-to-cart` de la ficha, que sigue siendo unico). Capturas revisadas: listado de categoria en claro
+(panel, quick-add, insignias con variante) y busqueda sin resultados.
+
+**Declarado**: el quick-add agrega **1 unidad** (la cantidad se ajusta en el carrito o en la ficha);
+el panel de filtros no se colapsa en movil (no hay islote para eso: se prefirio no anadir JavaScript
+y el canal **no** acepta rango de precios, hueco ya declarado); y el skeleton solo cubre las dos
+pantallas de catalogo, porque la home se pinta de una pieza.
