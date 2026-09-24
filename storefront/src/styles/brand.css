@@ -71,6 +71,9 @@
   --sf-promo-surface: linear-gradient(135deg, var(--sf-brand-700) 0%, var(--sf-brand-600) 45%, var(--sf-brand-500) 100%);
   --sf-promo-ink: #ffffff;
   --sf-hero-overlay: linear-gradient(180deg, rgba(2, 6, 23, 0) 35%, rgba(2, 6, 23, 0.72) 100%);
+  /* Texto sobre la imagen de campana (siempre claro: el degradado es oscuro). */
+  --sf-on-media: #ffffff;
+  --sf-on-media-soft: rgba(255, 255, 255, 0.85);
   --sf-header-bg: color-mix(in srgb, var(--bg-base) 88%, transparent);
   --sf-header-border: var(--border-default);
 

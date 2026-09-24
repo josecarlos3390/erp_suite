@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
 
+import { BenefitStrip } from '@/components/benefit-strip';
 import { CategoryCards } from '@/components/category-cards';
 import { HomeBanners } from '@/components/home-banners';
+import { HomeHero } from '@/components/home-hero';
 import { JsonLd } from '@/components/json-ld';
 import { ProductGrid } from '@/components/product-grid';
+import { PromoBand } from '@/components/promo-band';
 import { SectionHeader } from '@/components/ui/section-header';
 import { getCityContext } from '@/lib/city';
 import { getBanners, getCatalog, getCategories, getOffers } from '@/lib/erp';
@@ -19,6 +22,15 @@ export const metadata: Metadata = {
 const OFFER_COUNT = 8;
 const FEATURED_COUNT = 8;
 
+/**
+ * Home de campana (F9.2).
+ *
+ * Composicion: **hero de campana** (banners del CMS) → **barra de beneficios**
+ * (envio, pago, garantia y existencia, todo dato real de la ciudad) → **ofertas**
+ * en carril horizontal → **categorias visuales** → **destacados** en grilla →
+ * **banda de envio** → franja de servicios. Nada de lo que se pinta aqui lo
+ * inventa la tienda: banner, oferta, categoria, existencia y envio salen del ERP.
+ */
 export default async function HomePage(): Promise<JSX.Element> {
   const { city } = await getCityContext();
 
@@ -36,8 +48,10 @@ export default async function HomePage(): Promise<JSX.Element> {
         <h1 id="hero-titulo" className="sr-only">
           {`Tienda en linea · ${city.name}`}
         </h1>
-        <HomeBanners banners={heroBanners} variant="hero" />
+        <HomeHero banners={heroBanners} cityName={city.name} />
       </section>
+
+      <BenefitStrip city={city} />
 
       <section aria-labelledby="ofertas-titulo" data-testid="home-offers" className="sf-section">
         <SectionHeader
@@ -57,8 +71,20 @@ export default async function HomePage(): Promise<JSX.Element> {
             cityName={city.name}
             label="Ofertas vigentes"
             priorityCount={2}
+            variant="carousel"
           />
         )}
+      </section>
+
+      <section aria-labelledby="categorias-titulo" className="sf-section">
+        <SectionHeader
+          id="categorias-titulo"
+          eyebrow="Explorar"
+          title="Categorias"
+          hint="Todas las categorias publicadas en el ERP, con su catalogo por ciudad."
+          actionHref="/categorias"
+        />
+        <CategoryCards categories={categories} />
       </section>
 
       <section aria-labelledby="destacados-titulo" data-testid="home-featured" className="sf-section">
@@ -73,16 +99,7 @@ export default async function HomePage(): Promise<JSX.Element> {
         <ProductGrid products={featured.data} cityName={city.name} label="Productos destacados" />
       </section>
 
-      <section aria-labelledby="categorias-titulo" className="sf-section">
-        <SectionHeader
-          id="categorias-titulo"
-          eyebrow="Explorar"
-          title="Categorias"
-          hint="Todas las categorias publicadas en el ERP, con su catalogo por ciudad."
-          actionHref="/categorias"
-        />
-        <CategoryCards categories={categories} />
-      </section>
+      <PromoBand city={city} />
 
       <section aria-labelledby="strip-titulo">
         <h2 id="strip-titulo" className="sr-only">

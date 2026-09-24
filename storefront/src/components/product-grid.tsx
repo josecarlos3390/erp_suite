@@ -8,20 +8,27 @@ interface ProductGridProps {
   label: string;
   emptyMessage?: string;
   priorityCount?: number;
+  /**
+   * `grid` (default): grilla responsive de 2/3/4 columnas.
+   * `carousel`: carril horizontal con ajuste (para las ofertas de la home), con
+   * la misma cantidad de tarjetas y el mismo `data-testid` que la grilla.
+   */
+  variant?: 'grid' | 'carousel';
 }
 
-/** Grilla de productos (mobile-first: 2 columnas, luego 3 y 4). */
+/** Grilla de productos de la tienda (mobile-first: 2 columnas, luego 3 y 4). */
 export function ProductGrid({
   products,
   cityName,
   label,
   emptyMessage = 'No hay productos para mostrar.',
   priorityCount = 0,
+  variant = 'grid',
 }: ProductGridProps): JSX.Element {
   if (products.length === 0) {
     return (
       <p
-        className="rounded-lg border border-dashed border-line bg-elevated p-6 text-center text-sm text-fg-secondary"
+        className="sf-panel text-center text-sm text-fg-secondary"
         data-testid="empty-grid"
       >
         {emptyMessage}
@@ -29,14 +36,20 @@ export function ProductGrid({
     );
   }
 
+  const listClass =
+    variant === 'carousel'
+      ? 'sf-scroll-x sf-scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0'
+      : 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4';
+
+  const itemClass =
+    variant === 'carousel'
+      ? 'flex w-[220px] sm:w-[248px]'
+      : 'flex';
+
   return (
-    <ul
-      className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
-      aria-label={label}
-      data-testid="product-grid"
-    >
+    <ul className={listClass} aria-label={label} data-testid="product-grid">
       {products.map((product, index) => (
-        <li key={product.itemId} className="flex">
+        <li key={product.itemId} className={itemClass}>
           <div className="flex w-full">
             <ProductCard
               product={product}

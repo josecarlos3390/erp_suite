@@ -1005,3 +1005,43 @@ server** y reiniciarlo despues.
 banners, dos grillas y categorias de texto) con la capa nueva encima; los filtros, la ficha, el
 carrito y el checkout **no** se han rediseñado todavia; y el placeholder propio es una solucion
 honesta mientras no haya fotografia real.
+
+### §14.c Estado de F9.2 — home de campana (medido el 2026-09-23, T204)
+
+**Lo entregado**: la home deja de ser dos grillas iguales y pasa a contar una campana.
+
+- **Hero de campana** (`home-hero.tsx`): el primer banner del CMS ocupa el bloque dominante con la
+  **imagen de fondo**, degradado de contraste (`--sf-hero-overlay`) y la tipografia **display**
+  encima (antetitulo con la ciudad, titulo, subtitulo y CTA); los dos siguientes van como piezas
+  secundarias. El arte de campana se pinta tal cual (`allowStockHost`), y sin banners el bloque lo
+  **dice** en vez de dejar un hueco.
+- **Barra de beneficios** (`benefit-strip.tsx`): cuatro piezas con icono y **dato real** —envio con
+  el costo y el umbral de envio gratis de la ciudad + plazo en dias habiles, medios de pago que
+  acepta el checkout (transferencia, QR o contra entrega; el retiro en tienda queda fuera porque
+  esta declarado como fase 2), garantia que publica el ERP **por articulo**, y que la existencia es
+  la del **almacen de esa ciudad**—. Nada de marketing inventado.
+- **Ofertas en carril horizontal**: `ProductGrid` gana la variante `carousel` (mismo
+  `data-testid="product-grid"` y las mismas tarjetas, con ajuste y sin barra de scroll visible).
+- **Categorias visuales** (`category-cards.tsx`): pieza con la **imagen del ERP** si existe y, si no,
+  el placeholder de la tienda (monograma + halo), nombre, conteo y chevron con microinteraccion.
+- **Banda de envio** (`promo-band.tsx`): banda con el degradado de marca que usa **solo datos reales**
+  de la ciudad (umbral de envio gratis y costo del envio) con dos CTA.
+- **Orden de la home**: hero → beneficios → ofertas (carril) → categorias → destacados (grilla) →
+  banda de envio → franja de servicios.
+
+**Evidencia medida**: `npm run typecheck` **0**, `npm run lint` **0/0**, `npm run build` **0** y
+**E2E de la tienda 24/24** (37,5 s contra la API real; `home.spec.ts` sigue midiendo el carril de
+ofertas como grilla visible con el numero exacto de tarjetas y su etiqueta de descuento, y
+`ciudad.spec.ts` que la home vuelve a pedir la existencia de la ciudad elegida). Capturas revisadas:
+home de escritorio en claro y home movil (390 px) en **oscuro**, con la jerarquia display, el
+carril, las categorias visuales y la banda de envio.
+
+**DEFECTO DE TIPO MEDIDO Y CERRADO (en esta fase)**: el destructuring del array de banners dejaba
+`primary` como `Banner | undefined` y `tsc` lo rechazaba (`TS2322`); se indexa con comprobacion
+explicita. Lo detecto el gate de tipos, no el E2E (Playwright transpila sin comprobar tipos): es la
+misma leccion de F9.1.
+
+**Declarado**: los banners siguen saliendo del slot `home-hero` del CMS (una campana con mas piezas
+necesita mas banners en el ERP, no codigo); el carril se navega con scroll nativo (sin flechas ni
+autoplay) y la barra de beneficios repite los datos de la ciudad elegida, no promociones por
+categoria.
