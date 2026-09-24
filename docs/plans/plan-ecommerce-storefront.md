@@ -830,3 +830,178 @@ importe de la ciudad) y no cambia el IVA —el impuesto lo sigue calculando el m
 precio ya promocionado, como en T197—; la oferta de catálogo y la promo del canal **se acumulan**
 (D12) y el orden de las capas queda publicado en el desglose para que el comprador pueda
 explicárselo.
+
+## §14 F9 — Identidad visual y experiencia premium de la tienda (plan aprobado el 2026-09-23)
+
+**La pregunta del usuario**: la tienda «se ve algo básica, no parece tener un estilo premium».
+**Medido antes de proponer** (no es una impresión): la estructura funciona y la **capa de tokens es
+buena**, pero la **capa visual no existe**. En concreto:
+
+- **Tipografía**: los tokens del ERP **declaran Inter** (`_06-typography.scss` → `--font-sans`,
+  `--font-display`), pero el storefront **no la carga** (no hay `next/font` ni `<link>`): cada equipo
+  renderiza la fuente del sistema y los títulos no usan `--font-display`. El ERP **sí** la sirve
+  **self-hosted** (`erp-frontend/public/assets/fonts/inter-{400,500,600,700}-{latin,latin-ext}.woff2`,
+  generados por `scripts/fetch-webfonts.mjs`).
+- **Identidad**: `SITE_NAME = 'Tienda ERP'` y el logo es un cuadro con «TE» pintado con el **índigo de
+  LUNA** (`--accent-600`), es decir el color del back office. El §3 ya previó «tema por tenant» pero
+  **no está implementado**: no hay capa de marca.
+- **Home**: hero = 2 banners en grilla `aspect-[16/6]` con título/subtítulo planos, después **dos
+  secciones idénticas** (ofertas y destacados) con la misma grilla de 4 columnas, categorías como
+  tarjetas de texto y una franja de banners. Sin campaña a sangre, sin barra de beneficios, sin
+  carrusel, sin categorías visuales, sin bloque de pagos/cuotas/envío.
+- **Tarjeta**: borde 1px, sombra **solo al hover**, imagen cuadrada sobre gris, precio `text-lg`.
+  Sin acciones rápidas, sin etiquetas de beneficio, sin zoom, sin skeleton.
+- **Ficha**: dos columnas planas, precio en un bloque bordeado, entrega/garantía como **lista de
+  texto**, ficha en tabla. El botón agrega **siempre 1 unidad**.
+- **Filtros**: dos `<select>` nativos + botón + chips. Funcional (GET sin JS), visualmente básico.
+- **Checkout**: 974 líneas de formulario sin pasos visuales ni barra de progreso.
+- **Imágenes**: marcadores `picsum.photos` (dato de desarrollo) — **el mayor limitante** percibido.
+- **Sin usar, ya disponible en los tokens**: sombras en capas, gradientes (`--gradient-*`), easings
+  (`--ease-out-expo/spring`), duraciones y **`[data-theme=dark]` completo**: la tienda no usa nada
+  de eso hoy.
+
+### D22 — Dirección visual (aprobada el 2026-09-23)
+
+**Retail tecnológico premium**: acento fuerte y propio, bloques de campaña, **precio protagonista**
+y densidad media (ni la densidad operativa del back office ni el vacío editorial). Justificación: es
+lo que mejor encaja con electrodomésticos/tecnología y con los datos que el ERP ya publica (oferta,
+disponibilidad, entrega, cuotas).
+
+### D23 — Identidad: tema de tienda propio, encima de los tokens (aprobada el 2026-09-23)
+
+El storefront define su **propia capa de marca** (`src/styles/brand.css` + extensión de
+`tailwind.config.ts`) con variables `--sf-*` de **marca** (acción, promo, precio, superficies de
+imagen) **sin tocar** `src/styles/tokens.css` (artefacto con gate `sync:tokens:check`) y **sin
+reemplazar** los neutros de LUNA, que se conservan como base. El tema es **configurable por tenant**
+(§3): nombre, logo, paleta y tipografía entran por variables CSS inyectadas desde la configuración
+de la tienda, con un tema por defecto «Retail tecnológico premium» en el código.
+
+### D24 — Imágenes: placeholder propio, no fotos aleatorias (aprobada el 2026-09-23)
+
+No hay fotos reales de producto todavía. La tienda **deja de pintar `picsum.photos`**: los hosts de
+marcador (`picsum.photos`, `fastly.picsum.photos`) se tratan como **«sin foto»** y se renderiza un
+**placeholder propio** (fondo neutro con degradado sutil, patrón de marca y monograma del artículo),
+consistente en tarjeta, galería, carrito y checkout. Cuando el ERP publique fotos reales, se pintan
+solas (la regla es por host, no por artículo).
+
+### D25 — Tipografía self-hosted, sin red en el build (aprobada el 2026-09-23)
+
+La tienda **sirve Inter desde su propio `public/fonts/`**, copiada de la capa del ERP por un script
+con **gate propio** (`sync:fonts` / `sync:fonts:check`, mismo patrón que `sync:tokens`), y la carga
+con `next/font/local`. **Nada de Google Fonts por red en el build**: el ERP ya migró a self-hosted
+(T53) precisamente porque la red tardía falseaba la regresión visual. La jerarquía «display» se
+consigue con **peso, tamaño y tracking** de la misma familia (400/500/600/700), no con una segunda
+familia.
+
+### D26 — Alcance (aprobado el 2026-09-23)
+
+Las **seis fases** (F9.1 fundaciones → F9.2 home de campaña → F9.3 tarjeta y catálogo → F9.4 ficha →
+F9.5 carrito y checkout → F9.6 cierre), **modo oscuro** y **gate visual propio** con baselines de la
+tienda.
+
+### Restricciones medidas que el rediseño NO puede romper
+
+La tienda tiene **24 E2E funcionales** que hablan con la API real y dependen de `data-testid` y de
+**controles nativos**; un rediseño tiene que conservarlos (inventario medido, no supuesto):
+
+- **Controles nativos que los specs manejan como tales**: `selector-ciudad` (`<select>` →
+  `selectOption`/`toHaveValue`), `filtro-marca` y `filtro-orden` (`<select>`), `checkout-delivery-home`
+  (`.check()`), `cart-line-quantity` (`toHaveValue`). **No** se convierten en combos personalizados.
+- **Testids de estructura**: `home-offers`, `home-featured`, `home-hero`, `product-grid`,
+  `product-card`, `category-card(s)`, `category-title`, `search-summary`, `search-empty-state`,
+  `buscador`, `pager-next`, `specs-table`, `gallery-thumb`.
+- **Testids de dato**: `product-price`, `product-list-price`, `discount-badge`, `product-availability`,
+  `detail-price`, `detail-discount-badge`, `price-kind`, `detail-availability`, `product-title`,
+  `product-badge`, `product-city`, `add-to-cart`, `add-to-cart-blocked`, `add-to-cart-status`,
+  `cart-count`, `cart-link`, `cart-items`, `cart-line`, `cart-line-remove`, `cart-checkout-note`,
+  `cart-checkout-link`, `filtros-resumen`, y los ~60 de checkout/pedido/seguimiento
+  (`checkout-step-1..3`, `checkout-quote-*`, `order-*`, `payment-reference-*`, `tracking-*`).
+- **Reglas de arquitectura**: `server-only` en `src/lib/erp.ts` (D10: el navegador nunca llama al
+  ERP), mobile-first, `sync:tokens:check` en verde, y los únicos islotes cliente siguen siendo
+  buscador, selector de ciudad, carrito, galería, botón de compra (+ el nuevo conmutador de tema).
+
+### Fases, entregables y evidencia
+
+| Fase | Entregable | Evidencia de cierre |
+|---|---|---|
+| **F9.1 Fundaciones** | Tipografía self-hosted con gate; capa de marca `--sf-*` (claro y oscuro); escala tipográfica y de espaciado; componentes base (botón, badge, chip, precio, tarjeta, skeleton, encabezado de sección); **modo oscuro** con conmutador sin destello; **placeholder de imagen propio**; shell (header con buscador y navegación con estado activo, footer) y migración de la tarjeta de producto a los componentes nuevos | `build`/`lint`/`typecheck` en 0, `sync:tokens:check` y `sync:fonts:check` OK, **E2E 24/24**, capturas antes/después de home, ficha y listado en claro y oscuro |
+| **F9.2 Home de campaña** | Hero a sangre con campaña, barra de beneficios, ofertas en carrusel horizontal, categorías visuales, bloque de confianza (envío/pagos/cuotas), secciones asimétricas | E2E `home.spec.ts` y `ciudad.spec.ts` verdes, capturas, LCP/CLS medidos |
+| **F9.3 Tarjeta y catálogo** | Tarjeta con hover elevado, etiquetas de beneficio, skeletons, quick-add desde la grilla; panel de filtros y orden con chips, contador y limpiar; estados vacíos cuidados | E2E `categoria.spec.ts`, `buscar.spec.ts` y `carrito.spec.ts` verdes + capturas |
+| **F9.4 Ficha** | Buy-box sticky, galería con miniaturas y zoom, tarjetas de entrega/garantía/cuotas, acordeones para la ficha técnica, relacionados mejorados | E2E `producto.spec.ts` verde + capturas |
+| **F9.5 Carrito y checkout** | Carrito tipo panel con resumen, checkout por pasos con barra de progreso, resumen sticky, estados de error y carga cuidados | E2E `checkout.spec.ts` y `carrito.spec.ts` verdes + capturas |
+| **F9.6 Cierre** | **Gate visual propio** con baselines de la tienda; revisión de accesibilidad y contraste (claro y oscuro); presupuesto de rendimiento; documentación (plan, AUDIT, CHANGELOG, AGENTS) | `npm run e2e:visual` propio en verde, auditoría a11y sin hallazgos, E2E funcional 24/24 |
+
+### Huecos y riesgos declarados
+
+1. **No hay fotos reales** (D24): el placeholder propio es una solución honesta, pero el salto
+   «premium» completo exige fotografía de producto con fondo blanco y relación de aspecto constante.
+2. **Los banners del hero vienen del CMS del ERP** (`home-hero`): una campaña a sangre necesita
+   imágenes de campaña de calidad y, si se quieren más piezas, más banners en el slot (dato, no CSS).
+3. **El número de slots de banner es fijo** (`home-hero`, `home-strip`): si F9.2 necesita un slot
+   nuevo (p. ej. `home-mid`), es un cambio de datos del ERP, no de la tienda.
+4. **Sin pasarela**: el pago sigue siendo offline (transferencia/QR), así que el checkout no puede
+   prometer «pago en un clic»; el diseño lo dice explícitamente.
+5. **Tema por tenant sin UI todavía**: D23 deja las variables listas y un tema por defecto; la
+   pantalla del back office para editar la identidad de la tienda es trabajo del ERP (fase aparte).
+6. **El conmutador de tema es un islote cliente nuevo**: se documenta como excepción declarada a la
+   lista de islotes del README (no conoce la clave ni la URL del ERP).
+
+### §14.b Estado de F9.1 — fundaciones (medido el 2026-09-23, T203)
+
+**Lo entregado**: la tienda deja de depender de la fuente del sistema y del color del back office.
+
+- **Tipografia self-hosted (D25)**: `scripts/sync-fonts.mjs` copia los **8 `.woff2`** de Inter
+  (400/500/600/700 × latin/latin-ext, **521 KB**) desde `erp-frontend/public/assets/fonts` a
+  `public/fonts`, con gate propio `sync:fonts:check` (compara hash). `src/styles/fonts.css` los
+  declara con `@font-face` + **`unicode-range`** (mismo mecanismo que el ERP desde T53) y el
+  `layout.tsx` precarga los pesos 400 y 700. **Desviacion declarada**: no se uso
+  `next/font/local` porque no expresa `unicode-range` y con dos archivos del mismo peso en un `src`
+  multiple solo usaria el primero; el resultado que pedia D25 —Inter self-hosted, sin red en el
+  build, con subsets— es el mismo.
+- **Capa de marca (D22/D23)**: `src/styles/brand.css` define `--sf-*` (accion, promocion,
+  descuento, precio, superficies de imagen, formas y elevacion, escala de titulos) para claro y
+  oscuro; `src/app/globals.css` estrena la capa de componentes de la tienda (`.sf-btn*`,
+  `.sf-badge*`, `.sf-chip`, `.sf-card*`, `.sf-panel`, `.sf-field`, `.sf-media`, `.sf-h1/h2/h3`,
+  `.sf-price*`, `.sf-skeleton`, `.sf-scroll-x`, `.sf-icon-btn`) y `tailwind.config.ts` mapea
+  `primary`/`fg.accent`/`border.accent`/`border.focus` a la marca de la tienda y
+  `font-sans`/`font-display` a `--sf-font-*`. **`tokens.css` no se toco**: `sync:tokens:check` sigue
+  en verde.
+- **Modo oscuro**: `src/lib/theme.ts` + script inline en el `<head>` que aplica `data-theme` antes
+  del primer pintado (sin destello) y el islote `theme-toggle` (nuevo islote declarado). La
+  preferencia es local del comprador (`localStorage`), no viaja al ERP; el icono arranca neutro para
+  no provocar desajuste de hidratacion.
+- **Imagenes (D24)**: medido en la base — **104** `Item.imageUrl` y **324** `ItemImage.url`, **todos**
+  en `picsum.photos`. La tienda ya no pinta fotos aleatorias: `src/lib/media.ts` reconoce los hosts
+  de marcador y `ProductPlaceholder` dibuja fondo neutro + halo de marca + monograma + marca; el
+  arte de campana del CMS (`home-hero`/`home-strip`) **si** se pinta tal cual (`allowStockHost`),
+  porque una foto de campana es intencional. La galeria de la ficha usa el mismo criterio.
+- **Cascaron y piezas base**: cabecera translucida con marca, buscador integrado, selector de
+  ciudad, conmutador de tema y carrito como accion principal; navegacion de categorias con
+  `aria-current` y submenu `<details>` (sigue funcionando sin JavaScript); pie con cuatro columnas y
+  la nota de que el ERP es la fuente de verdad; componentes `Price` (precio + «antes» + ahorro +
+  leyenda), `Badge`, `SectionHeader` y `Skeleton`; la **tarjeta de producto** migrada a esos
+  componentes (hover elevado, zoom de imagen, etiqueta de descuento, disponibilidad con punto de
+  estado) y la home con la escala tipografica nueva.
+
+**Evidencia medida**: `npm run typecheck` **0**, `npm run lint` **0/0**, `npm run build` **0** (First
+Load JS compartido **87,1 kB**), `sync:tokens:check` **OK**, `sync:fonts:check` **OK** y **E2E de la
+tienda 24/24** (41,3 s, contra la API real). Capturas de home (claro y oscuro), ficha y listado
+revisadas: la identidad se ve en las cuatro y el modo oscuro no rompe contraste ni legibilidad.
+
+**DEFECTO DE ARNES MEDIDO Y CERRADO (en esta fase)**: `npm run typecheck` de la tienda estaba **rojo
+en HEAD** —`e2e/checkout.spec.ts` leia `ApiOrder.shippingItemId`, campo que **T200** publico en el
+canal y que el tipo local del arnes (`e2e/helpers/erp-api.ts`) no declaraba—. Se anadio el campo
+(documentado) y el `typecheck` queda en **0**. Queda **declarado** que el cierre de T200 anoto
+`tsc` 0 para la tienda y no lo era: el E2E de Playwright transpila sin comprobar tipos, asi que el
+error solo lo ve el gate de tipos.
+
+**REGLA DE ENTORNO MEDIDA (y documentada en el README)**: `next build` (y el `npm run e2e`, que
+construye) escriben `.next`, el **mismo** directorio que usa `next dev`: con el servidor de
+desarrollo en marcha, el dev server queda con un bundle roto y responde **500** con
+`MODULE_NOT_FOUND` al pedir una pagina. Antes de construir o correr el E2E hay que **parar el dev
+server** y reiniciarlo despues.
+
+**Declarado (pendiente para F9.2–F9.6)**: la home sigue siendo la estructura anterior (hero de dos
+banners, dos grillas y categorias de texto) con la capa nueva encima; los filtros, la ficha, el
+carrito y el checkout **no** se han rediseñado todavia; y el placeholder propio es una solucion
+honesta mientras no haya fotografia real.

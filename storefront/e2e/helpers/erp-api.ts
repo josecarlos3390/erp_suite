@@ -126,6 +126,12 @@ export interface ApiOrder {
   listSubtotal: number;
   taxInclusive: boolean;
   total: number;
+  /**
+   * Articulo con el que el pedido cobro el envio (T200): el flete viaja como una
+   * linea mas del documento y el canal publica cual es para que la tienda la
+   * rotule como «envio» y no como un producto.
+   */
+  shippingItemId: number | null;
   salesOrderId: number | null;
   salesOrderCode: string | null;
   /** Referencia del pago offline que anoto el comprador (null mientras no la anote). */

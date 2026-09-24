@@ -1,0 +1,153 @@
+/* ============================================================================
+   brand.css — CAPA DE MARCA DE LA TIENDA (F9.1, decision D23)
+   ============================================================================
+
+   Que es: los valores de identidad de la TIENDA (accion, promocion, precio,
+   superficies de imagen, radios, sombras y la escala de titulos) como variables
+   CSS. No es un artefacto generado: se edita a mano.
+
+   Que NO es: no reemplaza la capa de tokens del ERP (`src/styles/tokens.css`,
+   artefacto con gate `sync:tokens:check`). Los neutros, el espaciado, las
+   duraciones y los easings siguen viniendo de LUNA; esta capa solo anade la
+   identidad comercial y **hereda** los semanticos del tema (`--bg-*`, `--text-*`,
+   `--border-*`), que ya cambian solos con `[data-theme=dark]`.
+
+   Direccion (D22): retail tecnologico premium — acento fuerte y propio, precio
+   protagonista, densidad media.
+
+   Tema por tenant (D23): un tenant puede pisar cualquier `--sf-*` con su propia
+   hoja de estilo o con un `<style>` inyectado desde la configuracion de la
+   tienda; estos son los valores por defecto.
+   ============================================================================ */
+
+:root {
+  color-scheme: light;
+
+  /* ── Tipografia: Inter self-hosted (los @font-face viven en fonts.css) ─── */
+  --sf-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --sf-font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --sf-font-numeric: 'Inter', -apple-system, sans-serif;
+
+  /* ── Marca: accion (botones, enlaces, foco, seleccion) ─────────────────── */
+  --sf-brand-50: #eff6ff;
+  --sf-brand-100: #dbeafe;
+  --sf-brand-200: #bfdbfe;
+  --sf-brand-300: #93c5fd;
+  --sf-brand-400: #60a5fa;
+  --sf-brand-500: #3b82f6;
+  --sf-brand-600: #2563eb;
+  --sf-brand-700: #1d4ed8;
+  --sf-brand-800: #1e40af;
+  --sf-brand-900: #1e3a8a;
+  --sf-brand-950: #172554;
+  --sf-brand-contrast: #ffffff;
+
+  /* ── Promocion: oferta, campana, etiquetas de beneficio ────────────────── */
+  --sf-promo-50: #fff7ed;
+  --sf-promo-100: #ffedd5;
+  --sf-promo-200: #fed7aa;
+  --sf-promo-500: #f97316;
+  --sf-promo-600: #ea580c;
+  --sf-promo-700: #c2410c;
+
+  /* ── Descuento: el porcentaje y el ahorro (urgencia, no marca) ─────────── */
+  --sf-deal-50: #fff1f2;
+  --sf-deal-100: #ffe4e6;
+  --sf-deal-200: #fecdd3;
+  --sf-deal-500: #f43f5e;
+  --sf-deal-600: #e11d48;
+  --sf-deal-700: #be123c;
+  --sf-deal-contrast: #ffffff;
+
+  /* ── Precio: el protagonista de la tarjeta ────────────────────────────── */
+  --sf-price: var(--neutral-900);
+  --sf-price-compare: var(--neutral-500);
+  --sf-price-deal: var(--sf-deal-700);
+  --sf-price-free: var(--success-700);
+
+  /* ── Superficies propias de la tienda ─────────────────────────────────── */
+  --sf-media-bg: linear-gradient(160deg, var(--neutral-100) 0%, var(--neutral-50) 55%, var(--neutral-100) 100%);
+  --sf-media-ink: var(--neutral-500);
+  --sf-promo-surface: linear-gradient(135deg, var(--sf-brand-700) 0%, var(--sf-brand-600) 45%, var(--sf-brand-500) 100%);
+  --sf-promo-ink: #ffffff;
+  --sf-hero-overlay: linear-gradient(180deg, rgba(2, 6, 23, 0) 35%, rgba(2, 6, 23, 0.72) 100%);
+  --sf-header-bg: color-mix(in srgb, var(--bg-base) 88%, transparent);
+  --sf-header-border: var(--border-default);
+
+  /* ── Formas: la tienda es mas redonda que el back office ──────────────── */
+  --sf-radius-btn: 0.75rem;
+  --sf-radius-card: 1rem;
+  --sf-radius-media: 0.75rem;
+  --sf-radius-pill: 999px;
+
+  /* ── Sombras: elevacion comercial (mas profunda que la del back office) ─ */
+  --sf-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 28px -18px rgba(16, 24, 40, 0.28);
+  --sf-shadow-card-hover: 0 2px 4px rgba(16, 24, 40, 0.06), 0 22px 48px -22px rgba(16, 24, 40, 0.34);
+  --sf-shadow-cta: 0 10px 24px -12px rgba(37, 99, 235, 0.55);
+  --sf-shadow-header: 0 1px 0 rgba(16, 24, 40, 0.06), 0 8px 24px -20px rgba(16, 24, 40, 0.35);
+
+  /* ── Escala de titulos (jerarquia «display» con una sola familia) ─────── */
+  --sf-text-display: clamp(2rem, 1.35rem + 2.6vw, 3.25rem);
+  --sf-lh-display: 1.04;
+  --sf-text-h1: clamp(1.6rem, 1.2rem + 1.6vw, 2.4rem);
+  --sf-lh-h1: 1.1;
+  --sf-text-h2: clamp(1.3rem, 1.08rem + 0.85vw, 1.85rem);
+  --sf-lh-h2: 1.15;
+  --sf-text-h3: clamp(1.05rem, 0.98rem + 0.3vw, 1.25rem);
+  --sf-lh-h3: 1.25;
+  --sf-text-price: clamp(1.25rem, 1.1rem + 0.7vw, 1.6rem);
+  --sf-text-eyebrow: 0.6875rem;
+  --sf-ls-display: -0.022em;
+  --sf-ls-eyebrow: 0.14em;
+}
+
+/* ── Tema oscuro: la identidad se aclara, las superficies bajan ─────────── */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --sf-brand-50: #172554;
+  --sf-brand-100: #1e3a8a;
+  --sf-brand-200: #1e40af;
+  --sf-brand-300: #1d4ed8;
+  --sf-brand-400: #2563eb;
+  --sf-brand-500: #3b82f6;
+  --sf-brand-600: #60a5fa;
+  --sf-brand-700: #93c5fd;
+  --sf-brand-800: #bfdbfe;
+  --sf-brand-900: #dbeafe;
+  --sf-brand-950: #eff6ff;
+  --sf-brand-contrast: #0a0a0f;
+
+  --sf-promo-50: #431407;
+  --sf-promo-100: #7c2d12;
+  --sf-promo-200: #9a3412;
+  --sf-promo-500: #fb923c;
+  --sf-promo-600: #fdba74;
+  --sf-promo-700: #fed7aa;
+
+  --sf-deal-50: #4c0519;
+  --sf-deal-100: #881337;
+  --sf-deal-200: #9f1239;
+  --sf-deal-500: #fb7185;
+  --sf-deal-600: #fda4af;
+  --sf-deal-700: #fecdd3;
+  --sf-deal-contrast: #1c0510;
+
+  --sf-price: var(--neutral-900);
+  --sf-price-compare: var(--neutral-500);
+  --sf-price-deal: var(--sf-deal-700);
+  --sf-price-free: var(--success-300);
+
+  --sf-media-bg: linear-gradient(160deg, var(--neutral-200) 0%, var(--neutral-100) 55%, var(--neutral-200) 100%);
+  --sf-media-ink: var(--neutral-500);
+  --sf-promo-surface: linear-gradient(135deg, var(--sf-brand-800) 0%, var(--sf-brand-700) 45%, var(--sf-brand-600) 100%);
+  --sf-promo-ink: #0a0a0f;
+  --sf-hero-overlay: linear-gradient(180deg, rgba(2, 6, 23, 0) 30%, rgba(2, 6, 23, 0.85) 100%);
+  --sf-header-bg: color-mix(in srgb, var(--bg-base) 85%, transparent);
+  --sf-header-border: var(--border-subtle);
+
+  --sf-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -18px rgba(0, 0, 0, 0.7);
+  --sf-shadow-card-hover: 0 2px 6px rgba(0, 0, 0, 0.5), 0 24px 52px -22px rgba(0, 0, 0, 0.8);
+  --sf-shadow-cta: 0 10px 24px -12px rgba(0, 0, 0, 0.8);
+  --sf-shadow-header: 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 28px -22px rgba(0, 0, 0, 0.9);
+}

@@ -3,8 +3,13 @@ import type { Config } from 'tailwindcss';
 /**
  * Los colores, radios, tipografia y sombras NO se escriben aqui: se leen de las
  * CSS variables que emite `scripts/sync-tokens.mjs` desde la capa de tokens del
- * ERP (LUNA). Asi la tienda y el back office comparten una sola fuente de verdad
- * y ningun componente necesita un color hexadecimal literal.
+ * ERP (LUNA) y de la **capa de marca de la tienda** (`src/styles/brand.css`,
+ * F9/D23: variables `--sf-*`). Asi la tienda y el back office comparten una sola
+ * fuente de verdad y ningun componente necesita un color hexadecimal literal.
+ *
+ * `primary` y `fg.accent` apuntan a la marca de la TIENDA (`--sf-brand-*`), no al
+ * indigo del back office: el mismo marcado adopta la identidad comercial sin
+ * tener que tocar cada componente.
  */
 const config: Config = {
   content: [
@@ -31,7 +36,7 @@ const config: Config = {
           secondary: 'var(--text-secondary)',
           tertiary: 'var(--text-tertiary)',
           inverse: 'var(--text-inverse)',
-          accent: 'var(--text-accent)',
+          accent: 'var(--sf-brand-700)',
           success: 'var(--text-success)',
           warning: 'var(--text-warning)',
           error: 'var(--text-error)',
@@ -43,19 +48,52 @@ const config: Config = {
           DEFAULT: 'var(--border-default)',
           subtle: 'var(--border-subtle)',
           strong: 'var(--border-strong)',
-          accent: 'var(--border-accent)',
+          accent: 'var(--sf-brand-300)',
           error: 'var(--border-error)',
-          focus: 'var(--border-focus)',
+          focus: 'var(--sf-brand-600)',
         },
-        // Acento / marca de la tienda
+        // Acento / marca de la TIENDA (capa `--sf-*`, no el indigo del back office)
         primary: {
-          DEFAULT: 'var(--accent-600)',
-          hover: 'var(--accent-700)',
-          active: 'var(--accent-800)',
-          soft: 'var(--accent-50)',
-          'soft-strong': 'var(--accent-100)',
-          border: 'var(--accent-300)',
-          fg: 'var(--text-inverse)',
+          DEFAULT: 'var(--sf-brand-600)',
+          hover: 'var(--sf-brand-700)',
+          active: 'var(--sf-brand-800)',
+          soft: 'var(--sf-brand-50)',
+          'soft-strong': 'var(--sf-brand-100)',
+          border: 'var(--sf-brand-300)',
+          fg: 'var(--sf-brand-contrast)',
+        },
+        // Escala de marca completa (campanas, degradados, estados suaves)
+        brand: {
+          50: 'var(--sf-brand-50)',
+          100: 'var(--sf-brand-100)',
+          200: 'var(--sf-brand-200)',
+          300: 'var(--sf-brand-300)',
+          400: 'var(--sf-brand-400)',
+          500: 'var(--sf-brand-500)',
+          600: 'var(--sf-brand-600)',
+          700: 'var(--sf-brand-700)',
+          800: 'var(--sf-brand-800)',
+          900: 'var(--sf-brand-900)',
+          950: 'var(--sf-brand-950)',
+        },
+        promo: {
+          soft: 'var(--sf-promo-50)',
+          200: 'var(--sf-promo-200)',
+          500: 'var(--sf-promo-500)',
+          600: 'var(--sf-promo-600)',
+          700: 'var(--sf-promo-700)',
+        },
+        deal: {
+          soft: 'var(--sf-deal-50)',
+          500: 'var(--sf-deal-500)',
+          600: 'var(--sf-deal-600)',
+          700: 'var(--sf-deal-700)',
+        },
+        price: {
+          DEFAULT: 'var(--sf-price)',
+          compare: 'var(--sf-price-compare)',
+          deal: 'var(--sf-price-deal)',
+          free: 'var(--sf-price-free)',
         },
         ok: {
           DEFAULT: 'var(--success-600)',
@@ -81,6 +119,10 @@ const config: Config = {
         xl: 'var(--radius-xl)',
         '2xl': 'var(--radius-2xl)',
         full: 'var(--radius-full)',
+        // Formas de la tienda (F9/D23): mas redondeadas que el back office.
+        btn: 'var(--sf-radius-btn)',
+        card: 'var(--sf-radius-card)',
+        media: 'var(--sf-radius-media)',
       },
       spacing: {
         'space-0': 'var(--space-0)',
@@ -98,9 +140,9 @@ const config: Config = {
         'space-24': 'var(--space-24)',
       },
       fontFamily: {
-        sans: 'var(--font-sans)',
+        sans: 'var(--sf-font-sans)',
         mono: 'var(--font-mono)',
-        display: 'var(--font-display)',
+        display: 'var(--sf-font-display)',
       },
       fontSize: {
         '2xs': ['var(--text-2xs)', { lineHeight: 'var(--lh-2xs)' }],
@@ -124,6 +166,11 @@ const config: Config = {
         inner: 'var(--shadow-inner)',
         layered: 'var(--shadow-layered-md)',
         accent: 'var(--shadow-accent-lg)',
+        // Elevacion comercial de la tienda (F9/D23)
+        card: 'var(--sf-shadow-card)',
+        'card-hover': 'var(--sf-shadow-card-hover)',
+        cta: 'var(--sf-shadow-cta)',
+        header: 'var(--sf-shadow-header)',
       },
       transitionTimingFunction: {
         expo: 'var(--ease-out-expo)',

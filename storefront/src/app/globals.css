@@ -1,13 +1,21 @@
 @import '../styles/tokens.css';
+@import '../styles/fonts.css';
+@import '../styles/brand.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /*
- * Capa propia de la tienda encima de los tokens del ERP.
- * Regla: ningun color hexadecimal literal en los componentes; todo sale de las
- * variables --* que emite scripts/sync-tokens.mjs.
+ * Capa de la tienda encima de los tokens del ERP (F9, decisiones D22/D23).
+ *
+ * Reglas de esta capa:
+ *   1. Ningun color hexadecimal literal en los componentes: todo sale de las
+ *      variables `--*` (LUNA) o `--sf-*` (marca de la tienda, `brand.css`).
+ *   2. La tienda NO reutiliza los componentes del back office: son de operacion
+ *      densa. Aqui vive su propia capa (compra movil, retail tecnologico).
+ *   3. Las utilidades de Tailwind siguen pudiendo pisar a los componentes (los
+ *      componentes van en `@layer components`, las utilidades en `utilities`).
  */
 
 @layer base {
@@ -19,59 +27,448 @@
   body {
     background-color: var(--bg-base);
     color: var(--text-primary);
-    font-family: var(--font-sans);
+    font-family: var(--sf-font-sans);
     font-size: var(--text-base);
     line-height: var(--lh-base);
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--border-focus);
-    outline-offset: 2px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   h1,
   h2,
-  h3 {
-    letter-spacing: var(--ls-md);
+  h3,
+  h4 {
+    font-family: var(--sf-font-display);
+    /* Una sola familia: la jerarquia la dan peso, tamano y tracking. */
+    letter-spacing: var(--sf-ls-display);
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--sf-brand-600);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 
   ::selection {
-    background-color: var(--accent-100);
-    color: var(--accent-900);
+    background-color: var(--sf-brand-100);
+    color: var(--sf-brand-900);
+  }
+
+  /* El cambio de tema no debe animar toda la pagina (se siente lento). */
+  html[data-theme] body,
+  html[data-theme] header,
+  html[data-theme] footer {
+    transition: background-color var(--duration-base) var(--ease-in-out-smooth);
   }
 }
 
 @layer components {
-  /* Boton primario de la tienda (compra movil, no la densidad del back office). */
+  /* ── Contenedor y secciones ───────────────────────────────────────────── */
+  .sf-container {
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+
+  .sf-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .sf-section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  /* ── Tipografia de campana ─────────────────────────────────────────────── */
+  .sf-display {
+    font-family: var(--sf-font-display);
+    font-size: var(--sf-text-display);
+    line-height: var(--sf-lh-display);
+    font-weight: 800;
+    letter-spacing: var(--sf-ls-display);
+  }
+
+  .sf-h1 {
+    font-family: var(--sf-font-display);
+    font-size: var(--sf-text-h1);
+    line-height: var(--sf-lh-h1);
+    font-weight: 800;
+    letter-spacing: var(--sf-ls-display);
+  }
+
+  .sf-h2 {
+    font-family: var(--sf-font-display);
+    font-size: var(--sf-text-h2);
+    line-height: var(--sf-lh-h2);
+    font-weight: 700;
+    letter-spacing: var(--sf-ls-display);
+  }
+
+  .sf-h3 {
+    font-family: var(--sf-font-display);
+    font-size: var(--sf-text-h3);
+    line-height: var(--sf-lh-h3);
+    font-weight: 600;
+  }
+
+  .sf-eyebrow {
+    font-size: var(--sf-text-eyebrow);
+    font-weight: 700;
+    letter-spacing: var(--sf-ls-eyebrow);
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .sf-price {
+    font-size: var(--sf-text-price);
+    font-weight: 800;
+    letter-spacing: var(--sf-ls-display);
+    font-variant-numeric: tabular-nums;
+    color: var(--sf-price);
+    line-height: 1.1;
+  }
+
+  .sf-price--deal {
+    color: var(--sf-price-deal);
+  }
+
+  .sf-price-compare {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--sf-price-compare);
+    text-decoration: line-through;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Botones ──────────────────────────────────────────────────────────── */
   .sf-btn {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-5 text-sm font-semibold transition-colors duration-fast;
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--sf-radius-btn);
+    padding-inline: 1.25rem;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition:
+      background-color var(--duration-fast) var(--ease-in-out-smooth),
+      border-color var(--duration-fast) var(--ease-in-out-smooth),
+      color var(--duration-fast) var(--ease-in-out-smooth),
+      box-shadow var(--duration-base) var(--ease-out-expo),
+      transform var(--duration-fast) var(--ease-out-expo);
   }
 
   .sf-btn-primary {
-    @apply sf-btn bg-primary text-primary-fg hover:bg-primary-hover;
+    background-image: linear-gradient(180deg, var(--sf-brand-500) 0%, var(--sf-brand-600) 100%);
+    color: var(--sf-brand-contrast);
+    box-shadow: var(--sf-shadow-cta);
+  }
+
+  .sf-btn-primary:hover {
+    background-image: linear-gradient(180deg, var(--sf-brand-600) 0%, var(--sf-brand-700) 100%);
+    transform: translateY(-1px);
+  }
+
+  .sf-btn-primary:active {
+    transform: translateY(0);
+    background-image: linear-gradient(180deg, var(--sf-brand-700) 0%, var(--sf-brand-800) 100%);
   }
 
   .sf-btn-secondary {
-    @apply sf-btn border border-line bg-base text-fg hover:bg-hover;
+    background-color: var(--bg-base);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+  }
+
+  .sf-btn-secondary:hover {
+    background-color: var(--bg-hover);
+    border-color: var(--sf-brand-300);
+    color: var(--sf-brand-700);
+  }
+
+  .sf-btn-ghost {
+    background-color: transparent;
+    color: var(--text-secondary);
+  }
+
+  .sf-btn-ghost:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .sf-btn-lg {
+    min-height: 52px;
+    padding-inline: 1.75rem;
+    font-size: var(--text-md);
+  }
+
+  .sf-btn-block {
+    width: 100%;
   }
 
   .sf-btn:disabled {
-    @apply cursor-not-allowed bg-surface text-fg-disabled;
+    cursor: not-allowed;
+    background-image: none;
+    background-color: var(--bg-surface);
+    border-color: var(--border-subtle);
+    color: var(--text-disabled);
+    box-shadow: none;
+    transform: none;
+  }
+
+  /* ── Etiquetas ────────────────────────────────────────────────────────── */
+  .sf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: var(--sf-radius-pill);
+    padding: 0.25rem 0.625rem;
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  .sf-badge-deal {
+    background-color: var(--sf-deal-600);
+    color: var(--sf-deal-contrast);
+  }
+
+  .sf-badge-promo {
+    background-color: var(--sf-promo-600);
+    color: #fff;
+  }
+
+  .sf-badge-brand {
+    background-color: var(--sf-brand-600);
+    color: var(--sf-brand-contrast);
+  }
+
+  .sf-badge-soft {
+    background-color: var(--sf-brand-50);
+    color: var(--sf-brand-700);
+  }
+
+  .sf-badge-ok {
+    background-color: var(--success-50);
+    color: var(--sf-price-free);
+  }
+
+  .sf-badge-outline {
+    border: 1px solid var(--border-default);
+    background-color: var(--bg-elevated);
+    color: var(--text-secondary);
   }
 
   .sf-chip {
-    @apply inline-flex items-center rounded-full border border-line bg-elevated px-3 py-1 text-xs font-medium text-fg-secondary;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: var(--sf-radius-pill);
+    border: 1px solid var(--border-default);
+    background-color: var(--bg-elevated);
+    padding: 0.25rem 0.75rem;
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition:
+      border-color var(--duration-fast) var(--ease-in-out-smooth),
+      color var(--duration-fast) var(--ease-in-out-smooth),
+      background-color var(--duration-fast) var(--ease-in-out-smooth);
   }
 
+  a.sf-chip:hover {
+    border-color: var(--sf-brand-300);
+    color: var(--sf-brand-700);
+  }
+
+  /* ── Tarjetas y paneles ───────────────────────────────────────────────── */
   .sf-card {
-    @apply rounded-lg border border-line bg-base transition-shadow duration-base hover:shadow-layered;
+    background-color: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--sf-radius-card);
+    box-shadow: var(--sf-shadow-card);
+    transition:
+      box-shadow var(--duration-base) var(--ease-out-expo),
+      transform var(--duration-base) var(--ease-out-expo),
+      border-color var(--duration-base) var(--ease-in-out-smooth);
   }
 
+  /* La tarjeta de producto se eleva; el panel de filtros, no. */
+  .sf-card-hover:hover,
+  .sf-card-hover:focus-within {
+    transform: translateY(-3px);
+    box-shadow: var(--sf-shadow-card-hover);
+    border-color: var(--sf-brand-200);
+  }
+
+  .sf-panel {
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--sf-radius-card);
+    padding: 1rem;
+  }
+
+  /* ── Media (imagen de producto o placeholder) ─────────────────────────── */
+  .sf-media {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--sf-radius-media);
+    background: var(--sf-media-bg);
+  }
+
+  .sf-media img {
+    transition: transform var(--duration-slower) var(--ease-out-expo);
+  }
+
+  .sf-card-hover:hover .sf-media img {
+    transform: scale(1.05);
+  }
+
+  /* ── Formularios ──────────────────────────────────────────────────────── */
   .sf-field {
-    @apply min-h-[40px] w-full rounded-md border border-line bg-base px-3 text-sm text-fg placeholder:text-fg-tertiary;
+    min-height: 44px;
+    width: 100%;
+    border-radius: var(--sf-radius-btn);
+    border: 1px solid var(--border-default);
+    background-color: var(--bg-base);
+    padding-inline: 0.75rem;
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    transition:
+      border-color var(--duration-fast) var(--ease-in-out-smooth),
+      box-shadow var(--duration-fast) var(--ease-in-out-smooth);
   }
 
+  .sf-field::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .sf-field:hover {
+    border-color: var(--border-strong);
+  }
+
+  .sf-field:focus {
+    outline: none;
+    border-color: var(--sf-brand-500);
+    box-shadow: 0 0 0 3px var(--sf-brand-100);
+  }
+
+  /* ── Enlaces ──────────────────────────────────────────────────────────── */
   .sf-link {
-    @apply rounded text-fg-accent underline-offset-2 hover:underline;
+    color: var(--sf-brand-700);
+    text-underline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  .sf-link:hover {
+    text-decoration: underline;
+    color: var(--sf-brand-800);
+  }
+
+  /* ── Carga ────────────────────────────────────────────────────────────── */
+  .sf-skeleton {
+    border-radius: var(--sf-radius-media);
+    background-image: var(--gradient-shimmer, none);
+    background-size: 200% 100%;
+    background-color: var(--bg-skeleton);
+    animation: sf-shimmer 1.6s var(--ease-in-out-smooth) infinite;
+  }
+
+  /* ── Carriles horizontales (campana y categorias) ─────────────────────── */
+  .sf-scroll-x {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 1rem;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sf-scroll-x > * {
+    scroll-snap-align: start;
+    flex: 0 0 auto;
+  }
+
+  .sf-scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .sf-scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ── Botonera de iconos (cabecera) ────────────────────────────────────── */
+  .sf-icon-btn {
+    display: inline-flex;
+    height: 44px;
+    width: 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--sf-radius-btn);
+    color: var(--text-secondary);
+    transition:
+      background-color var(--duration-fast) var(--ease-in-out-smooth),
+      color var(--duration-fast) var(--ease-in-out-smooth);
+  }
+
+  .sf-icon-btn:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+}
+
+@layer utilities {
+  @keyframes sf-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  @keyframes sf-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .sf-fade-up {
+    animation: sf-fade-up var(--duration-slow) var(--ease-out-expo) both;
+  }
+}
+
+/* Accesibilidad: sin movimiento para quien lo pide. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

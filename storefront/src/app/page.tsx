@@ -4,6 +4,7 @@ import { CategoryCards } from '@/components/category-cards';
 import { HomeBanners } from '@/components/home-banners';
 import { JsonLd } from '@/components/json-ld';
 import { ProductGrid } from '@/components/product-grid';
+import { SectionHeader } from '@/components/ui/section-header';
 import { getCityContext } from '@/lib/city';
 import { getBanners, getCatalog, getCategories, getOffers } from '@/lib/erp';
 import { itemListJsonLd } from '@/lib/jsonld';
@@ -30,7 +31,7 @@ export default async function HomePage(): Promise<JSX.Element> {
   ]);
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-12">
       <section aria-labelledby="hero-titulo">
         <h1 id="hero-titulo" className="sr-only">
           {`Tienda en linea · ${city.name}`}
@@ -38,17 +39,15 @@ export default async function HomePage(): Promise<JSX.Element> {
         <HomeBanners banners={heroBanners} variant="hero" />
       </section>
 
-      <section aria-labelledby="ofertas-titulo" data-testid="home-offers">
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="ofertas-titulo" className="text-xl font-bold text-fg">
-            Ofertas vigentes
-          </h2>
-          <p className="text-xs text-fg-secondary">
-            Precio de oferta publicado por el ERP · existencia en {city.name}
-          </p>
-        </div>
+      <section aria-labelledby="ofertas-titulo" data-testid="home-offers" className="sf-section">
+        <SectionHeader
+          id="ofertas-titulo"
+          eyebrow="Ofertas"
+          title="Ofertas vigentes"
+          hint={`Precio de oferta publicado por el ERP · existencia en ${city.name}`}
+        />
         {offers.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-elevated p-4 text-sm text-fg-secondary">
+          <p className="sf-panel text-sm text-fg-secondary">
             Hoy no hay ofertas vigentes en el catalogo publicado (el canal no ofrece un filtro de
             ofertas: se derivan del precio de lista y la vigencia).
           </p>
@@ -62,24 +61,26 @@ export default async function HomePage(): Promise<JSX.Element> {
         )}
       </section>
 
-      <section aria-labelledby="destacados-titulo" data-testid="home-featured">
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="destacados-titulo" className="text-xl font-bold text-fg">
-            Productos destacados
-          </h2>
-          <p className="text-xs text-fg-secondary">{featured.total} publicados en total</p>
-        </div>
-        <ProductGrid
-          products={featured.data}
-          cityName={city.name}
-          label="Productos destacados"
+      <section aria-labelledby="destacados-titulo" data-testid="home-featured" className="sf-section">
+        <SectionHeader
+          id="destacados-titulo"
+          eyebrow="Catalogo"
+          title="Productos destacados"
+          hint={`${featured.total} publicados en total`}
+          actionHref="/categorias"
+          actionLabel="Ver catalogo"
         />
+        <ProductGrid products={featured.data} cityName={city.name} label="Productos destacados" />
       </section>
 
-      <section aria-labelledby="categorias-titulo">
-        <h2 id="categorias-titulo" className="mb-3 text-xl font-bold text-fg">
-          Categorias
-        </h2>
+      <section aria-labelledby="categorias-titulo" className="sf-section">
+        <SectionHeader
+          id="categorias-titulo"
+          eyebrow="Explorar"
+          title="Categorias"
+          hint="Todas las categorias publicadas en el ERP, con su catalogo por ciudad."
+          actionHref="/categorias"
+        />
         <CategoryCards categories={categories} />
       </section>
 

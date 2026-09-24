@@ -3,71 +3,67 @@
 import Image from 'next/image';
 import { useState } from 'react';
 
+import { isPlaceholderImage } from '@/lib/media';
+
+import { ProductPlaceholder } from './product-placeholder';
+
 interface ProductImageProps {
   src: string | null;
   alt: string;
+  /** Nombre del articulo para el monograma del placeholder (por defecto, `alt`). */
+  name?: string;
+  /** Marca publicada por el ERP (se pinta en el placeholder). */
+  brand?: string | null;
+  /** Tamano del monograma cuando no hay foto. */
+  placeholderSize?: 'sm' | 'md' | 'lg';
   sizes?: string;
   priority?: boolean;
   className?: string;
   imageClassName?: string;
+  /**
+   * `true` para el arte de campana del CMS (`home-hero`/`home-strip`): una foto de
+   * marcador ahi es arte intencional de la campana, no una foto de producto
+   * equivocada, asi que se pinta tal cual. En articulos se sustituye por el
+   * placeholder propio (D24).
+   */
+  allowStockHost?: boolean;
 }
 
 /**
- * Respaldo local: SVG en linea (sin colores hexadecimales: usa las variables de
- * los tokens a traves de `currentColor` y las clases del tema).
- */
-function FallbackArt(): JSX.Element {
-  return (
-    <span
-      className="flex h-full w-full items-center justify-center bg-surface text-fg-tertiary"
-      data-fallback="true"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        className="h-1/3 w-1/3"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-        focusable="false"
-      >
-        <rect x="3" y="4.5" width="18" height="15" rx="2" />
-        <circle cx="8.5" cy="10" r="1.6" />
-        <path d="M4 17.5l5-5 4 4 2.5-2.5L20 17.5" />
-      </svg>
-    </span>
-  );
-}
-
-/**
- * Imagen de producto con respaldo local.
+ * Imagen de producto de la tienda (F9.1).
  *
- * Las imagenes del seed del ERP son marcadores de posicion de `picsum.photos`
- * (dato de desarrollo declarado). Si la URL viene vacia, si el optimizador de
- * Next falla o si el host no esta accesible, se pinta el respaldo: la pagina
- * nunca muestra una imagen rota.
+ * Reglas (D24):
+ *   1. Sin `src`, con host de **marcador de posicion** (`picsum.photos`, dato de
+ *      desarrollo del seed) o con error de carga → **placeholder propio** de la
+ *      tienda (fondo neutro + monograma + marca). Nunca una foto aleatoria ni una
+ *      imagen rota.
+ *   2. Con foto real → `next/image` optimizada, encuadre `object-contain` (la
+ *      fotografia de producto con fondo blanco se ve consistente) y zoom sutil al
+ *      pasar por la tarjeta.
  */
 export function ProductImage({
   src,
   alt,
+  name,
+  brand = null,
+  placeholderSize = 'md',
   sizes = '(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw',
   priority = false,
   className,
   imageClassName,
+  allowStockHost = false,
 }: ProductImageProps): JSX.Element {
   const [failed, setFailed] = useState(false);
-  const hasSource = src !== null && src.trim() !== '';
-  const useFallback = !hasSource || failed;
+  const usePlaceholder = failed || (!allowStockHost && isPlaceholderImage(src));
+  const source = src !== null && src.trim() !== '' ? src : null;
 
   return (
-    <span className={`relative block overflow-hidden ${className ?? ''}`}>
-      {useFallback ? (
-        <FallbackArt />
+    <span className={`sf-media block ${className ?? ''}`}>
+      {usePlaceholder || source === null ? (
+        <ProductPlaceholder name={name ?? alt} brand={brand} size={placeholderSize} />
       ) : (
         <Image
-          src={src}
+          src={source}
           alt={alt}
           fill
           sizes={sizes}

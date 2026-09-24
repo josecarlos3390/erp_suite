@@ -9,11 +9,14 @@ interface CitySelectorProps {
 }
 
 /**
- * Selector de ciudad.
+ * Selector de ciudad (F9.1).
  *
  * Escribe la cookie `storefront_city` por el route handler `/api/ciudad`
  * (nunca desde el navegador hacia el ERP: D10) y refresca la pagina para que el
  * servidor vuelva a pedir la existencia del almacen de esa ciudad.
+ *
+ * Sigue siendo un `<select>` **nativo**: el E2E lo maneja con `selectOption` y es
+ * lo mas usable en movil.
  */
 export function CitySelector({ cities, selectedCode }: CitySelectorProps): JSX.Element {
   const router = useRouter();
@@ -41,13 +44,19 @@ export function CitySelector({ cities, selectedCode }: CitySelectorProps): JSX.E
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="selector-ciudad" className="text-xs font-medium text-fg-secondary">
-        Ciudad
+    <div className="flex items-center gap-1.5">
+      <span aria-hidden="true" className="hidden text-fg-tertiary sm:inline">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11Z" />
+          <circle cx="12" cy="10" r="2.5" />
+        </svg>
+      </span>
+      <label htmlFor="selector-ciudad" className="sr-only">
+        Ciudad de entrega
       </label>
       <select
         id="selector-ciudad"
-        className="sf-field w-auto"
+        className="sf-field h-11 w-auto min-h-0 py-0 pr-2 text-sm font-medium"
         value={selectedCode}
         disabled={pending}
         data-testid="selector-ciudad"

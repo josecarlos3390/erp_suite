@@ -8,8 +8,13 @@ storefront/                 Next.js 14 + TypeScript + Tailwind 3 + Zustand
   src/lib/erp.ts            cliente tipado del canal (server-only)
   src/lib/city.ts           ciudad elegida (cookie storefront_city, leida en el servidor)
   src/lib/format.ts         formato de dinero es-BO / BOB
+  src/lib/theme.ts          tema claro/oscuro del comprador (localStorage, sin destello)
+  src/lib/media.ts          reglas de imagen (hosts de marcador de posicion, D24)
   src/styles/tokens.css     GENERADO desde la capa de tokens del ERP (no editar)
+  src/styles/fonts.css      @font-face de Inter self-hosted (los woff2 los copia sync:fonts)
+  src/styles/brand.css      CAPA DE MARCA de la tienda (--sf-*: accion, promo, precio, formas)
   scripts/sync-tokens.mjs   compila los tokens del ERP a CSS variables
+  scripts/sync-fonts.mjs    copia las tipografias del ERP a public/fonts
   e2e/                      gate Playwright contra la API del ERP en marcha
 ```
 
@@ -42,7 +47,8 @@ tienda cargado.
 Server Actions o route handlers, con `x-storefront-key` tomada de `process.env.STOREFRONT_API_KEY`.
 `src/lib/erp.ts` importa `server-only`: si un componente cliente lo importa, el build falla en vez
 de filtrar la clave. Los unicos islotes cliente son: buscador, selector de ciudad, contador y
-pagina del carrito, galeria y boton de compra; ninguno conoce la clave ni la URL del ERP.
+pagina del carrito, galeria, boton de compra, navegacion de categorias (para marcar la activa) y
+**conmutador de tema** (F9.1); ninguno conoce la clave ni la URL del ERP.
 
 ## Comandos
 
@@ -55,7 +61,13 @@ pagina del carrito, galeria y boton de compra; ninguno conoce la clave ni la URL
 | `npm run typecheck` | `tsc --noEmit` (strict) |
 | `npm run sync:tokens` | compila los tokens del ERP a `src/styles/tokens.css` |
 | `npm run sync:tokens:check` | gate: falla si `tokens.css` esta desincronizado |
+| `npm run sync:fonts` | copia los `.woff2` de Inter del ERP a `public/fonts` |
+| `npm run sync:fonts:check` | gate: falla si falta una fuente o difiere de la del ERP |
 | `npm run e2e` | Playwright sobre `next start` en `:3100` contra la API real |
+
+> **Antes de `npm run build` o `npm run e2e`, parar el servidor de desarrollo**:
+> los dos escriben `.next` y el `next dev` en marcha se queda con un bundle roto
+> (`MODULE_NOT_FOUND` al pedir una pagina). Despues, reiniciar `npm run dev`.
 
 ## Tokens del ERP (compilados, no copiados)
 
@@ -65,6 +77,32 @@ pagina del carrito, galeria y boton de compra; ninguno conoce la clave ni la URL
 `npm run sync:tokens:check` (exit 1 si el archivo cambiaria) evita que la tienda y el ERP se
 separen. Los componentes no usan colores hexadecimales: usan las variables
 (`var(--accent-600)`, `var(--text-primary)`, …) mapeadas en `tailwind.config.ts`.
+
+## Identidad visual (F9, decisiones D22–D26)
+
+La tienda tiene **su propia capa de marca** encima de los tokens del ERP:
+
+| Capa | Archivo | Que aporta |
+|---|---|---|
+| Tokens del ERP (artefacto) | `src/styles/tokens.css` | neutros, espaciado, sombras base, `[data-theme=dark]`, duraciones y easings |
+| Tipografia self-hosted | `src/styles/fonts.css` + `public/fonts/*.woff2` | Inter 400/500/600/700 (latin y latin-ext) copiada del ERP por `sync:fonts` |
+| Marca de la tienda | `src/styles/brand.css` | `--sf-*`: color de accion, promocion, descuento, precio, superficies de imagen, formas y elevacion; escala de titulos |
+| Componentes | `src/app/globals.css` (`@layer components`) | `.sf-btn*`, `.sf-badge*`, `.sf-chip`, `.sf-card*`, `.sf-panel`, `.sf-field`, `.sf-media`, `.sf-h1/h2/h3`, `.sf-price*`, `.sf-skeleton`, `.sf-scroll-x` |
+| Mapa a utilidades | `tailwind.config.ts` | `primary`/`fg.accent` apuntan a `--sf-brand-*`; `font-sans`/`font-display` a `--sf-font-*`; sombras `card`/`cta`/`header` |
+
+Reglas de la capa visual:
+
+1. **Ningun color hexadecimal en un componente**: todo sale de `--*` (ERP) o `--sf-*` (marca).
+2. **No se toca** `tokens.css` (artefacto con gate) ni se reutilizan los componentes del back
+   office (son de operacion densa).
+3. **Tema por tenant (D23)**: un tenant puede pisar cualquier `--sf-*` con su hoja de marca; los
+   valores del codigo son el tema por defecto «retail tecnologico premium».
+4. **Modo oscuro**: `[data-theme=dark]` en `<html>`, aplicado antes del primer pintado
+   (`src/lib/theme.ts`) y conmutado por el islote `theme-toggle`. La preferencia es local del
+   comprador y no viaja al ERP.
+5. **Imagenes (D24)**: sin foto real, la tienda **no** pinta marcadores de posicion: dibuja su
+   placeholder (fondo neutro + monograma + marca). El arte de campana del CMS si se pinta tal cual
+   (`allowStockHost`).
 
 ## Gate E2E
 

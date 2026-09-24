@@ -54,7 +54,9 @@ function BannerCard({ banner, compact = false, priority = false }: BannerCardPro
       <ProductImage
         src={banner.imageUrl}
         alt={banner.title}
+        name={banner.title}
         priority={priority}
+        allowStockHost
         sizes={compact ? '(min-width: 768px) 50vw, 100vw' : '(min-width: 768px) 50vw, 100vw'}
         className={compact ? 'aspect-[4/1] w-full bg-elevated' : 'aspect-[16/6] w-full bg-elevated'}
         imageClassName="object-cover"

@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit",
     "sync:tokens": "node scripts/sync-tokens.mjs",
     "sync:tokens:check": "node scripts/sync-tokens.mjs --check",
+    "sync:fonts": "node scripts/sync-fonts.mjs",
+    "sync:fonts:check": "node scripts/sync-fonts.mjs --check",
     "e2e": "playwright test"
   },
   "dependencies": {
