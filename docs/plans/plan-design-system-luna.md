@@ -81,14 +81,26 @@ chocaría con `audit:density` y `migrate:heights`, que existen justo porque el E
 contrario. El tema por tenant de la tienda es, además, una versión simplificada de lo que el ERP ya
 hace mejor con `ensureContrast`.
 
-## §5 Siguientes tramos propuestos (sin aprobar)
+**El fixture grabado del gate visual de la tienda tampoco se porta (T213).** La tienda mide contra un
+proxy que **graba** las respuestas del canal y las repite (`e2e/visual/channel-fixture.mjs`), lo que
+allí funciona porque las pantallas de compra son de **lectura** y su contrato son ~30 respuestas. Los
+formularios del ERP son de **escritura**, dependen de maestros vivos (un `select` de cuentas con
+**313** opciones, medido) y son **53** pantallas: congelarlas contra respuestas grabadas exigiría
+grabar y mantener cientos de respuestas por formulario y el baseline dejaría de probar el formulario
+real. Se porta el **principio** —que un baseline no dependa del seed sin decirlo— con la pieza que sí
+es determinista y barata: la **huella de conteos del seed** sellada junto a los baselines (§5.3).
 
-1. **Arreglar la deuda medida** (tabla de §3), empezando por los 116 usos de primitivas y el punto de
-   estado: es la mayor ganancia de contraste real.
+## §5 Tramos (estado medido)
+
+1. **Arreglar la deuda medida** (tabla de §3), empezando por el punto de estado y los usos de
+   primitivas: **pendiente de decisión del usuario**; `audit:contrast:strict` es el interruptor que
+   las hará fallar todas.
 2. ~~**Aserción de recorte de overlays**~~ — **HECHO en T212** (`e2e/overlay-clipping.spec.ts`, 2 casos): recorre los ancestros del panel abierto, intersecta sus cajas de recorte, exige que la caja esté dentro de la ventana y que su centro sea lo que se pinta. **Alcance corregido con la medición** (el de este plan era incorrecto): los overlays reales son **`luna-menu`** y **`luna-modal`**; **`luna-select`** usa el desplegable **nativo** (nada que recortar) y **`luna-dropdown`/`luna-date-picker`/`luna-command-palette` no existen** en la app (espejo de la raíz, 0 referencias). Los 2 casos **pasan**: el ERP no tenía el defecto de la tienda; quedan como guardia.
-3. **Baselines visuales deterministas**: el ERP tiene **85** capturas contra la BD sembrada y ya sufrió
-   el fallo (T195: el baseline del formulario de usuario quedó obsoleto porque el seed añadió un
-   almacén). Alternativas: fixture grabado como el de la tienda o sellar el baseline con la versión
-   del seed y fallar con «el seed cambió: regenerar».
-4. **Presupuesto de rendimiento** (LCP/CLS + peso del arranque), que hoy no existe: el ERP es SSR
-   (`ssr-smoke`), así que el CLS de hidratación es riesgo real.
+3. ~~**Baselines visuales deterministas**~~ — **HECHO en T213** (`e2e/helpers/seed-fingerprint.ts` + `beforeAll` de `e2e/forms-visual-regression.spec.ts`): de las dos alternativas que este plan proponía se eligió **sellar el baseline con el estado del seed y fallar con «el seed cambió: regenerar»** (la del fixture grabado se descarta en §4), medida sobre **17** colecciones maestras con **una petición por colección** y la forma de respuesta de cada una declarada —**13** paginadas y **4** que devuelven array pelado—; la huella se versiona junto a los baselines y se **re-sella** al regenerarlos (`--update-snapshots`, modo `changed` medido). **Medido (A/B)**: sella `83ac2bf0-213`; la corrida de control **compara** y pasa; con el sello saboteado (`items 138→139`) el gate **falla nombrando `items 139→138`**; `e2e:visual` **53/53**. La verificación destapó **tres defectos del propio gate**, cerrados: la regeneración se disparaba con **cualquier** corrida (el default de Playwright es `missing`, no `none`: la rama de comparación era código muerto), `readStamp()` confundía «archivo ilegible» con «falta la huella», y **cuatro** colecciones quedaban fuera de la huella en silencio por una forma de respuesta no soportada.
+4. ~~**Presupuesto de rendimiento**~~ — **HECHO en T214** (`e2e/perf-budget.spec.ts`, `npm run e2e:perf`): LCP y CLS con `PerformanceObserver` inyectado antes de cargar y peso real transferido (`encodedBodySize`) en **4** pantallas, con el presupuesto como **ratchet** y los números medidos al lado (**LCP 4.500 ms**, **CLS 0,1**, **JS 10.500 kB**, **CSS 260 kB**, fuentes **320 kB**). **Medido**: **5/5**. **Declarado**: es un techo de `localhost` contra el servidor de **desarrollo** —el JS medido (6,6–9,2 MB) incluye el runtime de dev, contra los **87,1 kB** de *First Load JS compartido* del `build`—, así que sirve para **detectar crecimiento**; y el CLS de `/dashboard` (**0,12**) es **deuda declarada con suelo**, impresa en cada corrida.
+
+**Pendiente declarado de este plan**: el presupuesto de rendimiento de **producción** por la vía SSR
+(el gate de hoy es de desarrollo); el scan de axe de **modales abiertos** (T210 lo dejó declarado); el
+escalón **`--neutral-450`** que la propia fuente de tokens propone para `--text-tertiary` en oscuro; y
+las **2** deudas de relleno con texto inverso (`--text-inverse` sobre `--success-600`/`--warning-600`,
+3,30/3,19:1).
