@@ -49,6 +49,10 @@
   --sf-promo-500: #f97316;
   --sf-promo-600: #ea580c;
   --sf-promo-700: #c2410c;
+  /* Par de la **etiqueta** de promocion. El 600 daba 3,55:1 con el texto blanco
+     (medido con `axe` en el gate de accesibilidad, F9.6): el 700 da 5,17:1. */
+  --sf-promo-badge: var(--sf-promo-700);
+  --sf-promo-contrast: #ffffff;
 
   /* ── Descuento: el porcentaje y el ahorro (urgencia, no marca) ─────────── */
   --sf-deal-50: #fff1f2;
@@ -63,6 +67,11 @@
   --sf-price: var(--neutral-900);
   --sf-price-compare: var(--neutral-500);
   --sf-price-deal: var(--sf-deal-700);
+  /* La escala semantica de LUNA se **invierte** en oscuro (`--success-700` es un
+     verde claro), asi que el mismo token sirve en los dos temas: claro #15803d
+     sobre blanco 5,02:1 y oscuro #6ee7b7 sobre la base 12,96:1. Antes el oscuro
+     usaba `--success-300`, que alli es un verde **oscuro** (#15803d): 3,93:1
+     medido con `axe` y por debajo del minimo. */
   --sf-price-free: var(--success-700);
 
   /* ── Superficies propias de la tienda ─────────────────────────────────── */
@@ -127,6 +136,10 @@
   --sf-promo-500: #fb923c;
   --sf-promo-600: #fdba74;
   --sf-promo-700: #fed7aa;
+  /* En oscuro la etiqueta de promocion es clara: el texto tiene que ser tinta
+     oscura (blanco daba 1,68:1, medido). `--sf-promo-ink` ya es esa tinta. */
+  --sf-promo-badge: var(--sf-promo-600);
+  --sf-promo-contrast: var(--sf-promo-ink);
 
   --sf-deal-50: #4c0519;
   --sf-deal-100: #881337;
@@ -139,7 +152,15 @@
   --sf-price: var(--neutral-900);
   --sf-price-compare: var(--neutral-500);
   --sf-price-deal: var(--sf-deal-700);
-  --sf-price-free: var(--success-300);
+
+  /* ── Contraste sobre las superficies oscuras (medido con `axe`, F9.6) ────
+     Los neutros del tema oscuro de LUNA no llegan al minimo AA para texto
+     pequeno: `--text-tertiary` (neutral-400 = #6e7089) daba 4,08:1 sobre la base
+     y 3,85:1 sobre elevado, y `--text-secondary` (neutral-500 = #8a8ca8) daba
+     4,47:1 sobre la superficie suave de marca (#172554). La tienda los sube en
+     su propia capa; el back office conserva los suyos (fuera del alcance). */
+  --text-secondary: #a1a3b8;
+  --text-tertiary: #9ca3af;
 
   --sf-media-bg: linear-gradient(160deg, var(--neutral-200) 0%, var(--neutral-100) 55%, var(--neutral-200) 100%);
   --sf-media-ink: var(--neutral-500);

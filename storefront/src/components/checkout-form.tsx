@@ -288,10 +288,17 @@ export function CheckoutForm({
   // La cotizacion sigue al correo (con rebote corto): un cliente registrado tiene su
   // propio tercero, su lista de precios y sus acuerdos, asi que el precio que ve en la
   // revision tiene que ser el suyo. Sin correo, la cotizacion es de invitado.
+  //
+  // La cotizacion **espera a que el correo deje de cambiar**: mientras el rebote esta
+  // en vuelo, el valor con rebote todavia es el anterior (vacio) y cotizar con el seria
+  // cotizar para un **invitado**. Medido con el fixture del gate visual (F9.6): sin
+  // esta guarda el paso 3 pedia **dos** cotizaciones —la primera sin comprador— y la
+  // respuesta de la primera podia pintar un error transitorio antes de la buena.
   const quoteEmail = useDebouncedValue(buyer.email.trim(), 400);
+  const emailSettled = quoteEmail === buyer.email.trim();
   const { state: quoteState, reload: reloadQuote } = useQuote(
     cityCode,
-    hydrated && step >= 3,
+    hydrated && step >= 3 && emailSettled,
     quoteEmail,
   );
 

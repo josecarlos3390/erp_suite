@@ -247,8 +247,8 @@
   }
 
   .sf-badge-promo {
-    background-color: var(--sf-promo-600);
-    color: #fff;
+    background-color: var(--sf-promo-badge);
+    color: var(--sf-promo-contrast);
   }
 
   .sf-badge-brand {

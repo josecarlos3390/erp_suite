@@ -13,7 +13,12 @@
     "sync:tokens:check": "node scripts/sync-tokens.mjs --check",
     "sync:fonts": "node scripts/sync-fonts.mjs",
     "sync:fonts:check": "node scripts/sync-fonts.mjs --check",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:visual": "playwright test -c playwright.visual.config.ts e2e/visual/store-visual.spec.ts",
+    "e2e:visual:update": "playwright test -c playwright.visual.config.ts e2e/visual/store-visual.spec.ts --update-snapshots",
+    "e2e:a11y": "playwright test -c playwright.visual.config.ts e2e/visual/store-a11y.spec.ts",
+    "e2e:perf": "playwright test -c playwright.visual.config.ts e2e/visual/store-perf.spec.ts",
+    "audit:contrast": "node scripts/audit-contrast.mjs"
   },
   "dependencies": {
     "next": "14.2.32",
@@ -29,6 +34,7 @@
     "@types/react": "18.3.11",
     "@types/react-dom": "18.3.1",
     "autoprefixer": "10.4.20",
+    "axe-core": "4.13.0",
     "eslint": "8.57.1",
     "eslint-config-next": "14.2.32",
     "postcss": "8.4.47",

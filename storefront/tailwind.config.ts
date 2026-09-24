@@ -96,7 +96,11 @@ const config: Config = {
           free: 'var(--sf-price-free)',
         },
         ok: {
-          DEFAULT: 'var(--success-600)',
+          // `ok` es texto en las lineas de oferta y descuento: apunta al verde de
+          // precio de la tienda (`--sf-price-free`), que ya cambia con el tema y
+          // cumple AA en los dos (medido con `axe` en F9.6: el `--success-600`
+          // anterior daba 3,29:1 sobre blanco).
+          DEFAULT: 'var(--sf-price-free)',
           soft: 'var(--success-50)',
           strong: 'var(--success-800)',
         },

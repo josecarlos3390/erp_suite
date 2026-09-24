@@ -18,6 +18,10 @@ const STOREFRONT_CITY = process.env.STOREFRONT_CITY ?? 'SCZ';
 
 export default defineConfig({
   testDir: './e2e',
+  // El gate visual, la auditoria de accesibilidad y el presupuesto de rendimiento
+  // viven en `e2e/visual/` con su propia configuracion (`playwright.visual.config.ts`)
+  // porque miden contra un fixture grabado del canal, no contra el ERP real.
+  testIgnore: ['visual/**'],
   fullyParallel: false,
   workers: 1,
   forbidOnly: process.env.CI !== undefined,

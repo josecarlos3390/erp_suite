@@ -15,7 +15,15 @@ storefront/                 Next.js 14 + TypeScript + Tailwind 3 + Zustand
   src/styles/brand.css      CAPA DE MARCA de la tienda (--sf-*: accion, promo, precio, formas)
   scripts/sync-tokens.mjs   compila los tokens del ERP a CSS variables
   scripts/sync-fonts.mjs    copia las tipografias del ERP a public/fonts
-  e2e/                      gate Playwright contra la API del ERP en marcha
+  scripts/audit-contrast.mjs gate de contraste WCAG de la paleta (F9.6)
+  e2e/                      gate funcional Playwright contra la API del ERP en marcha
+  e2e/visual/               gate visual + accesibilidad + rendimiento (F9.6)
+    channel-fixture.mjs     proxy del canal: graba una vez y repite (datos fijos)
+    fixtures/               las 30 respuestas grabadas del canal
+    store-cases.ts          casos compartidos (carrito fijo, comprador fijo, rutas)
+    store-visual.spec.ts    15 capturas de referencia (claro y oscuro)
+    store-a11y.spec.ts      axe-core sobre 17 pantallas pintadas
+    store-perf.spec.ts      LCP/CLS y peso del arranque
 ```
 
 ## Puesta en marcha
@@ -63,7 +71,12 @@ pagina del carrito, galeria, boton de compra, navegacion de categorias (para mar
 | `npm run sync:tokens:check` | gate: falla si `tokens.css` esta desincronizado |
 | `npm run sync:fonts` | copia los `.woff2` de Inter del ERP a `public/fonts` |
 | `npm run sync:fonts:check` | gate: falla si falta una fuente o difiere de la del ERP |
-| `npm run e2e` | Playwright sobre `next start` en `:3100` contra la API real |
+| `npm run e2e` | Playwright sobre `next start` en `:3100` contra la API real (27 casos) |
+| `npm run e2e:visual` | gate visual (F9.6): 15 capturas contra el **fixture grabado** del canal, `next start` en `:3200` |
+| `npm run e2e:visual:update` | regenera las capturas; con `STORE_VISUAL_RECORD=1` **vuelve a grabar** el fixture (API del ERP en marcha) |
+| `npm run e2e:a11y` | `axe-core` (WCAG 2.0/2.1 A y AA + best-practice) sobre 17 pantallas, claro y oscuro |
+| `npm run e2e:perf` | presupuesto de LCP, CLS y peso del arranque (ratchet con los numeros medidos) |
+| `npm run audit:contrast` | contraste WCAG de los 34 pares de la paleta, **incluidos los degradados** que `axe` no mide |
 
 > **Antes de `npm run build` o `npm run e2e`, parar el servidor de desarrollo**:
 > los dos escriben `.next` y el `next dev` en marcha se queda con un bundle roto
@@ -117,13 +130,43 @@ npm run e2e
 El puerto y el entorno se pueden ajustar con `E2E_PORT`, `ERP_API_URL`, `STOREFRONT_API_KEY` y
 `STOREFRONT_CITY`. Los casos cubren: home con productos y ofertas vigentes, categoria padre con
 productos de sus subcategorias, ficha con precio/disponibilidad/JSON-LD, busqueda, carrito
-(contador + linea + cantidades) y cambio de ciudad (SCZ vs LPZ). El articulo sin existencia en La
-Paz y el producto de la subcategoria **se descubren por la API en la propia prueba**, nunca se
-codifican a mano.
+(contador + linea + cantidades), checkout de invitado (cotizacion, alta real del pedido,
+idempotencia, error de existencia), referencia del pago offline, seguimiento publico y cambio de
+ciudad (SCZ vs LPZ). El articulo sin existencia en La Paz y el producto de la subcategoria **se
+descubren por la API en la propia prueba**, nunca se codifican a mano.
+
+## Gates de cierre (F9.6): visual, accesibilidad, contraste y rendimiento
+
+Los cuatro gates nuevos **no** miden contra el seed: el gate funcional es el unico que lo hace.
+
+1. **Visual** (`e2e:visual` + `playwright.visual.config.ts`). Un gate visual necesita datos fijos:
+   una captura de referencia que cambia con el precio no distingue «se rompio el diseno» de «cambio
+   el dato». `e2e/visual/channel-fixture.mjs` es un **proxy del canal** que graba las respuestas
+   reales una vez (`e2e/visual/fixtures/`, 30 respuestas) y las repite; la tienda sigue apuntando a
+   `ERP_API_URL` y no sabe que hay un fixture detras. Un endpoint sin grabacion responde **599 y lo
+   registra** (el spec falla en vez de capturar una pantalla de error como si fuera buena).
+   Para volver a grabar: `$env:STORE_VISUAL_RECORD='1'; npm run e2e:visual:update` con la API del ERP
+   en marcha. Las capturas son **por plataforma** (Playwright les pone el sufijo `win32`).
+2. **Accesibilidad** (`e2e:a11y`). `axe-core` sobre el DOM pintado; falla por cualquier violacion
+   `serious`/`critical` e imprime color de texto, color de fondo y relacion de cada nodo.
+   **Limite medido**: `axe` no puede calcular el contraste de un texto sobre un degradado y lo deja
+   como *incomplete* (67 nodos en la home), asi que esos pares los cubre el gate siguiente.
+3. **Contraste de la paleta** (`audit:contrast`). Resuelve `tokens.css` + `brand.css` con la cascada
+   real (`:root` → marca → bloques del tema oscuro) y comprueba 34 pares con la formula WCAG,
+   **parada por parada** de cada degradado, con los minimos de AA (4,5:1 texto, 3:1 texto grande e
+   interfaz). Lo que falle aqui se corrige en `brand.css`, nunca en `tokens.css` (artefacto).
+4. **Rendimiento** (`e2e:perf`). LCP y CLS con `PerformanceObserver` y el peso real del arranque por
+   `encodedBodySize`. Los presupuestos son un **ratchet** medido en `localhost`: no son una medida de
+   campo. El gate imprime tambien **que** archivos de tipografia se descargaron (con texto espanol
+   solo bajan los cuatro `latin`, 188,5 kB de los 521 kB de `.woff2`).
 
 ## Alcance
 
-Esta entrega es la fase **F2 (catalogo)** del plan `docs/plans/plan-ecommerce-storefront.md`:
-home, categorias, ficha, busqueda, carrito y selector de ciudad, con SEO (metadata, JSON-LD,
-sitemap, robots). El **checkout es F3**: la tienda no crea pedidos todavia y el carrito es un
-snapshot de referencia; `/carrito` lo dice explicitamente.
+Las fases del plan `docs/plans/plan-ecommerce-storefront.md` estan entregadas: **F1/F2** (catalogo,
+ficha, busqueda, carrito y ciudad, con SEO), **F3** (checkout de invitado, confirmacion y
+seguimiento publico), **F5** (bandeja de pedidos web en el back office), **F8** (un solo motor de
+precios y paridad entre pedidos, POS y tienda) y **F9** (identidad visual de la tienda, fases
+F9.1–F9.6). Siguen **declarados**: el correo transaccional (D16, el backend no tiene proveedor), el
+retiro en tienda (fase 2), el CORS por dominio y la cache del canal, la serie propia del canal (F7,
+con la factura) y el descuento exclusivo del canal (D21/F8.2) con su pantalla.
+

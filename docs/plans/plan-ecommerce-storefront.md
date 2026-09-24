@@ -1191,3 +1191,100 @@ trae `checkout-loading` con **35** bloques, frente a la unica linea de texto ant
 registra el ERP (D18); el `loading.tsx` del checkout tapa la resolucion de la ciudad en el servidor,
 no la hidratacion (que la cubren las guardas); y la barra de pasos no se colapsa ni se convierte en
 menu en pantallas muy estrechas: se queda en la linea de nodos con el nombre encima.
+
+### §14.g Estado de F9.6 — cierre: gate visual propio, accesibilidad, contraste y presupuesto (medido el 2026-09-23, T208)
+
+La ultima fase de D26 abre **cuatro gates nuevos** para la tienda, cada uno con su propio alcance, y
+cierra con ellos los hallazgos de accesibilidad que la capa visual venia arrastrando.
+
+**1. Gate visual propio (`npm run e2e:visual`) con datos grabados.** Un gate visual no puede medir
+contra el seed de desarrollo: una captura de referencia que cambia con el dato no distingue «se rompio
+el diseno» de «cambio el precio». La tienda estrena `playwright.visual.config.ts` (puerto 3200,
+capturas propias) y un **fixture del canal** (`e2e/visual/channel-fixture.mjs`): un proxy de
+`GET/POST /storefront/...` que **graba una vez** las respuestas reales (`e2e/visual/fixtures/`, **30
+respuestas**) y las **repite** en cada corrida. En los POST descarta `idempotencyKey` antes de
+calcular la clave —la tienda genera una por intento y su valor no cambia la respuesta—, y un endpoint
+sin grabacion responde **599 y lo grita**: el spec visual falla visiblemente en vez de capturar una
+pantalla de error como si fuera buena. La tienda sigue apuntando a `ERP_API_URL` y no sabe que hay un
+fixture detras; el E2E funcional (`npm run e2e`) sigue midiendo contra el ERP real y el seed.
+**15 capturas de referencia** (inicio, categoria, busqueda con y sin resultados, ficha, carrito lleno
+y vacio, checkout paso 2 y resumen, 404 y seguimiento; claro y oscuro donde el tema cambia), captura
+**completa y sin mascaras** porque no hay datos variables que tapar.
+
+**2. DEFECTO MEDIDO Y CERRADO — el paso 3 cotizaba dos veces.** El fixture destapo una peticion que
+el E2E funcional no ve: al entrar al resumen, el checkout pedia **dos** cotizaciones, la primera
+**sin comprador** (`{"cityCode":"SCZ","items":[...]}`) porque el correo todavia estaba dentro del
+rebote de 400 ms y el valor con rebote seguia siendo el vacio, y la segunda ya con el correo. Ademas
+de la llamada de mas, la respuesta de la primera podia pintar un **error transitorio** antes de la
+buena. Se cierra con una guarda en `checkout-form.tsx`: la cotizacion espera a que el correo deje de
+cambiar (`quoteEmail === buyer.email.trim()`). Medido despues: **0 peticiones sin grabacion** en la
+corrida visual (antes 2) y el E2E funcional sigue en 27/27.
+
+**3. Auditoria de accesibilidad (`npm run e2e:a11y`).** `axe-core` sobre el DOM **pintado** de **17
+pantallas** (las del gate visual en claro y oscuro) con las reglas `wcag2a`, `wcag2aa`, `wcag21a`,
+`wcag21aa` y `best-practice`; falla por cualquier violacion `serious`/`critical` y lista las suaves.
+**Medido en la primera corrida: 12 de 17 pantallas con una violacion grave de contraste** —los
+detalles los imprime el gate con el color de texto, el de fondo y la relacion:
+
+| par medido | relacion | donde |
+|---|---|---|
+| `#ffffff` sobre `#ea580c` (etiqueta de promocion, claro) | 3,55:1 | tarjetas y home |
+| `#ffffff` sobre `#fdba74` (etiqueta de promocion, oscuro) | **1,68:1** | home y listado en oscuro |
+| `#15803d` sobre `#0a0a0f` (existencia, oscuro) | 3,93:1 | ficha y tarjetas |
+| `#15803d` sobre `#052e16` (etiqueta verde, oscuro) | **2,97:1** | tarjetas y ficha |
+| `#6e7089` sobre `#0a0a0f` (texto terciario, oscuro) | 4,08:1 | home, listado, ficha (75 nodos) |
+| `#6e7089` sobre `#12121a` (texto terciario sobre elevado) | 3,85:1 | idem |
+| `#16a34a` sobre `#ffffff` (texto verde, claro) | 3,29:1 | lineas de oferta y descuento |
+| `#8a8ca8` sobre `#172554` (texto secundario sobre marca suave) | 4,47:1 | paneles suaves |
+
+**Cerrado en la capa de marca** (`src/styles/brand.css`, sin tocar `tokens.css`: su gate sigue verde):
+la **etiqueta de promocion** pasa a un par propio por tema (`--sf-promo-badge` / `--sf-promo-contrast`:
+`#c2410c` con blanco en claro **5,18:1**, `#fdba74` con tinta oscura en oscuro **11,71:1**); el
+**verde de precio** usa `--success-700` en los dos temas —la escala semantica de LUNA **se invierte**
+en oscuro, asi que el mismo token da `#15803d` en claro **(5,02:1)** y `#6ee7b7` en oscuro
+**(12,96:1)**—; el verde de las lineas de oferta (`ok` en Tailwind) apunta al mismo token; y el tema
+oscuro **sube sus dos grises de texto** (`--text-secondary` `#a1a3b8`, `--text-tertiary` `#9ca3af`)
+con el comentario de que el back office conserva los suyos (fuera del alcance de la tienda).
+**Medido despues: 17/17 pantallas, 0 violaciones graves y 0 suaves.**
+
+**4. Contraste de la paleta (`npm run audit:contrast`).** `axe` **no puede** medir el contraste de un
+texto sobre un degradado o una imagen y lo deja en *incomplete* (**67 nodos en la home**, medidos, con
+la tinta del boton principal y la banda de campana entre ellos). El script resuelve las variables de
+`tokens.css` y `brand.css` con la cascada real (`:root` → marca → bloques del tema oscuro) y comprueba
+**34 pares** con la formula WCAG, degradado por degradado (**cada parada**, falla la peor), con los
+minimos de AA (4,5:1 texto, 3:1 texto grande e interfaz). **Medido: 34/34 en claro y oscuro**, con los
+pares de mas riesgo en el log (tinta del boton `#ffffff` sobre el stop `#3b82f6` = 3,68:1 para texto
+grande; tinta de campana `#0a0a0f` sobre `#60a5fa` = 7,77:1).
+
+**5. Presupuesto de rendimiento (`npm run e2e:perf`).** LCP y CLS con `PerformanceObserver` y el peso
+real del arranque (JS, CSS y tipografias por `encodedBodySize`) en las cinco primeras pantallas del
+camino de compra. **Medido** (build de produccion, `localhost`, fixture):
+
+| pantalla | LCP | CLS | JS | CSS | fuentes |
+|---|---|---|---|---|---|
+| `/` | 528 ms | 0,001 | 107 kB | 10,3 kB | 188,5 kB |
+| `/categorias/celulares` | 184 ms | 0,001 | 107 kB | 10,3 kB | 188,5 kB |
+| `/productos/iphone-15-128gb` | 224 ms | 0,001 | 108,4 kB | 10,3 kB | 188,5 kB |
+| `/carrito` | 288 ms | **0,02** | 109,5 kB | 10,3 kB | 188,5 kB |
+| `/checkout` | 316 ms | 0,003 | 115,8 kB | 10,3 kB | 188,5 kB |
+
+El presupuesto queda como **ratchet** (LCP 800 ms, CLS 0,05, JS 150 kB, CSS 20 kB, fuentes 210 kB) con
+los numeros medidos escritos al lado. **Evidencia de las fuentes**: el gate imprime que el navegador
+solo baja los **cuatro `.woff2` de `latin`** (47 kB cada uno; los 8 del ERP suman 521 kB) — el
+`unicode-range` de `fonts.css` (F9.1) hace que `latin-ext` no se pida con texto espanol—. El CLS del
+carrito (0,02) es el cambio de esqueleto por las lineas rehidratadas: queda muy por debajo del 0,1
+«bueno» de Web Vitals y es el precio de no pintar un carrito vacio falso (punto (a) de §14.f).
+
+**Evidencia de la fase**: `typecheck` **0**, `lint` **0/0**, `build` **0**, `sync:tokens:check` y
+`sync:fonts:check` OK, `audit:contrast` **34/34**, `e2e:a11y` **17/17 sin hallazgos**, `e2e:perf`
+**5/5**, `e2e:visual` **15/15** (con **0** endpoints sin grabacion) y E2E funcional **27/27**. Las 15
+capturas de referencia (`e2e/visual/store-visual.spec.ts-snapshots/`, ~7 MB) se revisaron una por una
+tras el cambio de paleta, incluida la ficha en oscuro.
+
+**Declarado**: las capturas de referencia son **por plataforma** (Playwright les pone el sufijo
+`win32`) y se generan y comparan en la misma (Windows + Chromium, `deviceScaleFactor: 1`), igual que
+el gate visual del back office; el modo grabacion del fixture necesita la **API del ERP en marcha** y
+se dispara a proposito (`$env:STORE_VISUAL_RECORD='1'`); el presupuesto de rendimiento es un
+**ratchet** medido en `localhost`, no una medida de campo; y la correccion de contraste se aplica a la
+**tienda** (el back office conserva los tokens oscuros de LUNA, con el mismo defecto medido, fuera del
+alcance de D22–D26).
