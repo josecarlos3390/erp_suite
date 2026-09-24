@@ -1,15 +1,18 @@
-import type { Brand, CatalogPage, SortOption } from '@/lib/erp';
-import type { QueryParams } from '@/lib/query';
+import type { Brand, CatalogPage, Seller, SortOption } from "@/lib/erp";
+import type { QueryParams } from "@/lib/query";
 
-import { Pager } from './pager';
-import { ProductFilters } from './product-filters';
-import { ProductGrid } from './product-grid';
+import { Pager } from "./pager";
+import { ProductFilters } from "./product-filters";
+import { ProductGrid } from "./product-grid";
 
 interface CatalogSectionProps {
   action: string;
   hidden: QueryParams;
   brands: readonly Brand[];
+  /** Vendedores con catalogo publicado (F6): alimenta el filtro «Vendido por». */
+  sellers: readonly Seller[];
   brand: string | undefined;
+  seller: string | undefined;
   sort: SortOption;
   page: number;
   result: CatalogPage;
@@ -31,7 +34,9 @@ export function CatalogSection({
   action,
   hidden,
   brands,
+  sellers,
   brand,
+  seller,
   sort,
   page,
   result,
@@ -46,10 +51,12 @@ export function CatalogSection({
         <ProductFilters
           action={action}
           brands={brands}
+          sellers={sellers}
           hidden={hidden}
           brand={brand}
+          seller={seller}
           sort={sort}
-          totalLabel={`${result.total} ${result.total === 1 ? 'producto' : 'productos'} · pagina ${result.page} de ${Math.max(result.totalPages, 1)}`}
+          totalLabel={`${result.total} ${result.total === 1 ? "producto" : "productos"} · pagina ${result.page} de ${Math.max(result.totalPages, 1)}`}
         />
       </div>
 
@@ -64,7 +71,7 @@ export function CatalogSection({
         />
         <Pager
           basePath={action}
-          params={{ ...hidden, brand, sort }}
+          params={{ ...hidden, brand, seller, sort }}
           page={page}
           totalPages={result.totalPages}
         />

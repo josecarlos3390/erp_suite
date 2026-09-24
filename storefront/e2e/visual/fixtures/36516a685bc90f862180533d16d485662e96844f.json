@@ -1,0 +1,6 @@
+{
+  "key": "GET /storefront/sellers?category=celulares",
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "body": "[{\"code\":\"CASAELECTRO\",\"name\":\"CasaElectro\",\"logoUrl\":null,\"productCount\":1},{\"code\":\"FOTOCENTER\",\"name\":\"FotoCenter\",\"logoUrl\":null,\"productCount\":1},{\"code\":\"MUNDOCEL\",\"name\":\"MundoCel\",\"logoUrl\":null,\"productCount\":4},{\"code\":\"TECNOSTORE\",\"name\":\"TecnoStore\",\"logoUrl\":null,\"productCount\":3},{\"code\":\"TIENDA\",\"name\":\"Tienda Oficial\",\"logoUrl\":null,\"productCount\":1}]"
+}

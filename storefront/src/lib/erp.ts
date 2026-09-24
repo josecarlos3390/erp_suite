@@ -1,4 +1,4 @@
-import 'server-only';
+import "server-only";
 
 /**
  * Cliente tipado del canal publico del storefront del ERP.
@@ -16,27 +16,27 @@ import 'server-only';
  * inventan campos: si el ERP no lo devuelve, no existe aqui.
  */
 
-const RAW_BASE_URL = process.env.ERP_API_URL ?? 'http://localhost:3001';
-const BASE_URL = RAW_BASE_URL.replace(/\/+$/, '');
-const TIMEOUT_MS = Number.parseInt(process.env.ERP_TIMEOUT_MS ?? '8000', 10);
+const RAW_BASE_URL = process.env.ERP_API_URL ?? "http://localhost:3001";
+const BASE_URL = RAW_BASE_URL.replace(/\/+$/, "");
+const TIMEOUT_MS = Number.parseInt(process.env.ERP_TIMEOUT_MS ?? "8000", 10);
 
 /** Tope de pagina que impone el canal. */
 export const MAX_PAGE_SIZE = 48;
 
-export type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'newest';
+export type SortOption = "relevance" | "price_asc" | "price_desc" | "newest";
 
 export const SORT_OPTIONS: readonly SortOption[] = [
-  'relevance',
-  'price_asc',
-  'price_desc',
-  'newest',
+  "relevance",
+  "price_asc",
+  "price_desc",
+  "newest",
 ];
 
 export const SORT_LABELS: Readonly<Record<SortOption, string>> = {
-  relevance: 'Relevancia',
-  price_asc: 'Menor precio',
-  price_desc: 'Mayor precio',
-  newest: 'Mas recientes',
+  relevance: "Relevancia",
+  price_asc: "Menor precio",
+  price_desc: "Mayor precio",
+  newest: "Mas recientes",
 };
 
 export interface ProductAvailability {
@@ -66,6 +66,12 @@ export interface Product {
   sku: string;
   brand: string | null;
   brandCode: string | null;
+  /** Vendedor de la publicacion (F6): «Vendido por …». `null` si no tiene asignado. */
+  seller: string | null;
+  /** Codigo del vendedor: es la clave con la que filtra el catalogo. */
+  sellerCode: string | null;
+  /** Logo del vendedor si el ERP lo tiene cargado (la tienda lo pinta si existe). */
+  sellerLogoUrl: string | null;
   shortDescription: string | null;
   /** Precio efectivo de la tienda: el del ERP con la **promo del canal** ya aplicada. */
   price: number;
@@ -103,6 +109,17 @@ export interface CategoryNode {
 }
 
 export interface Brand {
+  code: string;
+  name: string;
+  logoUrl: string | null;
+  productCount: number;
+}
+
+/**
+ * Vendedor de la publicacion (F6): el `Seller` del ERP que la tienda publica como
+ * «Vendido por …». Es el mismo maestro que el back office lista por `GET /sellers`.
+ */
+export interface Seller {
   code: string;
   name: string;
   logoUrl: string | null;
@@ -155,25 +172,26 @@ export interface City {
 }
 
 /** Formas de entrega que acepta el canal (D4: domicilio; el retiro es fase 2). */
-export type DeliveryType = 'HOME' | 'STORE';
+export type DeliveryType = "HOME" | "STORE";
 
 /** Metodos de pago offline del MVP. El canal **no** conoce datos de tarjeta. */
-export type PaymentMethod = 'TRANSFER' | 'QR' | 'CASH_ON_DELIVERY' | 'STORE_PICKUP';
+export type PaymentMethod =
+  "TRANSFER" | "QR" | "CASH_ON_DELIVERY" | "STORE_PICKUP";
 
 /**
  * F7: **modalidad de facturacion** que elige el comprador en el checkout. Define la cadena
  * del pedido: `PAY_NOW` factura (reserva) al confirmar y cobra contra esa factura; con
  * `PAY_ON_DELIVERY` el pedido se entrega primero y la factura nace de la entrega.
  */
-export type InvoicingMode = 'PAY_NOW' | 'PAY_ON_DELIVERY';
+export type InvoicingMode = "PAY_NOW" | "PAY_ON_DELIVERY";
 
-export const DELIVERY_TYPES: readonly DeliveryType[] = ['HOME', 'STORE'];
+export const DELIVERY_TYPES: readonly DeliveryType[] = ["HOME", "STORE"];
 
 export const PAYMENT_METHODS: readonly PaymentMethod[] = [
-  'TRANSFER',
-  'QR',
-  'CASH_ON_DELIVERY',
-  'STORE_PICKUP',
+  "TRANSFER",
+  "QR",
+  "CASH_ON_DELIVERY",
+  "STORE_PICKUP",
 ];
 
 /** Linea que envia la tienda al canal: solo articulo y cantidad. */
@@ -217,15 +235,17 @@ export interface CreateOrderRequest extends QuoteRequest {
  * el navegador en el checkout y el seguimiento; aqui se importan para tipar las
  * funciones del canal y se re-exportan para el resto del servidor.
  */
-import type { OrderView, QuoteView } from './order-view';
+import type { OrderView, QuoteView } from "./order-view";
 
-export type { OrderLine, OrderView, QuoteLine, QuoteView } from './order-view';
+export type { OrderLine, OrderView, QuoteLine, QuoteView } from "./order-view";
 
 export interface CatalogQuery {
   page?: number;
   limit?: number;
   category?: string;
   brand?: string;
+  /** Vendedor de la publicacion (F6): se filtra por su **codigo** (`Seller.code`). */
+  seller?: string;
   search?: string;
   sort?: SortOption;
   city?: string;
@@ -247,7 +267,7 @@ export class ErpError extends Error {
 
   constructor(message: string, status: number, endpoint: string) {
     super(message);
-    this.name = 'ErpError';
+    this.name = "ErpError";
     this.status = status;
     this.endpoint = endpoint;
   }
@@ -286,11 +306,11 @@ type QueryValue = string | number | undefined;
 /** Devuelve la clave del canal o corta con un mensaje accionable. */
 function apiKey(): string {
   const key = process.env.STOREFRONT_API_KEY;
-  if (key === undefined || key.trim() === '') {
+  if (key === undefined || key.trim() === "") {
     throw new ErpError(
-      'Falta STOREFRONT_API_KEY: copiar .env.example a .env.local con la clave del canal.',
+      "Falta STOREFRONT_API_KEY: copiar .env.example a .env.local con la clave del canal.",
       0,
-      '/storefront',
+      "/storefront",
     );
   }
   return key;
@@ -298,20 +318,22 @@ function apiKey(): string {
 
 /** Extrae el mensaje que devuelve el ERP (string o lista de validacion). */
 function readErpMessage(body: unknown, fallback: string): string {
-  if (typeof body === 'object' && body !== null) {
+  if (typeof body === "object" && body !== null) {
     const record = body as Record<string, unknown>;
-    const message = record['message'];
-    if (typeof message === 'string' && message.trim() !== '') {
+    const message = record["message"];
+    if (typeof message === "string" && message.trim() !== "") {
       return message;
     }
     if (Array.isArray(message)) {
-      const parts = message.filter((item): item is string => typeof item === 'string');
+      const parts = message.filter(
+        (item): item is string => typeof item === "string",
+      );
       if (parts.length > 0) {
-        return parts.join('; ');
+        return parts.join("; ");
       }
     }
-    const error = record['error'];
-    if (typeof error === 'string' && error.trim() !== '') {
+    const error = record["error"];
+    if (typeof error === "string" && error.trim() !== "") {
       return error;
     }
   }
@@ -326,26 +348,29 @@ async function erpGet<T>(
 ): Promise<T> {
   const url = new URL(`${BASE_URL}${endpoint}`);
   for (const [name, value] of Object.entries(params)) {
-    if (value !== undefined && value !== '') {
+    if (value !== undefined && value !== "") {
       url.searchParams.set(name, String(value));
     }
   }
 
-  const timeout = Number.isFinite(TIMEOUT_MS) && TIMEOUT_MS > 0 ? TIMEOUT_MS : 8000;
+  const timeout =
+    Number.isFinite(TIMEOUT_MS) && TIMEOUT_MS > 0 ? TIMEOUT_MS : 8000;
 
   let response: Response;
   try {
     response = await fetch(url, {
       headers: {
-        accept: 'application/json',
-        'x-storefront-key': apiKey(),
+        accept: "application/json",
+        "x-storefront-key": apiKey(),
       },
       signal: AbortSignal.timeout(timeout),
       // `revalidate: 0` = **sin cache**: el estado del pedido es lo que el comprador
       // acaba de cambiar (su referencia de pago) y lo que el ERP mueve al entregar; una
       // respuesta vieja aqui no es rapidez, es mentira (defecto medido: tras anotar la
       // referencia, la confirmacion servia el pedido anterior).
-      ...(revalidate > 0 ? { next: { revalidate } } : { cache: 'no-store' as const }),
+      ...(revalidate > 0
+        ? { next: { revalidate } }
+        : { cache: "no-store" as const }),
     });
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
@@ -358,7 +383,7 @@ async function erpGet<T>(
 
   const raw = await response.text();
   let body: unknown = null;
-  if (raw !== '') {
+  if (raw !== "") {
     try {
       body = JSON.parse(raw);
     } catch {
@@ -368,7 +393,10 @@ async function erpGet<T>(
 
   if (!response.ok) {
     throw new ErpError(
-      readErpMessage(body, `El ERP respondio ${response.status} en ${endpoint}.`),
+      readErpMessage(
+        body,
+        `El ERP respondio ${response.status} en ${endpoint}.`,
+      ),
       response.status,
       endpoint,
     );
@@ -402,20 +430,21 @@ async function erpGetOrNull<T>(
  * route handler; este modulo solo transporta.
  */
 async function erpPost<T>(endpoint: string, body: unknown): Promise<T> {
-  const timeout = Number.isFinite(TIMEOUT_MS) && TIMEOUT_MS > 0 ? TIMEOUT_MS : 8000;
+  const timeout =
+    Number.isFinite(TIMEOUT_MS) && TIMEOUT_MS > 0 ? TIMEOUT_MS : 8000;
 
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        accept: 'application/json',
-        'content-type': 'application/json',
-        'x-storefront-key': apiKey(),
+        accept: "application/json",
+        "content-type": "application/json",
+        "x-storefront-key": apiKey(),
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(timeout),
-      cache: 'no-store',
+      cache: "no-store",
     });
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
@@ -428,7 +457,7 @@ async function erpPost<T>(endpoint: string, body: unknown): Promise<T> {
 
   const raw = await response.text();
   let parsed: unknown = null;
-  if (raw !== '') {
+  if (raw !== "") {
     try {
       parsed = JSON.parse(raw);
     } catch {
@@ -438,7 +467,10 @@ async function erpPost<T>(endpoint: string, body: unknown): Promise<T> {
 
   if (!response.ok) {
     throw new ErpError(
-      readErpMessage(parsed, `El ERP respondio ${response.status} en ${endpoint}.`),
+      readErpMessage(
+        parsed,
+        `El ERP respondio ${response.status} en ${endpoint}.`,
+      ),
       response.status,
       endpoint,
     );
@@ -451,30 +483,36 @@ async function erpPost<T>(endpoint: string, body: unknown): Promise<T> {
 function cityParam(city: string | undefined): string | undefined {
   if (city === undefined) return undefined;
   const trimmed = city.trim().toUpperCase();
-  return trimmed === '' ? undefined : trimmed;
+  return trimmed === "" ? undefined : trimmed;
 }
 
-export interface CatalogOptions extends Omit<CatalogQuery, 'city'> {
+export interface CatalogOptions extends Omit<CatalogQuery, "city"> {
   city?: string | undefined;
 }
 
 /** GET /storefront/catalog */
-export async function getCatalog(query: CatalogOptions = {}): Promise<CatalogPage> {
+export async function getCatalog(
+  query: CatalogOptions = {},
+): Promise<CatalogPage> {
   const requestedLimit = query.limit ?? 24;
-  const limit = Math.min(Math.max(1, Math.trunc(requestedLimit)), MAX_PAGE_SIZE);
+  const limit = Math.min(
+    Math.max(1, Math.trunc(requestedLimit)),
+    MAX_PAGE_SIZE,
+  );
   const page = Math.max(1, Math.trunc(query.page ?? 1));
 
   return erpGet<CatalogPage>(
-    '/storefront/catalog',
+    "/storefront/catalog",
     {
       page,
       limit,
       category: query.category,
       brand: query.brand,
+      seller: query.seller,
       search: query.search,
       sort: query.sort,
       city: cityParam(query.city),
-      onSale: query.onSale === true ? 'true' : undefined,
+      onSale: query.onSale === true ? "true" : undefined,
     },
     REVALIDATE.catalog,
   );
@@ -512,22 +550,39 @@ export async function getPublishedSlugs(): Promise<string[]> {
 
 /** GET /storefront/categories */
 export async function getCategories(): Promise<CategoryNode[]> {
-  return erpGet<CategoryNode[]>('/storefront/categories', {}, REVALIDATE.categories);
+  return erpGet<CategoryNode[]>(
+    "/storefront/categories",
+    {},
+    REVALIDATE.categories,
+  );
 }
 
 /** GET /storefront/brands — con `category` la faceta se acota a esa categoria. */
 export async function getBrands(category?: string): Promise<Brand[]> {
-  return erpGet<Brand[]>('/storefront/brands', { category }, REVALIDATE.brands);
+  return erpGet<Brand[]>("/storefront/brands", { category }, REVALIDATE.brands);
+}
+
+/**
+ * GET /storefront/sellers — los vendedores **con catalogo publicado** (F6); con `category` la
+ * faceta se acota a esa categoria, igual que las marcas. Es lo que alimenta el filtro del
+ * catalogo, y la tienda no inventa la lista: la publica el canal.
+ */
+export async function getSellers(category?: string): Promise<Seller[]> {
+  return erpGet<Seller[]>(
+    "/storefront/sellers",
+    { category },
+    REVALIDATE.brands,
+  );
 }
 
 /** GET /storefront/pages — indice de paginas publicadas (pie de la tienda). */
 export async function getPageLinks(): Promise<PageLink[]> {
-  return erpGet<PageLink[]>('/storefront/pages', {}, REVALIDATE.page);
+  return erpGet<PageLink[]>("/storefront/pages", {}, REVALIDATE.page);
 }
 
 /** GET /storefront/banners?slot= */
 export async function getBanners(slot?: string): Promise<Banner[]> {
-  return erpGet<Banner[]>('/storefront/banners', { slot }, REVALIDATE.banners);
+  return erpGet<Banner[]>("/storefront/banners", { slot }, REVALIDATE.banners);
 }
 
 /** GET /storefront/pages/:slug — null si la pagina no esta publicada (404). */
@@ -541,11 +596,14 @@ export async function getPage(slug: string): Promise<StorePage | null> {
 
 /** GET /storefront/cities */
 export async function getCities(): Promise<City[]> {
-  return erpGet<City[]>('/storefront/cities', {}, REVALIDATE.cities);
+  return erpGet<City[]>("/storefront/cities", {}, REVALIDATE.cities);
 }
 
 /** GET /storefront/products/:slug?city= — null si no esta publicado (404). */
-export async function getProduct(slug: string, city?: string): Promise<Product | null> {
+export async function getProduct(
+  slug: string,
+  city?: string,
+): Promise<Product | null> {
   return erpGetOrNull<Product>(
     `/storefront/products/${encodeURIComponent(slug)}`,
     { city: cityParam(city) },
@@ -554,7 +612,10 @@ export async function getProduct(slug: string, city?: string): Promise<Product |
 }
 
 /** GET /storefront/products/:slug/related?city= */
-export async function getRelated(slug: string, city?: string): Promise<Product[]> {
+export async function getRelated(
+  slug: string,
+  city?: string,
+): Promise<Product[]> {
   try {
     return await erpGet<Product[]>(
       `/storefront/products/${encodeURIComponent(slug)}/related`,
@@ -581,13 +642,13 @@ export async function getRelated(slug: string, city?: string): Promise<Product[]
  */
 export async function quoteOrder(request: QuoteRequest): Promise<QuoteView> {
   const email = request.customerEmail?.trim();
-  return erpPost<QuoteView>('/storefront/quote', {
+  return erpPost<QuoteView>("/storefront/quote", {
     cityCode: request.cityCode.trim().toUpperCase(),
     items: request.items.map((line) => ({
       itemId: Math.trunc(line.itemId),
       quantity: line.quantity,
     })),
-    ...(email === undefined || email === '' ? {} : { customer: { email } }),
+    ...(email === undefined || email === "" ? {} : { customer: { email } }),
   });
 }
 
@@ -597,8 +658,10 @@ export async function quoteOrder(request: QuoteRequest): Promise<QuoteView> {
  * La clave la genera la tienda **una vez por intento de compra**: repetir el
  * POST con la misma clave devuelve el mismo pedido en vez de crear otro.
  */
-export async function createOrder(request: CreateOrderRequest): Promise<OrderView> {
-  return erpPost<OrderView>('/storefront/orders', {
+export async function createOrder(
+  request: CreateOrderRequest,
+): Promise<OrderView> {
+  return erpPost<OrderView>("/storefront/orders", {
     idempotencyKey: request.idempotencyKey,
     cityCode: request.cityCode.trim().toUpperCase(),
     deliveryType: request.deliveryType,
@@ -616,9 +679,12 @@ export async function createOrder(request: CreateOrderRequest): Promise<OrderVie
 }
 
 /** GET /storefront/tracking?order=&email= — null si el pedido no existe (404). */
-export async function getTracking(order: string, email?: string): Promise<OrderView | null> {
+export async function getTracking(
+  order: string,
+  email?: string,
+): Promise<OrderView | null> {
   return erpGetOrNull<OrderView>(
-    '/storefront/tracking',
+    "/storefront/tracking",
     { order: order.trim(), email: email?.trim() },
     REVALIDATE.tracking,
   );
@@ -636,7 +702,7 @@ export async function registerPaymentReference(request: {
   email: string;
   reference: string;
 }): Promise<OrderView> {
-  return erpPost<OrderView>('/storefront/payment-reference', {
+  return erpPost<OrderView>("/storefront/payment-reference", {
     order: request.order.trim(),
     email: request.email.trim(),
     reference: request.reference.trim(),

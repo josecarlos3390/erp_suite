@@ -1,12 +1,12 @@
-import Link from 'next/link';
+import Link from "next/link";
 
-import type { Product } from '@/lib/erp';
-import { formatDiscount } from '@/lib/format';
+import type { Product } from "@/lib/erp";
+import { formatDiscount } from "@/lib/format";
 
-import { ProductImage } from './product-image';
-import { QuickAdd } from './quick-add';
-import { Badge } from './ui/badge';
-import { Price } from './ui/price';
+import { ProductImage } from "./product-image";
+import { QuickAdd } from "./quick-add";
+import { Badge } from "./ui/badge";
+import { Price } from "./ui/price";
 
 interface ProductCardProps {
   product: Product;
@@ -19,11 +19,11 @@ interface ProductCardProps {
 const MAX_VISIBLE_BADGES = 3;
 
 /** Insignias del ERP → variante visual (lo que no este aqui se pinta neutro). */
-const BADGE_VARIANTS: Record<string, 'ok' | 'promo' | 'soft' | 'brand'> = {
-  'ENVIO GRATIS': 'ok',
-  OFERTA: 'promo',
-  CUOTAS: 'soft',
-  NUEVO: 'brand',
+const BADGE_VARIANTS: Record<string, "ok" | "promo" | "soft" | "brand"> = {
+  "ENVIO GRATIS": "ok",
+  OFERTA: "promo",
+  CUOTAS: "soft",
+  NUEVO: "brand",
 };
 
 /**
@@ -73,7 +73,11 @@ export function ProductCard({
         <span className="pointer-events-none absolute inset-x-2 top-2 flex items-start justify-between gap-2">
           <span className="flex flex-col items-start gap-1">
             {discount !== null ? (
-              <Badge variant="deal" testId="discount-badge" srLabel={`Descuento de ${discount}`}>
+              <Badge
+                variant="deal"
+                testId="discount-badge"
+                srLabel={`Descuento de ${discount}`}
+              >
                 {discount}
               </Badge>
             ) : null}
@@ -84,7 +88,8 @@ export function ProductCard({
               por **numero** y no `!== null`: un fixture grabado con el contrato anterior no
               trae el campo y `undefined` no puede pintar un badge.
             */}
-            {typeof product.channelDiscountPct === 'number' && product.channelDiscountPct > 0 ? (
+            {typeof product.channelDiscountPct === "number" &&
+            product.channelDiscountPct > 0 ? (
               <Badge
                 variant="promo"
                 testId="channel-promo-badge"
@@ -94,7 +99,9 @@ export function ProductCard({
               </Badge>
             ) : null}
           </span>
-          {!product.availability.inStock ? <Badge variant="outline">Agotado</Badge> : null}
+          {!product.availability.inStock ? (
+            <Badge variant="outline">Agotado</Badge>
+          ) : null}
         </span>
 
         {/* Acciones rapidas: fuera del enlace de la imagen para que no naveguen. */}
@@ -117,10 +124,24 @@ export function ProductCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
-        {product.brand !== null ? <p className="sf-eyebrow">{product.brand}</p> : null}
+        {product.brand !== null ? (
+          <p className="sf-eyebrow">{product.brand}</p>
+        ) : null}
+
+        {/* F6: quien vende el articulo. La tarjeta lo dice sin abrir la ficha. La
+            comprobacion es `typeof` para que una respuesta cacheada sin la clave (canal
+            anterior) no rompa la grilla. */}
+        {typeof product.seller === "string" && product.seller.length > 0 ? (
+          <p className="text-xs text-fg-tertiary" data-testid="seller-line">
+            Vendido por {product.seller}
+          </p>
+        ) : null}
 
         <h3 className="text-sm font-semibold leading-snug text-fg">
-          <Link href={href} className="rounded line-clamp-2 hover:text-fg-accent">
+          <Link
+            href={href}
+            className="rounded line-clamp-2 hover:text-fg-accent"
+          >
             {product.name}
           </Link>
         </h3>
@@ -129,7 +150,12 @@ export function ProductCard({
           <ul className="flex flex-wrap gap-1">
             {badges.map((badge) => (
               <li key={badge}>
-                <Badge variant={BADGE_VARIANTS[badge.trim().toUpperCase()] ?? 'outline'} className="px-2 py-0.5">
+                <Badge
+                  variant={
+                    BADGE_VARIANTS[badge.trim().toUpperCase()] ?? "outline"
+                  }
+                  className="px-2 py-0.5"
+                >
                   {badge}
                 </Badge>
               </li>
@@ -142,19 +168,19 @@ export function ProductCard({
             price={product.price}
             currency={product.currency}
             listPrice={product.listPrice}
-            caption={hasOffer ? 'Oferta vigente' : null}
+            caption={hasOffer ? "Oferta vigente" : null}
           />
 
           <p
             className={`flex items-center gap-1.5 text-xs font-medium ${
-              product.availability.inStock ? 'text-price-free' : 'text-fg-error'
+              product.availability.inStock ? "text-price-free" : "text-fg-error"
             }`}
             data-testid="product-availability"
           >
             <span
               aria-hidden="true"
               className={`inline-block h-1.5 w-1.5 rounded-full ${
-                product.availability.inStock ? 'bg-price-free' : 'bg-fg-error'
+                product.availability.inStock ? "bg-price-free" : "bg-fg-error"
               }`}
             />
             {product.availability.inStock

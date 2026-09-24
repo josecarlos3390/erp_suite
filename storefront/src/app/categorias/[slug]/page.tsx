@@ -1,11 +1,11 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
-import { Breadcrumbs } from '@/components/breadcrumbs';
-import { CatalogSection } from '@/components/catalog-section';
-import { JsonLd } from '@/components/json-ld';
-import { getCityContext } from '@/lib/city';
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CatalogSection } from "@/components/catalog-section";
+import { JsonLd } from "@/components/json-ld";
+import { getCityContext } from "@/lib/city";
 import {
   SORT_LABELS,
   SORT_OPTIONS,
@@ -14,10 +14,11 @@ import {
   getBrands,
   getCatalog,
   getCategories,
+  getSellers,
   type SortOption,
-} from '@/lib/erp';
-import { breadcrumbJsonLd } from '@/lib/jsonld';
-import { readPage, readParam, type SearchParams } from '@/lib/query';
+} from "@/lib/erp";
+import { breadcrumbJsonLd } from "@/lib/jsonld";
+import { readPage, readParam, type SearchParams } from "@/lib/query";
 
 const PAGE_SIZE = 24;
 
@@ -28,14 +29,19 @@ interface CategoryPageProps {
 
 function parseSort(value: string | undefined): SortOption {
   const match = SORT_OPTIONS.find((option) => option === value);
-  return match ?? 'relevance';
+  return match ?? "relevance";
 }
 
-export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: CategoryPageProps): Promise<Metadata> {
   const categories = await getCategories();
   const node = findCategory(categories, params.slug);
   if (node === null) {
-    return { title: 'Categoria no encontrada', robots: { index: false, follow: false } };
+    return {
+      title: "Categoria no encontrada",
+      robots: { index: false, follow: false },
+    };
   }
   const title = node.name;
   const description = `${node.productCount} productos en ${node.name}, con la existencia de tu ciudad y el precio publicado por el ERP.`;
@@ -43,7 +49,7 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
     title,
     description,
     alternates: { canonical: `/categorias/${node.slug}` },
-    openGraph: { title, description, type: 'website' },
+    openGraph: { title, description, type: "website" },
   };
 }
 
@@ -57,17 +63,19 @@ export default async function CategoryPage({
     notFound();
   }
 
-  const brand = readParam(searchParams['brand']);
-  const sort = parseSort(readParam(searchParams['sort']));
-  const page = readPage(searchParams['page']);
+  const brand = readParam(searchParams["brand"]);
+  const seller = readParam(searchParams["seller"]);
+  const sort = parseSort(readParam(searchParams["sort"]));
+  const page = readPage(searchParams["page"]);
   const { city } = await getCityContext();
 
   // El canal devuelve tambien los productos de las subcategorias cuando se pide
   // la categoria padre: la tienda solo pasa `category=slug`.
-  const [result, brands] = await Promise.all([
+  const [result, brands, sellers] = await Promise.all([
     getCatalog({
       category: node.slug,
       brand,
+      seller,
       sort,
       page,
       limit: PAGE_SIZE,
@@ -76,12 +84,14 @@ export default async function CategoryPage({
     // La faceta de marcas se acota a la categoria (y sus subcategorias): ofrecer una
     // marca que en esta categoria da 0 resultados es un filtro que solo lleva al vacio.
     getBrands(node.slug),
+    // La de **vendedores** (F6) sigue la misma regla: solo los que venden aqui.
+    getSellers(node.slug),
   ]);
 
   const path = findCategoryPath(categories, node.slug);
   const crumbs = [
-    { label: 'Inicio', href: '/' },
-    { label: 'Categorias', href: '/categorias' },
+    { label: "Inicio", href: "/" },
+    { label: "Categorias", href: "/categorias" },
     ...path.map((item, index) => ({
       label: item.name,
       href: index === path.length - 1 ? undefined : `/categorias/${item.slug}`,
@@ -90,7 +100,7 @@ export default async function CategoryPage({
 
   const activeFilters: string[] = [];
   if (brand !== undefined) activeFilters.push(`marca ${brand}`);
-  if (sort !== 'relevance') activeFilters.push(`orden ${SORT_LABELS[sort]}`);
+  if (sort !== "relevance") activeFilters.push(`orden ${SORT_LABELS[sort]}`);
 
   return (
     <div className="flex flex-col gap-6">
@@ -102,16 +112,23 @@ export default async function CategoryPage({
           {node.name}
         </h1>
         <p className="text-sm text-fg-secondary">
-          {result.total} productos{node.children.length > 0 ? ' (incluye subcategorias)' : ''} ·
+          {result.total} productos
+          {node.children.length > 0 ? " (incluye subcategorias)" : ""} ·
           existencia en {city.name}
-          {activeFilters.length > 0 ? ` · filtros: ${activeFilters.join(', ')}` : ''}
+          {activeFilters.length > 0
+            ? ` · filtros: ${activeFilters.join(", ")}`
+            : ""}
         </p>
       </header>
 
       {node.children.length > 0 ? (
         <nav aria-label="Subcategorias" className="flex flex-wrap gap-2">
           {node.children.map((child) => (
-            <Link key={child.slug} href={`/categorias/${child.slug}`} className="sf-chip">
+            <Link
+              key={child.slug}
+              href={`/categorias/${child.slug}`}
+              className="sf-chip"
+            >
               {child.name} ({child.productCount})
             </Link>
           ))}
@@ -122,7 +139,9 @@ export default async function CategoryPage({
         action={`/categorias/${node.slug}`}
         hidden={{}}
         brands={brands}
+        sellers={sellers}
         brand={brand}
+        seller={seller}
         sort={sort}
         page={page}
         result={result}

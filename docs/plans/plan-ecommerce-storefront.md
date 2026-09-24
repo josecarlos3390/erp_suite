@@ -873,6 +873,33 @@ pedido la lleva congelada por línea) y la ventana de 60 s de la caché de la ti
 ritmo de publicación; **F8.3** (pantalla **Ventas → Tienda online → Promociones del canal**)
 se entrega con la API ya cerrada.
 
+### §16 F6 — fase 2 del prompt: decisiones del usuario, orden y estado (2026-09-24, T223)
+
+**Decisiones del usuario (todas confirmadas el 2026-09-24)**, en el orden acordado:
+
+| # | Pieza | Decisión | Estado |
+|---|---|---|---|
+| 1 | **Vendedores** («Vendido por …») | Mostrarlo en **ficha y catálogo** + **filtro por vendedor** + **`GET /sellers`** en el ERP (sin pantalla de administración: el marketplace del plan es ligero, sin comisiones ni liquidación) | **ENTREGADO (T223)** |
+| 2 | **Comparador** | Productos lado a lado con lo que el canal ya publica (precio, existencia, marca, garantía y las características compartidas) | pendiente |
+| 3 | **Wishlist** | **Local del dispositivo** ahora (como el carrito) y se migra a la cuenta cuando exista F4 | pendiente |
+| 4 | **Reseñas** | Solo **compradores con un pedido ENTREGADO** (verificado por su correo) y **moderación** en el back office | pendiente |
+| 5 | **Garantía extendida e instalación** | Como **artículos de servicio publicados** en el canal, que el comprador agrega al carrito desde la ficha (reutiliza lo medido en T220/T221: los servicios se facturan y no se entregan) | pendiente |
+| 6 | **Servicio técnico** | Reutilizar **`Seller`** como partner de servicio (con ciudad y especialidad), sin maestro nuevo | pendiente |
+
+**Tramo 1 entregado (T223)**: el `Seller` del ERP —que existía desde F1 con datos en la semilla y
+**0 referencias** en `src`— viaja al catálogo y a la ficha (`seller`, `sellerCode`,
+`sellerLogoUrl`), el catálogo filtra por su **código** y la faceta `GET /storefront/sellers`
+publica solo los vendedores **con catálogo publicado** (misma regla que la faceta de marcas); el
+back office estrena `GET /sellers` (`sellers:view`) con `publishedItems` contado **filtrado**.
+Medido en vivo sobre el seed: **5 vendedores** (22/21/22/22/21 = 108 publicados) y
+`?seller=CASAELECTRO` → 22. Gates: canal E2E **45/45**, suites tocadas **111/111**, tienda
+**32/32** y **visual 15/15**, backend **199 suites / 2485 tests**.
+
+**Dos defectos medidos y cerrados en el camino**: `getCatalog` de la tienda **no reenviaba** el
+`seller` (el filtro se pintaba y no llegaba al canal) y la ficha **reventaba con 500** si la
+respuesta del canal no traía la clave (caché de una versión anterior) — la comprobación pasó a
+`typeof === 'string'`.
+
 ## §15 F7 y F4 — estado medido y decisiones pendientes (2026-09-24, T217)
 
 Los dos tramos que quedan del orden acordado **necesitan decisiones de producto**, así que

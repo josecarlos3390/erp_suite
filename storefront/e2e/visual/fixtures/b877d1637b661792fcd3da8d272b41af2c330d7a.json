@@ -1,0 +1,6 @@
+{
+  "key": "GET /storefront/sellers",
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "body": "[{\"code\":\"CASAELECTRO\",\"name\":\"CasaElectro\",\"logoUrl\":null,\"productCount\":22},{\"code\":\"FOTOCENTER\",\"name\":\"FotoCenter\",\"logoUrl\":null,\"productCount\":21},{\"code\":\"MUNDOCEL\",\"name\":\"MundoCel\",\"logoUrl\":null,\"productCount\":22},{\"code\":\"TECNOSTORE\",\"name\":\"TecnoStore\",\"logoUrl\":null,\"productCount\":22},{\"code\":\"TIENDA\",\"name\":\"Tienda Oficial\",\"logoUrl\":null,\"productCount\":21}]"
+}

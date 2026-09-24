@@ -6,8 +6,11 @@
  * no responde, la prueba falla con un mensaje claro en vez de saltarse.
  */
 
-const ERP_API_URL = (process.env.ERP_API_URL ?? 'http://localhost:3001').replace(/\/+$/, '');
-const STOREFRONT_API_KEY = process.env.STOREFRONT_API_KEY ?? 'tienda-dev-key-cambiar';
+const ERP_API_URL = (
+  process.env.ERP_API_URL ?? "http://localhost:3001"
+).replace(/\/+$/, "");
+const STOREFRONT_API_KEY =
+  process.env.STOREFRONT_API_KEY ?? "tienda-dev-key-cambiar";
 
 export const MAX_PAGE_SIZE = 48;
 export const CATEGORY_PAGE_SIZE = 24;
@@ -19,6 +22,10 @@ export interface ApiProduct {
   sku: string;
   brand: string | null;
   brandCode: string | null;
+  /** Vendedor de la publicacion (F6): «Vendido por …» y el codigo con el que se filtra. */
+  seller: string | null;
+  sellerCode: string | null;
+  sellerLogoUrl: string | null;
   /** Precio efectivo de la tienda: el del ERP con la **promo del canal** ya aplicada. */
   price: number;
   /** Precio del ERP (oferta incluida) **antes** de la promo del canal (F8.2). */
@@ -32,7 +39,11 @@ export interface ApiProduct {
   currency: string;
   image: string | null;
   images: string[];
-  availability: { warehouseId: number | null; available: number; inStock: boolean };
+  availability: {
+    warehouseId: number | null;
+    available: number;
+    inStock: boolean;
+  };
   category: { id: number; slug: string; name: string } | null;
   specs: { name: string; value: string; groupName: string | null }[];
 }
@@ -65,7 +76,12 @@ export interface ApiCity {
 
 /** Cotizacion del canal (`POST /storefront/quote`), con su desglose fiscal (T197). */
 export interface ApiQuote {
-  city: { code: string; name: string; deliveryDays: number; freeShippingFrom: number | null };
+  city: {
+    code: string;
+    name: string;
+    deliveryDays: number;
+    freeShippingFrom: number | null;
+  };
   currency: string;
   items: Array<{
     itemId: number;
@@ -196,20 +212,26 @@ export interface ApiOrderCustomer {
 export interface ApiOrderInput {
   idempotencyKey: string;
   cityCode: string;
-  deliveryType?: 'HOME' | 'STORE';
-  paymentMethod?: 'TRANSFER' | 'QR' | 'CASH_ON_DELIVERY' | 'STORE_PICKUP';
+  deliveryType?: "HOME" | "STORE";
+  paymentMethod?: "TRANSFER" | "QR" | "CASH_ON_DELIVERY" | "STORE_PICKUP";
   items: Array<{ itemId: number; quantity: number }>;
   customer?: ApiOrderCustomer;
   notes?: string;
 }
 
-async function apiGet<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
+async function apiGet<T>(
+  path: string,
+  params: Record<string, string | number> = {},
+): Promise<T> {
   const url = new URL(`${ERP_API_URL}${path}`);
   for (const [name, value] of Object.entries(params)) {
     url.searchParams.set(name, String(value));
   }
   const response = await fetch(url, {
-    headers: { accept: 'application/json', 'x-storefront-key': STOREFRONT_API_KEY },
+    headers: {
+      accept: "application/json",
+      "x-storefront-key": STOREFRONT_API_KEY,
+    },
     signal: AbortSignal.timeout(15_000),
   });
   if (!response.ok) {
@@ -224,11 +246,11 @@ async function apiGet<T>(path: string, params: Record<string, string | number> =
 /** POST directo al canal (las pruebas son un consumidor mas del contrato). */
 async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${ERP_API_URL}${path}`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
-      'x-storefront-key': STOREFRONT_API_KEY,
+      accept: "application/json",
+      "content-type": "application/json",
+      "x-storefront-key": STOREFRONT_API_KEY,
     },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(15_000),
@@ -240,10 +262,11 @@ async function apiPost<T>(path: string, body: unknown): Promise<T> {
     let message = `El canal del ERP respondio ${response.status} en ${path}.`;
     try {
       const parsed: unknown = JSON.parse(raw);
-      if (typeof parsed === 'object' && parsed !== null) {
-        const value = (parsed as Record<string, unknown>)['message'];
-        if (typeof value === 'string' && value.trim() !== '') message = value;
-        else if (Array.isArray(value) && value.length > 0) message = value.join('; ');
+      if (typeof parsed === "object" && parsed !== null) {
+        const value = (parsed as Record<string, unknown>)["message"];
+        if (typeof value === "string" && value.trim() !== "") message = value;
+        else if (Array.isArray(value) && value.length > 0)
+          message = value.join("; ");
       }
     } catch {
       // Sin cuerpo JSON: se queda el mensaje por estado.
@@ -256,19 +279,25 @@ async function apiPost<T>(path: string, body: unknown): Promise<T> {
 export async function getCatalog(
   params: Record<string, string | number> = {},
 ): Promise<ApiCatalogPage> {
-  return apiGet<ApiCatalogPage>('/storefront/catalog', params);
+  return apiGet<ApiCatalogPage>("/storefront/catalog", params);
 }
 
 export async function getCategories(): Promise<ApiCategory[]> {
-  return apiGet<ApiCategory[]>('/storefront/categories');
+  return apiGet<ApiCategory[]>("/storefront/categories");
 }
 
 export async function getCities(): Promise<ApiCity[]> {
-  return apiGet<ApiCity[]>('/storefront/cities');
+  return apiGet<ApiCity[]>("/storefront/cities");
 }
 
-export async function getProduct(slug: string, city: string): Promise<ApiProduct> {
-  return apiGet<ApiProduct>(`/storefront/products/${encodeURIComponent(slug)}`, { city });
+export async function getProduct(
+  slug: string,
+  city: string,
+): Promise<ApiProduct> {
+  return apiGet<ApiProduct>(
+    `/storefront/products/${encodeURIComponent(slug)}`,
+    { city },
+  );
 }
 
 /** Catalogo completo (el canal tope la pagina en 48). */
@@ -300,7 +329,8 @@ export async function findZeroStockProduct(
   defaultCity: string,
 ): Promise<ZeroStockCase> {
   const [products, cities] = await Promise.all([getAllProducts(), getCities()]);
-  const emptyCityName = cities.find((city) => city.code === emptyCity)?.name ?? emptyCity;
+  const emptyCityName =
+    cities.find((city) => city.code === emptyCity)?.name ?? emptyCity;
 
   for (const product of products) {
     const detail = await getProduct(product.slug, emptyCity);
@@ -327,33 +357,41 @@ export async function quote(
   cityCode: string,
   items: Array<{ itemId: number; quantity: number }>,
 ): Promise<ApiQuote> {
-  return apiPost<ApiQuote>('/storefront/quote', { cityCode, items });
+  return apiPost<ApiQuote>("/storefront/quote", { cityCode, items });
 }
 
 /** `POST /storefront/orders` — crea el pedido (idempotente por clave). */
 export async function placeOrder(input: ApiOrderInput): Promise<ApiOrder> {
-  return apiPost<ApiOrder>('/storefront/orders', {
+  return apiPost<ApiOrder>("/storefront/orders", {
     idempotencyKey: input.idempotencyKey,
     cityCode: input.cityCode,
-    deliveryType: input.deliveryType ?? 'HOME',
-    paymentMethod: input.paymentMethod ?? 'TRANSFER',
+    deliveryType: input.deliveryType ?? "HOME",
+    paymentMethod: input.paymentMethod ?? "TRANSFER",
     items: input.items,
     customer: input.customer ?? {},
   });
 }
 
 /** `GET /storefront/tracking` — `null` cuando el canal responde 404. */
-export async function trackOrder(order: string, email?: string): Promise<ApiOrder | null> {
+export async function trackOrder(
+  order: string,
+  email?: string,
+): Promise<ApiOrder | null> {
   const url = new URL(`${ERP_API_URL}/storefront/tracking`);
-  url.searchParams.set('order', order);
-  if (email !== undefined) url.searchParams.set('email', email);
+  url.searchParams.set("order", order);
+  if (email !== undefined) url.searchParams.set("email", email);
   const response = await fetch(url, {
-    headers: { accept: 'application/json', 'x-storefront-key': STOREFRONT_API_KEY },
+    headers: {
+      accept: "application/json",
+      "x-storefront-key": STOREFRONT_API_KEY,
+    },
     signal: AbortSignal.timeout(15_000),
   });
   if (response.status === 404) return null;
   if (!response.ok) {
-    throw new Error(`El canal del ERP respondio ${response.status} en /storefront/tracking.`);
+    throw new Error(
+      `El canal del ERP respondio ${response.status} en /storefront/tracking.`,
+    );
   }
   return (await response.json()) as ApiOrder;
 }
@@ -372,10 +410,12 @@ export interface ShippableCase {
  * debajo del umbral de envio gratis, de modo que la cotizacion cobre el flete y
  * la prueba pueda comparar subtotal **y** envio contra el ERP.
  */
-export async function findShippableProduct(cityCode: string): Promise<ShippableCase> {
+export async function findShippableProduct(
+  cityCode: string,
+): Promise<ShippableCase> {
   const [cities, page] = await Promise.all([
     getCities(),
-    getCatalog({ city: cityCode, sort: 'price_asc', limit: MAX_PAGE_SIZE }),
+    getCatalog({ city: cityCode, sort: "price_asc", limit: MAX_PAGE_SIZE }),
   ]);
   const city = cities.find((item) => item.code === cityCode);
   if (city === undefined) {
@@ -429,23 +469,31 @@ export interface DiscountedCase {
  * que es el mismo endpoint que usa el checkout. Si el ERP no tiene ningun descuento
  * configurado, la prueba falla con un mensaje claro en vez de saltarse.
  */
-export async function findDiscountedProduct(cityCode: string): Promise<DiscountedCase> {
+export async function findDiscountedProduct(
+  cityCode: string,
+): Promise<DiscountedCase> {
   const [pages, cities] = await Promise.all([
     Promise.all(
       [1, 2, 3].map((page) =>
-        getCatalog({ city: cityCode, limit: MAX_PAGE_SIZE, page, sort: 'price_asc' }),
+        getCatalog({
+          city: cityCode,
+          limit: MAX_PAGE_SIZE,
+          page,
+          sort: "price_asc",
+        }),
       ),
     ),
     getCities(),
   ]);
-  const cityName = cities.find((city) => city.code === cityCode)?.name ?? cityCode;
+  const cityName =
+    cities.find((city) => city.code === cityCode)?.name ?? cityCode;
 
   for (const page of pages) {
     for (const product of page.data) {
       if (!product.availability.inStock) continue;
-      const result = await quote(cityCode, [{ itemId: product.itemId, quantity: 1 }]).catch(
-        () => null,
-      );
+      const result = await quote(cityCode, [
+        { itemId: product.itemId, quantity: 1 },
+      ]).catch(() => null);
       const line = result?.items[0];
       if (result === null || line === undefined || line.discount <= 0) continue;
       return {
@@ -466,7 +514,7 @@ export async function findDiscountedProduct(cityCode: string): Promise<Discounte
 
   throw new Error(
     `El ERP no tiene ningun descuento automatico configurado para el catalogo de ${cityCode}: ` +
-      'la prueba necesita uno para medir que la tienda cotiza y cobra lo mismo.',
+      "la prueba necesita uno para medir que la tienda cotiza y cobra lo mismo.",
   );
 }
 
@@ -502,21 +550,28 @@ export async function findOfferProduct(cityCode: string): Promise<OfferCase> {
   const [pages, cities] = await Promise.all([
     Promise.all(
       [1, 2, 3].map((page) =>
-        getCatalog({ city: cityCode, limit: MAX_PAGE_SIZE, page, sort: 'price_asc' }),
+        getCatalog({
+          city: cityCode,
+          limit: MAX_PAGE_SIZE,
+          page,
+          sort: "price_asc",
+        }),
       ),
     ),
     getCities(),
   ]);
-  const cityName = cities.find((city) => city.code === cityCode)?.name ?? cityCode;
+  const cityName =
+    cities.find((city) => city.code === cityCode)?.name ?? cityCode;
 
   for (const page of pages) {
     for (const product of page.data) {
       if (!product.availability.inStock) continue;
-      const result = await quote(cityCode, [{ itemId: product.itemId, quantity: 1 }]).catch(
-        () => null,
-      );
+      const result = await quote(cityCode, [
+        { itemId: product.itemId, quantity: 1 },
+      ]).catch(() => null);
       const line = result?.items[0];
-      if (result === null || line === undefined || line.offerDiscount <= 0) continue;
+      if (result === null || line === undefined || line.offerDiscount <= 0)
+        continue;
       return {
         slug: product.slug,
         name: product.name,
@@ -540,7 +595,7 @@ export async function findOfferProduct(cityCode: string): Promise<OfferCase> {
 
   throw new Error(
     `El ERP no tiene ningun articulo con oferta de catalogo vigente en ${cityCode}: ` +
-      'la prueba necesita uno para medir como la tienda explica la oferta.',
+      "la prueba necesita uno para medir como la tienda explica la oferta.",
   );
 }
 
@@ -573,13 +628,20 @@ export async function findUnquotableProduct(
   const [pages, cities] = await Promise.all([
     Promise.all(
       [1, 2, 3].map((page) =>
-        getCatalog({ city: emptyCity, limit: MAX_PAGE_SIZE, page, sort: 'price_asc' }),
+        getCatalog({
+          city: emptyCity,
+          limit: MAX_PAGE_SIZE,
+          page,
+          sort: "price_asc",
+        }),
       ),
     ),
     getCities(),
   ]);
-  const emptyCityName = cities.find((city) => city.code === emptyCity)?.name ?? emptyCity;
-  const sellableCityName = cities.find((city) => city.code === sellableCity)?.name ?? sellableCity;
+  const emptyCityName =
+    cities.find((city) => city.code === emptyCity)?.name ?? emptyCity;
+  const sellableCityName =
+    cities.find((city) => city.code === sellableCity)?.name ?? sellableCity;
 
   for (const page of pages) {
     for (const product of page.data) {
@@ -592,9 +654,9 @@ export async function findUnquotableProduct(
       } catch (error) {
         errorMessage = error instanceof Error ? error.message : String(error);
       }
-      const sellable = await quote(sellableCity, [{ itemId: product.itemId, quantity: 1 }]).catch(
-        () => null,
-      );
+      const sellable = await quote(sellableCity, [
+        { itemId: product.itemId, quantity: 1 },
+      ]).catch(() => null);
       if (sellable === null) continue;
       return {
         slug: product.slug,
@@ -643,16 +705,16 @@ export interface ApiWebPromotion {
   channelPrice: number;
 }
 
-const ERP_ADMIN_USER = process.env.ERP_ADMIN_USER ?? 'admin';
-const ERP_ADMIN_PASSWORD = process.env.ERP_ADMIN_PASSWORD ?? 'admin123';
+const ERP_ADMIN_USER = process.env.ERP_ADMIN_USER ?? "admin";
+const ERP_ADMIN_PASSWORD = process.env.ERP_ADMIN_PASSWORD ?? "admin123";
 /** El login del ERP identifica la **empresa** por su slug (el JWT acuña el `tenantId`). */
-const ERP_ADMIN_TENANT = process.env.ERP_ADMIN_TENANT ?? 'default';
+const ERP_ADMIN_TENANT = process.env.ERP_ADMIN_TENANT ?? "default";
 
 /** Login del back office: devuelve el JWT para llamar a los endpoints autenticados. */
 export async function erpAdminLogin(): Promise<string> {
   const response = await fetch(`${ERP_API_URL}/auth/login`, {
-    method: 'POST',
-    headers: { accept: 'application/json', 'content-type': 'application/json' },
+    method: "POST",
+    headers: { accept: "application/json", "content-type": "application/json" },
     body: JSON.stringify({
       tenantSlug: ERP_ADMIN_TENANT,
       username: ERP_ADMIN_USER,
@@ -669,17 +731,21 @@ export async function erpAdminLogin(): Promise<string> {
   }
   const body = (await response.json()) as { access_token?: string };
   if (!body.access_token) {
-    throw new Error('El login del ERP no devolvio access_token.');
+    throw new Error("El login del ERP no devolvio access_token.");
   }
   return body.access_token;
 }
 
-async function adminPatch<T>(token: string, path: string, body: unknown): Promise<T> {
+async function adminPatch<T>(
+  token: string,
+  path: string,
+  body: unknown,
+): Promise<T> {
   const response = await fetch(`${ERP_API_URL}${path}`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
+      accept: "application/json",
+      "content-type": "application/json",
       authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(body),

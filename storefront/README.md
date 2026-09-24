@@ -41,13 +41,13 @@ tienda cargado.
 
 ## Variables de entorno
 
-| Variable | Obligatoria | Para que |
-|---|---|---|
-| `ERP_API_URL` | si (default `http://localhost:3001`) | URL base del ERP. El canal vive en `/storefront/...`, **sin** prefijo `/api`. |
-| `STOREFRONT_API_KEY` | **si** | Clave del canal (`x-storefront-key`). **Solo servidor.** |
-| `STOREFRONT_CITY` | si (default `SCZ`) | Ciudad por defecto cuando el cliente todavia no eligio. |
-| `ERP_TIMEOUT_MS` | no (default `8000`) | Tope de cada peticion al ERP. |
-| `NEXT_PUBLIC_SITE_URL` | no (default `http://localhost:3000`) | Canonicos, Open Graph, sitemap y JSON-LD. |
+| Variable               | Obligatoria                          | Para que                                                                      |
+| ---------------------- | ------------------------------------ | ----------------------------------------------------------------------------- |
+| `ERP_API_URL`          | si (default `http://localhost:3001`) | URL base del ERP. El canal vive en `/storefront/...`, **sin** prefijo `/api`. |
+| `STOREFRONT_API_KEY`   | **si**                               | Clave del canal (`x-storefront-key`). **Solo servidor.**                      |
+| `STOREFRONT_CITY`      | si (default `SCZ`)                   | Ciudad por defecto cuando el cliente todavia no eligio.                       |
+| `ERP_TIMEOUT_MS`       | no (default `8000`)                  | Tope de cada peticion al ERP.                                                 |
+| `NEXT_PUBLIC_SITE_URL` | no (default `http://localhost:3000`) | Canonicos, Open Graph, sitemap y JSON-LD.                                     |
 
 ### Regla «server-only» (decision D10)
 
@@ -60,23 +60,23 @@ pagina del carrito, galeria, boton de compra, navegacion de categorias (para mar
 
 ## Comandos
 
-| Comando | Que hace |
-|---|---|
-| `npm run dev` | servidor de desarrollo en `:3000` |
-| `npm run build` | build de produccion |
-| `npm start` | sirve el build en `:3000` |
-| `npm run lint` | ESLint (`next/core-web-vitals`, `--max-warnings=0`) |
-| `npm run typecheck` | `tsc --noEmit` (strict) |
-| `npm run sync:tokens` | compila los tokens del ERP a `src/styles/tokens.css` |
-| `npm run sync:tokens:check` | gate: falla si `tokens.css` esta desincronizado |
-| `npm run sync:fonts` | copia los `.woff2` de Inter del ERP a `public/fonts` |
-| `npm run sync:fonts:check` | gate: falla si falta una fuente o difiere de la del ERP |
-| `npm run e2e` | Playwright sobre `next start` en `:3100` contra la API real (27 casos) |
-| `npm run e2e:visual` | gate visual (F9.6): 15 capturas contra el **fixture grabado** del canal, `next start` en `:3200` |
+| Comando                     | Que hace                                                                                                  |
+| --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `npm run dev`               | servidor de desarrollo en `:3000`                                                                         |
+| `npm run build`             | build de produccion                                                                                       |
+| `npm start`                 | sirve el build en `:3000`                                                                                 |
+| `npm run lint`              | ESLint (`next/core-web-vitals`, `--max-warnings=0`)                                                       |
+| `npm run typecheck`         | `tsc --noEmit` (strict)                                                                                   |
+| `npm run sync:tokens`       | compila los tokens del ERP a `src/styles/tokens.css`                                                      |
+| `npm run sync:tokens:check` | gate: falla si `tokens.css` esta desincronizado                                                           |
+| `npm run sync:fonts`        | copia los `.woff2` de Inter del ERP a `public/fonts`                                                      |
+| `npm run sync:fonts:check`  | gate: falla si falta una fuente o difiere de la del ERP                                                   |
+| `npm run e2e`               | Playwright sobre `next start` en `:3100` contra la API real (27 casos)                                    |
+| `npm run e2e:visual`        | gate visual (F9.6): 15 capturas contra el **fixture grabado** del canal, `next start` en `:3200`          |
 | `npm run e2e:visual:update` | regenera las capturas; con `STORE_VISUAL_RECORD=1` **vuelve a grabar** el fixture (API del ERP en marcha) |
-| `npm run e2e:a11y` | `axe-core` (WCAG 2.0/2.1 A y AA + best-practice) sobre 17 pantallas, claro y oscuro |
-| `npm run e2e:perf` | presupuesto de LCP, CLS y peso del arranque (ratchet con los numeros medidos) |
-| `npm run audit:contrast` | contraste WCAG de los 34 pares de la paleta, **incluidos los degradados** que `axe` no mide |
+| `npm run e2e:a11y`          | `axe-core` (WCAG 2.0/2.1 A y AA + best-practice) sobre 17 pantallas, claro y oscuro                       |
+| `npm run e2e:perf`          | presupuesto de LCP, CLS y peso del arranque (ratchet con los numeros medidos)                             |
+| `npm run audit:contrast`    | contraste WCAG de los 34 pares de la paleta, **incluidos los degradados** que `axe` no mide               |
 
 > **Antes de `npm run build` o `npm run e2e`, parar el servidor de desarrollo**:
 > los dos escriben `.next` y el `next dev` en marcha se queda con un bundle roto
@@ -95,13 +95,13 @@ separen. Los componentes no usan colores hexadecimales: usan las variables
 
 La tienda tiene **su propia capa de marca** encima de los tokens del ERP:
 
-| Capa | Archivo | Que aporta |
-|---|---|---|
-| Tokens del ERP (artefacto) | `src/styles/tokens.css` | neutros, espaciado, sombras base, `[data-theme=dark]`, duraciones y easings |
-| Tipografia self-hosted | `src/styles/fonts.css` + `public/fonts/*.woff2` | Inter 400/500/600/700 (latin y latin-ext) copiada del ERP por `sync:fonts` |
-| Marca de la tienda | `src/styles/brand.css` | `--sf-*`: color de accion, promocion, descuento, precio, superficies de imagen, formas y elevacion; escala de titulos |
-| Componentes | `src/app/globals.css` (`@layer components`) | `.sf-btn*`, `.sf-badge*`, `.sf-chip`, `.sf-card*`, `.sf-panel`, `.sf-field`, `.sf-media`, `.sf-h1/h2/h3`, `.sf-price*`, `.sf-skeleton`, `.sf-scroll-x` |
-| Mapa a utilidades | `tailwind.config.ts` | `primary`/`fg.accent` apuntan a `--sf-brand-*`; `font-sans`/`font-display` a `--sf-font-*`; sombras `card`/`cta`/`header` |
+| Capa                       | Archivo                                         | Que aporta                                                                                                                                             |
+| -------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Tokens del ERP (artefacto) | `src/styles/tokens.css`                         | neutros, espaciado, sombras base, `[data-theme=dark]`, duraciones y easings                                                                            |
+| Tipografia self-hosted     | `src/styles/fonts.css` + `public/fonts/*.woff2` | Inter 400/500/600/700 (latin y latin-ext) copiada del ERP por `sync:fonts`                                                                             |
+| Marca de la tienda         | `src/styles/brand.css`                          | `--sf-*`: color de accion, promocion, descuento, precio, superficies de imagen, formas y elevacion; escala de titulos                                  |
+| Componentes                | `src/app/globals.css` (`@layer components`)     | `.sf-btn*`, `.sf-badge*`, `.sf-chip`, `.sf-card*`, `.sf-panel`, `.sf-field`, `.sf-media`, `.sf-h1/h2/h3`, `.sf-price*`, `.sf-skeleton`, `.sf-scroll-x` |
+| Mapa a utilidades          | `tailwind.config.ts`                            | `primary`/`fg.accent` apuntan a `--sf-brand-*`; `font-sans`/`font-display` a `--sf-font-*`; sombras `card`/`cta`/`header`                              |
 
 Reglas de la capa visual:
 
@@ -150,7 +150,7 @@ Los cuatro gates nuevos **no** miden contra el seed: el gate funcional es el uni
 2. **Accesibilidad** (`e2e:a11y`). `axe-core` sobre el DOM pintado; falla por cualquier violacion
    `serious`/`critical` e imprime color de texto, color de fondo y relacion de cada nodo.
    **Limite medido**: `axe` no puede calcular el contraste de un texto sobre un degradado y lo deja
-   como *incomplete* (67 nodos en la home), asi que esos pares los cubre el gate siguiente.
+   como _incomplete_ (67 nodos en la home), asi que esos pares los cubre el gate siguiente.
 3. **Contraste de la paleta** (`audit:contrast`). Resuelve `tokens.css` + `brand.css` con la cascada
    real (`:root` → marca → bloques del tema oscuro) y comprueba 34 pares con la formula WCAG,
    **parada por parada** de cada degradado, con los minimos de AA (4,5:1 texto, 3:1 texto grande e
@@ -185,6 +185,15 @@ La confirmacion y el seguimiento publican la modalidad elegida y, si existe, el 
 factura de reserva (`order-invoicing-mode`). El cobro sigue siendo **offline** (transferencia, QR o
 contra entrega): no hay PSP, por decision del usuario.
 
+### Vendedores (F6)
+
+Cada publicacion tiene un **vendedor** (`Seller` del ERP) y la tienda lo dice: la ficha muestra
+«Vendido por …» con su monograma (`product-seller`), cada tarjeta lleva su linea (`seller-line`) y
+el panel de filtros ofrece **Vendido por** (`filtro-vendedor`), alimentado por la faceta del canal
+`GET /storefront/sellers` —solo los vendedores **con catalogo publicado**, acotada a la categoria
+cuando se esta dentro de una—. El filtro del listado es `?seller=<codigo>`: se filtra por el
+**codigo** del maestro, no por el nombre. El `Seller.logoUrl` se publica pero no se pinta: la
+semilla no trae logos.
 
 **Declarado (cache)**: el catalogo y la ficha del canal se cachean **60 s** (`src/lib/erp.ts`:
 `catalog: 60`, `product: 60`), asi que **una promo recien configurada tarda esa ventana en verse**
@@ -196,4 +205,3 @@ Siguen **declarados**: el correo transaccional (D16, el backend no tiene proveed
 retiro en tienda (fase 2), el CORS por dominio y la cache HTTP del canal, la serie propia del canal
 (F7, con la factura), la rotulacion de la promo en la bandeja de pedidos del back office y la
 pantalla de promociones del canal (F8.3).
-
