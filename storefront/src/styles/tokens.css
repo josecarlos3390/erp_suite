@@ -191,6 +191,7 @@
   --text-warning: var(--warning-800);
   --text-purple: var(--purple-600);
   --text-error: var(--error-700);
+  --text-info: var(--info-700);
   --text-disabled: var(--neutral-400);
   --border-default: var(--neutral-200);
   --border-subtle: var(--neutral-100);
@@ -219,7 +220,8 @@
   --text-success: var(--success-500);
   --text-warning: var(--warning-500);
   --text-error: var(--error-500);
-  --text-purple: var(--purple-400);
+  --text-info: var(--info-500);
+  --text-purple: var(--purple-600);
   --text-disabled: var(--neutral-400);
   --border-default: var(--neutral-200);
   --border-subtle: var(--neutral-100);

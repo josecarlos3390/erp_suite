@@ -58,16 +58,18 @@ Corregido a `var(--text-error)` (el token semántico, `--error-700`, que la prop
 **Medido después**: `e2e:a11y-audit` **10/10** (8 pantallas + menú abierto) con 2 avisos `moderate`
 declarados (`heading-order` en el Balance General y `region` en el menú abierto).
 
-## §3 Deuda medida (decisión pendiente del usuario)
+## §3 Deuda medida (estado tras T211)
 
-| Deuda | Medición | Arreglo propuesto |
+**Cerrado en T211** (con gate propio): los **74 usos de primitivas como texto** (migrados a los tokens
+semánticos con script + `migrate:state-text:check` en CI; se añadió el `--text-info` que faltaba), el
+**punto de estado** de `luna-badge` (3,29/3,19:1) y **`--text-purple` en oscuro** (6,5–7,5:1).
+
+| Deuda pendiente | Medición | Arreglo propuesto |
 |---|---|---|
-| Punto de estado de `luna-badge` (`--success-500`/`--warning-500` sobre su superficie suave) | **2,16:1** y **2,07:1** (mínimo de interfaz 3:1) | punto más oscuro (tono 600/700) **o** declararlo decorativo: siempre acompaña a la etiqueta |
-| Relleno con texto inverso (`--text-inverse` sobre `--success-600`/`--warning-600`) | **3,30:1** y **3,19:1** | ningún botón LUNA tiene variante de éxito/aviso: el relleno lo pinta algún componente suelto (`.btn-warning` de `document-action-bar`) |
-| `--text-purple` en oscuro | **3,20–3,67:1** | no está en la auditoría de `_02-semantic.scss`; subir a `purple-300` |
-| `--text-tertiary` en oscuro | **3,56–4,08:1** (ya declarado en la fuente) | el escalón `--neutral-450` que la propia fuente propone |
+| Relleno con texto inverso (`--text-inverse` sobre `--success-600`/`--warning-600`) | **3,30:1** y **3,19:1** | ningún botón LUNA tiene variante de éxito/aviso: lo pinta algún componente suelto (`.btn-warning` de `document-action-bar`) |
+| `--text-tertiary` en oscuro | **3,56–4,08:1** (ya declarado en la fuente) | el escalón `--neutral-450` que la propia fuente propone; latente mientras no haya modo oscuro |
 | `--text-disabled` | 2,32–4,08:1 | **exento** por WCAG 1.4.3 (documentado) |
-| **116 usos de primitivas de estado** donde existe el token semántico | muestra: `kardex` pinta `--success-500` como **texto** sobre fondo claro (2,24:1) | cambiar la primitiva por el token semántico (`--text-success`, `--text-warning`, `--text-error`); es la deuda más grande y la más mecánica |
+| Usos de primitivas como **fondo o borde** | 22 fondos + bordes | **no** son deuda por defecto (interfaz: mínimo 3:1); se revisan solo donde lleven texto encima |
 
 `npm run audit:contrast:strict` es el gate que las hará fallar todas cuando se decidan los arreglos.
 
