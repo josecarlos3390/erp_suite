@@ -1,0 +1,6 @@
+{
+  "key": "GET /storefront/cities",
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "body": "[{\"code\":\"SCZ\",\"name\":\"Santa Cruz de la Sierra\",\"deliveryDays\":1,\"shippingCost\":20,\"freeShippingFrom\":800,\"warehouse\":{\"id\":1,\"code\":\"ALM-01\",\"name\":\"Almacén Principal\"},\"branch\":{\"id\":1,\"code\":\"SUC-01\",\"name\":\"Sucursal Principal\",\"address\":\"Av. Principal #100, Santa Cruz de la Sierra\"}},{\"code\":\"LPZ\",\"name\":\"La Paz\",\"deliveryDays\":3,\"shippingCost\":35,\"freeShippingFrom\":1200,\"warehouse\":{\"id\":5,\"code\":\"ALM-LPZ\",\"name\":\"Almacén La Paz\"},\"branch\":{\"id\":3,\"code\":\"SUC-LPZ\",\"name\":\"Sucursal La Paz\",\"address\":\"Av. Arce #2500, La Paz\"}}]"
+}

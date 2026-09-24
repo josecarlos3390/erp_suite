@@ -1,0 +1,6 @@
+{
+  "key": "GET /storefront/brands",
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "body": "[{\"code\":\"SAMSUNG\",\"name\":\"Samsung\",\"logoUrl\":null,\"productCount\":10},{\"code\":\"LG\",\"name\":\"LG\",\"logoUrl\":null,\"productCount\":7},{\"code\":\"SONY\",\"name\":\"Sony\",\"logoUrl\":null,\"productCount\":5},{\"code\":\"HP\",\"name\":\"HP\",\"logoUrl\":null,\"productCount\":7},{\"code\":\"LENOVO\",\"name\":\"Lenovo\",\"logoUrl\":null,\"productCount\":2},{\"code\":\"XIAOMI\",\"name\":\"Xiaomi\",\"logoUrl\":null,\"productCount\":3},{\"code\":\"APPLE\",\"name\":\"Apple\",\"logoUrl\":null,\"productCount\":2},{\"code\":\"PHILIPS\",\"name\":\"Philips\",\"logoUrl\":null,\"productCount\":12},{\"code\":\"OSTER\",\"name\":\"Oster\",\"logoUrl\":null,\"productCount\":6},{\"code\":\"BOSCH\",\"name\":\"Bosch\",\"logoUrl\":null,\"productCount\":15}]"
+}

@@ -1,0 +1,6 @@
+{
+  "key": "GET /storefront/banners?slot=home-hero",
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "body": "[{\"slot\":\"home-hero\",\"title\":\"Semana de la tecnología\",\"subtitle\":\"Hasta 25% de descuento en celulares y laptops\",\"imageUrl\":\"https://picsum.photos/seed/banner-tech/1600/500\",\"href\":\"/categorias/celulares\",\"sortOrder\":1},{\"slot\":\"home-hero\",\"title\":\"Línea blanca con envío gratis\",\"subtitle\":\"Refrigeradores, lavadoras y cocinas\",\"imageUrl\":\"https://picsum.photos/seed/banner-linea/1600/500\",\"href\":\"/categorias/linea-blanca\",\"sortOrder\":2}]"
+}

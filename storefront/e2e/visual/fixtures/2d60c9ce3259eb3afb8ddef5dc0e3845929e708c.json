@@ -1,0 +1,6 @@
+{
+  "key": "GET /storefront/pages",
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "body": "[{\"slug\":\"envios-y-devoluciones\",\"title\":\"Envíos y devoluciones\"},{\"slug\":\"quienes-somos\",\"title\":\"Quiénes somos\"}]"
+}

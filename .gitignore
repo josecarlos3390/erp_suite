@@ -81,6 +81,18 @@ frontend.zip
 /backend-erp/
 /erp-frontend/
 
+# ── Tienda: artefactos versionados del gate visual y de sus scripts (F9.6) ──
+# El patrón `scripts/` de arriba apunta a los scripts sueltos de migración de la raíz;
+# los de la tienda son herramientas del proyecto y sí se versionan (mismo criterio que
+# `mcp-erp`). Ojo: los comodines `*.png` y `*.json` de arriba también alcanzaban a los
+# artefactos del gate visual —medido—, y una captura de referencia que no se versiona no
+# vigila nada (Playwright la reescribiría en cada corrida).
+!storefront/scripts/
+!storefront/e2e/visual/fixtures/
+!storefront/e2e/visual/fixtures/*.json
+!storefront/e2e/visual/store-visual.spec.ts-snapshots/
+!storefront/e2e/visual/store-visual.spec.ts-snapshots/*.png
+
 # ── MCP del ERP (paquete propio del monorepo) ──
 # El patrón `scripts/` de arriba apunta a los scripts sueltos de migración de la raíz;
 # el smoke del MCP sí se versiona porque es una herramienta del paquete.

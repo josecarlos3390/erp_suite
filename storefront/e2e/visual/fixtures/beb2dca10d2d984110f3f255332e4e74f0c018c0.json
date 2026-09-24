@@ -1,0 +1,6 @@
+{
+  "key": "GET /storefront/catalog?page=1&limit=24&brand=LG&search=iphone&sort=relevance&city=SCZ",
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "body": "{\"data\":[],\"page\":1,\"limit\":24,\"total\":0,\"totalPages\":1}"
+}

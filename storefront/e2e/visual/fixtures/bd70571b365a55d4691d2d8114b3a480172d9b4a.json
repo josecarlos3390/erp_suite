@@ -1,0 +1,6 @@
+{
+  "key": "GET /storefront/banners?slot=home-strip",
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "body": "[{\"slot\":\"home-strip\",\"title\":\"Retira en tienda\",\"subtitle\":\"Compra online y recoge en tu sucursal\",\"imageUrl\":\"https://picsum.photos/seed/banner-retiro/800/200\",\"href\":\"/sucursales\",\"sortOrder\":1}]"
+}

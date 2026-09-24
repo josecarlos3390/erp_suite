@@ -1,0 +1,6 @@
+{
+  "key": "GET /storefront/brands?category=celulares",
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "body": "[{\"code\":\"SAMSUNG\",\"name\":\"Samsung\",\"logoUrl\":null,\"productCount\":4},{\"code\":\"HP\",\"name\":\"HP\",\"logoUrl\":null,\"productCount\":2},{\"code\":\"XIAOMI\",\"name\":\"Xiaomi\",\"logoUrl\":null,\"productCount\":2},{\"code\":\"APPLE\",\"name\":\"Apple\",\"logoUrl\":null,\"productCount\":2}]"
+}

@@ -1,0 +1,6 @@
+{
+  "key": "GET /storefront/products/slug-que-no-existe?city=SCZ",
+  "status": 404,
+  "contentType": "application/json; charset=utf-8",
+  "body": "{\"message\":\"No existe el producto \\\"slug-que-no-existe\\\" en la tienda\",\"error\":\"Not Found\",\"statusCode\":404}"
+}
