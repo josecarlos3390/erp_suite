@@ -15,9 +15,18 @@ export interface QuoteLine {
   sku: string;
   name: string;
   quantity: number;
-  /** Precio unitario efectivo (oferta vigente o lista), antes del descuento de empresa. */
+  /**
+   * Precio unitario efectivo de la tienda: el del ERP (oferta vigente o lista) con la
+   * **promo del canal** ya aplicada, y antes del descuento de empresa.
+   */
   price: number;
-  /** Precio de **lista** del catalogo: mayor que `price` cuando hay oferta vigente. */
+  /** Precio unitario del ERP (oferta incluida) **antes** de la promo del canal. */
+  priceBeforeChannel: number;
+  /** % de la promo del canal ya incluida en `price` (0 si no hay). */
+  channelDiscountPct: number;
+  /** Importe de la promo del canal en la linea (0 si no hay). */
+  channelDiscount: number;
+  /** Precio de **lista** del catalogo: mayor que `priceBeforeChannel` cuando hay oferta vigente. */
   listPrice: number;
   /** % de la oferta de catalogo ya incluida en `price` (0 si no hay). */
   offerPct: number;
@@ -65,6 +74,14 @@ export interface QuoteView {
    * calcula el ERP: con varias lineas es la tasa del carrito, no la de un articulo suelto.
    */
   offerPct: number;
+  /**
+   * Promo del canal ya incluida (0 si no hay): es la capa que **solo** cobra la tienda
+   * online —el POS y los documentos del ERP no la conocen—, encima del precio del ERP y
+   * antes del descuento de la empresa.
+   */
+  channelDiscount: number;
+  /** **% efectivo** de esa promo sobre el precio del ERP (lo calcula el ERP). */
+  channelDiscountPct: number;
   /** Mercancia antes del descuento de la empresa (Σ `price × quantity`). */
   subtotal: number;
   /** Descuento de la empresa ya aplicado por el canal (0 si no hay). */
@@ -98,6 +115,10 @@ export interface OrderLine {
   listPrice: number | null;
   /** Importe de la oferta de catalogo de la linea (0 si no hubo). */
   offerDiscount: number;
+  /** % de la promo del canal con la que se vendio la linea (`null` si no hubo). */
+  channelDiscountPct: number | null;
+  /** Importe de esa promo en la linea (0 si no hubo). */
+  channelDiscount: number;
   /** Descuento de la empresa aplicado a la linea (0 si no hubo). */
   discount: number;
   lineTotal: number;
@@ -139,6 +160,10 @@ export interface OrderView {
   offerDiscount: number;
   /** **% efectivo** de esa oferta sobre el precio de lista (lo calcula el ERP). */
   offerPct: number;
+  /** Promo del canal congelada en el pedido (0 si no hubo). */
+  channelDiscount: number;
+  /** **% efectivo** de esa promo sobre el precio del ERP (lo calcula el ERP). */
+  channelDiscountPct: number;
   /** Mercancia a **precio de lista** del catalogo (Σ lineas). */
   listSubtotal: number;
   /** `true` cuando el precio ya incluia el impuesto (el documento lo extrae del precio). */

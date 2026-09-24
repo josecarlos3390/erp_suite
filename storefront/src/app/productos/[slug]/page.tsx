@@ -81,6 +81,14 @@ export default async function ProductPage({ params }: ProductPageProps): Promise
   const images = product.images.length > 0 ? product.images : product.image !== null ? [product.image] : [];
   const discount = formatDiscount(product.discountPct);
   const hasOffer = product.salePrice !== null;
+  // Promo del canal (D21): descuento **solo de la tienda**. Se rotula aparte de la oferta
+  // del ERP porque son dos capas distintas y el comprador tiene que poder ver cual aplica.
+  // Se comprueba por **numero**: un fixture grabado con el contrato anterior no trae el
+  // campo y `undefined` no puede pintar un badge.
+  const promoPct =
+    typeof product.channelDiscountPct === 'number' && product.channelDiscountPct > 0
+      ? product.channelDiscountPct
+      : null;
   const specGroups = groupSpecs(product.specs);
   const hasInstallments = product.badges.some((badge) => badge.trim().toUpperCase() === 'CUOTAS');
   const compareAt = product.listPrice > product.price ? product.listPrice : null;
@@ -134,6 +142,15 @@ export default async function ProductPage({ params }: ProductPageProps): Promise
                   {discount}
                 </Badge>
               ) : null}
+              {promoPct !== null ? (
+                <Badge
+                  variant="promo"
+                  testId="detail-channel-promo-badge"
+                  srLabel={`Promo online de ${promoPct}%`}
+                >
+                  Promo online −{promoPct}%
+                </Badge>
+              ) : null}
             </div>
             {compareAt !== null ? (
               <p className="text-xs text-fg-secondary">
@@ -142,9 +159,11 @@ export default async function ProductPage({ params }: ProductPageProps): Promise
               </p>
             ) : null}
             <p className="text-xs text-fg-secondary" data-testid="price-kind">
-              {hasOffer
-                ? 'Oferta vigente: el ERP ya aplica el descuento sobre el precio publicado.'
-                : 'Precio de lista publicado por el ERP.'}
+              {promoPct !== null
+                ? 'Promo online: descuento exclusivo de la tienda, encima del precio del ERP.'
+                : hasOffer
+                  ? 'Oferta vigente: el ERP ya aplica el descuento sobre el precio publicado.'
+                  : 'Precio de lista publicado por el ERP.'}
             </p>
             <p className="text-2xs text-fg-tertiary">
               El importe final (impuestos, envio y descuentos) lo confirma el ERP al crear el pedido.

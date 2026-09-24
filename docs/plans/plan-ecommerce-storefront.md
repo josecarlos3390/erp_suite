@@ -831,6 +831,48 @@ precio ya promocionado, como en T197—; la oferta de catálogo y la promo del c
 (D12) y el orden de las capas queda publicado en el desglose para que el comprador pueda
 explicárselo.
 
+### §13.e Estado de F8.2 — la promo exclusiva del canal (medido el 2026-09-24, T215)
+
+**Entregado (backend + tienda)**: el descuento que **solo** cobra la tienda vive en la
+**publicación web** —`ItemWeb.channelDiscountPct` + `channelDiscountFrom`/`channelDiscountTo`,
+migración idempotente— y no en el maestro, porque el POS y los documentos del ERP **no leen
+`ItemWeb`**: es la forma de promocionar el ecommerce sin tocar el precio de venta del ERP.
+La regla es **una** (`src/common/channel-discount.util.ts`, compartida por el canal y la
+pantalla): vigencia con el **día del tenant** y extremos inclusivos, `<= 0` y `>= 100 %`
+ignorados, y precio con redondeo a la precisión del precio unitario (**6 decimales**). El
+canal la publica como capa propia («Promo online») en catálogo, ficha, cotización y pedido,
+**encima** del precio del ERP y **antes** del descuento de la empresa, y viaja **dentro del
+precio** que se manda al documento del ERP (que recibe el ganador de la jerarquía explícito
+y por eso cobra exactamente lo cotizado **sin conocer la promo**). La capa se **congela** en
+`WebOrderItem` (`channelDiscountPct`, `channelDiscount`, `priceBeforeChannel`, migración
+propia) para que la confirmación y el seguimiento expliquen el importe aunque la campaña se
+retire después. La API del back office es `GET /web-promotions` + `PATCH /web-promotions/:itemId`
+con permiso propio **`web-promotions:view|edit`**.
+
+**Medido**: `channel-discount.util` **17/17**; `storefront.service` **122/122** —4 casos
+nuevos de la capa en la cotización y el alta (precio con promo, `priceBeforeChannel` intacto,
+`channelDiscount` por línea, congelado en la proyección) y 5 en el catálogo/ficha (promo
+vigente, acumulada con la oferta, vencida, futura y 100 % ignorada)—; `web-promotions`
+(servicio + DTO) **15/15**; **canal E2E 41/41** con el caso de paridad de D21 —promo al 10 %:
+la web cobra **729** por unidad y el pedido de venta y el POS **810**; con la promo **vencida**
+los tres cobran **810**—; **tienda funcional 30/30** con el spec nuevo, que configura la promo
+por el **API real del back office**, comprueba el rótulo de la ficha y la fila del desglose del
+checkout, y la quita al terminar.
+
+**Tres defectos medidos y cerrados en el camino**: **(a)** el **gate de dinero del backend
+estaba rojo desde T195/T198** (`TOTAL 4` con línea base 0, y la CI corre ese gate: la pipeline
+llevaba roja sin que nadie lo viera) —el impuesto derivado del pedido se calculaba con
+`Math.round` sobre `number` y el precio del catálogo se comparaba tras `Number(...)`—; los
+cuatro sitios se migraron a `Decimal` y el gate queda en **TOTAL 0**; **(b)** el DTO del
+`PATCH` rechazaba `0`, así que **quitar la promo era imposible por el API** (400) —lo destapó
+el E2E de la tienda—; **(c)** la tienda **cachea el canal 60 s**, así que una promo tarda esa
+ventana en verse en la ficha (el E2E lo **mide**: 18,3 s en la suite completa).
+
+**Declarado**: la promo no se rotula todavía en la **bandeja** de pedidos del back office (el
+pedido la lleva congelada por línea) y la ventana de 60 s de la caché de la tienda marca el
+ritmo de publicación; **F8.3** (pantalla **Ventas → Tienda online → Promociones del canal**)
+se entrega con la API ya cerrada.
+
 ## §14 F9 — Identidad visual y experiencia premium de la tienda (plan aprobado el 2026-09-23)
 
 **La pregunta del usuario**: la tienda «se ve algo básica, no parece tener un estilo premium».

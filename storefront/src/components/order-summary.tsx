@@ -187,6 +187,8 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
             listSubtotal={order.offerDiscount > 0 ? order.listSubtotal : null}
             offerDiscount={order.offerDiscount}
             offerPct={order.offerPct}
+            channelDiscount={order.channelDiscount}
+            channelDiscountPct={order.channelDiscountPct}
             subtotal={order.subtotal}
             companyDiscount={order.companyDiscount}
             companyDiscountPct={order.companyDiscountPct}

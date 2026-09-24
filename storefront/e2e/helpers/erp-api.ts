@@ -19,9 +19,16 @@ export interface ApiProduct {
   sku: string;
   brand: string | null;
   brandCode: string | null;
+  /** Precio efectivo de la tienda: el del ERP con la **promo del canal** ya aplicada. */
   price: number;
+  /** Precio del ERP (oferta incluida) **antes** de la promo del canal (F8.2). */
+  priceBeforeChannel: number;
+  /** Precio de lista del maestro (el «antes» de la tarjeta). */
+  listPrice: number;
   salePrice: number | null;
   discountPct: number | null;
+  /** % de la promo del canal ya incluida en `price` (`null` si no hay). */
+  channelDiscountPct: number | null;
   currency: string;
   image: string | null;
   images: string[];
@@ -68,6 +75,12 @@ export interface ApiQuote {
     price: number;
     /** Precio de lista del catalogo (mayor que `price` si hay oferta vigente). */
     listPrice: number;
+    /** Precio del ERP antes de la promo del canal (F8.2). */
+    priceBeforeChannel: number;
+    /** Importe de la promo del canal en la linea (0 si no hay). */
+    channelDiscount: number;
+    /** % de la promo del canal aplicado a la linea (0 si no hay). */
+    channelDiscountPct: number;
     offerPct: number;
     offerDiscount: number;
     /** Descuento automatico del ERP sobre `price`, en porcentaje (0 si no hay). */
@@ -91,6 +104,10 @@ export interface ApiQuote {
   companyDiscountPct: number;
   /** % efectivo de la oferta de catalogo sobre el precio de lista (T200). */
   offerPct: number;
+  /** Promo del canal incluida en el precio (0 si no hay; F8.2). */
+  channelDiscount: number;
+  /** % efectivo de esa promo sobre el precio del ERP (lo calcula el ERP). */
+  channelDiscountPct: number;
   /** Mercancia + envio **sin impuestos**. */
   netSubtotal: number;
   /** Impuesto total (mercancia + envio), calculado por el motor del ERP. */
@@ -592,4 +609,96 @@ export async function findUnquotableProduct(
   throw new Error(
     `El canal no tiene ningun articulo publicado que cotice en ${sellableCity} y falle en ${emptyCity}.`,
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cara **administrativa** del ERP (back office) — para PREPARAR datos en las pruebas
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * La **promo del canal** (`ItemWeb.channelDiscountPct`, D21/F8.2) se configura desde el
+ * back office, no desde la tienda: aqui se hace por el API real del ERP (login de admin +
+ * `PATCH /web-promotions/:itemId`) porque la prueba tiene que medir el efecto de una
+ * configuracion **de verdad**, no un mock.
+ *
+ * Con `Authorization: Bearer` el ERP no exige el doble envio de la cookie CSRF (su
+ * middleware lo exime, igual que al canal con `x-storefront-key`), asi que la prueba no
+ * necesita navegador para administrar.
+ */
+export interface ApiWebPromotion {
+  itemId: number;
+  sku: string;
+  name: string;
+  slug: string;
+  listPrice: number;
+  price: number;
+  offerPct: number;
+  channelDiscountPct: number | null;
+  channelDiscountFrom: string | null;
+  channelDiscountTo: string | null;
+  channelDiscountActive: boolean;
+  channelPrice: number;
+}
+
+const ERP_ADMIN_USER = process.env.ERP_ADMIN_USER ?? 'admin';
+const ERP_ADMIN_PASSWORD = process.env.ERP_ADMIN_PASSWORD ?? 'admin123';
+/** El login del ERP identifica la **empresa** por su slug (el JWT acuña el `tenantId`). */
+const ERP_ADMIN_TENANT = process.env.ERP_ADMIN_TENANT ?? 'default';
+
+/** Login del back office: devuelve el JWT para llamar a los endpoints autenticados. */
+export async function erpAdminLogin(): Promise<string> {
+  const response = await fetch(`${ERP_API_URL}/auth/login`, {
+    method: 'POST',
+    headers: { accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      tenantSlug: ERP_ADMIN_TENANT,
+      username: ERP_ADMIN_USER,
+      password: ERP_ADMIN_PASSWORD,
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) {
+    const raw = await response.text();
+    throw new Error(
+      `El login del ERP respondio ${response.status}. Verificar la API en ${ERP_API_URL} ` +
+        `y las credenciales ERP_ADMIN_USER/ERP_ADMIN_PASSWORD/ERP_ADMIN_TENANT. ${raw}`,
+    );
+  }
+  const body = (await response.json()) as { access_token?: string };
+  if (!body.access_token) {
+    throw new Error('El login del ERP no devolvio access_token.');
+  }
+  return body.access_token;
+}
+
+async function adminPatch<T>(token: string, path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${ERP_API_URL}${path}`, {
+    method: 'PATCH',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) {
+    const raw = await response.text();
+    throw new Error(`El ERP respondio ${response.status} en ${path}: ${raw}`);
+  }
+  return (await response.json()) as T;
+}
+
+/**
+ * Fija el descuento del canal de un articulo publicado. `pct` en `0` **quita** la promo
+ * (y su vigencia), que es como las pruebas dejan el dato limpio al terminar.
+ */
+export async function setChannelPromotion(
+  token: string,
+  itemId: number,
+  pct: number,
+): Promise<ApiWebPromotion> {
+  return adminPatch<ApiWebPromotion>(token, `/web-promotions/${itemId}`, {
+    channelDiscountPct: pct,
+  });
 }

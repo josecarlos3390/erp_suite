@@ -71,13 +71,29 @@ export function ProductCard({
         </Link>
 
         <span className="pointer-events-none absolute inset-x-2 top-2 flex items-start justify-between gap-2">
-          {discount !== null ? (
-            <Badge variant="deal" testId="discount-badge" srLabel={`Descuento de ${discount}`}>
-              {discount}
-            </Badge>
-          ) : (
-            <span />
-          )}
+          <span className="flex flex-col items-start gap-1">
+            {discount !== null ? (
+              <Badge variant="deal" testId="discount-badge" srLabel={`Descuento de ${discount}`}>
+                {discount}
+              </Badge>
+            ) : null}
+            {/*
+              Promo **del canal** (D21): un descuento que solo cobra la tienda online. Se
+              rotula aparte de la oferta del ERP porque son dos capas distintas y el
+              comprador tiene derecho a saber de donde sale el precio. La comprobacion es
+              por **numero** y no `!== null`: un fixture grabado con el contrato anterior no
+              trae el campo y `undefined` no puede pintar un badge.
+            */}
+            {typeof product.channelDiscountPct === 'number' && product.channelDiscountPct > 0 ? (
+              <Badge
+                variant="promo"
+                testId="channel-promo-badge"
+                srLabel={`Promo online de ${product.channelDiscountPct}%`}
+              >
+                Promo online −{product.channelDiscountPct}%
+              </Badge>
+            ) : null}
+          </span>
           {!product.availability.inStock ? <Badge variant="outline">Agotado</Badge> : null}
         </span>
 

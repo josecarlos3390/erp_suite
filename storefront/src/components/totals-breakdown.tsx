@@ -26,6 +26,14 @@ export interface TotalsBreakdownProps {
    * Se pinta junto a la etiqueta para que el comprador vea de donde sale el importe.
    */
   offerPct?: number;
+  /**
+   * Promo **del canal** ya incluida en el precio (0 si no hay). Es un descuento que solo
+   * cobra la tienda online: se pinta como capa propia, encima del precio del ERP y antes
+   * del descuento de la empresa (D21/F8.2).
+   */
+  channelDiscount?: number;
+  /** % **efectivo** de esa promo sobre el precio del ERP, calculado por el ERP (0 si no hay). */
+  channelDiscountPct?: number;
   /** Mercancia antes del descuento de la empresa (Σ precio efectivo × cantidad). */
   subtotal: number;
   /** Descuento de la empresa aplicado por el canal (0 si no hay). */
@@ -69,6 +77,8 @@ export function TotalsBreakdown({
   listSubtotal,
   offerDiscount,
   offerPct,
+  channelDiscount = 0,
+  channelDiscountPct,
   subtotal,
   companyDiscount,
   companyDiscountPct,
@@ -83,6 +93,7 @@ export function TotalsBreakdown({
 }: TotalsBreakdownProps): JSX.Element {
   const hasOffer = offerDiscount > 0 && listSubtotal !== null;
   const offerRate = layerRateLabel(offerPct);
+  const channelRate = layerRateLabel(channelDiscountPct);
   const companyRate = layerRateLabel(companyDiscountPct);
   const rate = formatTaxRate(taxRate);
   const taxLabel = taxInclusive
@@ -116,6 +127,23 @@ export function TotalsBreakdown({
               </dd>
             </div>
           </>
+        ) : null}
+        {channelDiscount > 0 ? (
+          <div className="flex items-center justify-between">
+            <dt className="text-fg-secondary">
+              Promo online
+              {channelRate ? (
+                <>
+                  {' ('}
+                  <span data-testid={`${prefix}-channel-rate`}>{channelRate}</span>
+                  {')'}
+                </>
+              ) : null}
+            </dt>
+            <dd className="font-medium text-ok" data-testid={`${prefix}-channel-discount`}>
+              −{formatMoney(channelDiscount, currency)}
+            </dd>
+          </div>
         ) : null}
         <div className="flex items-center justify-between">
           <dt className="text-fg-secondary">Subtotal</dt>

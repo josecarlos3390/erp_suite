@@ -67,11 +67,20 @@ export interface Product {
   brand: string | null;
   brandCode: string | null;
   shortDescription: string | null;
+  /** Precio efectivo de la tienda: el del ERP con la **promo del canal** ya aplicada. */
   price: number;
+  /** Precio del ERP (oferta de catalogo incluida) **antes** de la promo del canal. */
+  priceBeforeChannel: number;
   /** Precio de lista del maestro: con oferta vigente es el «antes» de la tarjeta. */
   listPrice: number;
   salePrice: number | null;
   discountPct: number | null;
+  /**
+   * % de la **promo del canal** ya incluida en `price` (`null` si no hay). Es un descuento
+   * que solo cobra la tienda online: el POS y los documentos del ERP cobran
+   * `priceBeforeChannel`.
+   */
+  channelDiscountPct: number | null;
   currency: string;
   image: string | null;
   images: string[];

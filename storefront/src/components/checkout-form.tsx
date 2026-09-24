@@ -743,6 +743,16 @@ export function CheckoutForm({
                               {formatMoney(line.listPrice, quoteState.quote.currency)}
                             </span>
                           ) : null}
+                          {line.channelDiscount > 0 ? (
+                            <span
+                              className="text-xs font-medium text-ok"
+                              data-testid="checkout-quote-line-channel"
+                            >
+                              Promo online {line.channelDiscountPct}% · −
+                              {formatMoney(line.channelDiscount, quoteState.quote.currency)} · antes{' '}
+                              {formatMoney(line.priceBeforeChannel, quoteState.quote.currency)}
+                            </span>
+                          ) : null}
                           {line.discount > 0 ? (
                             <span
                               className="text-xs font-medium text-ok"
@@ -807,6 +817,8 @@ export function CheckoutForm({
                   }
                   offerDiscount={quoteState.quote.offerDiscount}
                   offerPct={quoteState.quote.offerPct}
+                  channelDiscount={quoteState.quote.channelDiscount}
+                  channelDiscountPct={quoteState.quote.channelDiscountPct}
                   subtotal={quoteState.quote.subtotal}
                   companyDiscount={quoteState.quote.discount}
                   companyDiscountPct={quoteState.quote.companyDiscountPct}

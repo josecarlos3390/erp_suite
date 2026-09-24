@@ -164,9 +164,20 @@ Los cuatro gates nuevos **no** miden contra el seed: el gate funcional es el uni
 
 Las fases del plan `docs/plans/plan-ecommerce-storefront.md` estan entregadas: **F1/F2** (catalogo,
 ficha, busqueda, carrito y ciudad, con SEO), **F3** (checkout de invitado, confirmacion y
-seguimiento publico), **F5** (bandeja de pedidos web en el back office), **F8** (un solo motor de
-precios y paridad entre pedidos, POS y tienda) y **F9** (identidad visual de la tienda, fases
-F9.1–F9.6). Siguen **declarados**: el correo transaccional (D16, el backend no tiene proveedor), el
-retiro en tienda (fase 2), el CORS por dominio y la cache del canal, la serie propia del canal (F7,
-con la factura) y el descuento exclusivo del canal (D21/F8.2) con su pantalla.
+seguimiento publico), **F5** (bandeja de pedidos web en el back office), **F8.1/F8.2** (un solo
+motor de precios, paridad entre pedidos, POS y tienda, y la **promo exclusiva del canal**) y **F9**
+(identidad visual de la tienda, fases F9.1–F9.6). La promo se administra desde el back office
+(`GET/PATCH /web-promotions`, permiso `web-promotions:view|edit`) y la tienda la pinta como capa
+propia en la ficha, el carrito y el desglose del checkout.
+
+**Declarado (cache)**: el catalogo y la ficha del canal se cachean **60 s** (`src/lib/erp.ts`:
+`catalog: 60`, `product: 60`), asi que **una promo recien configurada tarda esa ventana en verse**
+en la tienda (el E2E de la promo lo mide: 18,3 s en una corrida con la cache caliente). La
+cotizacion y el alta de pedido **no** se cachean (`cache: 'no-store'`), de modo que el importe que
+se cobra siempre es el vigente.
+
+Siguen **declarados**: el correo transaccional (D16, el backend no tiene proveedor), el
+retiro en tienda (fase 2), el CORS por dominio y la cache HTTP del canal, la serie propia del canal
+(F7, con la factura), la rotulacion de la promo en la bandeja de pedidos del back office y la
+pantalla de promociones del canal (F8.3).
 
