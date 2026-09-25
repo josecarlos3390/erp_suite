@@ -1137,14 +1137,16 @@ datos**, no con dos caminos de código.
 |---|---|---|
 | **A1** | **La cadena de publicación**: los datos de retiro de la sucursal son **editables por API** (`CreateBranchDto`/`UpdateBranchDto` + `BRANCH_SELECT`), el **canal los publica** en la ciudad (`GET /storefront/cities` → `branch.phone/openingHours/latitude/longitude/mapUrl/pickupEnabled`) y la tienda los **muestra** en `/sucursales` (horario, teléfono, «Ver el mapa» y «Retiro en tienda: disponible») | **ENTREGADO (T233)**: 3 suites / **141** unitarios (4 casos nuevos de `branches.service`, 9 del contrato del DTO, 1 de `storefront.service`), **canal E2E 49/49** (era 48), tienda `typecheck`/`lint`/`build`/`visual 17/17`/`a11y 19/19`/`perf 5/5` |
 | **A2a** | **El formulario del ERP**: los 6 campos de ubicación y retiro en la pantalla de sucursales (hoy **0** referencias: el modelo los tenía y la semilla los cargaba, pero nadie podía editarlos desde la UI) | **ENTREGADO (T234)**: sección «Ubicación y retiro» con teléfono, horario, mapa, lat/lng y el interruptor de retiro; Karma **8/8**, `lint`/`format`/`a11y`/`densidad`/`build` en verde y **un** baseline regenerado y revisado (`branch-form-after.png`), con la corrida de control **53/53** |
-| **A2b** | **La configuración del ecommerce** (lo que pidió el usuario): ajuste **`webStoreSource`** + tabla del canal **`WebStore`** (punto de venta que apunta a sucursal **o** almacén) + migración idempotente + módulo con permiso propio + pantalla **Configuración → Ecommerce → Puntos de venta** + el canal publicando los puntos de la ciudad + la tienda mostrándolos | **ENTREGADO A MEDIAS (T235)**: modelo `WebStore` + migración + módulo `web-stores` (`web-stores:view\|edit`) + ajuste `webStoreSource` con su control en **Ajustes → Sucursales** + canal publicando `stores[]` por ciudad + tienda pintándolos en `/sucursales` + **3 puntos** en la semilla (las dos modalidades en una misma ciudad). **Queda**: la **pantalla de puntos de venta** (crear/editar/desactivar desde la UI; hoy se configuran por API). Medido: `web-stores.service` 13/13, suites tocadas 4/155, **canal E2E 50/50**, sonda en vivo con las dos modalidades, tienda `visual 17/17`/`a11y 19/19`/`perf 5/5` y Karma de Configuración 14/14 |
+| **A2b** | **La configuración del ecommerce** (lo que pidió el usuario): ajuste **`webStoreSource`** + tabla del canal **`WebStore`** (punto de venta que apunta a sucursal **o** almacén) + migración idempotente + módulo con permiso propio + pantalla **Configuración → Ecommerce → Puntos de venta** + el canal publicando los puntos de la ciudad + la tienda mostrándolos | **ENTREGADO (T235 + T236)**: **T235** — modelo `WebStore` + migración + módulo `web-stores` (`web-stores:view\|edit`) + ajuste `webStoreSource` con su control en **Ajustes → Sucursales** + canal publicando `stores[]` por ciudad + tienda pintándolos en `/sucursales` + **3 puntos** en la semilla (las dos modalidades en una misma ciudad); medido: `web-stores.service` 13/13, suites tocadas 4/155, canal E2E 50/50, sonda en vivo, tienda `visual 17/17`/`a11y 19/19`/`perf 5/5`, Karma de Configuración 14/14. **T236 (cierre)** — la **pantalla** de puntos (`/web-stores`, Configuración → Ecommerce) con su lista, filtros y modal, `GET /web-stores/cities` y **`GET /storefront/stores`**; medido: Karma 18/18, `web-stores.service` 14/14, suites tocadas 136/136, **canal E2E 51/51**, `tsc`/`lint`/`format`/`a11y`/`densidad`/`ng build` en verde y **`e2e:visual` 53/53** sin re-sellar la huella |
 | **B** | **F4.1 «Mi cuenta» del dispositivo**: historial propio reusando `order+email`, direcciones locales y carrito/comparador/favoritos colgando de ahí. **Cero backend, sin D16** | pendiente |
 | **C** | **Retiro elegible**: `WebCityBranch`, selector de sucursal en el paso 2, `pickupBranchId` en `WebOrder`, **envío 0** en retiro y el almacén del pedido derivado de la sucursal elegida (`defaultWarehouseId`), respetando la regla almacén⊂sucursal | pendiente |
 | **D** | **Disponibilidad por sucursal de retiro** (ofrecer solo las que tienen el artículo) + **código de retiro** | pendiente |
 | **E** | **F4.2/F4.3 identidad real**: `WebCustomer` con la contraseña que el modelo ya tiene + sesión con cookie del **canal** (D1/D2) + direcciones desde las `PartnerAddress` del tercero enlazado, **o** OAuth si se decide esquivar D16 | pendiente (bloqueado por D16 o por la decisión de OAuth) |
 
-**Declarado de A1**: el formulario del ERP (A2) queda pendiente, así que hoy los datos de retiro se fijan
-por **API** (y la semilla ya los trae para las dos sucursales demo); `/sucursales` **no** entra todavía en
+**Declarado de A1** (actualizado tras T234/T236): el formulario del ERP **ya existe** —A2a, sección
+«Ubicación y retiro» en la pantalla de sucursales— y los puntos del canal se administran desde
+**Configuración → Ecommerce** (A2b, T236), así que los datos de retiro y las tiendas ya no dependen de la
+semilla; la semilla sigue trayéndolos para las dos sucursales demo. `/sucursales` **no** entra todavía en
 el barrido de axe ni en el gate visual (ninguno de los dos la captura), y el fixture grabado del gate
 sigue sirviendo un payload **viejo** sin los campos nuevos: la tienda los trata como opcionales a
 propósito (la lección de T223) y por eso los tres gates siguen verdes sin regrabar el fixture.
@@ -1205,6 +1207,30 @@ global. Duplica el bloque de ubicación en dos maestros (dos fuentes de verdad: 
 cuál lee el ecommerce según el modo), el formulario de almacenes tendría que ganarlos (con su baseline),
 no expresa el caso mixto y obliga a la tienda a saber en qué modo está. Más barato hoy, más caro de
 mantener.
+
+**T236 — A2b cerrado: la pantalla de puntos de venta y el endpoint propio de puntos (2026-09-25)**.
+**Medido antes**: en `erp-frontend/src` había **0 referencias** a `web-stores` (sin ruta, pantalla,
+sidebar ni breadcrumb), **ningún** endpoint de back office listaba `WebCity` (las escribía la semilla) y
+los puntos viajaban **solo** dentro de `GET /storefront/cities` — la tienda no tenía forma de pedir la
+lista sin pedir la ciudad entera. **Entregado**: **(1)** **Configuración → Ecommerce → Puntos de venta**
+(`/web-stores`, permiso propio `web-stores:view|edit`, espejo de `pages/web-promotions`): lista con
+ciudad, nombre y código, tipo (*Sucursal* / *Almacén (hace de tienda)*), de qué cuelga (el maestro con su
+código), la ubicación publicada con **«Heredado: …»** debajo, retiro y estado, más búsqueda con rebote,
+filtros de ciudad y tipo, «Solo activos» por defecto y paginación; el **modal** pide ciudad, **código**
+(solo en alta: es la identidad), nombre, de qué cuelga la tienda —selector de sucursal o de almacén según
+el tipo, con la ayuda de qué se hereda—, la ubicación (**vacío = heredar del maestro**), retiro, orden y
+activo; **cambiar de tipo limpia el maestro del otro** y exige el suyo, y el payload de un punto-almacén
+**no manda `branchId`** (lo deriva el backend del almacén); **(2)** `GET /web-stores/cities` para el
+selector; **(3)** el canal estrena **`GET /storefront/stores`** (`?city=`, o todas las ciudades activas)
+con **una sola traducción** (`toStorefrontStore`, compartida con `listCities`) y **400** accionable para
+una ciudad no habilitada. **Dos defectos medidos y cerrados**: **(a)** el filtro de ciudad se armaba en la
+plantilla con `.concat(...)` sobre arrays de tipo distinto y el **build AOT** lo rechazó → las opciones se
+construyen en el componente (`cityFilterOptions`); **(b)** `GET /storefront/stores` sin ciudad ordenaba
+por `sortOrder` a secas y **mezclaba** tiendas de dos ciudades con el mismo orden (lo destapó el E2E) →
+el listado va **agrupado por ciudad** (`webCity.sortOrder`, luego `sortOrder`, luego `id`). **Declarado**:
+un punto se **desactiva** (no se borra: el histórico de los pedidos que lo eligieron se conserva) y la
+pantalla **no** entra todavía en el barrido de axe ni en la densidad dinámica (el `a11y:check` estático
+sí la cubre). **A2b cerrado**; el tramo siguiente es **C**.
 
 ## §15 F7 y F4 — estado medido y decisiones pendientes (2026-09-24, T217)
 
