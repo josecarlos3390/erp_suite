@@ -989,6 +989,20 @@ exacto, y los casos que miden esa ventana declaran un tope mayor que el reloj de
 
 **Medido**: `stock.util` **32/32** (5 casos nuevos), `document-stock.helper` **8/8** (3 nuevos), devoluciones **13/13**, **canal E2E 47/47** —el caso nuevo recorre la cadena completa y es **A/B**: sin el arreglo el `totalCost` de la entrega sale 199,5 en vez de 100— y **12 suites / 235 tests** de los documentos de venta. **Declarado**: los servicios se publican **por categoría web** (no hay relación servicio-artículo en el maestro), un servicio no puede ser **kit** ni manejar **lote/serie**, y la **UI de la tienda** que ofrece los servicios en la ficha (cantidad fija 1) y el manejo del carrito con `available: null` es el **tramo siguiente** —el canal ya publica `isService` y el arreglo `services` de la categoría—.
 
+### §16.b F6 tramo 6 — **servicio técnico**: decisión del usuario y plan (2026-09-25, T228, pendiente de implementar)
+
+**Decisión del usuario (2026-09-25)**: el tramo 6 es una **solicitud de servicio técnico desde la ficha, atendida por el vendedor**, con el vendedor entrando como **partner**. El modelo `Seller` ya tiene `partnerId` (opcional) desde F1, así que «el vendedor es el partner» no necesita estructura nueva: la solicitud apunta al `Seller` publicado y, si lo tiene, a su `Partner`.
+
+**Alcance acordado (a implementar)**:
+
+1. **Modelo `ServiceRequest`** (+ enum de estado y migración idempotente): `itemId` (el artículo publicado), `sellerId` (el vendedor de la publicación), `partnerId` (el del vendedor, si está), `webOrderId` (opcional: la compra que se está reclamando), `customerName`, `customerEmail`, `phone`, `issue` (el motivo escrito por el comprador), `status` (`NEW` → `IN_REVIEW` → `SCHEDULED` → `RESOLVED`, más `REJECTED`/`CANCELLED`), `resolutionNote`, quién y cuándo la atendió, y el rastro de auditoría del canal.
+2. **Canal**: `POST /storefront/service-requests` con la clave del canal (D10) —exige que el artículo esté **publicado** y un **correo de contacto**; si viene **número de pedido + correo** se vincula la compra con la **misma identidad** que usan el seguimiento y las reseñas, y si no coincide responde 404— y la **ficha** publica `canRequestService` (con el vendedor) para que la tienda sepa que puede ofrecerlo.
+3. **Back office**: módulo `service-requests` con permiso propio **`service-requests:view|attend`** y pantalla **Servicio al cliente → Solicitudes** (cola por estado, detalle con la compra vinculada y modal de atención con estado + nota).
+4. **Tienda**: formulario en la ficha (islote) que manda por el puente `POST /api/servicio-tecnico` (la clave del canal no sale del servidor) y **dice lo que hace**: deja la solicitud en el ERP; no promete fecha ni técnico.
+5. **Medición prevista**: unitarios del servicio (alta, validaciones, transiciones de estado, máscara del correo), canal E2E (alta con y sin pedido, 400 sin correo, 404 de artículo no publicado o de pedido ajeno), `Karma` del back office, E2E de la tienda (formulario + error del canal + éxito) y el rastro `STOREFRONT_SERVICE_REQUESTED` en `AuditLog`.
+
+**Declarado de entrada**: la primera versión **no** lleva adjuntos ni agenda de técnico, y el aviso al comprador por correo sigue bloqueado por **D16**.
+
 ## §15 F7 y F4 — estado medido y decisiones pendientes (2026-09-24, T217)
 
 Los dos tramos que quedan del orden acordado **necesitan decisiones de producto**, así que
