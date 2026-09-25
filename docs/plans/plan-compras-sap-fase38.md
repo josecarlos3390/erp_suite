@@ -296,3 +296,41 @@ tiene `accountId`/`amount` ✅. La NC se vincula por `PurchaseCreditNote.outgoin
 > payloads de compras (orden de compra, recepción, factura, NC, devolución, pago)
 > y decisión A/B del resolver (`sapCardCode`/`sapItemCode` vs `code` interno).
 > El mapeo de la cotización ya está validado; la implementación es inmediata al desbloquear.
+
+---
+
+## Anexo T239 � el descuento de compra en el asiento y en el costo (2026-09-25)
+
+**Lo que report� el usuario**: en una compra de **94 con 3 de descuento** (total a pagar 91) el asiento sal�a
+`Compra/Inventario 79.17 D � IVA cr�dito 11.83 D � CxP 91 H` � el descuento neteado dentro del inventario, sin
+ninguna l�nea propia � y el esperado era `Inventario 82.17 D � Cr�dito fiscal 11.83 D � Descuento en compras 2.61 H �
+D�bito fiscal descuento en compras 0.39 H � CxP 91 H`.
+
+**Medido antes (factura real creada por API)**: `priceNet = lineSubtotal = totalCost = 79.17`, `discountTotal = 3`,
+`discountMode: line`, kardex `unitCost 79.17` y **ni el asiento guardado ni el preliminar** con l�nea de descuento.
+**Dos causas**: el motor solo activaba las cuentas de descuento con `discountMode === 'header'` (la pantalla manda
+modo **l�nea** con los netos ya descontados) y **los dos mapeos de l�neas del servicio** � el del asiento real
+(`_executeConfirmLogic` ? `createPurchaseInvoiceJournalEntry`) y el del preview del borrador
+(`_previewPurchaseInvoice`) � **descartaban el `discountTotal`**.
+
+**Decisi�n del usuario (opci�n A entre cuatro)**: presentaci�n **bruta** y el **costo no baja** (el mayor de
+inventario y el kardex val�an lo mismo). Se descart� dejar el costo neto con el asiento bruto (desalinea el mayor del
+kardex) y se descart� limitarlo a la FRC.
+
+**Entregado**: d�bito por `lineSubtotal + discountTotal` en el builder de compras; descuento por la **misma regla
+�nica** que el de cabecera (lo que los d�bitos brutos superan al total facturado) con `PURCHASE_DISCOUNT` +
+`PURCHASE_DISCOUNT_TAX`; reversi�n de asignaci�n (FRC?factura final) tambi�n bruta; la diferencia de precio contra
+recepci�n deja de confundirse con el descuento; los dos mapeos pasan `discountTotal`; y el costo pasa a bruto en
+`createManual`, `createFromQuotation`, `createFromReceipt`, `createFromMultiQuotation`, `createFromOrder` y
+`createFromMultiOrder`.
+
+**Medido despu�s** (factura real `FCP-37`): el asiento es el esperado (**D=94 H=94 cuadra**), `costo = totalCost =
+82.17`, el **preliminar del borrador = el asiento guardado** (invariante medida) y la **FRC** publica `Asignaci�n
+82.17 D` + las mismas l�neas de descuento **sin mover inventario**. Gates: unitarios de compras + contabilidad
+**149/149**, E2E `discount-propagation` **14/14** (caso nuevo T239), `purchase-flow` + `returns-and-credit-notes`
+**24/24**, `tsc` 0.
+
+**Declarado**: el multi-recibo sigue costeando con el `cost` del maestro (ese camino no lleva precio de factura); una
+FRC creada por API queda `CLOSED` **sin asiento** (`transactionId: null`), as� que la evidencia de la reserva es el
+preliminar; la **nota de cr�dito de compra** tiene su propio bloque espejo y queda como paso siguiente; y el desglose
+87/13 del descuento aparece con el perfil/indicador que lo pide (`BOLIVIA_SIN`).
