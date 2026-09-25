@@ -9,7 +9,7 @@ import {
   statusLabel,
   TRACKING_NOTICE,
 } from '@/lib/checkout';
-import { formatMoney } from '@/lib/format';
+import { describeLineSku, formatMoney } from '@/lib/format';
 import { TotalsBreakdown } from './totals-breakdown';
 
 interface OrderSummaryProps {
@@ -177,7 +177,7 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
                   {isShipping ? `Envio · ${line.name}` : line.name}
                 </span>
                 <span className="text-xs text-fg-tertiary">
-                  SKU {line.sku} · {line.quantity} × {formatMoney(line.price, order.currency)}
+                  {describeLineSku(line.sku)} · {line.quantity} × {formatMoney(line.price, order.currency)}
                   {line.discount > 0
                     ? ` · descuento −${formatMoney(line.discount, order.currency)}`
                     : ''}

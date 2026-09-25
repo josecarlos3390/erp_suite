@@ -10,6 +10,7 @@ import { JsonLd } from "@/components/json-ld";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductGrid } from "@/components/product-grid";
 import { ProductReviews } from "@/components/product-reviews";
+import { ServiceOffer } from "@/components/service-offer";
 import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
 import { getCityContext } from "@/lib/city";
@@ -353,6 +354,11 @@ export default async function ProductPage({
             cityCode={city.code}
             cityName={city.name}
           />
+
+          {/* F6/T227: los servicios publicados en la categoria del articulo
+              (garantia extendida, instalacion). No dependen de la existencia y la
+              cantidad es fija 1: el ERP los cobra con el pedido y no mueven stock. */}
+          <ServiceOffer services={product.services ?? []} cityCode={city.code} />
 
           {/* F6: comparar desde la ficha. La lista vive en el navegador y guarda solo la
               identidad del producto; los datos se piden vigentes al abrir /comparar. */}

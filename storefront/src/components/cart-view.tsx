@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { BagIcon } from '@/components/ui/icons';
 import { SkeletonCart } from '@/components/ui/skeleton';
-import { formatMoney } from '@/lib/format';
+import { describeLineSku, formatMoney } from '@/lib/format';
 import { MAX_LINE_QUANTITY, cartItemCount, cartSubtotal, useCartStore } from '@/store/cart';
 
 import { ProductImage } from './product-image';
@@ -98,7 +98,7 @@ export function CartView(): JSX.Element {
                   {line.name}
                 </Link>
                 <p className="text-xs text-fg-tertiary">
-                  SKU {line.sku} · Ciudad {line.cityCode}
+                  {describeLineSku(line.sku)} · Ciudad {line.cityCode}
                 </p>
                 <p className="text-sm font-semibold text-fg" data-testid="cart-line-price">
                   {formatMoney(line.price, line.currency)}

@@ -157,4 +157,49 @@ test.describe("Ficha de producto", () => {
       page.getByRole("heading", { name: "No encontramos esta pagina" }),
     ).toBeVisible();
   });
+
+  test("la ficha ofrece los SERVICIOS publicados y se suman al carrito (F6/T227)", async ({
+    page,
+  }) => {
+    // El servicio se descubre por el **canal** (el seed publica la garantia extendida en
+    // «Celulares»): se busca un articulo cuya ficha lo ofrezca, no una posicion del listado.
+    const products = await getAllProducts();
+    let target: ApiProduct | null = null;
+    let service: NonNullable<ApiProduct["services"]>[number] | null = null;
+    for (const candidate of products.slice(0, 12)) {
+      const detail = await getProduct(candidate.slug, DEFAULT_CITY);
+      const first = (detail.services ?? [])[0];
+      if (first !== undefined) {
+        target = candidate;
+        service = first;
+        break;
+      }
+    }
+    if (target === null || service === null) {
+      // Sin servicios publicados no hay nada que medir: se dice, no se salta en silencio.
+      throw new Error(
+        "El canal no publico servicios en la ficha de los primeros 12 articulos.",
+      );
+    }
+
+    await page.goto(`/productos/${target.slug}`);
+
+    // El bloque de servicios es el que publica el canal, con su nombre y su precio.
+    const offer = page.getByTestId("service-offer");
+    await expect(offer).toBeVisible();
+    const item = offer.getByTestId("service-offer-item").first();
+    await expect(item).toContainText(service.name);
+    await expect(item).toContainText(expectedMoney(service.price, service.currency));
+
+    // Sumar un servicio no depende de la existencia del articulo ni de su cantidad: 1.
+    await item.getByTestId("service-add").click();
+    await expect(offer.getByTestId("service-add-status").first()).toBeVisible();
+
+    // El carrito lo lleva como una linea mas, identificada como **servicio**.
+    await page.goto("/carrito");
+    const line = page.getByTestId("cart-line").filter({ hasText: service.name });
+    await expect(line).toHaveCount(1);
+    await expect(line).toContainText("Servicio");
+    await expect(page.getByTestId("cart-items")).toHaveText("1");
+  });
 });

@@ -59,6 +59,21 @@ export interface ApiProduct {
     buyer: string;
     createdAt: string;
   }>;
+  /** `true` cuando la publicacion **es** un servicio (articulo no inventariable, F6/T227). */
+  isService?: boolean;
+  /**
+   * **Servicios publicados en la categoria** del articulo (F6/T227): lo que la ficha ofrece
+   * como extra. Solo la ficha los trae; la ficha de un servicio no se ofrece a si misma.
+   */
+  services?: Array<{
+    itemId: number;
+    slug: string;
+    name: string;
+    shortDescription: string | null;
+    price: number;
+    currency: string;
+    category: { id: number; slug: string; name: string } | null;
+  }>;
 }
 
 export interface ApiCategory {

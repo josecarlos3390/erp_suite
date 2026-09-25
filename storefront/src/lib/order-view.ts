@@ -48,7 +48,12 @@ export interface QuoteLine {
   taxMethod: string;
   /** Impuesto de la linea. */
   taxAmount: number;
-  available: number;
+  /**
+   * Existencia publicada por el ERP para la linea, o **`null` en una linea de
+   * SERVICIO** (articulo no inventariable, F6/T227): un servicio se compra y se
+   * cobra, pero no maneja existencia, asi que la tienda no puede toparlo por stock.
+   */
+  available: number | null;
 }
 
 /**

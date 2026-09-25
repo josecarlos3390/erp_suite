@@ -122,6 +122,17 @@ export interface Product {
    */
   rating?: ProductRating;
   reviews?: ProductReview[];
+  /**
+   * `true` cuando **la propia publicacion es un servicio** (articulo no
+   * inventariable, F6/T227). El catalogo no los lista; la ficha del servicio si
+   * existe y se puede comprar.
+   */
+  isService?: boolean;
+  /**
+   * **Servicios publicados en la categoria del articulo** (F6/T227), que la ficha
+   * ofrece como extra (garantia extendida, instalacion). Solo la ficha los trae.
+   */
+  services?: StorefrontService[];
 }
 
 export interface CategoryNode {
@@ -164,6 +175,23 @@ export interface Banner {
 export interface PageLink {
   slug: string;
   title: string;
+}
+
+/**
+ * **Servicio publicado** en la categoria del articulo (F6/T227): un articulo del
+ * ERP con `canBeInventoried: false` (garantia extendida, instalacion, …). Se
+ * compra y se cobra como cualquier linea, pero **no mueve existencia**: el
+ * pedido, la entrega y la reserva lo llevan y la tienda nunca lo topa por stock.
+ * Lo publica la **ficha** (`services`), no el catalogo.
+ */
+export interface StorefrontService {
+  itemId: number;
+  slug: string;
+  name: string;
+  shortDescription: string | null;
+  price: number;
+  currency: string;
+  category: ProductCategoryRef | null;
 }
 
 export interface StorePage {

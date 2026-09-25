@@ -27,7 +27,7 @@ import {
   type CheckoutPaymentMethod,
 } from '@/lib/checkout';
 import { CheckoutRequestError, requestOrder, requestQuote } from '@/lib/checkout-client';
-import { formatMoney } from '@/lib/format';
+import { describeLineSku, formatMoney } from '@/lib/format';
 import type { QuoteView } from '@/lib/order-view';
 import { MAX_LINE_QUANTITY, cartItemCount, cartSubtotal, useCartStore } from '@/store/cart';
 
@@ -784,9 +784,11 @@ export function CheckoutForm({
                         <div className="flex flex-1 flex-col">
                           <span className="text-sm font-semibold text-fg">{line.name}</span>
                           <span className="text-xs text-fg-tertiary">
-                            SKU {line.sku} · {line.quantity} ×{' '}
-                            {formatMoney(line.price, quoteState.quote.currency)} · disponible{' '}
-                            {line.available}
+                            {describeLineSku(line.sku)} · {line.quantity} ×{' '}
+                            {formatMoney(line.price, quoteState.quote.currency)} ·{' '}
+                            {line.available === null
+                              ? 'servicio (no maneja existencia)'
+                              : `disponible ${line.available}`}
                           </span>
                           {line.offerDiscount > 0 ? (
                             <span

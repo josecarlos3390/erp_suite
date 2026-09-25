@@ -62,6 +62,15 @@ export function describeAvailability(available: number, cityName: string): strin
   return `Disponible: ${available}`;
 }
 
+/**
+ * Identidad de una **linea del carrito** para pintar: su SKU o «Servicio» cuando
+ * el canal no publica SKU (F6/T227: un servicio publicado no lleva codigo en la
+ * vista de la tienda, y pintar `SKU ` vacio seria peor que decirlo).
+ */
+export function describeLineSku(sku: string): string {
+  return sku.trim() === '' ? 'Servicio' : `SKU ${sku}`;
+}
+
 /** Texto de envio a partir de los datos de la ciudad (nunca inventado). */
 export function describeShipping(
   shippingCost: number,
