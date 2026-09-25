@@ -105,6 +105,80 @@ export default async function BranchesPage(): Promise<JSX.Element> {
                 </dd>
               </div>
             </dl>
+
+            {/* T235 — las tiendas de la ciudad. La forma es la misma en las dos modalidades
+                que configura el ERP (una sucursal por tienda, o almacenes que hacen de
+                tienda): el comprador ve una lista, no dos. */}
+            {city.stores && city.stores.length > 0 ? (
+              <div className="mt-2 flex flex-col gap-2" data-testid="city-stores">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-fg-tertiary">
+                  Tiendas en {city.name}
+                </h3>
+                <ul className="flex flex-col gap-2">
+                  {city.stores.map((store) => (
+                    <li
+                      key={store.code}
+                      className="rounded-md border border-border-subtle bg-bg-subtle p-3 text-xs text-fg-secondary"
+                      data-testid="city-store"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-fg">{store.name}</span>
+                        <span
+                          className={
+                            store.pickupEnabled
+                              ? 'sf-badge sf-badge--success'
+                              : 'sf-badge'
+                          }
+                          data-testid="store-pickup"
+                        >
+                          {store.pickupEnabled ? 'Retiro disponible' : 'Solo venta'}
+                        </span>
+                      </div>
+                      <dl className="mt-1 flex flex-col gap-1">
+                        {store.address ? (
+                          <div className="flex justify-between gap-3">
+                            <dt>Direccion</dt>
+                            <dd className="text-right text-fg">{store.address}</dd>
+                          </div>
+                        ) : null}
+                        {store.openingHours ? (
+                          <div className="flex justify-between gap-3">
+                            <dt>Horario</dt>
+                            <dd className="text-right text-fg">{store.openingHours}</dd>
+                          </div>
+                        ) : null}
+                        {store.phone ? (
+                          <div className="flex justify-between gap-3">
+                            <dt>Telefono</dt>
+                            <dd className="text-right text-fg">
+                              <a className="sf-link" href={`tel:${store.phone.replace(/\s+/g, '')}`}>
+                                {store.phone}
+                              </a>
+                            </dd>
+                          </div>
+                        ) : null}
+                        {store.mapUrl ? (
+                          <div className="flex justify-between gap-3">
+                            <dt>Como llegar</dt>
+                            <dd className="text-right">
+                              <a
+                                className="sf-link"
+                                href={store.mapUrl}
+                                data-testid="store-map"
+                                target="_blank"
+                                rel="noreferrer noopener"
+                              >
+                                Ver el mapa
+                              </a>
+                            </dd>
+                          </div>
+                        ) : null}
+                      </dl>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>

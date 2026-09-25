@@ -235,6 +235,27 @@ export interface CityWarehouse {
   name: string;
 }
 
+/**
+ * **Punto de venta/retiro de la ciudad** (T235). La forma es la misma en las dos modalidades
+ * que el ERP puede configurar: una sucursal por tienda, o almacenes que hacen de tienda (el
+ * `kind` lo dice). Los datos vienen **ya resueltos** por el canal, con la herencia del maestro
+ * aplicada, así que la tienda no tiene que saber de dónde salió cada uno.
+ */
+export interface CityStore {
+  code: string;
+  name: string;
+  kind: 'BRANCH' | 'WAREHOUSE';
+  address: string | null;
+  phone: string | null;
+  openingHours: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  mapUrl: string | null;
+  pickupEnabled: boolean;
+  branchId: number | null;
+  warehouseId: number | null;
+}
+
 export interface City {
   code: string;
   name: string;
@@ -243,6 +264,11 @@ export interface City {
   freeShippingFrom: number;
   warehouse: CityWarehouse | null;
   branch: CityBranch | null;
+  /**
+   * Tiendas de la ciudad. **Opcional** a propósito: el fixture grabado del gate visual puede
+   * ser anterior a esta clave y la página no debe romperse por ella (la lección de T223).
+   */
+  stores?: CityStore[];
 }
 
 /** Formas de entrega que acepta el canal (D4: domicilio; el retiro es fase 2). */
