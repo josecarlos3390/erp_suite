@@ -1136,7 +1136,8 @@ datos**, no con dos caminos de código.
 | # | Tramo | Estado |
 |---|---|---|
 | **A1** | **La cadena de publicación**: los datos de retiro de la sucursal son **editables por API** (`CreateBranchDto`/`UpdateBranchDto` + `BRANCH_SELECT`), el **canal los publica** en la ciudad (`GET /storefront/cities` → `branch.phone/openingHours/latitude/longitude/mapUrl/pickupEnabled`) y la tienda los **muestra** en `/sucursales` (horario, teléfono, «Ver el mapa» y «Retiro en tienda: disponible») | **ENTREGADO (T233)**: 3 suites / **141** unitarios (4 casos nuevos de `branches.service`, 9 del contrato del DTO, 1 de `storefront.service`), **canal E2E 49/49** (era 48), tienda `typecheck`/`lint`/`build`/`visual 17/17`/`a11y 19/19`/`perf 5/5` |
-| **A2** | **El formulario del ERP**: los 6 campos en la pantalla de sucursales (hoy **0** referencias: el modelo los tenía y la semilla los cargaba, pero nadie podía editarlos desde la UI) | pendiente (toca `branch-form-after.png` del gate visual: hay que regenerar y revisar ese baseline) |
+| **A2a** | **El formulario del ERP**: los 6 campos de ubicación y retiro en la pantalla de sucursales (hoy **0** referencias: el modelo los tenía y la semilla los cargaba, pero nadie podía editarlos desde la UI) | **ENTREGADO (T234)**: sección «Ubicación y retiro» con teléfono, horario, mapa, lat/lng y el interruptor de retiro; Karma **8/8**, `lint`/`format`/`a11y`/`densidad`/`build` en verde y **un** baseline regenerado y revisado (`branch-form-after.png`), con la corrida de control **53/53** |
+| **A2b** | **La configuración del ecommerce** (lo que pidió el usuario): ajuste **`webStoreSource`** + tabla del canal **`WebStore`** (punto de venta que apunta a sucursal **o** almacén) + migración idempotente + módulo con permiso propio + pantalla **Configuración → Ecommerce → Puntos de venta** + el canal publicando los puntos de la ciudad + la tienda mostrándolos | **DISEÑO APROBADO (§19)**, pendiente de implementar |
 | **B** | **F4.1 «Mi cuenta» del dispositivo**: historial propio reusando `order+email`, direcciones locales y carrito/comparador/favoritos colgando de ahí. **Cero backend, sin D16** | pendiente |
 | **C** | **Retiro elegible**: `WebCityBranch`, selector de sucursal en el paso 2, `pickupBranchId` en `WebOrder`, **envío 0** en retiro y el almacén del pedido derivado de la sucursal elegida (`defaultWarehouseId`), respetando la regla almacén⊂sucursal | pendiente |
 | **D** | **Disponibilidad por sucursal de retiro** (ofrecer solo las que tienen el artículo) + **código de retiro** | pendiente |
@@ -1147,6 +1148,63 @@ por **API** (y la semilla ya los trae para las dos sucursales demo); `/sucursale
 el barrido de axe ni en el gate visual (ninguno de los dos la captura), y el fixture grabado del gate
 sigue sirviendo un payload **viejo** sin los campos nuevos: la tienda los trata como opcionales a
 propósito (la lección de T223) y por eso los tres gates siguen verdes sin regrabar el fixture.
+
+### §19 A2b — la configuración del ecommerce y los puntos de venta del canal: diseño aprobado (2026-09-25, T234)
+
+**Lo que pidió el usuario** (y lo que la medición destapó): poder **parametrizar cómo el ecommerce
+obtiene sus tiendas**, porque hay clientes que crean **una sola sucursal** y ponen sus tiendas físicas
+como **almacenes en ubicaciones distintas**, y otros que crean **una sucursal por tienda**; en ambos
+casos el comprador debe elegir ciudad y ver la lista de tiendas que corresponda.
+
+**Medido antes de decidir**:
+
+| Hecho | Fuente |
+|---|---|
+| El ERP **ya declara la modalidad del tenant**: el ajuste **«Permitir múltiples sucursales»** (`enableBranches`, default `true`) oculta el selector de sucursal, el toggle «ver almacenes de todas las sucursales» y la etiqueta de sucursal en traspasos | `settings.service.ts`, `settings.component.html`, `branch-filter-select`, `commercial-document-form.base` |
+| `assertWarehousesInBranch` **retorna temprano si el documento no tiene sucursal** | `src/common/warehouse-branch.util.ts` |
+| **No existe superficie de configuración del canal**: `WebCity` y `WebApiKey` solo los escribe la **semilla** (sin módulo, sin controller, sin pantalla); lo único configurable desde la UI es `webOrderTtlHours` | grep de `webCity`/`webApiKey` en `backend-erp/src` y de `web-city` en `erp-frontend/src` |
+| Los datos de ubicación/retiro viven **solo en `Branch`**; `Warehouse` tiene **solo `address`** | `prisma/schema.prisma` |
+
+**Decisiones del usuario (2026-09-25)**: **(1)** se implementa con **tabla del canal** (recomendación
+técnica aceptada); **(2)** la configuración vive en **Configuración → Ecommerce**; **(3)** **cada punto trae
+su almacén** y la ciudad queda como valor por defecto para el envío a domicilio sin tienda elegida.
+
+**Diseño**: el canal estrena **`WebStore`** (punto de venta/retiro), que apunta a **sucursal o almacén**
+según `kind`, y guarda lo que el canal publica (con **herencia** del maestro cuando el campo viene `null`):
+
+```
+model WebStore {
+  tenantId, webCityId            // a qué ciudad de la tienda pertenece
+  code, name, sortOrder, isActive
+  kind: BRANCH | WAREHOUSE       // ← la modalidad, POR PUNTO (no un booleano global)
+  branchId?, warehouseId?        // vínculo al maestro (uno de los dos, según kind)
+  address?, phone?, openingHours?, latitude?, longitude?, mapUrl?   // null = hereda del maestro
+  pickupEnabled (default true)
+}
+```
+
+**Invariantes** (en el servicio, con spec que las pinza — **ninguna regla del ERP se relaja**):
+- `kind = BRANCH` → `branchId` obligatorio; el almacén del pedido = `warehouseId ?? branch.defaultWarehouseId`, y debe cumplir `warehouse.branchId == branchId` (la regla sigue siendo del ERP).
+- `kind = WAREHOUSE` → `warehouseId` obligatorio y `branchId` **derivado** del almacén (o `null` si el tenant no usa sucursales, que es justo el caso de `enableBranches=false`).
+- El punto resuelve **siempre** a `(branchId, warehouseId)`, así que el documento del pedido no cambia de forma entre modalidades.
+
+**Ajuste**: **`webStoreSource: 'BRANCH' | 'WAREHOUSE'`** en `SystemSettings` (patrón de `webOrderTtlHours`,
+con default coherente con `enableBranches`) = la modalidad con la que se **proponen** los puntos nuevos;
+cada punto puede exceptuar con su `kind` (soporta el caso mixto sin código condicional).
+
+**Superficie**: **Configuración → Ecommerce** (nueva): clave del canal y orígenes, ciudades, **puntos de
+venta** y los ajustes del canal. Hoy **no existe nada de eso** (medido), así que este tramo es también el
+primer sitio donde la empresa configura su tienda sin tocar la semilla.
+
+**Lo que la tienda gana**: pide ciudad → pide `stores[]`, **siempre la misma forma de respuesta**; en
+modalidad almacén cada punto es un almacén-tienda y en modalidad sucursal cada punto es una sucursal, y el
+front **no ramifica**. Los mismos datos (horario, teléfono, mapa, «Retiro en tienda») en los dos casos.
+
+**Lo que se descartó (y por qué)**: añadir los 6 campos de la sucursal a **`Warehouse`** con un booleano
+global. Duplica el bloque de ubicación en dos maestros (dos fuentes de verdad: el admin tendría que saber
+cuál lee el ecommerce según el modo), el formulario de almacenes tendría que ganarlos (con su baseline),
+no expresa el caso mixto y obliga a la tienda a saber en qué modo está. Más barato hoy, más caro de
+mantener.
 
 ## §15 F7 y F4 — estado medido y decisiones pendientes (2026-09-24, T217)
 
