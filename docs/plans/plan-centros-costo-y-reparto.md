@@ -191,3 +191,44 @@ cerrarse (AUDIT T174, T171 y el límite `landed-costs.accountId`) más el barrid
   en él una norma capturada expande cualquier línea, sea de resultados o no.
 - **C2**: `distributionRuleId` de la línea del documento es un **entero sin FK** (el asiento sí la tiene): la norma se
   resuelve y valida al contabilizar, no al guardar el documento.
+
+---
+
+## 6. T238 — el contrato del asiento preliminar del borrador (2026-09-25)
+
+Ronda de corrección sobre el **punto único** que este plan ya había tocado (T178): el **asiento preliminar** del
+**borrador** (`POST /journal-entries/preview-draft`) es la única superficie del ERP donde el **payload lo arma la
+pantalla** y el backend corre con `ValidationPipe` en `whitelist` + `forbidNonWhitelisted`, así que **una sola clave de
+más es un 400** que deja al usuario sin preliminar.
+
+**Medido antes (app en marcha)**: la pantalla de **factura de venta** manda **siempre** `isExport` y el DTO no lo
+declaraba → `400 property isExport should not exist` en **cualquier** factura; y una línea sin artículo viajaba como
+`null` (`Number(undefined)` → `NaN` → `null` en JSON) → `lines.0.itemId must be a number conforming to the specified
+constraints`. **El mismo escaneo** (comparar las claves que devuelven los cuatro `previewDraftPayload` con el DTO)
+destapó el segundo: la **factura de compra** manda `creditUse` → `400 property creditUse should not exist` (verificado
+en vivo).
+
+**Dos clases de defecto, dos arreglos**:
+1. **Contrato**: `isExport` y `creditUse` se declaran en el DTO. `isExport` **no** es cosmético —el builder de ventas
+   decide con él si el precio lleva IVA, si emite débito fiscal y si aplica IT (Art. 11 y Art. 76 inc. c)—, así que se
+   **hila** hasta el asiento: `DraftPreviewDocument` → `JournalEntriesService.previewFromDraft` →
+   `_previewSaleInvoice`. `creditUse` es un atributo del libro de compras que el motor no lee: se acepta y se declara
+   que no cambia el asiento.
+2. **UX de la pantalla**: el botón se podía pulsar con el documento incompleto. Las **cuatro** pantallas
+   (`sale-invoices`, `sale-reserve-invoices`, `purchase-invoices`, `purchase-reserve-invoices`) devuelven ahora
+   `undefined` cuando el helper **compartido** (`JournalEntryPreviewDraftHelper.isReady`) dice que no hay borrador
+   previsualizable (cliente/proveedor + al menos una línea con artículo) —el botón se **deshabilita**— y **filtran** las
+   líneas sin artículo, que es la misma regla que ya aplicaba el helper.
+
+**Medido (después)**: sonda en vivo del payload de la pantalla → **201** (era 400); A/B del asiento de exportación →
+sin `2.1.2.01.001` (IVA débito) ni `2.1.2.01.003` (IT) y CxC por el importe íntegro, contra el interno que **sí** los
+lleva; `preview-journal-entry-draft.dto.spec` **8/8** (valida con las mismas opciones del pipe y aplana los hijos como
+el pipe); E2E `discount-propagation` con el caso de exportación del **borrador** (el mismo supuesto que ya existía para
+la factura **guardada**, que es justo por lo que el camino del borrador se había quedado sin medir); Karma de la
+pantalla de venta **21/21** (4 casos nuevos).
+
+**Declarado**: las cuatro pantallas **duplican** el mapeo de línea (cada una con su neto `priceNet × cantidad`, que no
+es lo que hace el helper) —deuda real, no se unifica en esta ronda porque el helper manda el `subtotal` **con IVA** del
+formulario y el asiento quedaría descuadrado—; `lines: []` sigue siendo **válido** en el contrato (un cobro/pago
+previsualiza sin líneas de mercancía) y por eso el vacío se resuelve en la UI y no en el DTO.
+
