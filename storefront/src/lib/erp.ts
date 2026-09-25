@@ -206,11 +206,27 @@ export interface StorePage {
   updatedAt: string;
 }
 
+/**
+ * Sucursal de la ciudad: es el **punto de retiro** (T233). Los campos de ubicacion son
+ * opcionales a proposito: el fixture grabado del gate visual puede ser anterior a que el
+ * canal los publicara, y la tienda no debe reventar por una clave que falta (la leccion
+ * de T223 con el vendedor).
+ */
 export interface CityBranch {
   id: number;
   code: string;
   name: string;
   address: string | null;
+  /** Telefono de la sucursal, tal como lo publica el ERP. */
+  phone?: string | null;
+  /** Horario de atencion en texto libre (`Lun a Sab 09:00-20:00`). */
+  openingHours?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  /** Enlace a un mapa ya armado por el ERP (se usa tal cual, sin construirlo aqui). */
+  mapUrl?: string | null;
+  /** `false` = la empresa apago el retiro en esta sucursal. */
+  pickupEnabled?: boolean;
 }
 
 export interface CityWarehouse {

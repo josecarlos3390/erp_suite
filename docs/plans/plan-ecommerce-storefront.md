@@ -1081,6 +1081,73 @@ densidad dinámica). Y **F4 sigue bloqueada por D16**: **0** referencias a un pr
 en el canal y **ninguno de cliente**; sin correo transaccional no hay verificación, ni recuperación de
 contraseña, ni aviso de pedido.
 
+### §18 Fase 2 (retiro en tienda) y F4: la decisión de modelo, medida — y el orden de los tramos (2026-09-25, T233)
+
+**La pregunta del usuario**: ¿el negocio debe poder elegir entre «1 sucursal con varios almacenes»
+(donde los almacenes serían las tiendas físicas, para quien no quiere crear muchas sucursales) o
+«varias sucursales, cada una con sus almacenes»? ¿O hay que soportar **las dos modalidades**?
+
+**Lo que se midió antes de opinar** (nada de esto es supuesto):
+
+| Hecho medido | Fuente |
+|---|---|
+| En **todo documento** el ERP exige `warehouse.branchId === document.branchId`, y un almacén **sin** sucursal se rechaza (`allowNullBranch=false` por defecto): «El almacén … no tiene una sucursal asignada. Asigne una sucursal al almacén antes de usarlo en un documento» | `src/common/warehouse-branch.util.ts` (+ spec: `stock-entries.service.spec.ts` «debería rechazar si el almacén no pertenece a la sucursal») |
+| Los datos del punto de retiro viven en **`Branch`**: `phone`, `openingHours`, `latitude`, `longitude`, `mapUrl`, `pickupEnabled`. `Warehouse` solo tiene `address` | `prisma/schema.prisma` |
+| Crear una sucursal cuesta **`code` + `name`**; `address`, `defaultWarehouseId` e `isActive` son opcionales. **No** exige serie propia: si la sucursal no tiene serie, `resolveSeries` cae al default global | `src/branches/dto/branch.dto.ts` y `document-series.service.ts` (`resolveSeries`, paso 2 y 3) |
+| La sucursal es lo que arrastra **series**, usuarios, empleados, **terminales POS**, `JournalEntryLine.branchId`, todos los documentos y la ciudad del canal | `Branch` (relaciones del modelo) |
+| La semilla ya modela **3 almacenes en una sucursal** (`SUC-01` ← `ALM-01/02/03`) y **1 en otra** (`SUC-LPZ` ← `ALM-LPZ`): 4 almacenes / 2 sucursales | `prisma/seed.ts`, `prisma/seed-storefront.ts` |
+| El canal guarda por ciudad **1 sucursal de despacho** (`branchId`) + **1 almacén de existencia** (`warehouseId`) + costo/umbral de envío y plazo. **Una** sucursal, no varias | `WebCity` en el modelo y el `StorefrontCityView` |
+| Granularidad fina aparte: existe **`CostCenter`** + reglas de reparto (para «resultado por tienda» sin tocar sucursales) | módulo `dimensions/cost-centers` |
+
+**Decisión**: **no** se abre una «modalidad» con dos caminos de código. La regla única es
+**`sucursal = punto con ubicación` (y por tanto el punto de retiro)** y **`almacén = depósito dentro de
+esa sucursal`** (N por sucursal). Con eso:
+
+- **«1 sucursal + N almacenes»** = un local con varios depósitos (bodega, exhibición, consignación) → ya
+  soportado, sin tocar nada.
+- **«N sucursales, cada una con sus almacenes»** = N locales físicos (tiendas/puntos de retiro) → ya
+  soportado.
+- **«La tienda física es un almacén»** queda **descartado con evidencia**: el documento revienta por la
+  regla almacén⊂sucursal, el comprador no tendría horario/mapa/`pickupEnabled` que leer (viven en la
+  sucursal), y el POS, la caja y el `branchId` contable de todas las tiendas caerían en la misma sucursal.
+  Soportarlo exigiría **duplicar** la ubicación en `Warehouse` y **relajar** la regla: dos fuentes de
+  verdad para el mismo dato.
+
+Lo que **sí** hay que hacer configurable es lo que el negocio realmente necesita elegir: **cuántas
+sucursales de retiro ofrece cada ciudad** → tabla del canal **`WebCityBranch`** (ciudad → sucursales de
+retiro), que D8 ya anticipó («el vínculo ciudad → sucursales de retiro se agrega como tabla del canal
+cuando entre el retiro, sin cambiar los enlaces actuales»). Con eso, los dos negocios se configuran **con
+datos**, no con dos caminos de código.
+
+**Buenas prácticas de ecommerce (BOPIS) que el modelo ya soporta y hay que respetar**:
+
+1. **Solo ofrecer sucursales que puedan servir el pedido**: `pickupEnabled` **y** existencia del artículo
+   en el almacén de esa sucursal (mostrar una tienda sin stock es la queja nº1 del retiro en tienda).
+2. **Reservar la mercancía** del punto elegido hasta el retiro (la reserva con TTL del pedido abandonado
+   ya existe).
+3. **El pedido y su entrega deben decir la sucursal** (hoy `WebOrder` guarda `deliveryType`, `webCityId`,
+   `warehouseId` y `addressJson`, y **ninguna** sucursal de retiro).
+4. **Envío 0 en retiro**, dicho en el resumen.
+5. **Horario, teléfono y «cómo llegar»** siempre visibles (es para lo que están los campos de `Branch`).
+6. **Código de retiro** para el mostrador.
+
+**Orden de los tramos** (y estado):
+
+| # | Tramo | Estado |
+|---|---|---|
+| **A1** | **La cadena de publicación**: los datos de retiro de la sucursal son **editables por API** (`CreateBranchDto`/`UpdateBranchDto` + `BRANCH_SELECT`), el **canal los publica** en la ciudad (`GET /storefront/cities` → `branch.phone/openingHours/latitude/longitude/mapUrl/pickupEnabled`) y la tienda los **muestra** en `/sucursales` (horario, teléfono, «Ver el mapa» y «Retiro en tienda: disponible») | **ENTREGADO (T233)**: 3 suites / **141** unitarios (4 casos nuevos de `branches.service`, 9 del contrato del DTO, 1 de `storefront.service`), **canal E2E 49/49** (era 48), tienda `typecheck`/`lint`/`build`/`visual 17/17`/`a11y 19/19`/`perf 5/5` |
+| **A2** | **El formulario del ERP**: los 6 campos en la pantalla de sucursales (hoy **0** referencias: el modelo los tenía y la semilla los cargaba, pero nadie podía editarlos desde la UI) | pendiente (toca `branch-form-after.png` del gate visual: hay que regenerar y revisar ese baseline) |
+| **B** | **F4.1 «Mi cuenta» del dispositivo**: historial propio reusando `order+email`, direcciones locales y carrito/comparador/favoritos colgando de ahí. **Cero backend, sin D16** | pendiente |
+| **C** | **Retiro elegible**: `WebCityBranch`, selector de sucursal en el paso 2, `pickupBranchId` en `WebOrder`, **envío 0** en retiro y el almacén del pedido derivado de la sucursal elegida (`defaultWarehouseId`), respetando la regla almacén⊂sucursal | pendiente |
+| **D** | **Disponibilidad por sucursal de retiro** (ofrecer solo las que tienen el artículo) + **código de retiro** | pendiente |
+| **E** | **F4.2/F4.3 identidad real**: `WebCustomer` con la contraseña que el modelo ya tiene + sesión con cookie del **canal** (D1/D2) + direcciones desde las `PartnerAddress` del tercero enlazado, **o** OAuth si se decide esquivar D16 | pendiente (bloqueado por D16 o por la decisión de OAuth) |
+
+**Declarado de A1**: el formulario del ERP (A2) queda pendiente, así que hoy los datos de retiro se fijan
+por **API** (y la semilla ya los trae para las dos sucursales demo); `/sucursales` **no** entra todavía en
+el barrido de axe ni en el gate visual (ninguno de los dos la captura), y el fixture grabado del gate
+sigue sirviendo un payload **viejo** sin los campos nuevos: la tienda los trata como opcionales a
+propósito (la lección de T223) y por eso los tres gates siguen verdes sin regrabar el fixture.
+
 ## §15 F7 y F4 — estado medido y decisiones pendientes (2026-09-24, T217)
 
 Los dos tramos que quedan del orden acordado **necesitan decisiones de producto**, así que

@@ -48,6 +48,44 @@ export default async function BranchesPage(): Promise<JSX.Element> {
                   <dd className="text-right text-fg">{city.branch.address}</dd>
                 </div>
               ) : null}
+              {city.branch?.openingHours ? (
+                <div className="flex justify-between gap-3">
+                  <dt>Horario de atencion</dt>
+                  <dd className="text-right text-fg">{city.branch.openingHours}</dd>
+                </div>
+              ) : null}
+              {city.branch?.phone ? (
+                <div className="flex justify-between gap-3">
+                  <dt>Telefono</dt>
+                  <dd className="text-right text-fg">
+                    <a className="sf-link" href={`tel:${city.branch.phone.replace(/\s+/g, '')}`}>
+                      {city.branch.phone}
+                    </a>
+                  </dd>
+                </div>
+              ) : null}
+              {city.branch?.mapUrl ? (
+                <div className="flex justify-between gap-3">
+                  <dt>Como llegar</dt>
+                  <dd className="text-right">
+                    <a
+                      className="sf-link"
+                      href={city.branch.mapUrl}
+                      data-testid="branch-map"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                    >
+                      Ver el mapa
+                    </a>
+                  </dd>
+                </div>
+              ) : null}
+              {city.branch?.pickupEnabled === true ? (
+                <div className="flex justify-between gap-3" data-testid="branch-pickup">
+                  <dt>Retiro en tienda</dt>
+                  <dd className="text-right text-fg">Disponible en esta sucursal</dd>
+                </div>
+              ) : null}
               <div className="flex justify-between gap-3">
                 <dt>Almacen de existencia</dt>
                 <dd className="text-right text-fg">
