@@ -133,6 +133,11 @@ export interface Product {
    * ofrece como extra (garantia extendida, instalacion). Solo la ficha los trae.
    */
   services?: StorefrontService[];
+  /**
+   * **Servicio tecnico** (F6/T228): `true` cuando la publicacion tiene **vendedor**, que es
+   * quien atiende la solicitud. La ficha ofrece el formulario solo si el canal lo dice.
+   */
+  canRequestService?: boolean;
 }
 
 export interface CategoryNode {
@@ -800,6 +805,40 @@ export async function submitReview(request: {
     ...(request.title.trim() !== "" ? { title: request.title.trim() } : {}),
     comment: request.comment.trim(),
     ...(request.name.trim() !== "" ? { name: request.name.trim() } : {}),
+  });
+}
+
+/**
+ * **Solicitud de servicio técnico** (F6/T228) del comprador: la deja en el ERP y la atiende el
+ * vendedor de la publicación. El pedido es **opcional** (pedir servicio técnico no exige haber
+ * comprado) y, si viene, el canal lo verifica con el correo del comprador —la misma identidad
+ * que el seguimiento y las reseñas—: un pedido ajeno no se confirma.
+ */
+export interface ServiceRequestSubmission {
+  id: number;
+  itemId: number;
+  itemName: string;
+  seller: string | null;
+  status: string;
+  orderNumber: string | null;
+  message: string;
+}
+
+export async function submitServiceRequest(request: {
+  slug: string;
+  email: string;
+  name: string;
+  phone: string;
+  issue: string;
+  order: string;
+}): Promise<ServiceRequestSubmission> {
+  return erpPost<ServiceRequestSubmission>("/storefront/service-requests", {
+    slug: request.slug.trim(),
+    email: request.email.trim(),
+    issue: request.issue.trim(),
+    ...(request.name.trim() !== "" ? { name: request.name.trim() } : {}),
+    ...(request.phone.trim() !== "" ? { phone: request.phone.trim() } : {}),
+    ...(request.order.trim() !== "" ? { order: request.order.trim() } : {}),
   });
 }
 

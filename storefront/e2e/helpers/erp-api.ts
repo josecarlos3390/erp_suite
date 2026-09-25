@@ -62,6 +62,11 @@ export interface ApiProduct {
   /** `true` cuando la publicacion **es** un servicio (articulo no inventariable, F6/T227). */
   isService?: boolean;
   /**
+   * **Servicio tecnico** (F6/T228): `true` cuando la publicacion tiene **vendedor**, que es
+   * quien atiende la solicitud; la ficha ofrece el formulario solo si el canal lo dice.
+   */
+  canRequestService?: boolean;
+  /**
    * **Servicios publicados en la categoria** del articulo (F6/T227): lo que la ficha ofrece
    * como extra. Solo la ficha los trae; la ficha de un servicio no se ofrece a si misma.
    */
