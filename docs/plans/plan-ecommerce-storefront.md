@@ -1232,6 +1232,30 @@ un punto se **desactiva** (no se borra: el histórico de los pedidos que lo elig
 pantalla **no** entra todavía en el barrido de axe ni en la densidad dinámica (el `a11y:check` estático
 sí la cubre). **A2b cerrado**; el tramo siguiente es **C**.
 
+**T237 — la pantalla no abría: el DTO del listado no aceptaba los filtros que la pantalla manda
+(2026-09-25)**. **Lo que pasó**: al entrar en **Administración → Ecommerce** el ERP respondía **400**
+`property page should not exist, property limit should not exist, onlyActive must be a boolean value`.
+**Medido antes** (sonda en vivo contra la API en marcha, con la query exacta de la pantalla): de **8**
+variantes **5 daban 400** —el mensaje literal con `page=1&limit=20&onlyActive=true`, `onlyActive must be
+a boolean value` con `onlyActive=true` y **`cityId=1`** con `cityId must not be less than 1` / `cityId
+must be an integer number`, un filtro que el usuario todavía no había tocado— frente a **3** en 200
+(`kind=BRANCH`, `search=centro` y sin filtros: los únicos parámetros de **texto**). **Causa raíz**:
+`WebStoreQueryDto` era el **único** DTO de consulta del módulo sin las conversiones de `class-transformer`
+que sí tienen sus hermanos (`review-query.dto.ts` → `toNumber`; `web-order-query.dto.ts` →
+`toNumber`/`toBoolean`) y **no declaraba `page`/`limit`** aunque `WebStoresService.findAll` **ya los leía**
+con `parsePagination`: con el `ValidationPipe` global (`whitelist` + `forbidNonWhitelisted`) una propiedad
+no declarada es **400** —no un filtro ignorado— y un query string llega **siempre como texto**. **Por qué
+ningún gate lo vio**: el spec del servicio llamaba al servicio **directo** (sin DTO ni pipe), el spec de
+Karma afirmaba **la URL que compone** el servicio HTTP y no que el backend la acepte, y el E2E del canal no
+tocaba el endpoint de back office (creaba los `WebStore` por Prisma). **Cerrado** con
+`@Transform(toNumber)` en `cityId`/`page`/`limit` (el tope de 100 sigue en `parsePagination`) y
+`toBoolean` en `onlyActive`, más **dos gates nuevos**: `web-store.dto.spec.ts` (**9 casos**, valida con las
+**mismas opciones del pipe** y los parámetros **tal como viajan**: `'1'`, `'20'`, `'true'`) y un caso E2E
+que pide `GET /api/web-stores?page=1&limit=20&onlyActive=true&cityId=N` con el **JWT del ERP** y comprueba
+que el filtro acota. **Medido después**: sonda en vivo **8/8 en 200**, `web-stores` **23/23**, **canal E2E
+52/52** (era 51), `tsc`/`eslint`/`prettier` en 0. **Sin cambios en el frontend**: la pantalla ya mandaba lo
+que el contrato dice.
+
 ## §15 F7 y F4 — estado medido y decisiones pendientes (2026-09-24, T217)
 
 Los dos tramos que quedan del orden acordado **necesitan decisiones de producto**, así que
