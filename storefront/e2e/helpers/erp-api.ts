@@ -46,6 +46,19 @@ export interface ApiProduct {
   };
   category: { id: number; slug: string; name: string } | null;
   specs: { name: string; value: string; groupName: string | null }[];
+  /**
+   * Resenas **aprobadas** (F6). Solo las publica la **ficha**: el catalogo no las trae, asi
+   * que en las filas del listado llegan `undefined`.
+   */
+  rating?: { average: number; count: number };
+  reviews?: Array<{
+    id: number;
+    rating: number;
+    title: string | null;
+    comment: string;
+    buyer: string;
+    createdAt: string;
+  }>;
 }
 
 export interface ApiCategory {
@@ -770,4 +783,154 @@ export async function setChannelPromotion(
   return adminPatch<ApiWebPromotion>(token, `/web-promotions/${itemId}`, {
     channelDiscountPct: pct,
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Resenas (F6): el canal las acepta con un pedido **entregado**, asi que la prueba
+// tiene que **entregar** el pedido de verdad antes de escribirlas
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Resena tal como la devuelve el canal al aceptarla (nace **pendiente**). */
+export interface ApiReviewSubmission {
+  itemId: number;
+  slug: string;
+  rating: number;
+  title: string | null;
+  comment: string;
+  buyer: string;
+  status: string;
+  resubmitted: boolean;
+  message: string;
+}
+
+/** Escribe una resena **por el canal** (el mismo endpoint que usa el puente de la tienda). */
+export async function submitReview(input: {
+  order: string;
+  email: string;
+  slug: string;
+  rating: number;
+  title?: string;
+  comment: string;
+  name?: string;
+}): Promise<ApiReviewSubmission> {
+  return apiPost<ApiReviewSubmission>("/storefront/reviews", input);
+}
+
+/** Resena en la cola de moderacion del back office (`GET /reviews`). */
+export interface ApiReviewRow {
+  id: number;
+  itemId: number;
+  itemSku: string;
+  status: string;
+  rating: number;
+  buyerEmail: string;
+  buyerLabel: string;
+  title: string | null;
+  comment: string;
+}
+
+async function adminGet<T>(token: string, path: string): Promise<T> {
+  const response = await fetch(`${ERP_API_URL}${path}`, {
+    headers: { accept: "application/json", authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) {
+    throw new Error(`El ERP respondio ${response.status} en ${path}`);
+  }
+  return (await response.json()) as T;
+}
+
+/** Busca la resena de un comprador en la cola (para poder moderarla en la prueba). */
+export async function findReviewByBuyer(
+  token: string,
+  email: string,
+): Promise<ApiReviewRow> {
+  const page = await adminGet<{ data: ApiReviewRow[] }>(
+    token,
+    `/reviews?search=${encodeURIComponent(email)}`,
+  );
+  const found = page.data.find((row) => row.buyerEmail === email);
+  if (!found) {
+    throw new Error(
+      `La resena de ${email} no aparece en la cola de moderacion del ERP.`,
+    );
+  }
+  return found;
+}
+
+/**
+ * Aprueba o rechaza una resena con el `PATCH` real de la pantalla de moderacion. Solo las
+ * **aprobadas** se publican en la ficha: es lo que mide el caso de las resenas.
+ */
+export async function moderateReview(
+  token: string,
+  id: number,
+  status: "APPROVED" | "REJECTED",
+): Promise<ApiReviewRow> {
+  return adminPatch<ApiReviewRow>(token, `/reviews/${id}/status`, { status });
+}
+
+/**
+ * **Entrega completa** del pedido con el flujo real de Ventas: la resena exige un pedido
+ * `DELIVERED` (el estado derivado del documento, T218/T221), asi que la prueba no puede
+ * inventarse el estado — tiene que sacar la mercancia.
+ *
+ * La linea de **envio** se salta a proposito: es un servicio que se factura y no se entrega
+ * (la misma regla que el progreso del pedido).
+ */
+export async function deliverOrderFully(
+  token: string,
+  order: ApiOrder,
+  city: ApiCity,
+  today: string,
+): Promise<void> {
+  if (order.salesOrderId === null) {
+    throw new Error(`El pedido ${order.orderNumber} no tiene pedido de venta.`);
+  }
+  if (city.branch === null || city.warehouse === null) {
+    throw new Error(
+      `La ciudad ${city.code} no tiene sucursal/almacen de despacho: no se puede entregar.`,
+    );
+  }
+  const salesOrder = await adminGet<{
+    id: number;
+    items: Array<{ id: number; itemId: number; quantity: number }>;
+  }>(token, `/sales-orders/${order.salesOrderId}`);
+  const goods = salesOrder.items.filter(
+    (line) => line.itemId !== order.shippingItemId,
+  );
+  if (goods.length === 0) {
+    throw new Error(
+      `El pedido ${order.orderNumber} no tiene mercancia que entregar.`,
+    );
+  }
+
+  const response = await fetch(
+    `${ERP_API_URL}/delivery-orders/from-order/${order.salesOrderId}`,
+    {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        date: today,
+        postingDate: today,
+        branchId: city.branch.id,
+        warehouseId: city.warehouse.id,
+        items: goods.map((line) => ({
+          orderItemId: line.id,
+          quantity: Number(line.quantity),
+        })),
+      }),
+      signal: AbortSignal.timeout(20_000),
+    },
+  );
+  if (!response.ok) {
+    const raw = await response.text();
+    throw new Error(
+      `El ERP no pudo entregar el pedido ${order.orderNumber}: ${response.status} ${raw}`,
+    );
+  }
 }

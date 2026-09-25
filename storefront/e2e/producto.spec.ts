@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { getAllProducts, getProduct, type ApiProduct } from "./helpers/erp-api";
+import { expectAvailability } from "./helpers/freshness";
 
 const DEFAULT_CITY = "SCZ";
 const DEFAULT_CITY_NAME = "Santa Cruz de la Sierra";
@@ -52,17 +53,15 @@ test.describe("Ficha de producto", () => {
       detail.name,
     );
 
-    // Disponibilidad de la ciudad elegida, tal como la calcula el ERP.
-    const availability = page.getByTestId("detail-availability");
-    if (detail.availability.inStock) {
-      await expect(availability).toHaveText(
-        `Disponible: ${detail.availability.available}`,
-      );
-    } else {
-      await expect(availability).toHaveText(
-        `Sin existencia en ${DEFAULT_CITY_NAME}`,
-      );
-    }
+    // Disponibilidad de la ciudad elegida, tal como la calcula el ERP. La copia de la ficha
+    // se cachea 60 s, asi que se espera la convergencia antes de afirmar el texto exacto.
+    await expectAvailability(
+      page,
+      detail.availability.inStock
+        ? `Disponible: ${detail.availability.available}`
+        : `Sin existencia en ${DEFAULT_CITY_NAME}`,
+      `la existencia de ${target.slug}`,
+    );
 
     // El precio pintado es el precio efectivo del canal.
     const priceText = await page.getByTestId("detail-price").textContent();

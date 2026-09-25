@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 import { findZeroStockProduct, getCatalog } from './helpers/erp-api';
+import {
+  expectAvailability,
+  hasText,
+  waitForStorefrontConvergence,
+} from './helpers/freshness';
 
 const DEFAULT_CITY = 'SCZ';
 const OTHER_CITY = 'LPZ';
@@ -15,8 +20,13 @@ test.describe('Selector de ciudad', () => {
     await page.goto(`/productos/${target.slug}`);
 
     await expect(page.getByTestId('selector-ciudad')).toHaveValue(DEFAULT_CITY);
-    await expect(page.getByTestId('detail-availability')).toHaveText(
+    // La existencia que la tienda pinta tiene que coincidir con la que publica el ERP; la
+    // copia cacheada (60 s) puede ir por detras si otra prueba movio el stock: la prueba
+    // espera la convergencia en vez de asumir que el dato es instantaneo.
+    await expectAvailability(
+      page,
       `Disponible: ${target.availableInDefaultCity}`,
+      `la existencia de ${target.slug}`,
     );
     await expect(page.getByTestId('add-to-cart')).toBeEnabled();
 
@@ -38,8 +48,10 @@ test.describe('Selector de ciudad', () => {
     await expect(page.getByTestId('selector-ciudad')).toHaveValue(DEFAULT_CITY);
 
     await page.goto(`/productos/${target.slug}`);
-    await expect(page.getByTestId('detail-availability')).toHaveText(
+    await expectAvailability(
+      page,
       `Disponible: ${target.availableInDefaultCity}`,
+      `la existencia restituida de ${target.slug}`,
     );
   });
 
@@ -65,16 +77,36 @@ test.describe('Selector de ciudad', () => {
     const featured = page.getByTestId('home-featured');
     await expect(featured.getByTestId('product-card')).toHaveCount(lpzPage.data.length);
 
-    // Cada tarjeta de la home refleja la existencia del almacen de LPZ.
+    // Cada tarjeta de la home refleja la existencia del almacen de LPZ, con la misma
+    // tolerancia a la cache del canal que la ficha: primero se espera a que **converjan**
+    // todas y despues se afirma cada una.
+    const availabilityOf = (slug: string): string => {
+      const product = lpzPage.data.find((row) => row.slug === slug);
+      if (product === undefined) return '';
+      return product.availability.inStock
+        ? `Disponible: ${product.availability.available}`
+        : `Sin existencia en ${OTHER_CITY_NAME}`;
+    };
+    const cardOf = (slug: string) =>
+      featured.locator(
+        `[data-testid="product-card"][data-slug="${slug}"] [data-testid="product-availability"]`,
+      );
+    await waitForStorefrontConvergence(
+      page,
+      async () => {
+        for (const product of lpzPage.data) {
+          const card = cardOf(product.slug);
+          if ((await card.count()) === 0) return false;
+          if ((await card.innerText()).trim() !== availabilityOf(product.slug)) {
+            return false;
+          }
+        }
+        return true;
+      },
+      `la existencia de la home en ${OTHER_CITY_NAME}`,
+    );
     for (const product of lpzPage.data) {
-      const card = featured.locator(
-        `[data-testid="product-card"][data-slug="${product.slug}"] [data-testid="product-availability"]`,
-      );
-      await expect(card).toHaveText(
-        product.availability.inStock
-          ? `Disponible: ${product.availability.available}`
-          : `Sin existencia en ${OTHER_CITY_NAME}`,
-      );
+      await expect(cardOf(product.slug)).toHaveText(availabilityOf(product.slug));
     }
 
     // Y el mismo articulo que en SCZ tenia existencia aparece agotado.

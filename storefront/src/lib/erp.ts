@@ -59,6 +59,23 @@ export interface ProductCategoryRef {
   name: string;
 }
 
+/** Promedio publicado de las resenas **aprobadas** (F6) y cuantas son. */
+export interface ProductRating {
+  average: number;
+  count: number;
+}
+
+/** Resena **aprobada** tal como la publica la ficha (F6). */
+export interface ProductReview {
+  id: number;
+  rating: number;
+  title: string | null;
+  comment: string;
+  /** El comprador: su nombre o su correo **enmascarado** (nunca el correo completo). */
+  buyer: string;
+  createdAt: string;
+}
+
 export interface Product {
   itemId: number;
   slug: string;
@@ -97,6 +114,14 @@ export interface Product {
   deliveryDays: number | null;
   category: ProductCategoryRef | null;
   availability: ProductAvailability;
+  /**
+   * Resenas **aprobadas** del articulo (F6). Solo las publica la **ficha**: el catalogo y los
+   * relacionados no las traen (no se paga la consulta en cada tarjeta), asi que pueden faltar
+   * aunque el canal sea el mismo. Cuando faltan, la tienda las trata como «sin resenas» en vez
+   * de inventar un promedio.
+   */
+  rating?: ProductRating;
+  reviews?: ProductReview[];
 }
 
 export interface CategoryNode {
@@ -706,6 +731,47 @@ export async function registerPaymentReference(request: {
     order: request.order.trim(),
     email: request.email.trim(),
     reference: request.reference.trim(),
+  });
+}
+
+/** Lo que devuelve el canal al aceptar una resena (F6): nace **pendiente** de moderacion. */
+export interface ReviewSubmission {
+  itemId: number;
+  slug: string;
+  rating: number;
+  title: string | null;
+  comment: string;
+  buyer: string;
+  status: string;
+  /** `true` cuando reemplaza a una resena que el back office habia rechazado antes. */
+  resubmitted: boolean;
+  message: string;
+}
+
+/**
+ * POST /storefront/reviews — la **resena del comprador** (F6).
+ *
+ * Solo la acepta el canal si el pedido existe, es de ese correo, esta **entregado** y lleva el
+ * articulo: la tienda no decide nada de eso, lo comprueba el ERP con su documento. La resena
+ * nace **pendiente**: se publica cuando el back office la aprueba.
+ */
+export async function submitReview(request: {
+  order: string;
+  email: string;
+  slug: string;
+  rating: number;
+  title: string;
+  comment: string;
+  name: string;
+}): Promise<ReviewSubmission> {
+  return erpPost<ReviewSubmission>("/storefront/reviews", {
+    order: request.order.trim(),
+    email: request.email.trim(),
+    slug: request.slug.trim(),
+    rating: request.rating,
+    ...(request.title.trim() !== "" ? { title: request.title.trim() } : {}),
+    comment: request.comment.trim(),
+    ...(request.name.trim() !== "" ? { name: request.name.trim() } : {}),
   });
 }
 

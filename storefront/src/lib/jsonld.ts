@@ -56,6 +56,19 @@ export function productJsonLd(product: Product, cityName: string): Record<string
           }
         : {}),
     },
+    // F6: el promedio solo se declara con resenas **aprobadas** y con su numero. Sin resenas
+    // no se publica `aggregateRating` (Google lo rechaza y no seria cierto).
+    ...(product.rating !== undefined && product.rating.count > 0
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: product.rating.average,
+            reviewCount: product.rating.count,
+            bestRating: 5,
+            worstRating: 1,
+          },
+        }
+      : {}),
   };
 }
 

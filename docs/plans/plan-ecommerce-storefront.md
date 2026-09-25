@@ -882,7 +882,7 @@ se entrega con la API ya cerrada.
 | 1 | **Vendedores** («Vendido por …») | Mostrarlo en **ficha y catálogo** + **filtro por vendedor** + **`GET /sellers`** en el ERP (sin pantalla de administración: el marketplace del plan es ligero, sin comisiones ni liquidación) | **ENTREGADO (T223)** |
 | 2 | **Comparador** | Productos lado a lado con lo que el canal ya publica (precio, existencia, marca, garantía y las características compartidas) | **ENTREGADO (T224)** |
 | 3 | **Wishlist** | **Local del dispositivo** ahora (como el carrito) y se migra a la cuenta cuando exista F4 | **ENTREGADO (T225)** |
-| 4 | **Reseñas** | Solo **compradores con un pedido ENTREGADO** (verificado por su correo) y **moderación** en el back office | pendiente |
+| 4 | **Reseñas** | Solo **compradores con un pedido ENTREGADO** (verificado por su correo) y **moderación** en el back office | **ENTREGADO (T226)** |
 | 5 | **Garantía extendida e instalación** | Como **artículos de servicio publicados** en el canal, que el comprador agrega al carrito desde la ficha (reutiliza lo medido en T220/T221: los servicios se facturan y no se entregan) | pendiente |
 | 6 | **Servicio técnico** | Reutilizar **`Seller`** como partner de servicio (con ciudad y especialidad), sin maestro nuevo | pendiente |
 
@@ -948,6 +948,36 @@ el fixture versionado** (borrada y reescrita: `--update-snapshots` no reescribe 
 dentro de la tolerancia) y la imagen nueva dice el `Disponible: 3` del fixture. La lección queda
 anotada: **regrabar el fixture y regenerar la captura son actos distintos**, y el segundo no siempre
 reescribe.
+
+**Tramo 4 entregado (T226)**: las **reseñas de producto**. El comprador no tiene cuenta (F4 llega con
+el proveedor de correo, D16), así que prueba su compra con lo que ya usan el seguimiento y la
+referencia de pago —**número de pedido y correo**— y el **canal** comprueba tres cosas contra su
+documento: que el pedido existe y es de ese correo, que está **entregado** (el estado derivado de
+T218/T221: la **reserva facturada no es una entrega**) y que **lleva el artículo**. La reseña nace
+**pendiente** y el back office la aprueba o la rechaza: solo las **aprobadas** se publican en la ficha
+y solo ellas cuentan para el promedio. La regla vive **una sola vez** (`ReviewsService`, que usan el
+canal y la pantalla de moderación): una reseña por **producto y comprador**, y reenviar una rechazada
+**reutiliza su fila** en vez de acumular. El comprador se publica con su **nombre** o su correo
+**enmascarado**, y su correo completo no sale de la base. La ficha estrena la sección (promedio,
+número, listado y `aggregateRating` **solo** con aprobadas) y el formulario; el back office, la
+pantalla **Ventas → Reseñas del canal** con su cola por estado y el modal de moderación con nota
+interna. Medido: `reviews.service` **14/14**, canal + reseñas **167/167**, **canal E2E 46/46** con el
+caso de la cadena completa (compra → 400 por no entregado → entrega real → 201 PENDING → la ficha no
+la publica → 409 al repetir → aprobación → 5,0 con 1 → segundo comprador enmascarado → 4,0 con 2 →
+rechazo que no publica → reenvío → 400 por artículo ajeno → auditoría), `reviews.e2e-spec.ts` **7/7**,
+tienda **E2E 41/41** y **a11y 19/19**, con la **ventana de caché medida** por el propio E2E (21,5 s y
+56,4 s en dos corridas) y el fixture del gate visual regrabado (10 capturas regeneradas: la sección
+nueva en la ficha y los dígitos de existencia que movió la regrabación, medidas una por una).
+Declarado: el promedio se publica **solo en la ficha**, no hay edición del texto desde el back office
+(la reseña es del comprador), no hay aviso por correo (D16) y la pantalla de moderación no entra
+todavía en el barrido de axe ni en la densidad dinámica.
+
+**Un defecto de arnés destapado por la corrida completa y cerrado (T226)**: el gate funcional de la
+tienda daba **rojo intermitente** con `Expected "Disponible: 9" / Received "Disponible: 10"` —el ERP
+ya había movido el stock (otras pruebas reservan y entregan) mientras la página servía su copia
+cacheada de **60 s**—, así que la aserción instantánea era **falsa por diseño**; `ciudad.spec.ts` y
+`producto.spec.ts` esperan ahora la **convergencia** (recarga acotada) y afirman después el texto
+exacto, y los casos que miden esa ventana declaran un tope mayor que el reloj de la caché.
 
 ## §15 F7 y F4 — estado medido y decisiones pendientes (2026-09-24, T217)
 

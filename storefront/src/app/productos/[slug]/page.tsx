@@ -9,6 +9,7 @@ import { WishlistButton } from "@/components/wishlist-button";
 import { JsonLd } from "@/components/json-ld";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductGrid } from "@/components/product-grid";
+import { ProductReviews } from "@/components/product-reviews";
 import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
 import { getCityContext } from "@/lib/city";
@@ -445,6 +446,16 @@ export default async function ProductPage({
           </div>
         )}
       </section>
+
+      {/* F6: resenas del producto. El promedio y el listado son los **aprobados** que
+          publica el ERP; el formulario solo lo acepta si el comprador tiene un pedido
+          entregado de este articulo (lo comprueba el canal). */}
+      <ProductReviews
+        slug={product.slug}
+        productName={product.name}
+        rating={product.rating}
+        reviews={product.reviews}
+      />
 
       <section aria-labelledby="relacionados-titulo" className="sf-section">
         <SectionHeader

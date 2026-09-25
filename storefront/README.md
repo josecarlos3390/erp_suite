@@ -225,6 +225,26 @@ manda su tope de 4). Si la lista pasa de 24 se dice (`wishlist-truncated`) y se 
 primeros; si un producto guardado ya no se puede leer, se nombra en vez de desaparecer en silencio
 (`wishlist-missing`). La pagina es `noindex`: cada visitante ve su propia lista.
 
+### Resenas (F6)
+
+La ficha lleva una seccion de **resenas** (`ProductReviews`) con el **promedio** y el numero que
+publica el ERP y el listado de las **aprobadas** (`review-item`); si no hay, lo dice
+(`reviews-empty`) en vez de inventar un promedio. Debajo esta el formulario para escribir una
+(`review-form`): como no hay cuenta de cliente (F4 espera al proveedor de correo), el comprador
+prueba su compra con el **numero de pedido** y su **correo**, y el canal comprueba que el pedido
+exista, sea de ese correo, este **entregado** y **lleve el articulo**; el `slug` lo pone la ficha,
+no el formulario. La resena **nace pendiente**: se publica cuando el back office la aprueba (solo
+las aprobadas cuentan para el promedio y solo ellas van al `aggregateRating` del JSON-LD). El
+comprador se publica con su **nombre** o, si no lo dio, con su correo **enmascarado**
+(`j***@correo.com`); su correo completo nunca sale de la ficha. El envio va por el puente
+`POST /api/resenas` (D10) y las reglas de formato viven en `src/lib/reviews.ts`, compartidas por el
+formulario y el puente.
+
+**Declarado**: el canal solo publica el promedio y el listado en la **ficha** (el catalogo y los
+relacionados no los llevan: no se paga la consulta en cada tarjeta), la copia de la ficha se
+cachea **60 s** —asi que una resena recien aprobada tarda esa ventana en verse: el E2E lo **mide**
+(21,5 s y 56,4 s en dos corridas)— y no hay aviso por correo al comprador (D16).
+
 **Declarado (cache)**: el catalogo y la ficha del canal se cachean **60 s** (`src/lib/erp.ts`:
 `catalog: 60`, `product: 60`), asi que **una promo recien configurada tarda esa ventana en verse**
 en la tienda (el E2E de la promo lo mide: 18,3 s en una corrida con la cache caliente). La
@@ -234,5 +254,5 @@ se cobra siempre es el vigente.
 Siguen **declarados**: el correo transaccional (**D16**, el backend no tiene proveedor, y es lo que
 bloquea **F4**), el retiro en tienda (fase 2), los favoritos y la comparacion como datos de **este
 dispositivo** (se migran a la cuenta con F4), la rotulacion de la promo en la bandeja de pedidos del
-back office, y los tramos de F6 que faltan (**reseñas**, **garantia extendida e instalacion** y
-**servicio tecnico**).
+back office, y los tramos de F6 que faltan (**garantia extendida e instalacion** y **servicio
+tecnico**).

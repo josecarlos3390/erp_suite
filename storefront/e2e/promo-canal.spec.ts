@@ -29,6 +29,9 @@ test.describe('promo del canal', () => {
   test('la tienda cobra la promo como capa propia y el desglose la explica', async ({
     page,
   }) => {
+    // El caso **mide** la ventana de la cache del canal (60 s): su tope tiene que ser mayor
+    // que esa ventana, o el gate falla por el reloj de la prueba y no por el dato.
+    test.setTimeout(180_000);
     const token = await erpAdminLogin();
 
     // Un articulo publicado **con existencia** en la ciudad: sin stock no se puede cotizar.
