@@ -1025,6 +1025,62 @@ Lo único que queda del tramo. El backend, el canal, la tienda y el **modelo + c
 
 **Declarado de entrada**: la primera versión **no** lleva adjuntos ni agenda de técnico, y el aviso al comprador por correo sigue bloqueado por **D16**.
 
+### §17 Cierre de la lista de pendientes: el fixture de la tienda, la huella del seed del ERP y los dos «pendientes» que no eran código (2026-09-25, T230/T231/T232)
+
+**Lo que quedaba por hacer** tras T229 (la pantalla del servicio técnico) era: regrabar el fixture visual
+de la tienda para que el gate cubriera el **bloque de servicios** (T227) y el **formulario de servicio
+técnico** (T228), re-sellar la **huella del seed del ERP** (el conteo de artículos cambió) y decidir qué
+pasa con F8.3 y F4.
+
+**T230 — el fixture regrabado y un defecto del gate, medido**. **Medido antes**: los **33** JSON de
+`storefront/e2e/visual/fixtures/` no tenían ni `canRequestService` ni el arreglo `services` (grep: **0**) y
+la ficha del gate es `/productos/iphone-15-128gb`, así que sus dos capturas se generaron **antes** de
+T227/T228; el canal vivo **sí** publica los dos datos (sonda contra la API: `canRequestService = true`,
+`services = 1` → «Garantía extendida 12 meses», `itemId` 140, Bs 199). **Entregado**: fixture **regrabado**
+(`STORE_VISUAL_RECORD=1`, **33** archivos, **14** modificados, **13** con `canRequestService`) y capturas
+regeneradas. **DEFECTO DEL GATE MEDIDO Y CERRADO**: con el fixture ya nuevo, `producto-claro` seguía **sin**
+los dos bloques mientras `producto-oscuro` —la **segunda** captura de la **misma** página— ya los pintaba;
+la causa es la **caché de datos de Next** (`REVALIDATE.product = 60`; `.next/cache/fetch-cache` con **135**
+entradas), que **vive en disco y sobrevive al `next start`** de cada corrida: la **primera** visita a una
+ruta se pinta con los datos de la corrida **anterior** (`stale-while-revalidate`) mientras la revalidación
+sí sale a la red —y por eso el fixture se grababa igual—. `storefront/e2e/visual/reset-data-cache.mjs` la
+vacía antes de `next start`. **Medido (A/B)**: antes se regeneraron **2** capturas (las segundas de cada
+página) y `producto-claro` no; después, **3** más (`inicio-claro`, `categoria-claro`, `producto-claro`), y
+la ficha clara publica ya «Súmale un servicio» y el formulario; `e2e:visual` **17/17** (5 capturas revisadas
+una por una), `e2e:a11y` **19/19**, `e2e:perf` **5/5**, `typecheck`/`lint`/`build`/`sync:*:check` en 0.
+**Declarado**: el fixture queda grabado contra el seed vivo (la ficha pasa de `Disponible: 13` a `100` y
+suma reseñas): es un fixture **inmutable**, no un seed congelado.
+
+**T231 — la huella del seed del ERP, re-sellada, y su punto ciego**. **Medido antes (lo dijo el gate)**:
+`npm run e2e:visual` del ERP falló con `Cambios: items 138→139 · Huella: 83ac2bf0-213 → f9c24e4f-213
+(sellada el 2026-09-24T13:36:25.582Z)` y el conteo vivo se confirmó contra la API (`GET /items?limit=1` →
+`total 139`). **Entregado**: `npm run e2e:visual:update` re-sella (`erp-frontend/e2e/screenshots/
+.seed-fingerprint.json`, `f9c24e4f-213`, `items 139`). **Medido**: corrida de control **53/53** con
+`updateSnapshots=missing → COMPARA` (la huella se **compara**: la rama de regeneración no se dispara sin
+`--update-snapshots`) y **1** baseline regenerado. **Hallazgo declarado (no cosmético)**: ese baseline
+(`sales-orders-form-after.png`) cambió porque el formulario dejó de pintar el **chip de serie** —la
+resolución **automática** de `SALES_ORDER` para la fecha del gate es **ambigua** (medido: `GET
+/document-series/next-preview?docType=SALES_ORDER&date=2026-09-15` → todo `null`, mientras `SALE_INVOICE`
+resuelve `FVE-41`): conviven `PED-2026` y la **`WEB-` que crea el canal** (T222) cubriendo 2026, y la
+`isDefault` (`PED-2027`, del arnés) no cubre esa fecha, así que `resolveSeries` corta por ambigüedad y
+`peekNextDocumentCode` la **traga** por diseño (preview vacío; el guardado real sí valida con
+`nextDocumentCode`)—. La huella **no cuenta `document-series`**, así que ese movimiento de datos es
+**invisible** para ella: queda **declarado como punto ciego**, y **no** se añade a la huella porque el
+arnés y el canal crean series en **tiempo de ejecución** y el gate se volvería intermitente. **Decisión
+pendiente (para el próximo tramo, si se quiere cerrar)**: o la serie del canal deja de competir en la
+resolución automática (marcarla/etiquetarla), o la resolución por fecha deja de ser ambigua cuando la
+`isDefault` no cubre la fecha del documento.
+
+**T232 — los dos «pendientes» que no eran código**. **Medido**: **F8.3 ya estaba entregada** —los **6**
+archivos de `erp-frontend/src/app/pages/web-promotions/` desde `7220f7d6 (T215/F8.3)`, cableada en los
+**tres** puntos (`sales.routes.ts`, `sidebar.config.ts`, `breadcrumb.service.ts`) y con su spec E2E de UI
+`erp-frontend/e2e/web-promotions.spec.ts`; **Karma re-medido: 19/19**—, así que **no hay trabajo pendiente**
+ahí (conserva la deuda que ya declaró T215: la pantalla no entra todavía en el barrido de axe ni en la
+densidad dinámica). Y **F4 sigue bloqueada por D16**: **0** referencias a un proveedor de correo en
+`backend-erp/src` y **0** pantallas de identidad entre los 13 `page.tsx` de la tienda, con **17** endpoints
+en el canal y **ninguno de cliente**; sin correo transaccional no hay verificación, ni recuperación de
+contraseña, ni aviso de pedido.
+
 ## §15 F7 y F4 — estado medido y decisiones pendientes (2026-09-24, T217)
 
 Los dos tramos que quedan del orden acordado **necesitan decisiones de producto**, así que
@@ -1070,9 +1126,9 @@ opciones de pago: «pago ahora» vs «pago al recibir») o se **configura por em
 
 | Punto | Estado medido |
 |---|---|
-| Rutas y endpoints | **Ninguno**: 0 rutas de cuenta en la tienda (11 `page.tsx`, ninguno de cuenta) y **0 endpoints de cliente** en el canal (los 15 del controlador son catálogo, cotización, pedido, seguimiento, referencia de pago y barrido) |
+| Rutas y endpoints | **Ninguno**: 0 rutas de cuenta en la tienda (**re-medido 2026-09-25, T232: 13 `page.tsx` y ninguno de cuenta, login, registro o contraseña**) y **0 endpoints de cliente** en el canal (**re-medido: 17 endpoints** —catálogo, ficha, relacionados, categorías, marcas, vendedores, banners, páginas, ciudades, cotización, pedido, seguimiento, referencia de pago, barrido, reseñas y servicio técnico—, ninguno de cliente) |
 | Identidad | D1/D2 fijan que la tienda **no usa cookies del ERP** y que el carrito es del comprador; `WebCustomer` existe (3 clientes en el seed) y la cotización ya resuelve el precio del **cliente registrado por correo** (D12), pero **no hay credenciales ni sesión** de comprador |
-| Dependencia dura | El **correo transaccional (D16) sigue sin proveedor**: sin él no hay verificación de correo, ni recuperación de contraseña, ni aviso de pedido. Cualquier F4 con registro real queda a medias |
+| Dependencia dura | El **correo transaccional (D16) sigue sin proveedor** —re-medido 2026-09-25 (T232): **0** referencias a `nodemailer`/`@nestjs-modules/mailer`/`sendgrid`/`resend`/`mailgun`/`aws-sdk`/`createTransport` en `backend-erp/src`—: sin él no hay verificación de correo, ni recuperación de contraseña, ni aviso de pedido. Cualquier F4 con registro real queda a medias, así que **F4 sigue bloqueada por una credencial externa** y no por código |
 
 ### Preguntas para decidir (antes de escribir código)
 
