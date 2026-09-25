@@ -991,7 +991,25 @@ exacto, y los casos que miden esa ventana declaran un tope mayor que el reloj de
 
 **Primer paso ENTREGADO (T228, backend)**: modelo **`ServiceRequest`** (+ enum y migración idempotente `20260925120000_service_requests`) con el **vendedor y su partner congelados**, el pedido del canal (`webOrderId` + `orderNumber`), el motivo, el estado y la **nota de atención**; módulo **`service-requests`** con la regla en un solo sitio (alta que resuelve quién atiende, cola con **resumen por estado**, detalle y atención que **no reabre una cerrada**) y su API tras el permiso propio **`service-requests:view|attend`**; y el canal estrena **`POST /storefront/service-requests`** (slug publicado, correo obligatorio, pedido opcional verificado con la identidad del seguimiento → **404** si es ajeno) con rastro `STOREFRONT_SERVICE_REQUESTED`. **Medido**: `service-requests.service` **7/7**, `storefront.service` **118/118** y `tsc` 0. **Pendiente declarado de este tramo**: la **pantalla** del back office (cola + modal de atención) y el `canRequestService` publicado por la ficha. **Segundo y tercer paso ENTREGADOS**: la ficha publica **`canRequestService`** (lo lee del vendedor de la publicación), el **caso E2E del canal** recorre el alta y la atención completas (**canal E2E 48/48**) y la tienda estrena el **formulario de servicio técnico** con su puente `POST /api/servicio-tecnico` (D10) y la validación compartida entre islote y puente; **tienda E2E 43/43**, a11y 19/19 y visual 17/17. Queda solo la **pantalla del back office** (cola + modal de atención) para cerrar el tramo.
 
+### §16.c F6 tramo 6 — la **pantalla** de solicitudes de servicio técnico: plan listo para ejecutar (2026-09-25, T228)
+
+Lo único que queda del tramo. El backend, el canal, la tienda y el **modelo + cliente HTTP** del back office ya están entregados y medidos; la pantalla se construye **copiando el patrón de la cola de reseñas** (`src/app/pages/reviews/`), que es el mismo caso —listado con filtros, resumen por estado y una acción por fila en overlay— y ya pasó los gates de densidad, `!important`, `::ng-deep` y accesibilidad.
+
+**Archivos a crear** (espejo de `pages/reviews/`):
+- `src/app/pages/service-requests/service-requests.component.ts` (el servicio HTTP **ya existe**: `ServiceRequestsService` con `getAll`, `getOne` y `attend`).
+- `service-requests.component.html`, `service-requests.component.scss` y `service-requests.component.spec.ts`.
+
+**Cableado** (los tres puntos, con el anclaje ya localizado):
+- `src/app/routes/sales.routes.ts` L114-125: entrada `path: 'service-requests'` con `permissionGuard(['service-requests:view'])` y `loadComponent` perezoso (mismo bloque que `reviews`).
+- `src/app/core/layout/sidebar/sidebar.config.ts` L120: `route: '/service-requests'` con `permission: 'service-requests'`, junto a Reseñas del Canal.
+- `src/app/core/breadcrumb/breadcrumb.service.ts` L26: `'service-requests': 'Solicitudes de Servicio'`.
+
+**Contenido de la pantalla** (lo que el contrato ya publica): cabecera con el **resumen por estado** (`summary`), filtros por **estado** y **texto** (`search`: correo, nombre, teléfono, motivo o número de pedido), tabla con **fecha, artículo (enlace a la ficha por `slug`), comprador (nombre + correo), vendedor, pedido vinculado, motivo y estado**, paginación, y la **atención** por fila: estado nuevo (`IN_REVIEW`/`SCHEDULED`/`RESOLVED`/`REJECTED`/`CANCELLED`) + **nota**, con la acción **oculta o deshabilitada y explicada** cuando la solicitud ya está cerrada (`SERVICE_REQUEST_CLOSED_STATUSES`) —el backend responde 400 si se reintenta, así que la pantalla no debe ofrecerlo—. Sin `create`: la solicitud la deja el comprador desde la ficha.
+
+**Criterios de aceptación del tramo** (medir, no afirmar): `ng build` 0 · `lint` 0/0 · `format:check` OK · `audit:density:ci` sin hallazgos nuevos · `a11y:check` sin hallazgos · `Karma` del componente (listado con filtros y resumen, atención con estado + nota, la cerrada sin acción) sumado al **4/4 del servicio** ya entregado; y la limpieza de arnés que ya existe (`test/test-utils.ts` borra `ServiceRequest`).
+
 ### §16.b F6 tramo 6 — **servicio técnico**: decisión del usuario y plan (2026-09-25, T228, pendiente de implementar)
+
 
 **Decisión del usuario (2026-09-25)**: el tramo 6 es una **solicitud de servicio técnico desde la ficha, atendida por el vendedor**, con el vendedor entrando como **partner**. El modelo `Seller` ya tiene `partnerId` (opcional) desde F1, así que «el vendedor es el partner» no necesita estructura nueva: la solicitud apunta al `Seller` publicado y, si lo tiene, a su `Partner`.
 
