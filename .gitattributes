@@ -1,0 +1,7 @@
+# Los hooks de git los ejecuta `sh`: un CR al final de la linea rompe el hook.
+# Con core.autocrlf=true y sin esta regla, el proximo checkout reescribe
+# .husky/* a CRLF. Medido el 2026-09-25.
+.husky/* text eol=lf
+# El propio .gitattributes tambien tiene que ser LF: con CRLF los patrones no
+# casan y la regla de arriba no se aplicaria.
+.gitattributes text eol=lf

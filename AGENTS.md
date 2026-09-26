@@ -379,15 +379,22 @@ npm run audit:contrast   # contraste WCAG de los 34 pares de la paleta (incluye 
 - **Frontend:** pre-commit lint, pre-push tests Karma + build producción (**248** specs, **2.314** casos en la última corrida medida).
 
 > **Cómo se empuja (medido 2026-09-25).** El commit es barato —`lint-staged` corre solo
-> sobre lo que está en stage—; el costo está en el **pre-push**, que es la suite completa y
-> **no mira a qué remoto va**: `git push origin main` seguido de `git push deploy main`
-> pagaba el jest entero **dos veces** (en el commit `f74b7f6` los dos sellos quedaron a
-> **240 s** de distancia). Desde 2026-09-25 el `origin` del backend tiene **dos `pushurl`**
-> —`git remote set-url --add --push origin <url>` dos veces, con
+> sobre lo que está en stage—; el costo está en el **pre-push**, que es la suite completa
+> (**205 suites / 2.576 tests** con `ts-jest`: **209,4 y 230,3 s** medidos en dos corridas)
+> y que **git ejecuta una vez por CADA `pushurl`**. Desde 2026-09-25 el `origin` del backend
+> declara **dos `pushurl`** —`git remote set-url --add --push origin <url>` dos veces, con
 > `josecarlos3390/backend-erp` y `joseka3390-design/erp-backend`—, así que **un solo
-> `git push origin main` sella los dos remotos y el hook corre una vez**. El remoto
-> `deploy` sigue existiendo intacto, pero **no** hay que empujarlo aparte (repetiría la
-> suite completa). El frontend y la raíz tienen **un solo** remoto: `git push origin main`,
+> `git push origin main` sella los dos espejos** y ya no se puede empujar a uno y olvidar el
+> otro; el remoto `deploy` sigue existiendo intacto, pero **no** hay que empujarlo aparte.
+> Ese comando **por sí solo no** ahorra la mitad del hook —medido: **459,7 s** = 209,4 s +
+> 230,3 s, una corrida por destino—, así que el ahorro lo hace el **sello por commit**:
+> `.husky/pre-push` guarda el SHA ya verificado en `.git/pre-push-verified-sha` y **omite la
+> segunda corrida del MISMO commit** (medido: con el sello puesto el hook sale en **0,96 s**
+> sin correr la suite); un commit nuevo o un `amend` cambian el SHA y la suite vuelve a
+> correr entera. Los hooks van con `.gitattributes` → `.husky/* text eol=lf`, porque el repo
+> tiene `core.autocrlf=true` (medido) y sin esa regla el próximo checkout los reescribía a
+> CRLF (`npm test\r` deja de ser un comando y el hook se rompe). El frontend y la raíz
+> tienen **un solo** remoto: `git push origin main`,
 > como siempre. Lo que **no** es del hook: entre el commit y el push van las sondas A/B, los
 > gates dirigidos y la documentación del tramo, que es lo que explica los huecos largos del
 > reflog.
