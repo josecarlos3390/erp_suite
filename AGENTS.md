@@ -375,8 +375,22 @@ npm run audit:contrast   # contraste WCAG de los 34 pares de la paleta (incluye 
 ### Git hooks
 
 - **Raíz:** `.husky/pre-commit` → `npx lint-staged`. Staged files: backend `.ts` → ESLint fix; frontend `.{ts,html,scss}` → `ng build --aot`.
-- **Backend:** pre-commit lint, pre-push `npm test`.
-- **Frontend:** pre-commit lint, pre-push tests Karma + build producción.
+- **Backend:** pre-commit lint, pre-push `npm test` (el jest completo de `src/`: **205** specs).
+- **Frontend:** pre-commit lint, pre-push tests Karma + build producción (**248** specs, **2.314** casos en la última corrida medida).
+
+> **Cómo se empuja (medido 2026-09-25).** El commit es barato —`lint-staged` corre solo
+> sobre lo que está en stage—; el costo está en el **pre-push**, que es la suite completa y
+> **no mira a qué remoto va**: `git push origin main` seguido de `git push deploy main`
+> pagaba el jest entero **dos veces** (en el commit `f74b7f6` los dos sellos quedaron a
+> **240 s** de distancia). Desde 2026-09-25 el `origin` del backend tiene **dos `pushurl`**
+> —`git remote set-url --add --push origin <url>` dos veces, con
+> `josecarlos3390/backend-erp` y `joseka3390-design/erp-backend`—, así que **un solo
+> `git push origin main` sella los dos remotos y el hook corre una vez**. El remoto
+> `deploy` sigue existiendo intacto, pero **no** hay que empujarlo aparte (repetiría la
+> suite completa). El frontend y la raíz tienen **un solo** remoto: `git push origin main`,
+> como siempre. Lo que **no** es del hook: entre el commit y el push van las sondas A/B, los
+> gates dirigidos y la documentación del tramo, que es lo que explica los huecos largos del
+> reflog.
 
 > **Regla de proceso (2026-09-12):** nunca hacer *round-trip* de archivos de código
 > por PowerShell (`Get-Content -Raw` + `Set-Content -Encoding utf8`): en PS 5.1 el
