@@ -387,11 +387,16 @@ npm run audit:contrast   # contraste WCAG de los 34 pares de la paleta (incluye 
 > `git push origin main` sella los dos espejos** y ya no se puede empujar a uno y olvidar el
 > otro; el remoto `deploy` sigue existiendo intacto, pero **no** hay que empujarlo aparte.
 > Ese comando **por sí solo no** ahorra la mitad del hook —medido: **459,7 s** = 209,4 s +
-> 230,3 s, una corrida por destino—, así que el ahorro lo hace el **sello por commit**:
-> `.husky/pre-push` guarda el SHA ya verificado en `.git/pre-push-verified-sha` y **omite la
-> segunda corrida del MISMO commit** (medido: con el sello puesto el hook sale en **0,96 s**
-> sin correr la suite); un commit nuevo o un `amend` cambian el SHA y la suite vuelve a
-> correr entera. Los hooks van con `.gitattributes` → `.husky/* text eol=lf`, porque el repo
+> 230,3 s, una corrida por destino—, así que el ahorro lo hace el **sello por contenido**:
+> `.husky/pre-push` guarda en `.git/pre-push-verified` los SHA locales que git anuncia
+> **por stdin** —lo que se empuja, **no** `HEAD`— y **omite la segunda corrida del MISMO
+> contenido**; un commit nuevo (o un `amend`) cambia el SHA y la suite vuelve a correr
+> entera. Si la clave no se puede calcular (stdin vacío, un borrado de rama, dos referencias
+> distintas) no casa y la suite corre igual: el sello **degrada al comportamiento de
+> siempre**, nunca salta la verificación por accidente. **Medido (A/B sobre el mismo
+> commit)**: sin sello **459,7 s** (jest 209,4 s + 230,3 s) y con sello **263,8 s** (jest
+> 242,9 s + el segundo destino omitido). Los hooks van con `.gitattributes` → `.husky/*
+> text eol=lf`, porque el repo
 > tiene `core.autocrlf=true` (medido) y sin esa regla el próximo checkout los reescribía a
 > CRLF (`npm test\r` deja de ser un comando y el hook se rompe). El frontend y la raíz
 > tienen **un solo** remoto: `git push origin main`,
