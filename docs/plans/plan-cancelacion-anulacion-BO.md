@@ -1,12 +1,14 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-11)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-12)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
 > diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
 > hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
-> de cabecera y la grilla lo muestra prorrateado) y la ronda 11 cierra **D10** (el descuento de **línea** no figura
-> en los registros contables; el de **cabecera** sí, prorrateado, en el preliminar y en el contabilizado). Plan del
-> tramo anterior (descuento de cabecera): `docs/plans/plan-descuento-cabecera-parte2.md`.
+> de cabecera y la grilla lo muestra prorrateado), la ronda 11 cierra **D10** (el descuento de **línea** no figura
+> en los registros contables; el de **cabecera** sí, prorrateado, en el preliminar y en el contabilizado) y la ronda
+> 12 cierra **D10-b** (las **cadenas heredadas de compra** aplican el descuento una sola vez, la **recepción**
+> capitaliza el bruto —T239— y la factura lo desglosa). Plan del tramo anterior (descuento de cabecera):
+> `docs/plans/plan-descuento-cabecera-parte2.md`.
 
 ## Lo que pidió el usuario (2026-09-27)
 
@@ -518,9 +520,9 @@ totales D = H).
 - El **preliminar** recalcula el impuesto con el indicador de la línea: un payload sin `taxIndicatorId` pierde el
   IVA en el preliminar (medido: descuadre de 8,50 en el caso E2E; el formulario siempre lo manda).
 
-## Ronda 12 — D10-b: las CADENAS HEREDADAS de compra (EN CURSO — medición y diseño cerrados)
+## Ronda 12 — D10-b: las CADENAS HEREDADAS de compra (CERRADA)
 
-### Medición (sonda `_probe-d10b-compra-heredada.ts` + `_probe-d10b-campos.ts`, base de desarrollo)
+### Medición antes (sondas `_probe-d10b-compra-heredada.ts` + `_probe-d10b-campos.ts`, base de desarrollo)
 
 Cadena **cotización con cabecera 25 % → pedido → recepción → FRC → FCP** con precio 94 (IVA 13 % incluido;
 el descuento correcto es 23,50 y el total 70,50):
@@ -538,7 +540,7 @@ el descuento correcto es 23,50 y el total 70,50):
 arma el importe con `lineSubtotal ?? subtotal` → 0 + descuento, de ahí los 16,32 espurios en *Diferencia de
 precio*); **(2)** el descuento de cabecera se aplica **dos veces** en `createFromOrder`, `createFromQuotation` y
 `createFromReserveInvoice` (52,88 en vez de 70,50) porque el origen **ya lo materializó** en sus líneas (T254) y
-el ratio de la cabecera se vuelve a aplicar —el camino `from-receipt` sí tiene la guarda `sourceMaterialized`, los
+el ratio de la cabecera se vuelve a aplicar —el camino `from-receipt` sí tenía la guarda `sourceMaterialized`, los
 otros no—; **(3)** el **costo** capitalizable queda neto (62,39) en la recepción desde pedido y 0 en la FCP desde
 FRC, así que el kardex no coincide con el mayor.
 
@@ -547,26 +549,56 @@ FRC, así que el kardex no coincide con el mayor.
 **T239 llega también a la RECEPCIÓN**: la recepción **capitaliza el bruto** (el descuento no baja el costo) y sus
 líneas llevan el neto + el descuento; así el mayor y el kardex valúan lo mismo en toda la cadena y la factura que
 nace de una recepción puede **desglosar el descuento** (GRIR al bruto que la recepción acreditó, CxP por el total
-facturado y `PURCHASE_DISCOUNT` por el descuento). Cambia la valuación del stock de las recepciones con cabecera
-(85,89 en vez de 62,39) y con ella el COGS de esas unidades.
+facturado y `PURCHASE_DISCOUNT` por el descuento).
 
-### Diseño de la entrega (siguiente ronda)
+### Entregado
 
 1. **Recepción** (`purchase-receipts.service.ts`): `cost`/`totalCost` = **bruto** en modo cabecera
-   (`lineSubtotal + discountTotal`) y **neto** en modo línea; sitios: `createFromOrder` (~712), manual (~1208) y
-   los tres caminos `from-invoice` (3429/4077/4680), con las mismas guardas.
-2. **Facturas `from-*`** (`purchase-invoices.service.ts`): persistir **`lineSubtotal`** (= el neto que ya se
-   escribe en `subtotal`), **no re-aplicar** el ratio cuando el origen materializó
-   (`_sourceMaterializedHeader`, como ya hace `createFromReceipt` con `effHeaderRatio`) y **costo bruto** en modo
-   cabecera (`_capitalizedUnitCost`). Sitios: `createFromQuotation` (~625), `createFromOrder` (~1085/1174/1306),
-   `createFromReceipt` (~1617/1797), `createFromReserveInvoice` (~2335) y los tres `from-multi-*`.
-3. **Totales del destino**: `resolveSingleHeaderDiscount` vuelve a aplicar el % de la cabecera sobre `lineCalcs`
-   que ya vienen descontados (de ahí el 52,88); el destino debe heredar la cabecera **referencial** y tomar los
-   totales **de las líneas**. Se resuelve en el llamador (sin tocar el util compartido) o con un parámetro
-   `sourceMaterialized` en el util, y el gate E2E del dinero (`T254`) dice si los caminos de venta se mueven.
-4. **Gate nuevo**: caso E2E que pinche, en la cadena PQ→PO→REC→FRC→FCP con cabecera 25 %, el dinero (70,50 /
-   desc 23,50), el **asiento** de la recepción (`Inventario` bruto) y el de la factura (`GRIR` bruto + CxP total +
-   `PURCHASE_DISCOUNT`), el **costo** bruto de la línea y que el asiento cuadre.
+   (`lineSubtotal + discountTotal`) y **neto** en modo línea, en el alta **desde pedido** y en la **manual**; y el
+   **confirm** calcula el `subtotal` de cabecera desde el **neto de las líneas** (`subtotal`, el importe a pagar) en
+   vez de desde el costo —antes eran el mismo número, con el costo bruto la recepción habría pasado a mostrar el
+   precio de lista (94,00) en vez del importe a pagar (70,50)—, dejando `totalCost` como el costo capitalizable.
+2. **Facturas heredadas** (`purchase-invoices.service.ts`): **(a)** guarda `_sourceMaterializedHeader` — si el origen
+   ya materializó el descuento (T254) **no** se vuelve a aplicar el ratio (`effHeaderRatio = 1`); **(b)** la línea
+   persiste **`lineSubtotal`** siempre (en `from-receipt`/`from-reserve-invoice` además se **replican** los importes
+   del origen en vez de recalcularlos, que era lo que dejaba el neto en 0 y metía 16,32 en *Diferencia de precio*);
+   **(c)** `_capitalizedUnitCost` — costo **bruto** en modo cabecera / **neto** en modo línea; **(d)** los **totales**
+   del destino salen **de las líneas** con la cabecera **referencial** (`resolveSingleHeaderDiscount` volvía a
+   aplicar el % sobre líneas ya descontadas). Caminos: `createFromQuotation`, `createFromOrder`,
+   `createFromReceipt` y `createFromReserveInvoice`.
+3. **Gate E2E nuevo** en `discount-propagation.e2e-spec.ts`: la cadena PQ(25 %)→PO→REC→FCP pincha que el descuento
+   se aplique **una sola vez** (el dinero de la factura = el de la recepción), que la recepción **capitalice el
+   bruto** (`Inventario D = neto + descuento`), que la línea de la factura tenga `lineSubtotal` + `discountTotal` y
+   `cost` bruto, y que su asiento cuadre con el **GRIR por el bruto** + CxP por el total + `PURCHASE_DISCOUNT`.
+
+### Medido después (A/B, misma sonda)
+
+Los **seis** documentos de la cadena (recepción, FRC, FCP desde recepción, FCP desde pedido, FCP desde cotización y
+FCP manual de control) quedan **idénticos**: `subtotal 62,39 + IVA 8,11 = total 70,50`, `desc 23,50`, línea
+`neto 62,39 / desc 23,50 / costo 85,89`, y los asientos:
+
+- **recepción** → `Inventario D 85,89 / GRIR H 85,89`;
+- **FCP desde recepción** → `GRIR D 85,89 + IVA crédito D 8,11 / CxP H 70,50 + Descuento H 23,50` (D = H = 94,00);
+- **FCP desde pedido / manual** → `Inventario D 85,89 + IVA D 8,11 / CxP H 70,50 + Descuento H 23,50`;
+- **FCP desde FRC** → `Inventario D 85,89 / Tránsito H 85,89` (netea el tránsito que la FRC debitó al bruto; el
+  descuento ya lo reconoció la FRC).
+
+### Gates
+
+- Unitarios **212 suites / 2667 tests**.
+- E2E `discount-propagation` (con el caso nuevo) y `purchase-flow` en verde; `tsc` y `eslint` 0.
+- Push verificado con `git ls-remote` en los dos espejos.
+
+### Declarado
+
+- Los caminos **`from-multi-*`** (selección múltiple de pedidos/recepciones/cotizaciones) conservan la lógica
+  anterior: sus líneas no persistían `lineSubtotal` y aplican el ratio sin la guarda. Mismo arreglo, sitios propios
+  (los tres `createFromMulti*`).
+- Los tres caminos de recepción **desde factura** (`from-invoice`, ~3429/4077/4680) toman el costo del artículo de
+  factura (`ii.cost`), que en modo cabecera ya es **bruto** ✅, pero el que lo toma de la línea del payload
+  (3378/4655) sigue neteando: se cierra con el mismo helper.
+- **T254** sigue abierto (edición de cotizaciones con materialización, `addItem`/`updateItem` con cabecera por
+  importe y el `PATCH` que devuelve las líneas de antes).
 
 ## Pendiente del tramo
 
