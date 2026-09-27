@@ -71,6 +71,18 @@ escrito en la línea**; copiar = replicar la decisión del origen, nunca recalcu
 
 ## Estado por rondas (goal activo)
 
+- **Ronda 9 (punto 7b — gate de compras)**: escribí el caso E2E del **dinero por línea** para la cadena de compra y
+  **pasó** en sus dos primeras partes: recepción manual con cabecera 25 % → `discountMode=header`, `pct=25`,
+  `totalDiscount=100` y líneas con `descTotal` **[12,50 / 37,50 / 50,00]**; FRC desde esa recepción → `subtotal 300` y
+  `totalDiscount 100`. **No lo dejé en el repo** porque la tercera parte destapó un **defecto real** y el caso se
+  revertiría a medias: **DEFECTO NUEVO medido** — la **NC de venta** desde una factura con cabecera 25 % responde
+  **400** `«El crédito (339.01) supera el saldo restante de la factura (339.00)»`: un **descuadre de UN centavo** por
+  redondeo (la suma de las partes redondeadas por línea no cuadra con el total de la factura) que hoy **impide emitir
+  la NC** cuando la factura lleva descuento de cabecera. Hay que cerrarlo en la NC (cuadrar el total contra el saldo
+  de la factura, como manda la regla de `money.util`: cuadrar la última línea) y **después** meter el caso E2E
+  (recepción + FRC + las dos NC) en `discount-propagation.e2e-spec.ts`.
+  - La suite queda verde tras revertir el caso: `discount-propagation` **15/15**.
+
 - **Ronda 8 (punto 5 — notas de crédito): CERRADO por medición, sin cambios de código**.
   Con el payload correcto (el DTO del `from-invoice` identifica la línea por **`itemId`**, no por el id de la línea
   de la factura), las dos NC **replican el descuento de la factura de origen**:
