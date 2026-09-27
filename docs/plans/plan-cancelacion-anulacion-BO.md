@@ -1,10 +1,12 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-9)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-11)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
-> diálogos de cancelación); la ronda 9 cierra **D8**: la cancelación revierte IT y descuentos (espejo exacto) y el
-> hecho **nuevo** (NC y devolución) va al **precio ya descontado**, con el descuento referencial. Plan del tramo
-> anterior (descuento de cabecera): `docs/plans/plan-descuento-cabecera-parte2.md`.
+> diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
+> hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
+> de cabecera y la grilla lo muestra prorrateado) y la ronda 11 cierra **D10** (el descuento de **línea** no figura
+> en los registros contables; el de **cabecera** sí, prorrateado, en el preliminar y en el contabilizado). Plan del
+> tramo anterior (descuento de cabecera): `docs/plans/plan-descuento-cabecera-parte2.md`.
 
 ## Lo que pidió el usuario (2026-09-27)
 
@@ -432,6 +434,89 @@ el documento, así que el motor del preliminar compensaba con el plug de descuen
   lectura).
 - En modo **ver** (`!canEdit`) la celda de `%`/monto sigue mostrando el valor del control (0 en cabecera); el
   desglose y el total descontado sí muestran el prorrateo.
+
+## Ronda 11 — D10: el descuento de LÍNEA no figura en los registros contables; el de CABECERA sí (CERRADA)
+
+### Lo que pidió el usuario (2026-09-27)
+
+> «en la factura de compra o de venta, o en la factura de reserva de venta o compra, cuando el documento tiene
+> descuento en línea, en el asiento preliminar y el asiento contable que luego registra **no debe figurar el
+> descuento**, solo debe figurar cuando el documento tiene descuento de cabecera […] nosotros en la cabecera del
+> documento definimos qué tipo de descuento se va a aplicar, por línea o por cabecera, en el caso de que el
+> documento aplica descuento por línea entonces el descuento **no figura en los registros contables**, pero si el
+> documento aplica descuento de cabecera, entonces los cálculos de los **prorrateos** que se hacen en las líneas
+> **sí** deben figurar como descuento en el asiento contable tanto en el preliminar como el contabilizado».
+
+### Medición antes (sonda `_probe-d10-descuento-modo.ts`, 94 Bs con 3 de descuento e IVA 13 % incluido)
+
+Los **cuatro** documentos desglosaban el descuento en **los dos** modos: el modo del documento no decidía nada.
+
+| Documento | Modo línea (antes) | Modo cabecera (antes) |
+| --- | --- | --- |
+| FVE/FRV | `Ventas H 83,53` + `Descuentos D 3,00` + IVA + CxC 91 | igual |
+| FCP | `Inventario D 83,53` + `Descuentos H 3,00` + IVA + CxP 91 (costo 83,53) | igual |
+| FRC | `Tránsito D 83,53` + `Descuento H 3,00` + IVA + CxP 91 (costo 83,53) | igual |
+
+La sonda destapó **dos defectos** vivos que el usuario ya había reportado: **(a)** la **FRV manual ignoraba la
+cabecera** (`FRV-2`: total **94,00** y `desc 0,00`) porque el tipo inline de `createManual` no declaraba los tres
+campos —el DTO **sí** los acepta, los hereda de `CommercialDocumentHeaderDto`— y el `create` fijaba
+`discountMode: 'line'`; y **(b)** el **neteo de la FRV** borraba el descuento prorrateado de las líneas
+(`discountTotal = 0`), así que el asiento guardado de una FRV con cabecera salía **neto** mientras su preliminar lo
+desglosaba (documento ≠ preliminar, el mismo tipo de defecto de D9).
+
+### Decisión del usuario en la ronda
+
+Con la medición delante, y **solo** para compras: en modo **línea** el costo del artículo (kardex) **también** baja
+al **neto pagado**, para que el mayor de inventario y el kardex sigan coincidiendo (opción recomendada); en modo
+**cabecera** se mantiene T239 (costo bruto + la pata de descuento en el asiento).
+
+### Entregado
+
+1. **Los dos builders de factura** deciden con **el modo del documento** (`bookDiscount = discountMode === 'header'`):
+   en **línea** el ingreso (ventas) y la mercadería/GRIR/asignación (compras) van al **neto pagado** y **no hay pata
+   de descuento** (lo que sobre cae por el plug de redondeo, nunca por la cuenta de descuentos); en **cabecera** se
+   mantiene la presentación **bruta** de T239 con `SALES_DISCOUNT`/`PURCHASE_DISCOUNT` (y el desglose 87/13 del
+   perfil boliviano).
+2. **El builder de borradores** usa el modo **real** (`_draftDiscountMode`, con la inferencia de D9 como respaldo de
+   clientes viejos) y **solo materializa** la cabecera en las líneas en modo cabecera —antes lo infería del
+   importe—, en los dos previews (venta y compra).
+3. El `discountMode` viaja al motor de ventas (`createSaleInvoiceJournalEntry`, `sale-invoices`,
+   `sale-reserve-invoices`) y el **POS** lo manda explícito (`'line'`: no tiene descuento de cabecera).
+4. **FRV**: la cabecera **se captura y se guarda** (`headerSpec` en `createManual` + los tres campos en el
+   documento) y el **neteo conserva el prorrateo** en `discountTotal` (sigue neteando los importes, que es lo que la
+   FRV necesita; lo que ya no hace es esconder el descuento) ⇒ el asiento guardado **coincide con su preliminar**.
+5. **Compras**: el **costo capitalizable** sigue el modo (cabecera bruto / línea neto), en `createManual`.
+
+### Medido después (A/B, misma sonda)
+
+| Documento | Modo línea | Modo cabecera |
+| --- | --- | --- |
+| FVE | `CxC D 91 · Ventas H 80,53 · IVA H 10,47 · IT` (**sin** descuento) | `CxC D 91 · Ventas H 83,53 · Descuentos D 3,00 · IVA · IT` |
+| FRV | ídem neto (**total 91,00**; antes 94,00 con desc 0) | `Ventas H 83,53 · Descuento D 3,00 · IVA · CxC 91` |
+| FCP | `CxP H 91 · IVA D 10,47 · Inventario D 80,53` · **COSTO 80,53** | `Inventario D 83,53 · Descuento H 3,00 · IVA · CxP 91` · **COSTO 83,53** |
+| FRC | `Tránsito D 80,53 · IVA D 10,47 · CxP H 91` · COSTO 80,53 | `Tránsito D 83,53 · Descuento H 3,00 · IVA · CxP 91` · COSTO 83,53 |
+
+En **los cuatro** documentos y en **los dos** modos el **preliminar es idéntico al asiento guardado** (mismos
+totales D = H).
+
+### Gates
+
+- Unitarios **212 suites / 2667 tests** (`npm test`): los **cuatro** casos que fijaban la regla vieja reescritos con
+  el motivo del cambio, **dos casos nuevos** de D10 (venta en modo línea y FRV con cabecera) y el `T239` de compras
+  movido al modo cabecera con su caso hermano de línea (inventario y **costo** al neto).
+- **E2E `discount-propagation` 19/19**: los cuatro casos de asiento/preview con descuento de línea reescritos, el
+  caso del preliminar en modo línea nuevo y el payload del preview de la FRC puesto al día.
+- `tsc` (app y e2e) y `eslint` 0. En el frontend **no hubo cambios** (los formularios ya mandaban el modo desde D9).
+
+### Declarado
+
+- Las **cadenas heredadas de compra** (`from-quotation`/`from-order`/`from-receipt`/`from-multi-*`) siguen
+  **neteando** el descuento de cabecera dentro de los montos y dejando `discountTotal` en 0 ⇒ su asiento en modo
+  cabecera sale **neto** (el dinero del documento **no** cambia). El arreglo es el mismo que se hizo en la FRV
+  —conservar el prorrateo en `discountTotal` y el costo bruto— repartido en **7 sitios** donde el servicio aplica el
+  ratio `netAmountWithHeaderDiscount` en línea.
+- El **preliminar** recalcula el impuesto con el indicador de la línea: un payload sin `taxIndicatorId` pierde el
+  IVA en el preliminar (medido: descuadre de 8,50 en el caso E2E; el formulario siempre lo manda).
 
 ## Pendiente del tramo
 
