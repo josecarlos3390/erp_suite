@@ -1,9 +1,10 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-8)**. D1-D7 entregados y la **UI** cerrada en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-9)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
-> diálogos de cancelación). El tramo cierra además la **simetría de compras**: la NC por el total anula también la
-> factura de compra. Plan del tramo anterior (descuento de cabecera): `docs/plans/plan-descuento-cabecera-parte2.md`.
+> diálogos de cancelación); la ronda 9 cierra **D8**: la cancelación revierte IT y descuentos (espejo exacto) y el
+> hecho **nuevo** (NC y devolución) va al **precio ya descontado**, con el descuento referencial. Plan del tramo
+> anterior (descuento de cabecera): `docs/plans/plan-descuento-cabecera-parte2.md`.
 
 ## Lo que pidió el usuario (2026-09-27)
 
@@ -287,6 +288,88 @@ payloads exactos de la pantalla** (`_probe-t255-ui-final.ts`, base `default`, 20
   = **4 suites / 61 tests**.
 - Commits: backend **`31c5050`** (los dos espejos, `git ls-remote`), frontend **`f0a964f2`**, raíz (este
   documento).
+
+## Ronda 9 — D8: el hecho NUEVO va al precio ya descontado (CERRADA)
+
+### Lo que precisó el usuario (2026-09-27)
+
+> «La anulación de la factura sí debe revertir IT y los descuentos, pero la nota de crédito no revierte IT ni
+> tampoco revierte descuentos en su asiento, pero sí obtiene el descuento de cabecera y su línea prorrateada
+> correspondiente […]; esa línea debe extraer el precio con descuento para hacer la NC.»
+
+Es la frontera entre los dos hechos del tramo: la **cancelación** es el espejo exacto (revierte **todo**, IT y
+descuentos); la **NC y la devolución** son hechos **nuevos** y se emiten por el **precio con descuento** de la
+línea, con el descuento (cabecera y línea) **referencial** en el documento.
+
+### Medición del ejemplo del usuario (400 Bs = 150 + 50 + 200 con 25 % de cabecera)
+
+Cabecera prorrateada **por valor**: 37,50 / 12,50 / 50,00. En esta base el indicador es de **IVA incluido**, así que
+el importe cobrado es 300,00:
+
+| Línea | Bruto | Desc. 25 % | Neto | IVA | Total |
+|---|---|---|---|---|---|
+| 150 | 150,00 | 37,50 | 99,56 | 12,94 | 112,50 |
+| 50 | 50,00 | 12,50 | 33,19 | 4,31 | 37,50 |
+| 200 | 200,00 | 50,00 | 132,74 | 17,26 | 150,00 |
+| **Σ** | **400,00** | **100,00** | **265,49** | **34,51** | **300,00** |
+
+| Hecho | Antes (medido) | Después (medido) |
+|---|---|---|
+| **NC de venta** de la línea de 150 | `Devolución sobre Ventas D 137,06` + `Descuentos sobre Ventas H 37,50` + `IVA crédito D 12,94` + `CxC H 112,50` (el neto ya era 99,56, con una pata de más) | **`Devolución sobre Ventas D 99,56`** + `IVA crédito D 12,94` + `CxC H 112,50` — sin descuentos y sin IT |
+| **NC de compra** por el total | `CxP D 300` + **`Devoluciones sobre Compras D 100`** + `IVA crédito H 34,51` + `Inventario H 365,49` (el «descuento» metido en Devoluciones) | `CxP D 300` + **`Descuentos y Bonificaciones sobre Compras D 100`** (37,50+12,50+50) + `IVA crédito H 34,51` + `Inventario H 365,49` — el inventario al **costo capitalizado** (T239) y el descuento en **su** cuenta |
+| **Cancelación** de la factura | `ASI-000007` → espejo `ASI-000008` con `IT D/H 9,00` y `Descuentos sobre Ventas D/H 100,00` cruzados, par neto 0,00 | **igual** (no cambia: es el espejo exacto) |
+| Línea de la NC / devolución de compra | `lineSubtotal`/`lineTotal` en **`null`** | publican la base y el total **descontados** (99,56 / 112,50) con el descuento referencial |
+
+### Decisiones del usuario en la ronda
+
+- **Alcance**: las **cuatro familias** (NC de venta y de compra + devoluciones de venta y de compra).
+- **Presentación**: la línea mantiene el **precio bruto + descuento referencial** (150,00 · 25 % · 37,50 →
+  total 112,50) y el asiento usa el **neto**.
+- **Compra** (con la medición delante): el inventario sale al **costo capitalizado** y la diferencia —que **es** el
+  descuento— se revierte en **`PURCHASE_DISCOUNT`** (la cuenta donde la factura lo acreditó), **no** en
+  Devoluciones sobre Compras.
+
+### Entregado
+
+- `sales.journal-builder`: la NC y la devolución de venta revierten el ingreso/devolución por el **neto**; se
+  eliminan las patas `SALES_DISCOUNT`/`SALES_DISCOUNT_TAX` por línea y el plug del descuento de cabecera pasa a
+  medirse sobre el neto (sigue cubriendo los documentos **heredados** con la línea a precio lleno).
+- `purchases.journal-builder`: la NC de compra revierte el descuento en `PURCHASE_DISCOUNT` y deja en Devoluciones
+  solo una diferencia de precio **real**; la devolución de compra postea el par al costo en **una** pata neta (antes
+  eran dos que se cancelaban) y su rama financiera queda coherente con la regla.
+- `sales-credit-notes`, `purchase-credit-notes`, `purchase-returns`: la línea publica `lineSubtotal`/`lineTotal`
+  (descontados) y el **descuento viaja al motor** (`discountTotal`) porque ahora decide la cuenta de la reversa.
+
+### Gates
+
+- `accounting-engine.service.spec.ts`: los **dos casos que fijaban la regla vieja** («SALES_CREDIT_NOTE con
+  descuento debita el bruto y acredita SALES_DISCOUNT» y su gemelo de `SALES_RETURN`) reescritos con el motivo del
+  cambio, y **dos casos nuevos** de T255 (D8) para la NC y la devolución de compra.
+- Unitarios: las **cinco suites tocadas 196/196** (`accounting-engine.service.spec.ts` y las cuatro familias de
+  NC/devolución) y el **hook del push** corrió la suite completa **212 suites / 2664 tests** en verde.
+- E2E: **7 suites / 86 tests** en la corrida final (`annulment-posting-date`, `returns-and-credit-notes`,
+  `discount-propagation`, `purchase-flow`, `sales-flow`, `credit-note-partial-money`, `usage-marathon`), más las
+  focalizadas de ventas (**6/65**, con `credit-note-return-pending`) y compras (**4/51**, con `landed-costs`).
+- `tsc` (app y e2e) 0 y `eslint` 0.
+- **Un gate destapó el cambio y se actualizó con el motivo**: `account-entry-types-coverage.spec.ts` (T243) escanea
+  el código y fija el inventario de cuentas de documento; al desaparecer la pata `SALES_DISCOUNT_TAX` de la NC de
+  venta y de la devolución, el inventario pasa de **53 a 51 pares** —el hook del push **rechazó** el primer intento
+  con ese único caso en rojo—. Se revisó que la desaparición es la esperada (la **factura** sigue usando
+  `SALES_DISCOUNT` y `SALES_DISCOUNT_TAX`, que es donde vive la presentación bruta) y se actualizó el inventario
+  con el motivo escrito en el spec.
+- Commits: backend **`e958fe6`** en los **dos espejos** (verificado con `git ls-remote`; el hook corrió la suite
+  completa) y raíz (este documento).
+
+### Declarado
+
+- La **devolución de compra** es **siempre logística** (`Dr GRIR / Cr Inventario` al costo: el servicio fija
+  `financialReversal = false` porque la reversa financiera es de la NC de compra), así que hoy no toca el
+  descuento; su rama financiera queda coherente y **gateada por unitario**, y el descuento de compra lo revierte la
+  **NC** (medido).
+- El **IT** no se revierte en la NC ni en la devolución desde la decisión 2026-08-24 (medido: su asiento no tiene
+  línea de IT) y la cancelación **sí** lo revierte.
+- El descuento de cabecera y el de línea se conservan **referenciales** en el documento (`pct`/`amt`/`total`) para
+  explicar el importe y mantener la traza con la factura.
 
 ## Pendiente del tramo
 
