@@ -1,8 +1,9 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **ronda 1 cerrada** (cancelación con la fecha del documento original). Continúa: sello de emisión
-> fiscal + plazo configurableD2, «anular con NC por el total» (D4), reglas de la NC (D5+D6+D7).
-> Plan del tramo anterior (descuento de cabecera): `docs/plans/plan-descuento-cabecera-parte2.md`.
+> Estado: **CERRADO (rondas 1-8)**. D1-D7 entregados y la **UI** cerrada en la ronda 8 (interruptores de
+> Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
+> diálogos de cancelación). El tramo cierra además la **simetría de compras**: la NC por el total anula también la
+> factura de compra. Plan del tramo anterior (descuento de cabecera): `docs/plans/plan-descuento-cabecera-parte2.md`.
 
 ## Lo que pidió el usuario (2026-09-27)
 
@@ -211,24 +212,104 @@
   **23/23**.
 - **Con esto las reglas de la NC son SIMÉTRICAS en venta y compra.** Queda del tramo solo la **UI**.
 
+## Ronda 8 — la UI del tramo y el cierre de la simetría en COMPRAS (CERRADA)
+
+### Lo que quedaba y por qué
+
+El backend ya estaba cerrado (r1-r7) pero **la pantalla contaba otra cosa**: los ~50 diálogos de cancelación
+seguían **pidiendo** la fecha de contabilización (el backend la ignora desde r1) y no existía el camino de un clic
+para la NC —fuera del plazo, el 400 nombraba un endpoint que el usuario tenía que llamar a mano—. Además, al
+exigir **motivo** (r2/r4) tres listados que no lo pedían pasaron a fallar con 400 sin explicación en pantalla.
+
+### Entregado (frontend)
+
+1. **Configuración General → «Anulación y notas de crédito»** (`pages/settings`): los tres campos del backend en el
+   formulario —`annulmentDeadlineEnabled` (switch, default **aplicado**), `annulmentDeadlineDay` (1..28, default 9)
+   y `creditNoteMaxDays` (default 180, `0` = sin límite)— en el modelo, los defaults, `_original`, el `patchValue` y
+   el payload de guardado, con su sección y ayudas. Dos casos Karma nuevos.
+2. **Botón «Anular con nota de crédito»** en los cuatro sitios donde se anula una factura: los listados de
+   **Facturas de cliente** y de **Facturas de proveedor** (menú de fila, visible también en las `CLOSED` —es
+   justamente el camino para las que están fuera del plazo—) y las pantallas de detalle de las dos. Llama a
+   `/sales-credit-notes/from-invoice/:id` (o `/purchase-credit-notes/from-invoice/:id`) **sin `items`** con
+   `{date, postingDate}` y la **fecha editable** en el diálogo, y refresca.
+3. **La fecha de contabilización sale de TODOS los diálogos de cancelación**: 43 archivos tocados (los ~25 listados
+   y sus formularios + revaluaciones, producción, stock, pagos…). El servicio del diálogo deja de hablar de «fecha
+   de contabilización» y pasa a un campo de **fecha** neutro (`dateLabel`/`date`), que es el que usa el hecho nuevo
+   que **sí** tiene fecha propia: la **nota de crédito**.
+4. **El motivo se pide donde el backend lo exige**: los tres listados (facturas de cliente, facturas de reserva de
+   cliente y facturas de proveedor) ahora piden «Motivo de la anulación» y lo envían, con **toast de error** que
+   muestra el mensaje del backend (el 400 que nombra la NC se lee en pantalla).
+
+### Entregado (backend, cierre de la simetría)
+
+- **La NC por el total ANULA también la factura de COMPRA** (`purchase-credit-notes._executeConfirmLogic`), como en
+  ventas desde r3: antes quedaba `CLOSED` («acreditada por completo») y el botón de la pantalla habría mentido. Al
+  cancelar la NC la factura se **restaura** (acepta `CANCELLED`) y se limpia la traza. El **caso de unidad que
+  fijaba la regla vieja** se reescribió con el motivo del cambio (`T255 (D4): … pasa a CANCELLED`).
+- Con esto **el estado de la factura tras una NC total es el mismo en venta y en compra**, y la anulación por
+  espejo posterior responde «La factura ya está anulada» en las dos.
+
+### Validación sobre BASE LIMPIA (autorizada por el usuario)
+
+`npm run db:recreate` (0 transacciones de arranque) + `POST /settings` + documentos reales por el API con **los
+payloads exactos de la pantalla** (`_probe-t255-ui-final.ts`, base `default`, 2026-09-27):
+
+| Paso | Medición |
+|---|---|
+| `PUT /settings` con los tres campos del formulario | **200** · leído `plazo=true día=9 NC=180` |
+| Factura de venta de hoy con cabecera 25 % (`FVE-3`) | total **300,00**, 3 líneas |
+| «Anular con nota de crédito» (`from-invoice` con `{date,postingDate}`, **sin `items`**) | **201** `NCR-3` total **300,00** y desc **100,00**; factura **`CANCELLED`**, acreditado 300,00, saldo **0,00**, motivo «Anulada por la nota de crédito NCR-3» |
+| Cancelar **sin** motivo (lo que mandaba el listado) | **400** «requiere registrar el motivo (RND 10-0016-17 Art. 38)» |
+| Cancelar **con** motivo (lo que manda el diálogo) | **201**; original `ASI-000007` y espejo `ASI-000008` **los dos del 2026-09-27**, par neto **0,00** |
+| Factura de hace **200 días** (`FVE-5`): cancelar | **400** que nombra el camino de la NC (`from-invoice/5` sin `items`) |
+| …la NC del botón sobre esa factura | **400** «se emitió hace 200 días y el plazo para acreditarla es de 180 días» |
+| …con el interruptor `creditNoteMaxDays=0` | **201** (`NCR-4`) |
+| Otra factura de 200 días con `annulmentDeadlineEnabled=false` | **201**; original `ASI-000011` y espejo `ASI-000012` **los dos del 2026-03-11** (el período del documento, no el de hoy) |
+| Factura de compra de hoy con cabecera 25 % (`FCP-2`) + botón | **201** `NCP-2` **`modo=header pct=25`** total 300,00 desc 100,00 y factura **`CANCELLED`** «Anulada por la nota de crédito NCP-2» |
+
+### Gates
+
+- Frontend: `tsc` (**app y spec**) 0, `ng lint` «All files pass linting», **Karma 2324 casos** (2322 verdes en la
+  corrida completa y los **2 que fijaban la firma vieja** del `cancel(id, razón, fecha)` corregidos y verdes),
+  `ng build` 0 (127,9 s).
+- **Un defecto propio lo destapó el gate del push (no `tsc` ni Karma)**: las plantillas de los **dos layouts**
+  (`core/layout` y `super-admin/layout`) seguían enlazando `[postingDateValue]`/`(postingDateValueChange)` del
+  diálogo. `tsc` no compila plantillas y Karma (JIT) no rompe el test por un enlace desconocido; el **build** del
+  hook sí (`NG8002`/`NG9`) y **cortó el push** hasta renombrarlos a `dateValue`/`dateValueChange`. Es la misma
+  lección que el caso de unidad del push en la ronda 3: **el gate que compila la plantilla es el build**.
+- Backend: unitario de la NC de compra **23/23** (con el caso de D4 reescrito), `annulment-posting-date`
+  **22/22** (dos aserciones nuevas de la factura de compra anulada y de la vía del espejo), `tsc` y `eslint` 0; y
+  el hook del push corrió la suite completa **212 suites / 2662 tests** en verde.
+- E2E del gate: `annulment-posting-date` + `purchase-flow` + `returns-and-credit-notes` + `discount-propagation`
+  = **4 suites / 61 tests**.
+- Commits: backend **`31c5050`** (los dos espejos, `git ls-remote`), frontend **`f0a964f2`**, raíz (este
+  documento).
+
 ## Pendiente del tramo
 
-- **D4** «anular con NC por el total, descuentos incluidos» en un clic (una línea por línea de factura con su
-  descuento ya calculado) y `cancel` de un documento emitido con mensaje accionable.
-- **D5** `creditNoteMaxDays` (default 180) validado contra la fecha de emisión, sólo si la NC referencia una factura.
-  → **CERRADO (r4 en ventas, r7 en compras)**; el interruptor en la pantalla queda declarado (UI).
-- **D6** rechazar NC anterior a la factura o con fecha futura. → **CERRADO (r4 en ventas, r7 en compras)**.
-- **D7** cabecera referencial en NC/devoluciones + medir la NC parcial con cabecera **por importe**.
-  → **CERRADO (rondas 5-6)**: NC desde factura y NC manual con factura (**r5**) y las dos **devoluciones** (**r6**);
-  la parcial con cabecera por importe **medida**.
-- Frontend: quitar el campo de fecha de los diálogos de **cancelación** (dejarlo en la NC) y el interruptor del
-  plazo de anulación en Configuración.
+- **T255: CERRADO** (D1-D7 + UI). Declarado del tramo:
+  - el **IT** (3 % del neto) no se revierte en la NC —el asiento de la NC es un hecho nuevo, no el espejo—; el
+    espejo de la **cancelación** sí cuadra a cero.
+  - `creditNoteMaxDays` sólo aplica cuando la NC **referencia** una factura (una NC manual sin factura no tiene
+    contra qué medirse).
+  - la fecha del diálogo de la NC se propone con el **día del tenant**; las reglas del backend (no anterior, no
+    futura, plazo) la validan al confirmar.
+- Del tramo T254 sigue abierto lo declarado entonces: la **edición de cotizaciones** (el dinero del documento queda
+  bien y las líneas sin descuento), `addItem`/`updateItem` con cabecera **por importe** y el `PATCH` que devuelve
+  las líneas de antes.
 
 ## Notas del arnés
 
 - Base de desarrollo: `npm run db:recreate` exige parar el API; tras recrear hay que registrar la **tasa del día**
   (`POST /exchange-rates`, USD→BOB 6,96) o el guard bloquea las operaciones.
 - Sondas (no se commitean): `backend-erp/scripts/_probe-t255-anulacion.ts` (cancelación + NC parcial + límites),
-  `_probe-t255-espejo.ts` (par original/espejo y estados), `_probe-t255-ab.ts` (A/B de la fecha).
-- El campo del espejo es `reversalJournalEntryId` **en el original** (apunta al espejo).
+  `_probe-t255-espejo.ts` (par original/espejo y estados), `_probe-t255-ab.ts` (A/B de la fecha),
+  `_probe-t255-ui-final.ts` + `_probe-t255-ui-espejo.ts` + `_probe-t255-ui-asientos.ts` (validación sobre base
+  limpia con los payloads de la pantalla).
+- En una **base limpia** los artículos de las sondas ya no existen: se toman tres artículos de la semilla con
+  `trackingType: 'NONE'` (los serializados exigen número de serie) y el precio se manda en el documento.
+- El campo del espejo es `reversalJournalEntryId` **en el original** (apunta al espejo); el espejo **no** lleva
+  `sourceDocumentId`, así que se localiza por el original.
+- Los asientos de una factura incluyen las patas de **inventario/COGS**, así que su D total no es el total del
+  documento: el importe de venta es la pata de `CxC`.
 - Jest escribe el resumen en **stderr** y el arnés a veces reporta `exit code: 1` con la suite en verde.
