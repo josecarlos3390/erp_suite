@@ -104,6 +104,37 @@ escrito en la línea**; copiar = replicar la decisión del origen, nunca recalcu
 
 ## Estado por rondas (goal activo)
 
+- **Rondas 10-11 (punto 7 — el gate cubre los 14 documentos y los DOS caminos de EDICIÓN que corrompían el
+  total): CERRADO**. Amplié el caso E2E `T254 (7b)` con los **5** documentos que faltaban —cotización de venta,
+  cotización de compra, pedido de compra manual, devolución de compra desde la recepción y devolución de venta
+  desde la entrega del pedido— **y con los dos caminos de edición**; el gate destapó **cuatro defectos**, tres de
+  ellos medidos antes con sondas contra la base de desarrollo:
+  - **(a) pedido de COMPRA manual** (`POST /purchase-orders/manual` con cabecera 25 %): el documento salía bien
+    (265,49 + IVA = 300, `desc=100`) pero las **líneas a precio lleno** (`descPct=null`, `descTotal=0`, Σ 400) —
+    el mismo defecto que el punto 1 cerró en venta. Arreglado en `createManual` **y** en `update`: pre-pase con
+    la regla única, descuento efectivo por índice, totales **de las líneas** y costo = `priceNet` (sin volver a
+    descontar). Medido: `PO-3` → líneas `descPct=25` con **37,50 / 12,50 / 50,00**.
+  - **(b) editar UNA línea** de un pedido de VENTA ya materializado (`PATCH /sales-orders/:id/items/:lineId`):
+    `recalculateTotals` **volvía a aplicar** la cabecera sobre líneas que ya la traían y el documento quedaba en
+    **225,00 / 254,25 / desc 84,75** (300 → 254,25). Ahora los totales salen **de las líneas** y el recálculo usa
+    el **indicador real** de cada línea (`isInclusive`/`calculationMethod`; antes fijos en `false`/`STANDARD`, lo
+    que además cambiaba el total 300 → 339 con IVA incluido). Medido: el PATCH deja **300,00 / desc 100,00** con
+    las tres líneas al 25 %.
+  - **(c) guardar el pedido completo** (`PATCH /sales-orders/:id`) **borraba** el descuento de las líneas
+    (`null/0,00`: la cabecera al documento). Ahora `update` materializa la cabecera en sus **tres** ramas
+    (existente / libre nueva / re-agregada de la cotización) y `addItem` da su parte a la línea nueva (cabecera
+    porcentual). Medido: el PATCH deja las líneas al **25 %**.
+  - **(d) cotización de COMPRA**: el `PATCH` sin `supplierId` reventaba con **500** (Prisma `Argument id is
+    missing`); ahora conserva el proveedor de la cotización (mismo patrón que `sales-quotations`): **200**.
+  - **Gate final**: `discount-propagation` **16/16** con `T254 (7b)` cubriendo **los 14 documentos** y los **dos**
+    caminos de edición (PATCH del pedido de compra + PATCH de línea del pedido de venta nacido de la cotización),
+    todos con `subtotal 300`, `totalDiscount 100` y descuentos **12,50 / 37,50 / 50,00**.
+  - **Declarado**: los caminos de **EDICIÓN de cotizaciones** (venta y compra) siguen en «cabecera al documento»
+    —medido con la sonda `_probe-cot-edit.ts`: el PATCH deja el dinero del documento bien (265,49 / 300 / 100) y
+    las **líneas sin descuento** (`null/0,00`)—; se cierran con el mismo pre-pase en el tramo siguiente. Y el
+    `PATCH` devuelve las líneas **de antes** de la edición (el servicio lee con `this.prisma` dentro de la
+    transacción): cosmético, medido.
+
 - **Ronda 9 (punto 7b — gate de compras)**: escribí el caso E2E del **dinero por línea** para la cadena de compra y
   **pasó** en sus dos primeras partes: recepción manual con cabecera 25 % → `discountMode=header`, `pct=25`,
   `totalDiscount=100` y líneas con `descTotal` **[12,50 / 37,50 / 50,00]**; FRC desde esa recepción → `subtotal 300` y
