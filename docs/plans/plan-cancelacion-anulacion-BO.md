@@ -159,6 +159,25 @@
 - **Declarado**: el límite se aplica a la NC de **venta** (la de **compra** tiene su propio servicio: ronda de
   compras); el interruptor no está en la pantalla; y el default 180 es el número que fijó el usuario.
 
+## Ronda 5 — cabecera referencial en la NC (D7) y la parcial con cabecera por importe (CERRADA)
+
+- **Lo que faltaba**: la NC guardaba el descuento **sólo en las líneas** (`NCR-10` por el total y `NCR-11/13`
+  parciales salían `modo=line`, `pct=null`, `amt=null`) y la parcial con cabecera **por importe** no estaba medida.
+- **Entregado**: `sales-credit-notes.createFromInvoice` copia la cabecera **referencial** de la factura
+  (`discountMode`/`headerDiscountPct`/`headerDiscountAmt`) **sin recalcular el dinero** —`totalDiscount` sigue
+  siendo la suma de las líneas—, con el comentario del porqué y el gate que lo pincha (el total no cambia).
+- **A/B medido en la base de desarrollo** (`_probe-t255-d7.ts`):
+  | Documento | Antes | Después |
+  |---|---|---|
+  | `NCR-15` NC por el total de una FV con 25 % | `modo=line pct=null` | **`modo=header pct=25`**, total **300,00** y desc **100,00** (iguales) |
+  | `NCR-16` NC parcial | `modo=line pct=null` | **`modo=header pct=25`**, 112,50 con 37,50 de la línea |
+  | `NCR-17` parcial de una FV con cabecera **100 Bs** | `modo=line`, `amt=null` | **`modo=header amt=100`** y línea con **`descAmt=37,50`** (el de la línea) |
+- **D7(b) respondido**: la parcial de una factura con cabecera por **importe** toma el descuento **que la línea ya
+  tenía** (37,50), prorrateado por la cantidad acreditada cuando la línea tiene más unidades (en el gate: la mitad).
+- **Gates**: `annulment-posting-date` **19/19** (2 casos nuevos) y las suites de NC/cobros en verde.
+- **Declarado**: la copia referencial se hace en la NC que nace de una **factura**; el `create` manual con
+  `saleInvoiceId` y las **devoluciones** (venta y compra) siguen con `modo=line` —mismo criterio, paso siguiente—.
+
 ## Pendiente del tramo
 
 - **D4** «anular con NC por el total, descuentos incluidos» en un clic (una línea por línea de factura con su
@@ -167,6 +186,8 @@
   → **HECHO en la ronda 4** (queda el lado de **compra** y el interruptor en la pantalla).
 - **D6** rechazar NC anterior a la factura o con fecha futura. → **HECHO en la ronda 4**.
 - **D7** cabecera referencial en NC/devoluciones + medir la NC parcial con cabecera **por importe**.
+  → **HECHO en la ronda 5** para la NC que nace de una factura (el `create` manual con factura y las devoluciones
+  quedan como paso siguiente); la parcial con cabecera por importe **medida**.
 - Frontend: quitar el campo de fecha de los diálogos de **cancelación** (dejarlo en la NC) y el interruptor del
   plazo de anulación en Configuración.
 
