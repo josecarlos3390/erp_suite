@@ -518,6 +518,56 @@ totales D = H).
 - El **preliminar** recalcula el impuesto con el indicador de la línea: un payload sin `taxIndicatorId` pierde el
   IVA en el preliminar (medido: descuadre de 8,50 en el caso E2E; el formulario siempre lo manda).
 
+## Ronda 12 — D10-b: las CADENAS HEREDADAS de compra (EN CURSO — medición y diseño cerrados)
+
+### Medición (sonda `_probe-d10b-compra-heredada.ts` + `_probe-d10b-campos.ts`, base de desarrollo)
+
+Cadena **cotización con cabecera 25 % → pedido → recepción → FRC → FCP** con precio 94 (IVA 13 % incluido;
+el descuento correcto es 23,50 y el total 70,50):
+
+| Documento | Totales | Línea (`lineSubtotal` / `discountTotal` / `cost`) | Asiento |
+| --- | --- | --- | --- |
+| Cotización / pedido | 70,50 / desc 23,50 ✔ | **0,00** / 23,50 / — (`subtotal` 70,50) | no contabilizan |
+| **Recepción** (desde pedido) | 70,50 / desc 23,50 ✔ | 62,39 / 23,50 / **62,39** | `Inventario D 62,39 / GRIR H 62,39` (capitaliza **neto**) |
+| **FCP desde recepción** | 62,39 ✔ | **0,00** / 23,50 / 55,21 | `GRIR D 62,39 + IVA D 7,18 + Diferencia de precio D 16,32 / CxP H 62,39 + Descuento H 23,50` |
+| **FCP desde FRC** | **52,88 ✘** | **0,00** / 23,50 / **0,00** | solo reclasifica tránsito→inventario |
+| **FCP desde pedido** | **52,88 ✘** | **0,00** / 23,50 / 62,39 | `… Inventario D 70,29 + Descuento H 23,49` |
+| **FCP manual** (control) | 70,50 / desc 23,50 ✔ | 62,39 / 23,50 / 85,89 | `Inventario D 85,89 + IVA D 8,11 / CxP H 70,50 + Descuento H 23,50` ✔ |
+
+**Los tres defectos medidos**: **(1)** ningún camino `from-*` persiste `lineSubtotal` (queda **0**, y el builder
+arma el importe con `lineSubtotal ?? subtotal` → 0 + descuento, de ahí los 16,32 espurios en *Diferencia de
+precio*); **(2)** el descuento de cabecera se aplica **dos veces** en `createFromOrder`, `createFromQuotation` y
+`createFromReserveInvoice` (52,88 en vez de 70,50) porque el origen **ya lo materializó** en sus líneas (T254) y
+el ratio de la cabecera se vuelve a aplicar —el camino `from-receipt` sí tiene la guarda `sourceMaterialized`, los
+otros no—; **(3)** el **costo** capitalizable queda neto (62,39) en la recepción desde pedido y 0 en la FCP desde
+FRC, así que el kardex no coincide con el mayor.
+
+### Decisión del usuario (con la medición delante)
+
+**T239 llega también a la RECEPCIÓN**: la recepción **capitaliza el bruto** (el descuento no baja el costo) y sus
+líneas llevan el neto + el descuento; así el mayor y el kardex valúan lo mismo en toda la cadena y la factura que
+nace de una recepción puede **desglosar el descuento** (GRIR al bruto que la recepción acreditó, CxP por el total
+facturado y `PURCHASE_DISCOUNT` por el descuento). Cambia la valuación del stock de las recepciones con cabecera
+(85,89 en vez de 62,39) y con ella el COGS de esas unidades.
+
+### Diseño de la entrega (siguiente ronda)
+
+1. **Recepción** (`purchase-receipts.service.ts`): `cost`/`totalCost` = **bruto** en modo cabecera
+   (`lineSubtotal + discountTotal`) y **neto** en modo línea; sitios: `createFromOrder` (~712), manual (~1208) y
+   los tres caminos `from-invoice` (3429/4077/4680), con las mismas guardas.
+2. **Facturas `from-*`** (`purchase-invoices.service.ts`): persistir **`lineSubtotal`** (= el neto que ya se
+   escribe en `subtotal`), **no re-aplicar** el ratio cuando el origen materializó
+   (`_sourceMaterializedHeader`, como ya hace `createFromReceipt` con `effHeaderRatio`) y **costo bruto** en modo
+   cabecera (`_capitalizedUnitCost`). Sitios: `createFromQuotation` (~625), `createFromOrder` (~1085/1174/1306),
+   `createFromReceipt` (~1617/1797), `createFromReserveInvoice` (~2335) y los tres `from-multi-*`.
+3. **Totales del destino**: `resolveSingleHeaderDiscount` vuelve a aplicar el % de la cabecera sobre `lineCalcs`
+   que ya vienen descontados (de ahí el 52,88); el destino debe heredar la cabecera **referencial** y tomar los
+   totales **de las líneas**. Se resuelve en el llamador (sin tocar el util compartido) o con un parámetro
+   `sourceMaterialized` en el util, y el gate E2E del dinero (`T254`) dice si los caminos de venta se mueven.
+4. **Gate nuevo**: caso E2E que pinche, en la cadena PQ→PO→REC→FRC→FCP con cabecera 25 %, el dinero (70,50 /
+   desc 23,50), el **asiento** de la recepción (`Inventario` bruto) y el de la factura (`GRIR` bruto + CxP total +
+   `PURCHASE_DISCOUNT`), el **costo** bruto de la línea y que el asiento cuadre.
+
 ## Pendiente del tramo
 
 - **T255: CERRADO** (D1-D7 + UI). Declarado del tramo:
