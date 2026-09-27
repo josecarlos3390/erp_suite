@@ -134,12 +134,38 @@
   **compra** tiene el mismo camino por `/purchase-credit-notes/from-invoice/:id` y su estado se revisa en la ronda
   de compras si hace falta.
 
+## Ronda 4 — fechas de la NC: plazo configurable y nada de fechas imposibles (D5+D6) (CERRADA)
+
+- **Regla nueva en un solo sitio** (`src/common/credit-note-date.util.ts`,
+  `assertCreditNoteDate(noteDate, invoice, today, { maxDays }, timeZone)`):
+  - **D6** — la NC que referencia una factura no puede fecharse **antes** de la factura ni en el **futuro**.
+  - **D5** — su antigüedad no puede pasar **`creditNoteMaxDays`** (default **180**, `0` = sin límite), medido
+    desde la **emisión fiscal** de la factura (`fiscalIssuedAt ?? date`) y comparando **días del tenant**.
+  - Sólo aplica cuando la NC **referencia** una factura: la NC manual no tiene contra qué medirse.
+- **Configurable por empresa**: `creditNoteMaxDays` en `AppSettings`, `getAll`, `saveAll` y el DTO de
+  `PUT /settings`.
+- **Cableado**: `sales-credit-notes.createFromInvoice` (el camino de un clic de D4) y el `create` manual cuando
+  trae `saleInvoiceId` (se amplió el `select` del bloqueo para leer `date` y `fiscalIssuedAt`).
+- **A/B medido en la base de desarrollo** (`_probe-t255-nc-fechas.ts`): NC hoy de una factura de **200 días** →
+  **400** «La factura se emitió hace 200 días y el plazo para acreditarla es de 180 días…» (antes **201**, `NCR-5`);
+  NC con fecha **20 días anterior** a la factura → **400** «anterior a la factura» (antes **201**, `NCR-6` con
+  `días=-20`); NC con fecha **futura** → **400**; y con `creditNoteMaxDays = 0` la misma NC de 200 días se emite
+  (**201**, `NCR-9`), restaurado el parámetro.
+- **Gates**: `credit-note-date.util.spec` **7/7**, `annulment-posting-date` **18/18** (2 casos nuevos) y las suites
+  de NC/cobros en verde.
+- **Nota de arnés medida**: la primera corrida de la sonda dio **500** en dos casos porque la factura «de hoy» no se
+  creó (existencia agotada por las sondas anteriores) y el `id` quedaba `undefined` en la URL — el 500 era del
+  **probe**, no del producto; se recargó la existencia y se añadió la comprobación del alta.
+- **Declarado**: el límite se aplica a la NC de **venta** (la de **compra** tiene su propio servicio: ronda de
+  compras); el interruptor no está en la pantalla; y el default 180 es el número que fijó el usuario.
+
 ## Pendiente del tramo
 
 - **D4** «anular con NC por el total, descuentos incluidos» en un clic (una línea por línea de factura con su
   descuento ya calculado) y `cancel` de un documento emitido con mensaje accionable.
 - **D5** `creditNoteMaxDays` (default 180) validado contra la fecha de emisión, sólo si la NC referencia una factura.
-- **D6** rechazar NC anterior a la factura o con fecha futura.
+  → **HECHO en la ronda 4** (queda el lado de **compra** y el interruptor en la pantalla).
+- **D6** rechazar NC anterior a la factura o con fecha futura. → **HECHO en la ronda 4**.
 - **D7** cabecera referencial en NC/devoluciones + medir la NC parcial con cabecera **por importe**.
 - Frontend: quitar el campo de fecha de los diálogos de **cancelación** (dejarlo en la NC) y el interruptor del
   plazo de anulación en Configuración.
