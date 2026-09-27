@@ -35,9 +35,12 @@ o después, en **Parametrización → Contabilidad** del tenant activo.
 
 > El alta por panel ejecuta el seed: moneda base, UoMs, sucursal PRIN, almacén ALM-01,
 > grupo GEN, impuestos, condiciones de pago, lista LP-01, cliente/proveedor/artículo de
-> prueba, y —desde **T132**— **la gestión del año en curso con sus 12 períodos mensuales y
-> las 26 series de numeración**. **Con contabilidad activada** además siembra plan de cuentas
-> + mappings + cuentas de mayor. Con contabilidad desactivada **no** siembra el bloque
+> prueba, la **gestión del año en curso con sus 12 períodos mensuales y las 31 series de
+> numeración** (T132 en la semilla de la demo y **T253 en el alta del tenant**: hasta
+> entonces un tenant creado desde el panel nacía sin gestión ni series y su primer
+> documento respondía 400). **Con contabilidad activada** además siembra plan de cuentas
+> + mappings + cuentas de mayor (incluidas las cuentas propias de sus indicadores de
+> impuesto, T253). Con contabilidad desactivada **no** siembra el bloque
 > contable (se genera luego), pero la gestión y las series **sí** (las series exigen gestión
 > en ambos perfiles). La **tasa de cambio del día** no se siembra a propósito (§15 del seed):
 > es el único paso manual del arranque y el Centro de configuración lo marca bloqueante.
