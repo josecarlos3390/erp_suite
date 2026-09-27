@@ -103,6 +103,37 @@
   aplica la misma ventana (el documento es del proveedor: si el criterio debe ser otro, es una decisión del
   usuario); y el camino de un clic «anular con NC por el total» (D4) es la ronda siguiente.
 
+## Ronda 3 — «anular con NC por el total» (D4) (CERRADA)
+
+- **El camino de un clic ya existía y no estaba declarado**: `POST /sales-credit-notes/from-invoice/:id` **sin
+  `items`** acredita **todas** las líneas de la factura (`createFromInvoice`: `items.length > 0` decide entre líneas
+  propias y las de la factura) y respeta el descuento que cada línea ya tenía (T254: `origLine.discountPct`).
+- **Lo que faltaba era el estado**: una NC por el total dejaba la factura en `CLOSED` («acreditada por completo»),
+  no **ANULADA**. Ahora `_executeConfirmLogic` marca `CANCELLED` + `cancellationReason` («Anulada por la nota de
+  crédito NCR-x») + `cancelledAt` + `cancelledById` cuando lo acreditado alcanza el total, y la cancelación de la
+  NC **restaura** la factura (acepta `CANCELLED` además de `CLOSED` y limpia la traza).
+- **Mensajes accionables**: los tres 400 de anulación fuera del plazo nombran el camino de un clic y el endpoint
+  (`POST /sales-credit-notes/from-invoice/:id` en venta y FRV, `/purchase-credit-notes/from-invoice/:id` en compra).
+- **A/B medido en la base de desarrollo** (`_probe-t255-nc-total.ts`): factura `FVE-35` con cabecera 25 % →
+  `NCR-7` por el total → **total 300,00 = total de la factura**, **descuento 100,00** y las 3 líneas `descPct=25`;
+  la factura queda **`CANCELLED`** con `acreditado=300`, `saldo=0` y motivo «Anulada por la nota de crédito NCR-7»
+  (antes: `CLOSED`, medido en `FVE-22/23/24`); y la anulación por espejo después responde **400 «La factura ya está
+  anulada»**.
+- **Gates**: `annulment-posting-date` **16/16** (2 casos nuevos: la NC por el total anula con los descuentos ya
+  calculados y bloquea la vía del espejo; una NC **parcial** NO anula) y **7 suites E2E** de NC/cobros/canal
+  **106/106** (`returns-and-credit-notes`, `credit-note-partial-money`, `credit-note-return-pending`,
+  `discount-propagation` 16/16, `sales-flow`, `incoming-payments`, `storefront-channel`).
+- **Un caso de unidad fijaba la decisión vieja**: `sales-credit-notes.service.spec` tenía «*factura totalmente
+  acreditada pasa a CLOSED (no CANCELLED)*» y se **reescribe** con el motivo del cambio (estado `CANCELLED`, motivo
+  con el código de la NC y ningún `CLOSED`). Lo destapó el **hook del push**: la suite quedó en rojo, el push **no**
+  se selló, los espejos seguían en el commit anterior (verificado con `git ls-remote`) y el commit se corrigió con
+  `--amend` **antes** de publicarse — la lección: un cambio de regla puede tener su decisión vieja **escrita en un
+  test**, así que el gate de unidad hay que correrlo antes de empujar.
+- **Declarado**: el camino es un endpoint (la pantalla con su botón «Anular con nota de crédito» es el paso de UI);
+  la NC se emite **hoy** por defecto y su fecha es editable (el usuario la elige en el payload); el lado de
+  **compra** tiene el mismo camino por `/purchase-credit-notes/from-invoice/:id` y su estado se revisa en la ronda
+  de compras si hace falta.
+
 ## Pendiente del tramo
 
 - **D4** «anular con NC por el total, descuentos incluidos» en un clic (una línea por línea de factura con su
