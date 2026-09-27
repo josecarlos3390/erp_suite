@@ -71,6 +71,20 @@ escrito en la línea**; copiar = replicar la decisión del origen, nunca recalcu
 
 ## Estado por rondas (goal activo)
 
+- **Ronda 8 (punto 5 — notas de crédito): CERRADO por medición, sin cambios de código**.
+  Con el payload correcto (el DTO del `from-invoice` identifica la línea por **`itemId`**, no por el id de la línea
+  de la factura), las dos NC **replican el descuento de la factura de origen**:
+  - `NCR-1` (NC de venta desde una FV con cabecera 25 %): subtotal 265,49 + IVA 34,51 = **total 300**,
+    `totalDiscount` **100**, líneas `descPct=25` con `descTotal` **50,00 / 12,50 / 37,50**.
+  - `NCP-1` (NC de compra desde una FC con cabecera 25 %): idéntico (300 / 100 y `descPct=25` por línea).
+  **Declarado (menor, cosmético)**: las NC guardan `modo=line pct=null` —copian el descuento **por línea**, que es lo
+  que hace que el dinero cuadre, pero **no** heredan el `discountMode`/`headerDiscountPct` referencial de la factura—.
+  Cerrarlo es un cambio de dos líneas en cada NC si se quiere el encabezado referencial también ahí.
+- **Valores medidos listos para pinchar en el gate (punto 7b)**: recepción manual 25 % → `modo=header pct=25`,
+  líneas `descPct=25` con 37,50/12,50/50,00, neto 112,50/37,50/150,00, `totalDiscount=100`, cabecera al **costo**
+  (400, `status=CLOSED`); FRC desde esa recepción → total **300** y `totalDiscount` 100; NC de venta y de compra desde
+  factura con cabecera 25 % → total **300**, `totalDiscount` 100, líneas `descPct=25` (50/12,50/37,50).
+
 - **Ronda 6 (recepción de compra + FRC)**:
   - **Arreglado**: `purchase-receipts.createManual` aplica la regla única a sus líneas y guarda la cabecera referencial.
     Medido en BD (`REC-4`): `modo=header pct=25`, líneas `descPct=25` con `descTotal` **37,50 / 12,50 / 50,00**, neto
