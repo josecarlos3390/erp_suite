@@ -197,13 +197,27 @@
 - **D7 CERRADO** (NC desde factura, NC manual con factura y las dos devoluciones). Queda del tramo: el **lado de
   compra** de las fechas de la NC y la **UI** (interruptores y botones).
 
+## Ronda 7 — la NC de COMPRA estrena las mismas reglas (CERRADA)
+
+- **Medido antes**: `/purchase-credit-notes/from-invoice/:id` **no validaba fechas** (la de 200 días se emitía) y
+  guardaba la cabecera **hardcodeada** (`discountMode: 'line'`, `headerDiscountPct: null`).
+- **Entregado**: `assertCreditNoteDate` en `createFromInvoice` y en el `create` manual con `purchaseInvoiceId`
+  (fecha anterior/futura/plazo `creditNoteMaxDays`, desde la emisión fiscal) y la cabecera **referencial** copiada
+  de la factura **sin recalcular el dinero**.
+- **A/B medido** (`_probe-t255-nc-compra.ts`): NC de una FC de 200 días → **400** con el mensaje del plazo (antes se
+  emitía); NC con −20 días → **400** «anterior a la factura»; NC dentro del plazo → **201** con
+  **`modo=header pct=25`**, total 300,00 y desc 100,00; con `creditNoteMaxDays=0` → **201** (`NCP-5`).
+- **Gates**: `annulment-posting-date` **20/20** (caso nuevo de las tres cosas) y el unitario de la NC de compra
+  **23/23**.
+- **Con esto las reglas de la NC son SIMÉTRICAS en venta y compra.** Queda del tramo solo la **UI**.
+
 ## Pendiente del tramo
 
 - **D4** «anular con NC por el total, descuentos incluidos» en un clic (una línea por línea de factura con su
   descuento ya calculado) y `cancel` de un documento emitido con mensaje accionable.
 - **D5** `creditNoteMaxDays` (default 180) validado contra la fecha de emisión, sólo si la NC referencia una factura.
-  → **HECHO en la ronda 4** (queda el lado de **compra** y el interruptor en la pantalla).
-- **D6** rechazar NC anterior a la factura o con fecha futura. → **HECHO en la ronda 4**.
+  → **CERRADO (r4 en ventas, r7 en compras)**; el interruptor en la pantalla queda declarado (UI).
+- **D6** rechazar NC anterior a la factura o con fecha futura. → **CERRADO (r4 en ventas, r7 en compras)**.
 - **D7** cabecera referencial en NC/devoluciones + medir la NC parcial con cabecera **por importe**.
   → **CERRADO (rondas 5-6)**: NC desde factura y NC manual con factura (**r5**) y las dos **devoluciones** (**r6**);
   la parcial con cabecera por importe **medida**.
