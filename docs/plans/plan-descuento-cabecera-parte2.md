@@ -79,12 +79,14 @@ escrito en la línea**; copiar = replicar la decisión del origen, nunca recalcu
     recepción **materializó** el descuento, la FRC **copia el neto del origen** (`ri.priceNet`) en vez de recalcular
     desde el precio de lista, y **replica** el importe descontado en su `totalDiscount` (si no, las dos casos E2E que
     exigen `totalDiscount > 0` en la FRC se caían).
-  - **ABIERTO y localizado**: la cabecera de la **recepción** (`REC-4`) queda `subtotal=400 / total=400` mientras sus
-    líneas suman **300** —la incoherencia la introdujo mi cambio y hay que trazarla: el `headerSubtotal` se calcula
-    como `Σ ri.subtotal` (~línea 1279) y el `create` lo escribe (~1348); las líneas ya llevan el neto, así que la suma
-    debería ser 300. Revisar si otro punto del mismo método (o un `recalc`) reescribe esos totales.
+  - **CORRECCIÓN de la ronda 6 (no era una incoherencia)**: la cabecera de la recepción muestra `subtotal=400 /
+    total=400` **porque es la valoración al COSTO** (la recepción nace y se confirma en el alta: `status=CLOSED`,
+    `totalCost=400`), no el precio. Medido con log temporal en `createManual`: `hasPrice=true`, subtotales de línea
+    `[112.5, 37.5, 150]` → Σ **300**; el `400` del encabezado lo escribe `confirm()` (`subtotal: confirmedTotalCost`).
+    Es la convención declarada en T239 —el descuento **no** baja el costo del artículo— así que el documento es
+    coherente: coste 400, `totalDiscount` 100 y líneas al neto del precio (300). **Nada que arreglar.**
   - Gates de la ronda: unitarios de los 3 archivos **26/26**, E2E `discount-propagation` **15/15**, `purchase-flow`
-    **14/14**, `tsc` 0 y `eslint` 0. **Sin commitear** (el commit va cuando se cierre la incoherencia de la cabecera).
+    **14/14**, `tsc` 0 y `eslint` 0.
 
 - **Ronda 1**: punto 8 ✔ (cotizaciones sin `itemId`: 500 → 400) + análisis de la FRV.
 - **Rondas 2-3**: puntos **1, 3, 4** ✔ y **entrega** ✔ (el pedido materializa la cabecera en sus líneas; la copia
