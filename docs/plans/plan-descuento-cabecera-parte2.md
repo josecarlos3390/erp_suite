@@ -71,6 +71,21 @@ escrito en la línea**; copiar = replicar la decisión del origen, nunca recalcu
 
 ## Estado por rondas (goal activo)
 
+- **Ronda 6 (recepción de compra + FRC)**:
+  - **Arreglado**: `purchase-receipts.createManual` aplica la regla única a sus líneas y guarda la cabecera referencial.
+    Medido en BD (`REC-4`): `modo=header pct=25`, líneas `descPct=25` con `descTotal` **37,50 / 12,50 / 50,00**, neto
+    unitario **112,50 / 37,50 / 150,00** y `totalDiscount` **100** (antes: `modo=line`, total 400, desc 0).
+  - **Arreglado**: la **FRC** ahora cobra **300** (antes 400). En `purchase-invoices.createFromReceipt`, cuando la
+    recepción **materializó** el descuento, la FRC **copia el neto del origen** (`ri.priceNet`) en vez de recalcular
+    desde el precio de lista, y **replica** el importe descontado en su `totalDiscount` (si no, las dos casos E2E que
+    exigen `totalDiscount > 0` en la FRC se caían).
+  - **ABIERTO y localizado**: la cabecera de la **recepción** (`REC-4`) queda `subtotal=400 / total=400` mientras sus
+    líneas suman **300** —la incoherencia la introdujo mi cambio y hay que trazarla: el `headerSubtotal` se calcula
+    como `Σ ri.subtotal` (~línea 1279) y el `create` lo escribe (~1348); las líneas ya llevan el neto, así que la suma
+    debería ser 300. Revisar si otro punto del mismo método (o un `recalc`) reescribe esos totales.
+  - Gates de la ronda: unitarios de los 3 archivos **26/26**, E2E `discount-propagation` **15/15**, `purchase-flow`
+    **14/14**, `tsc` 0 y `eslint` 0. **Sin commitear** (el commit va cuando se cierre la incoherencia de la cabecera).
+
 - **Ronda 1**: punto 8 ✔ (cotizaciones sin `itemId`: 500 → 400) + análisis de la FRV.
 - **Rondas 2-3**: puntos **1, 3, 4** ✔ y **entrega** ✔ (el pedido materializa la cabecera en sus líneas; la copia
   desde la FRV hereda la cabecera y **no** vuelve a descontar) + **gate E2E del dinero por línea**
