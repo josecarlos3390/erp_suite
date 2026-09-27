@@ -73,16 +73,45 @@
   (junto con D2/D4). Y `_resolveAccountingPeriod` devuelve periodo nulo **si no hay ninguna gestión** (ahí no hay
   409): el 409 es «hay gestión pero ningún período cubre la fecha».
 
+## Ronda 2 — sello de emisión fiscal + plazo configurable (D2) (CERRADA)
+
+- **Regla ampliada** (`src/common/invoice-annulment.util.ts`): `canAnnulInvoice(fechaEmisión, ahora, ventana)` con
+  `InvoiceAnnulmentWindow { enabled, deadlineDay }` (default `true` / `9`, la RND). El día se acota a **1..28**
+  (un día que no existe en el mes siguiente rodaría al mes posterior); `enabled: false` = sin plazo.
+- **Sello de emisión**: columnas `SaleInvoice.fiscalIssuedAt` / `PurchaseInvoice.fiscalIssuedAt`
+  (migración idempotente `20260927190000_fiscal_issued_at`, con **backfill** = `date`). El motor usa
+  `fiscalIssuedAt ?? date`: el sello es **opcional** y hoy queda `null` en los documentos nuevos, así que la
+  emisión es la **fecha del documento** (medido: `FVE-32` con `emisión=null` y `date=2026-06-19`).
+- **Configurable por empresa**: `annulmentDeadlineEnabled` (default `true`) y `annulmentDeadlineDay`
+  (default `9`) en `AppSettings` + `getAll` + `saveAll` + el DTO de `PUT /settings`; el interruptor del
+  frontend queda declarado para el tramo de UI.
+- **Guardas** (`sale-invoices.findForAnnulment`, `sale-reserve-invoices.cancel`, `purchase-invoices.findForAnnulment`):
+  el plazo corre desde la **emisión** (no desde `status=CLOSED`, que significa «acreditada por completo») y el
+  **motivo** es obligatorio en la anulación de cualquier documento emitido; el 400 nombra el día configurado y
+  pide la NC.
+- **A/B medido en la base de desarrollo** (`_probe-t255-plazo.ts`, factura con fecha de hace 100 días):
+  | | Antes (ronda 1) | Después |
+  |---|---|---|
+  | plazo activo (default) | **201** (se anulaba) | **400** «fuera del plazo … Emita una nota de crédito por el total» |
+  | `annulmentDeadlineEnabled=false` | — | **201** y el espejo en el período del documento (`2026-06-19`/6) |
+  | restaurado | — | **400** otra vez |
+- **Gates**: `invoice-annulment.util.spec` **6/6** (ventana desactivada, día configurable, día imposible acotado),
+  `annulment-posting-date` **14/14** (3 casos nuevos: fuera del plazo → 400 + NC; ventana desactivada → 201;
+  sin motivo → 400) y las suites E2E de cancelaciones/settings de la ronda.
+- **Declarado**: el interruptor no está todavía en la pantalla de Configuración (se maneja por `PUT /settings`);
+  el backfill deja el sello puesto en los documentos **existentes**; la anulación de una **factura de compra**
+  aplica la misma ventana (el documento es del proveedor: si el criterio debe ser otro, es una decisión del
+  usuario); y el camino de un clic «anular con NC por el total» (D4) es la ronda siguiente.
+
 ## Pendiente del tramo
 
-- **D2** sello de emisión fiscal (fecha/estado) en facturas de venta y compra (+ reserva) y plazo del día 9
-  **configurable por empresa**, colgado del sello y no de `status=CLOSED`.
 - **D4** «anular con NC por el total, descuentos incluidos» en un clic (una línea por línea de factura con su
   descuento ya calculado) y `cancel` de un documento emitido con mensaje accionable.
 - **D5** `creditNoteMaxDays` (default 180) validado contra la fecha de emisión, sólo si la NC referencia una factura.
 - **D6** rechazar NC anterior a la factura o con fecha futura.
 - **D7** cabecera referencial en NC/devoluciones + medir la NC parcial con cabecera **por importe**.
-- Frontend: quitar el campo de fecha de los diálogos de **cancelación** (dejarlo en la NC).
+- Frontend: quitar el campo de fecha de los diálogos de **cancelación** (dejarlo en la NC) y el interruptor del
+  plazo de anulación en Configuración.
 
 ## Notas del arnés
 
