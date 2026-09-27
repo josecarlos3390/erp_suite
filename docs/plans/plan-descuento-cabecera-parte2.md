@@ -69,6 +69,30 @@ escrito en la línea**; copiar = replicar la decisión del origen, nunca recalcu
    cadena pedido→entrega→FRV→factura; hoy `discount-propagation.e2e-spec.ts` solo pincha `discountMode`/`pct`.
 7. Cierre: unit + E2E completos, CHANGELOG/AUDIT/AGENTS y push verificado con `git ls-remote` en los dos espejos.
 
+## Estado por rondas (goal activo)
+
+- **Ronda 1**: punto 8 ✔ (cotizaciones sin `itemId`: 500 → 400) + análisis de la FRV.
+- **Rondas 2-3**: puntos **1, 3, 4** ✔ y **entrega** ✔ (el pedido materializa la cabecera en sus líneas; la copia
+  desde la FRV hereda la cabecera y **no** vuelve a descontar) + **gate E2E del dinero por línea**
+  (`discount-propagation` **15/15**).
+- **Ronda 4**: docs + **push verificado** (backend `6dcf4e9` en los dos espejos, root `d6b5cec`).
+- **Ronda 5 (medición, sonda `_probe-desc-frc-nc.ts`)**:
+  - **DEFECTO NUEVO medido**: `purchase-receipts.createManual` **ignora** el descuento de cabecera
+    (`REC-1`: `modo=line pct=null`, total 400, `desc=0` con `headerDiscountPct: 25`) → y la **FRC** que nace de
+    esa recepción tampoco lo tiene (`FRC-1`: `modo=line`, total 400). Es el mismo patrón de la factura de compra
+    manual que cerró la parte 1: **el arreglo va en la recepción** (la FRC sí hereda, porque
+    `purchase-invoices.createFromReceipt` usa `resolveSingleHeaderDiscount`). Ojo: `createManual` de la recepción
+    **no usa** `calcLineWithIndicator`; hay que ver cómo calcula sus montos (~líneas 866-1429).
+  - **Confirmado que las facturas manuales ya están bien**: `FVE-16/17` y `FCP-7/8` → `modo=header pct=25`,
+    subtotal **300**, `desc=100`, líneas `descPct=25` con 37,50/12,50/50,00.
+  - **Pendiente de medir con el payload correcto** (mi sonda usó campos equivocados y dio 400): NC de venta y de
+    compra desde la factura (`POST /sales-credit-notes/from-invoice/:id`, `/purchase-credit-notes/from-invoice/:id`
+    — el campo de línea **no** es `saleInvoiceItemId`/`purchaseInvoiceItemId`, hay que leer el DTO) y el **pedido de
+    compra** (su alta manual **no** es `POST /purchase-orders`: pide `quotationId`/`quotationItemId`, como el de
+    venta).
+  - **Recordatorio de entorno**: tras recrear la base hay que registrar la **tasa del día**
+    (`POST /exchange-rates`, USD→BOB) o el guard bloquea toda operación con 400.
+
 ## Medición (sondas sin commitear)
 
 - `backend-erp/scripts/_probe-desc.ts` — crea la canasta 150/50/200 (IVA incluido y sumado), las dos facturas
