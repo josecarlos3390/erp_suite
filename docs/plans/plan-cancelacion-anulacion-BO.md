@@ -371,6 +371,68 @@ el importe cobrado es 300,00:
 - El descuento de cabecera y el de línea se conservan **referenciales** en el documento (`pct`/`amt`/`total`) para
   explicar el importe y mantener la traza con la factura.
 
+## Ronda 10 — D9: el preliminar con descuento de cabecera y su visualización (CERRADA)
+
+### Lo que reportó el usuario
+
+> «Estoy haciendo pruebas en la factura de reserva de compra, con un artículo donde el total del documento es
+> 94 Bs y puse descuento de línea con un importe de 3, quedando el total en 91, y el asiento que genera es
+> correcto… pero cuando coloco el descuento en cabecera pareciera que el descuento no se prorratea en las
+> líneas, porque el asiento que genera el documento que tiene descuento en cabecera es diferente… el asiento en
+> el preliminar.»
+
+### Medición (FRC de 94 con 3 Bs de descuento)
+
+| | Tránsito | IVA | Descuento | CxP |
+|---|---|---|---|---|
+| **Documento guardado** (los dos modos) | 83,53 | 10,47 | 3,00 | 91,00 |
+| **Preliminar, descuento de línea** | 83,53 | 10,47 | 3,00 | 91,00 ✅ |
+| **Preliminar, descuento de cabecera** (antes) | **83,19** | **10,81** | 3,00 | 91,00 ❌ |
+
+El documento **ya prorrateaba** (T254); el formulario manda las líneas **a precio lleno** y el descuento solo en
+el documento, así que el motor del preliminar compensaba con el plug de descuento y dejaba el IVA sobre el **bruto**.
+
+### Entregado
+
+- **Backend**: el builder de borradores materializa el descuento de cabecera **en las líneas** con la **misma
+  regla** del alta (`resolveEffectiveLineDiscounts`) y **el mismo calculador** (`calcLineWithIndicator`, con la
+  tasa y el `isInclusive` del indicador de cada línea), en el preview de **venta y de compra** (FVE/FRV y FCP/FRC
+  comparten el helper). El DTO `preview-draft` acepta `discountMode`/`headerDiscountPct`/`headerDiscountAmt` (el
+  importe `discountTotal` sigue como respaldo) y las líneas que ya traen descuento no se tocan.
+- **UI (decisión del usuario: todos los documentos con descuento de cabecera)**: en modo cabecera las celdas de
+  descuento de la línea quedan **de solo lectura y muestran el prorrateo** que el motor aplica; en modo línea
+  siguen editables. La regla de visualización vive en **un solo sitio**
+  (`shared/utils/line-discount-display.util.ts` + el pipe `lineDiscount`, espejo del backend: misma base, reparto
+  por valor y residuo cuadrado en la última línea) y se aplica a **9 formularios**: FRC, FCP, FVE, FRV,
+  cotizaciones de venta y de compra, NC de compra y los dos pedidos (que capturan la cabecera por `ngModel`). El
+  `discountTotal` de la grilla también muestra el prorrateo y `displayDiscountForRow` dejó de devolver 0 en los
+  **borradores**.
+
+### Medido después (A/B)
+
+- Preliminar de la FRC de 94 con 3 Bs: `Tránsito D 83,53 + IVA crédito D 10,47 + Descuento H 3,00 + CxP H 91,00`
+  — **idéntico** al del descuento de línea y al del documento.
+- Preliminar de venta con cabecera: `CxC D 91,00 + Ventas H 83,53 + IVA débito H 10,47 + Descuento D 3,00 +
+  IT 2,73`, igual que con el descuento de línea.
+
+### Gates
+
+- Backend: caso nuevo en `accounting-engine.service.spec.ts` que compara **los dos asientos** (cabecera vs línea),
+  las suites del motor, ventas y compras **130/130** y el hook del push con la suite completa
+  **212 suites / 2665 tests**; `tsc`/`eslint` 0. Backend **`1ea1cd5`** en los **dos espejos**.
+- Frontend: spec nuevo del util/pipe **5/5** (porcentaje, importe con residuo, acumulación 5 % + 25 % = 28,75 % y
+  el pipe en los dos modos), `tsc` app 0, **`ng build` (AOT) 0** —el build es el gate que compila las
+  plantillas: destapó el acceso a `headerDiscountAmt` en la NC de compra y dos comparaciones con `number | null`
+  en la FRC— y la suite Karma completa.
+
+### Declarado
+
+- El prorrateo de la grilla es **solo visual**: el descuento propio de la línea sigue **vacío** en modo cabecera.
+  Si se escribiera ahí, el motor **acumularía** cabecera + línea y lo duplicaría (por eso las celdas son de solo
+  lectura).
+- En modo **ver** (`!canEdit`) la celda de `%`/monto sigue mostrando el valor del control (0 en cabecera); el
+  desglose y el total descontado sí muestran el prorrateo.
+
 ## Pendiente del tramo
 
 - **T255: CERRADO** (D1-D7 + UI). Declarado del tramo:
