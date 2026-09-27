@@ -25,6 +25,21 @@ línea, en los 4 sitios (`create` y `update` de cada una). Medido con `curl` y e
 con comillas de PowerShell da 400 por parseo y **falsea** la medición). Fuera de alcance a propósito:
 `storefront.service` (sus líneas nacen de la publicación, siempre con `itemId`).
 
+## Ronda 10 (punto 7b cerrado)
+
+- **El centavo de la NC, cerrado**: en `sales-credit-notes.createFromInvoice`, si la suma de las líneas se pasa del
+  saldo de la factura por **redondeo** (≤ 0,01) se **cuadra la última línea** con el saldo (regla de `money.util`)
+  ajustando su impuesto y los totales de cabecera; un exceso real (≥ 0,01) sigue rechazándose. Medido: la NC de venta
+  desde una FV con cabecera 25 % pasa de **400** («El crédito (339.01) supera el saldo restante (339.00)») a **201**
+  con `subtotal 300` y `totalDiscount 100`.
+- **Gate `T254 (7b)`** (dinero por línea en la cadena de compra y en las NC): recepción manual 25 % →
+  `discountMode=header`, `totalDiscount=100`, líneas `descTotal` **[12,50 / 37,50 / 50,00]**; FRC → `subtotal 300` y
+  `totalDiscount 100`; NC de venta y de compra → `subtotal 300`, `totalDiscount 100`, líneas 12,50/37,50/50,00.
+- Gates: `discount-propagation` **16/16**, `returns-and-credit-notes` **11/11** (**27/27** juntas), suite completa
+  **210 suites / 2.645 tests** en el hook del push, `tsc` 0 y `eslint` 0. Backend **`8951fa5`** en los **dos espejos**
+  (verificado con `git ls-remote` **después** de una interrupción de red: los espejos seguían en `fef3c8c`, se
+  reintentó el mismo push —idempotente— y quedaron alineados).
+
 ## Hallazgo clave para los puntos 2/3/4 (la cadena)
 
 `SaleReserveInvoice` **netea a propósito** el descuento de cabecera dentro de los montos de línea
