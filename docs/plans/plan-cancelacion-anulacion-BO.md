@@ -178,6 +178,25 @@
 - **Declarado**: la copia referencial se hace en la NC que nace de una **factura**; el `create` manual con
   `saleInvoiceId` y las **devoluciones** (venta y compra) siguen con `modo=line` —mismo criterio, paso siguiente—.
 
+## Ronda 6 — la cabecera referencial llega a las DEVOLUCIONES (cierre de D7) (CERRADA)
+
+- **Medido antes**: la devolución de **venta** (`DEV-1`) y la de **compra** (`DCP-1/2`) nacían `modo=line`,
+  `pct=null`, `amt=null` aunque su origen llevara cabecera (`DEL-5` y `REC-10` eran `modo=header pct=25`). En
+  compras el dato **se perdía al persistir**: `createFromReceipt` ya lo pasaba al `create`, pero el `create` no lo
+  escribía y valía el default `line` (medido con la sonda `_probe-t255-d7-devoluciones.ts`).
+- **Entregado**: (1) `sales-returns.create` copia la cabecera referencial de la **entrega** de origen (el dinero
+  sale de las líneas persistidas, así que no se recalcula); (2) `purchase-returns.create` **persiste** la cabecera
+  que ya recibía (`dto.discountMode ?? receipt.discountMode`), coherente con el prorrateo a líneas que ya hacía;
+  (3) la **NC manual** con `saleInvoiceId` también copia la cabecera referencial de la factura (mismo criterio que
+  `createFromInvoice`).
+- **A/B medido**: `DEV-3` → `modo=header pct=25`, total **300,00** y desc **100,00** (los de la entrega, sin doble
+  aplicación); `DCP-3` → `modo=header pct=25`, total **300,00** y desc **100,00**.
+- **Gates**: `discount-propagation` **16/16** (dos aserciones nuevas de cabecera referencial en las devoluciones),
+  `returns-and-credit-notes` **11/11** (**27/27** en la corrida conjunta) y unitarios de las tres familias
+  **48/48**.
+- **D7 CERRADO** (NC desde factura, NC manual con factura y las dos devoluciones). Queda del tramo: el **lado de
+  compra** de las fechas de la NC y la **UI** (interruptores y botones).
+
 ## Pendiente del tramo
 
 - **D4** «anular con NC por el total, descuentos incluidos» en un clic (una línea por línea de factura con su
@@ -186,8 +205,8 @@
   → **HECHO en la ronda 4** (queda el lado de **compra** y el interruptor en la pantalla).
 - **D6** rechazar NC anterior a la factura o con fecha futura. → **HECHO en la ronda 4**.
 - **D7** cabecera referencial en NC/devoluciones + medir la NC parcial con cabecera **por importe**.
-  → **HECHO en la ronda 5** para la NC que nace de una factura (el `create` manual con factura y las devoluciones
-  quedan como paso siguiente); la parcial con cabecera por importe **medida**.
+  → **CERRADO (rondas 5-6)**: NC desde factura y NC manual con factura (**r5**) y las dos **devoluciones** (**r6**);
+  la parcial con cabecera por importe **medida**.
 - Frontend: quitar el campo de fecha de los diálogos de **cancelación** (dejarlo en la NC) y el interruptor del
   plazo de anulación en Configuración.
 
