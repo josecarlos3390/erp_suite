@@ -266,6 +266,9 @@ payloads exactos de la pantalla** (`_probe-t255-ui-final.ts`, base `default`, 20
 | …con el interruptor `creditNoteMaxDays=0` | **201** (`NCR-4`) |
 | Otra factura de 200 días con `annulmentDeadlineEnabled=false` | **201**; original `ASI-000011` y espejo `ASI-000012` **los dos del 2026-03-11** (el período del documento, no el de hoy) |
 | Factura de compra de hoy con cabecera 25 % (`FCP-2`) + botón | **201** `NCP-2` **`modo=header pct=25`** total 300,00 desc 100,00 y factura **`CANCELLED`** «Anulada por la nota de crédito NCP-2» |
+| NC **20 días anterior** a su factura | **400** «no puede tener una fecha anterior a la factura (2026-09-27)» |
+| NC con fecha **futura** (+5 días) | **400** «no puede tener una fecha futura (2026-10-02; hoy es 2026-09-27)» |
+| NC de hoy (control) sobre esa factura | **201** (`NCR-7`) y la factura queda **`CANCELLED`** con lo acreditado |
 
 ### Gates
 
@@ -304,8 +307,8 @@ payloads exactos de la pantalla** (`_probe-t255-ui-final.ts`, base `default`, 20
   (`POST /exchange-rates`, USD→BOB 6,96) o el guard bloquea las operaciones.
 - Sondas (no se commitean): `backend-erp/scripts/_probe-t255-anulacion.ts` (cancelación + NC parcial + límites),
   `_probe-t255-espejo.ts` (par original/espejo y estados), `_probe-t255-ab.ts` (A/B de la fecha),
-  `_probe-t255-ui-final.ts` + `_probe-t255-ui-espejo.ts` + `_probe-t255-ui-asientos.ts` (validación sobre base
-  limpia con los payloads de la pantalla).
+  `_probe-t255-ui-final.ts` + `_probe-t255-ui-espejo.ts` + `_probe-t255-ui-asientos.ts` + `_probe-t255-ui-fechas.ts`
+  (validación sobre base limpia con los payloads de la pantalla).
 - En una **base limpia** los artículos de las sondas ya no existen: se toman tres artículos de la semilla con
   `trackingType: 'NONE'` (los serializados exigen número de serie) y el precio se manda en el documento.
 - El campo del espejo es `reversalJournalEntryId` **en el original** (apunta al espejo); el espejo **no** lleva
