@@ -25,6 +25,24 @@ línea, en los 4 sitios (`create` y `update` de cada una). Medido con `curl` y e
 con comillas de PowerShell da 400 por parseo y **falsea** la medición). Fuera de alcance a propósito:
 `storefront.service` (sus líneas nacen de la publicación, siempre con `itemId`).
 
+## Ronda 11 (punto 6 cerrado)
+
+- **Gate de convergencia** `src/common/discount-rules-consistency.spec.ts` (**7 casos**): compara **el dinero** entre la
+  regla única (`resolveEffectiveLineDiscounts`) y la materialización histórica (`materializeDiscountToLines`) en tres
+  canastas (150/50/200 al 25 %, 100 Bs, cantidades > 1 con IVA incluido) y **fija las diferencias declaradas**:
+  - `materializeDiscountToLines` **agrupa por tasa de IVA y REORDENA** las líneas (medido con tasas mixtas:
+    `taxIndicatorId` `[0,13 · 0,13 · 0]`, descuentos `[37,50 · 50,00 · 12,50]`) → consumirlo **por índice** compara
+    líneas distintas;
+  - el **ratio** coincide **hasta un centavo** (127,12 contra 127,13) por el **orden de redondeo** y **no puede**
+    expresar la **acumulación** con el descuento propio (5 % + 25 % → el ratio daría 112,50 y perdería el 5 %; la regla
+    da **106,87**).
+- **Convergencia escrita en el código**: las cabeceras de `discount-propagation.util.ts` y `discount-cost.util.ts`
+  declaran que son **codificaciones de la misma regla** y enumeran sus límites, nombrando los dos casos
+  **deliberados**: el **neteo** de la FRV (Ley 843 Art. 8) y la **valoración al costo** de la recepción (T239: el
+  descuento no baja el costo).
+- Gates: los tres specs de descuentos **33/33**, la suite completa **211 suites / 2.652 tests** en el hook del push,
+  `tsc` 0 y `eslint` 0. Backend **`f112cb3`** en los **dos espejos** (verificado con `git ls-remote`).
+
 ## Ronda 10 (punto 7b cerrado)
 
 - **El centavo de la NC, cerrado**: en `sales-credit-notes.createFromInvoice`, si la suma de las líneas se pasa del
