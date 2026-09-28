@@ -1,6 +1,6 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-22)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-23)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
 > diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
 > hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
@@ -12,7 +12,11 @@
 > cierra el reporte del usuario sobre la **FRC manual** (el cuerpo de guardado descartaba la cabecera capturada, la
 > FRC manual era el único camino que no se contabilizaba y la grilla no mostraba «precio/total con descuento»), y la
 > **ronda 20** cierra los **centavos**: la línea reparte al centavo (neto = residuo del importe cobrado) y la
-> cabecera es exactamente Σ líneas, así que **asiento y preliminar son idénticos**. Plan
+> cabecera es exactamente Σ líneas, así que **asiento y preliminar son idénticos**; la **ronda 21** agrupa en el
+> asiento la misma cuenta con los mismos ejes y lleva el centavo de la divisa a la línea de ajuste; la **ronda 22**
+> abre la **recepción** de una FRC (total o parcial, sumando exactamente el tránsito); y la **ronda 23** cierra la
+> **coherencia visual** de la grilla de un documento guardado (la línea muestra el descuento que **ya trae**, sin
+> volver a prorratear la cabecera). Plan
 > del tramo anterior (descuento de cabecera):
 > `docs/plans/plan-descuento-cabecera-parte2.md`.
 
@@ -1040,6 +1044,119 @@ Unitarios **212 suites / 2673 tests** y **suite E2E completa 41 suites / 383 tes
 - Las recepciones parciales de una misma línea **no** parten el costo en tercios exactos: cada una capitaliza
   `round(cantidad × costo unitario)` y la **última** toma el resto (por eso el reparto 45,08 + 45,08 + 45,21).
 
+## Ronda 23 — coherencia VISUAL de la grilla en un documento guardado (CERRADA)
+
+### Lo que reportó el usuario (2026-09-28)
+
+Mirando la **FRC-44** (la FRC manual con cabecera 25 % que creó tras la ronda 22):
+
+> «los cálculos visualmente que muestran las columnas […] descuento dice 43.75 % […] el costo no sé cómo lo calcula
+> […] la idea es que los valores que se muestren sean coherentes […] PERO EN GENERAL TODO ESTÁ BIEN, EL ASIENTO
+> GENERA CON LOS IMPORTES CORRECTOS Y EL DOCUMENTO TAMBIÉN, solo son los detalles visuales de los cálculos».
+
+Es un reporte **de pantalla**, no de dinero: el documento y su asiento están bien (lo confirma la propia sonda de
+esta ronda). El alcance es, por tanto, **solo visualización**.
+
+### Medición antes (sonda de navegador `e2e/zz-r23-live-medicion.spec.ts` —temporal— + sonda de backend `_probe-r23-columnas.ts`)
+
+`FRC-44` (id **80** en la base de desarrollo) = `modo=header pct=25`, líneas **150 / 50 / 200**; documento
+`neto 260,99 + IVA 39,01 = 300,00` con `descuento 100,00` y `costo 360,99`. El **backend está bien**: cada línea
+guarda el descuento materializado (`pctLínea=25`, `discTotal 37,50 / 12,50 / 50,00`, **Σ 100,00 = el del documento**)
+y la cabecera queda **referencial**.
+
+**Lo que la pantalla pintaba** (Playwright contra `ng serve` con el código anterior, pestaña «💸 Descuentos»):
+
+```
+FRC-44 (guardada, cabecera 25 %)
+   línea 1: DTO. %=43,75  DTO. MONTO=−  DTO. UNIT.=−37,50  PRECIO UNIT. C/DTO.=112,50  PRECIO TOTAL C/DTO.=112,50
+   línea 2: DTO. %=43,75  DTO. MONTO=−  DTO. UNIT.=−12,50  PRECIO UNIT. C/DTO.= 37,50  PRECIO TOTAL C/DTO.= 37,50
+   línea 3: DTO. %=43,75  DTO. MONTO=−  DTO. UNIT.=−50,00  PRECIO UNIT. C/DTO.=150,00  PRECIO TOTAL C/DTO.=150,00
+   resumen «Total descuentos aplicados» = −100,00 (= el del documento)
+
+PO-1 (pedido de compra guardado, cabecera 25 %, línea de 94)
+   línea 1: DTO. %=43,75  DTO. UNIT.=−23,50  PRECIO UNIT. C/DTO.=70,50  PRECIO TOTAL C/DTO.=52,87  ← se contradicen
+   resumen = −23,50 (= el del documento)
+```
+
+El defecto del usuario es el **43,75 %** (= el 25 % de la cabecera **acumulado otra vez** con el 25 % que la línea ya
+traía). Las columnas de dinero que calculan los *helpers* de fila (`unitDiscountForRow`, `unitNetForRow`,
+`displayDiscountForRow`) ya priorizaban la línea desde la ronda 19, pero las que salen del **pipe** no: en `PO-1` la
+misma fila decía `DTO. UNIT.` **−23,50** y `PRECIO UNIT. C/DTO.` **70,50** frente a `PRECIO TOTAL C/DTO.` **52,87**
+(94 − 41,13, el descuento acumulado), con el documento valiendo 70,50.
+
+En el **espejo** (`_probe-r23-columnas.ts`, `rowDiscountDisplay(…, stored = false)`) el mismo defecto da
+`discTotal 65,63 / 21,88 / 87,50` (**Σ 175,01**, que no es el descuento de ningún documento) y «total con
+descuento» Σ 224,99 contra un documento de 300,00.
+
+### Causa
+
+La **ronda 19** quitó la guarda `isStoredDocument` del prorrateo visual (D9) para que el **borrador** también lo
+mostrara —que era lo que el usuario pidió entonces—, y la ronda 20 dejó a la vista el segundo filo de aquella
+decisión: en un documento **guardado** el backend **ya materializó** la cabecera en las líneas y la cabecera queda
+**referencial**, así que prorratearla otra vez acumulaba **25 % + 25 % = 43,75 %** y el importe se contaba dos veces.
+
+La distinción **no se puede inferir** del estado del formulario sin el flag: en un **borrador** una línea con
+descuento propio **sí** acumula la cabecera (T254: los descuentos son acumulativos, y ahí 43,75 % es correcto),
+mientras que en un documento guardado esa misma línea ya la trae.
+
+### Entregado (solo visualización)
+
+- **El espejo** (`shared/utils/line-discount-display.util.ts`): `rowDiscountDisplay(rows, index, header, stored =
+  false)` y el guard `carriesOwnDiscount()` —`%`, importe o `discountTotal` > 0—; con `stored` manda **la línea**
+  (su `%`, su importe y su `discountTotal`) y `headerShare: 0`. Sin el flag el comportamiento es **idéntico** al de
+  antes (el default conserva el borrador).
+- **El pipe** (`line-discount.pipe.ts`): 6.º argumento `stored` —`items | lineDiscount : index : field : discountMode
+  : headerPct : headerAmt : stored`— y **las 57 llamadas de las 9 plantillas** lo pasan con `: isStoredDocument`
+  (cotizaciones de venta y compra, pedidos de venta y compra, FVE, FRV, FRC, FCP y NC de compra).
+- **El getter**: `isStoredDocument` en la base compartida (`!!this.documentId`); FRC, FRV y FCP lo tenían **privado**
+  y pasa a **público**, y la **FVE** estrena el equivalente (`!!id && !isDraft`, porque en `/new` los formularios
+  hacen `Number(idParam)` = `NaN`).
+- **Los helpers de fila** (`headerDiscountShareForRow`, `unitDiscountForRow`, `unitNetForRow`,
+  `displayDiscountForRow` de FRC/FRV/FCP) usan la misma regla: **no reparten** nada cuando la línea de un documento
+  guardado trae su descuento.
+- **Nada de backend, ningún payload de escritura y ninguna regla de dinero**: el asiento y el documento ya estaban
+  bien.
+
+### Medido después (A/B, la misma sonda y los mismos documentos)
+
+```
+FRC-44: DTO. %=25,00  DTO. MONTO=−  DTO. UNIT.=−37,50 / −12,50 / −50,00
+        PRECIO UNIT. C/DTO. = PRECIO TOTAL C/DTO. = 112,50 / 37,50 / 150,00   (Σ 300,00 = el total del documento)
+        resumen = −100,00
+PO-1:   DTO. %=25,00  DTO. UNIT.=−23,50  PRECIO UNIT. C/DTO.=70,50  PRECIO TOTAL C/DTO.=70,50  (era 52,87)
+        resumen = −23,50
+```
+
+En el espejo, con `stored` la Σ de `discTotal` es **100,00** (era 175,01) y la Σ de «total con descuento»
+**300,00** = el total del documento (era 224,99).
+
+El «precio con descuento» unitario coincide ahora con el **`lineTotal` contabilizado** de cada línea
+(`97,87 + 14,63 = 112,50`) y el **costo** que muestra la grilla es el **guardado** (`135,37 / 45,12 / 180,50` = neto
++ descuento, T239): en un documento guardado los *watchers* de la cabecera están desactivados y la línea no se
+recalcula al cargar, así que lo que se pinta **es** lo que se contabilizó.
+
+### Gates
+
+`tsc` de app y specs **0**; `ng build` AOT **0** (es el gate que compila las plantillas y certifica el argumento
+nuevo del pipe); **Karma 2361/2361** (11 casos nuevos: 6 del util/pipe, 4 de la FRC y 1 de la FCP); prettier
+(ratchet de archivos tocados) limpio. Ningún caso existente hubo que reescribirlo: el default `stored = false`
+conserva el comportamiento. **Los dos casos nuevos que el primer Karma tumbó se corrigieron con la medición
+delante** (no el código): el fixture ponía `discountPct` **y** `discountAmt` en la misma línea, cuando el backend
+escribe **uno solo** según la cabecera sea porcentual o por importe (medido: `pctLínea=25 amtLínea=-`), y la Σ del
+borrador se esperaba en 175,00 cuando el prorrateo al centavo de cada línea da **175,01**.
+
+### Declarado
+
+- La celda de **importe** con cabecera **porcentual** sigue devolviendo **vacío** (convención D9, igual que el
+  borrador y confirmado en la pantalla: `DTO. MONTO` = «−»); el importe lo muestra la celda de descuento unitario.
+- El `cost` de **ventas** (FVE/FRV) es el del **kardex**, no T239; el de **cotizaciones y pedidos de compra** es el
+  simulado `priceNet` de esas familias: **no** son derivables del precio y no deben serlo.
+- Los **borradores de «Copiar a» acumulan** (43,75 %): es la regla de borrador de T254, no un documento guardado.
+- La **FRV** y los documentos **viejos con costeo neto** (línea sin `%` y `discTotal 0`) siguen prorrateando,
+  porque la línea no trae descuento que mostrar.
+- La sonda de navegador es **temporal** (no se commitea): la regresión queda pinzada en Karma, que ejercita el
+  mismo util y el mismo pipe que consumen las plantillas.
+
 ## Pendiente del tramo
 
 - **T255: CERRADO** (D1-D7 + UI). Declarado del tramo:
@@ -1105,6 +1222,16 @@ Unitarios **212 suites / 2673 tests** y **suite E2E completa 41 suites / 383 tes
   `_probe-t255-espejo.ts` (par original/espejo y estados), `_probe-t255-ab.ts` (A/B de la fecha),
   `_probe-t255-ui-final.ts` + `_probe-t255-ui-espejo.ts` + `_probe-t255-ui-asientos.ts` + `_probe-t255-ui-fechas.ts`
   (validación sobre base limpia con los payloads de la pantalla).
+- Sondas de la **ronda 23** (tampoco se commitean): `backend-erp/scripts/_probe-r23-columnas.ts` (lo guardado por el
+  backend frente a lo que pinta la grilla, con el espejo nuevo y el viejo), `_probe-r23-candidatos.js` y
+  `_probe-r23-id.js` (documentos guardados con la cabecera materializada y el **id** del código `FRC-44` = **80**:
+  el formulario de la FRC se abre por **id**, no por código), y la sonda **de navegador**
+  `erp-frontend/e2e/zz-r23-live-medicion.spec.ts`, que se corre con
+  `npx playwright test e2e/zz-r23-live-medicion.spec.ts --project=chromium --no-deps` contra el `ng serve` vivo
+  (`localhost:4200`, que escucha en **`[::1]`**: `Test-NetConnection 127.0.0.1` da falso aunque esté arriba) y lee la
+  pestaña «💸 Descuentos» de `FRC-44` y de `PO-1`. Para el **A/B en la pantalla** se hace `git stash` en
+  `erp-frontend` y se espera a que el log del `ng serve` diga `Application bundle generation complete` antes de
+  volver a correr la sonda; después `git stash pop`.
 - En una **base limpia** los artículos de las sondas ya no existen: se toman tres artículos de la semilla con
   `trackingType: 'NONE'` (los serializados exigen número de serie) y el precio se manda en el documento.
 - El campo del espejo es `reversalJournalEntryId` **en el original** (apunta al espejo); el espejo **no** lleva
