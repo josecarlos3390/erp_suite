@@ -626,6 +626,31 @@ El dinero era correcto en los tres (`subtotal 124,78 + IVA 16,22 = 141,00`, `des
 
 - Los dos caminos de recepción **desde factura** que toman el costo de la línea del payload (3378/4655) siguen neteando: mismo arreglo, con el modo del documento como discriminante.
 
+## Ronda 14 — T254: la EDICIÓN de cotizaciones (MEDICIÓN HECHA, implementación pendiente)
+
+### Medición (sonda `_probe-t254-cot-edit.ts`, base de desarrollo: canasta 150/50/200 con cabecera 25 %)
+
+| Operación | Documento | Líneas |
+| --- | --- | --- |
+| **Alta** (venta y compra) | `265,49 + IVA 34,51 = 300,00`, `desc 100,00` ✔ | `pct=25`, `desc` **37,50 / 12,50 / 50,00** ✔ (materializa) |
+| **PATCH venta** cabecera 10 % | `318,58 + 41,42 = 360,00`, `desc 40,00` ✔ (el dinero del documento está bien) | `pct=-`, `desc=0,00` ✗ y `subtotal` **neto** (135/45/180): el descuento se fue de las líneas |
+| **PATCH venta** cabecera **importe 100** | `265,49 + 34,51 = 300,00`, `desc 100,00` ✔ | `pct=-`, `desc=0,00` ✗ |
+| **PATCH compra** cabecera 10 % | `318,58 + 41,42 = 360,00`, `desc 40,00` ✔ | `subtotal` **a precio lleno** (150/50/200) y `desc=0,00` ✗ ⇒ **Σ líneas (400) ≠ documento (360)** |
+
+En todas las líneas `lineSubtotal` queda **0/null** (y `lineTotal` también): la cotización solo publica `subtotal` (el neto).
+
+### Causa
+
+`sales-quotations.update` y `purchase-quotations.update` siguen en el encoding viejo «cabecera al documento»: netean los montos de la línea con el **ratio** (`netAmountWithHeaderDiscount(lineCalc.X, headerRatio)`), **borran** el descuento efectivo por línea y calculan los totales con `calcDocumentTotalsWithIndicators` (agregado). En compra además no se netean las líneas, así que el documento y sus líneas se contradicen.
+
+### Diseño del arreglo (mismo patrón que `sales-orders.update` / `purchase-orders.update`, ya migrados en T254)
+
+1. **Pre-pase** con la regla única (`resolveEffectiveLineDiscounts`) sobre `dto.items` con `{pct, amt}` de la cabecera cuando `discountMode === 'header'`; el descuento efectivo se aplica por índice en `calcLineWithIndicator` (sin ratio).
+2. Persistir por línea: `discountPct`/`discountAmt` (efectivos), `discountTotal`, **`lineSubtotal`** (el neto), `lineTotal`, `taxAmount`.
+3. **Totales del documento desde las líneas** (`calcDocumentTotalsFromLines`) y la cabecera **referencial** (modo + pct/amt), de modo que `Σ líneas = documento`.
+4. El mismo tratamiento en el **alta** para publicar `lineSubtotal` (hoy queda en 0).
+5. Gate: caso E2E que edite una cotización con cabecera **porcentual** y **por importe** y pinche el dinero por línea (12,50/37,50/50,00), `Σ líneas = totalDiscount` y `lineSubtotal` poblado, en venta y compra.
+
 ## Pendiente del tramo
 
 - **T255: CERRADO** (D1-D7 + UI). Declarado del tramo:
