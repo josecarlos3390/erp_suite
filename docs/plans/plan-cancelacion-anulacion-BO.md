@@ -1,6 +1,6 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-23)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-24)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
 > diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
 > hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
@@ -16,7 +16,11 @@
 > asiento la misma cuenta con los mismos ejes y lleva el centavo de la divisa a la línea de ajuste; la **ronda 22**
 > abre la **recepción** de una FRC (total o parcial, sumando exactamente el tránsito); y la **ronda 23** cierra la
 > **coherencia visual** de la grilla de un documento guardado (la línea muestra el descuento que **ya trae**, sin
-> volver a prorratear la cabecera). Plan
+> volver a prorratear la cabecera). La **ronda 24** cierra las observaciones de pantalla de la **recepción desde una
+> FRC** (origen real, sin IVA visual, con el descuento de la reserva) **y** el defecto de dinero que destapó su
+> medición —la misma FRC se podía **recibir dos veces**—, y deja **auditados con medición** los valores guardados de
+> 215 documentos de compras y ventas: lo incoherente es **histórico** y los **tres defectos vivos** que aparecieron
+> son de **ventas** (ronda siguiente, medida y con números). Plan
 > del tramo anterior (descuento de cabecera):
 > `docs/plans/plan-descuento-cabecera-parte2.md`.
 
@@ -1165,8 +1169,169 @@ borrador se esperaba en 175,00 cuando el prorrateo al centavo de cada línea da 
 - La sonda de navegador es **temporal** (no se commitea): la regresión queda pinzada en Karma, que ejercita el
   mismo util y el mismo pipe que consumen las plantillas.
 
+## Ronda 24 — la recepción desde una FRC: origen, IVA, descuento y la doble recepción (CERRADA)
+
+### Lo que reportó el usuario (2026-09-28)
+
+Cuatro observaciones de pantalla más dos preguntas:
+
+> «cuando genero la recepción desde la factura de reserva de compra, la recepción muestra como "Recepción Manual" ¿por qué
+> muestra eso, si la recepción viene desde el flujo de la factura de reserva de compra?; también veo que en recepción, en los
+> totales muestra IVA, en este caso no debería mostrar ese valor de IVA (está bien que lo maneje internamente, pero no hace
+> falta que se visualice); y en la pestaña de costos de la recepción tampoco jala u obtiene los descuentos que tiene la
+> factura reserva: el campo dto. total está vacío, asumo que debería mostrar el descuento que tenía […] creo que no estás
+> validando o verificando el contenido de los documentos de compras y ventas y si los valores guardados tienen relación o
+> si tienen sentido. Estas correcciones que hicimos en compras ¿también se replican en ventas, verdad?»
+
+Y la pregunta aparte: «¿por qué no veo el cálculo del margen o no existe en este caso?».
+
+### Medición antes (sonda de navegador + `_probe-r24-recepcion.ts`, `_probe-r24-doble-recepcion.ts`)
+
+Flujo real de la pantalla: «Copiar a → Recepción de Mercadería → Solo esta F. Reserva» = `POST /purchase-receipts/manual`
+con `purchaseReserveInvoiceId`. Medido sobre `FRC-44` (`modo=header pct=25`, líneas 150/50/200, `neto 260,99 + IVA 39,01 =
+300,00`, `descuento 100,00`, `totalCost 360,99`):
+
+```
+FORMULARIO (borrador)   título «Nueva Recepción desde F. Reserva» ✔
+                        líneas: PRECIO BRUTO 150/50/200 · DESCUENTO «—» · PRECIO NETO UNIT. 135,37/45,12/180,50
+                        descuentos: DTO. % «—»  DTO. TOTAL «—»  PRECIO TOTAL C/DTO. 150/50/200
+                        costos: DTO. TOTAL «—»  COSTO UNIT. 135,37/45,12/180,50  MARGEN «—»
+DIÁLOGO                 «¿Crear recepción manual? Se registrará la recepción sin relación a una orden de compra»
+RECEPCIÓN CREADA        cabecera subtotal 360,99 + IVA 52,00 = total 412,99 · descuento 0,00
+(REC-22)                líneas: subtotal 135,37/45,12/180,50 · IVA 19,50/6,50/26,00 · dtoTotal 0,00
+                        totales: «IVA 52,00» visible
+```
+
+**Cuatro lecturas de la misma medición**:
+
+1. **«Manual»** es el **diálogo** (y la columna MARGEN en «—»): `isManualMode` es el modo de **captura** de ese camino
+   (cantidades libres, sin pedido detrás) y se usaba también como **origen**.
+2. **El IVA** que se veía era **13 % del precio de LISTA** (`19,50` sobre 150) mientras la base de la línea era el costo
+   (`135,37`): ni la lista (400), ni el cobrado (300) ni el costo (360,99) explican el `412,99` del documento. La FRC que
+   lo origina declara **39,01**.
+3. **El descuento** de la FRC (100,00) **no viajaba**: `totalDiscount 0,00` y `Dto. Total` vacío en las tres pestañas.
+4. **Y el hallazgo grave (dinero, no pantalla)**: ese camino **no consumía la reserva** (`openQty` intacto,
+   `purchaseReceiptId` nulo, ninguna línea cerrada) ⇒ **la misma FRC se podía recibir dos veces**. Medido: `REC-22` y
+   `REC-23` sobre la misma `FRC-44`, **cada una capitalizando 360,99** (el tránsito `1.1.3.02.001` se acreditaba dos
+   veces y el inventario se capitalizaba dos veces). El camino **multi** sí consumía la reserva, pero dejaba la cabecera
+   **vacía por dentro** (`subtotal/IVA/total = 0`, solo el costo: `REC-18`…`REC-21`, con asiento).
+
+**MARGEN (la pregunta)**: existe y se calcula —`precio de venta del catálogo del artículo` neteado por su indicador
+fiscal contra el `costo` de la línea—, pero (a) en la recepción **se apagaba** por `isManualMode`, y (b) los artículos de
+estos documentos tienen `salePrice` nulo y `price` 45/18/55 con costos de compra de 135,37/45,12/180,50 (datos de
+sonda): el margen sale **negativo**. Medido en la FRC-44: `−4,87 / −1,62 / −6,50` (`−3,6 %`) y `Margen bruto −12,99 Bs`
+en el bloque de totales.
+
+### Auditoría pedida por el usuario (¿los valores guardados tienen relación y sentido?)
+
+Sonda de solo lectura sobre **215 documentos / 385 líneas** (16 familias, compras y ventas) con 13 invariantes por
+familia (Σ líneas = cabecera, `neto + IVA = total`, Σ descuentos, Σ costos, línea a línea, materialización del descuento,
+documentos «vacíos por dentro», IVA por indicador). Resultado:
+
+- **Familias limpias**: `saleInvoice` directa (21/21 en todos los invariantes), FRV (`saleInvoice isReserve=Y`, 4/4),
+  `purchaseOrder` (29/29 salvo la semántica del importe cobrado), `purchaseCreditNote` y `purchaseReturn`.
+- **Lo que NO es defecto** (convenciones ya documentadas, medidas): `taxAmount = importe cobrado × tasa` con el neto como
+  residuo en los documentos con **IVA por dentro** (`BOLIVIA_SIN`: 66/66 líneas; el perfil `STANDARD` da `base × tasa` en
+  178/178); la cotización no publica `lineTotal` y el pedido no publica `lineSubtotal` (su `subtotal` de línea es el
+  **cobrado**, de ahí que Σ líneas ≠ cabecera neta); la cabecera del descuento queda **referencial** con el descuento
+  materializado en la línea.
+- **Incoherencias medidas → todas HISTÓRICAS** (documentos creados antes del arreglo de su ronda, con su `createdAt`
+  verificado): `REC-1`/`REC-5..9`/`REC-16` (vacíos por dentro o cabecera = bruto, 09-27), `FRC-1..8`/`FRC-27`/`FRC-28`
+  (confirmadas **sin asiento**, 09-27, antes de la ronda 19), `FRC-11`/`FRC-13`/`FCP-12`/`FCP-13`/`FCP-16` (cabecera
+  re-descontada, 09-27, antes de las rondas 12-13), `FRC-31`/`FRC-32..34`/`FCP-27`/`FCP-28` (centavos, antes de la ronda
+  20 — `FRC-35`/`FCP-29` ya cuadran), `PCOT-26..28`/`COT-1` (descuento de cabecera sin materializar, antes de T254),
+  `PED-1..3` (09-27; **no se reproducen**: un pedido nuevo publica las tres líneas con su IVA, Σ `taxAmount` = cabecera y
+  el reparto por valor), `REC-18..21` (09-28 11:21, camino multi que **hoy publica todo**: `REC-25`), `REC-22/23` (las
+  sondas de esta ronda, ya **canceladas**) y `FRC-41` (09-28 11:15: `discountPct 43,50` con `discountTotal 37,00` y
+  `lineTotal 84,75` = descuento de **línea** por importe 37,00 acumulado con la cabecera 25 %; **no reproducible**: hoy la
+  misma alta guarda la parte de cabecera —`FRC-46`: `discountTotal 65,25`, `cost 138,98`, tránsito `364,60`—, así que es
+  un artefacto de un estado de código anterior).
+- **Defectos VIVOS que la auditoría destapó, todos en VENTAS** (ver «Pendiente del tramo»): los caminos
+  `sale-invoices/from-*` re-aplican el descuento de cabecera que el origen ya materializó y
+  `delivery-orders/from-reserve-invoice` resta el IVA dos veces del neto.
+
+### Entregado (backend — el dinero)
+
+- **Un helper único `frcReceiptLineAmounts`** (`purchase-receipts.service.ts`): replica los montos de la línea de la FRC
+  **prorrateados** por la cantidad recibida con el canon de dinero (`prorateInvoiceLineAmounts`: el bruto se prorratea una
+  sola vez, el IVA aparte y el neto por diferencia ⇒ `neto + IVA === lineTotal`), y devuelve el **costo bruto de la FRC**
+  (T239) con su `totalCost`.
+- **Los dos caminos** (la pantalla `createManual` con `purchaseReserveInvoiceId` y el multi `from-multi-reserve-invoice`)
+  publican `subtotal`/`lineSubtotal`/`lineTotal`/`taxAmount`/`discountPct`/`discountAmt`/`discountTotal`/`priceNet`; el
+  `cost`/`totalCost` siguen siendo el bruto de la FRC (lo que el asiento netea del tránsito).
+- **La reserva se consume** en el camino de la pantalla: se **valida la cantidad contra el `openQty`** (400 si se excede),
+  se descuenta el pendiente, se escribe `purchaseReceiptItemId` en la línea de la FRC, se cierra esa línea y se deja
+  `purchaseReceiptId` en la reserva (antes solo lo hacía el camino multi, y sin los dos vínculos).
+- Caso E2E nuevo (`purchase-flow`): «la recepción desde una FRC replica sus importes, consume la reserva y rechaza la
+  segunda recepción».
+
+### Entregado (frontend — la pantalla)
+
+- **Origen explícito**: `esRecepcionDeFrc` (`purchaseReserveInvoiceId` del borrador · la FRC vinculada que el API ya
+  devuelve en `purchaseInvoices` · el `baseDocType = PURCHASE_RESERVE_INVOICE` de las líneas para los documentos
+  guardados antes de que la FRC recordara su recepción) + `reserveInvoiceCode`. `isManualMode` se queda como **modo de
+  captura** (es lo que permite editar cantidades) y deja de usarse como origen.
+- **El diálogo** dice «¿Crear recepción desde la F. Reserva FRC-44?» con el mensaje del tránsito y el costo capitalizado;
+  el alta manual de verdad conserva el suyo.
+- **La columna MARGEN** ya no se apaga en una recepción de FRC (se calcula igual que en la FRC).
+- **El bloque de totales oculta el renglón de IVA** cuando la recepción viene de una FRC (`[showTax]="!esRecepcionDeFrc"`)
+  y añade el aviso con el código de la reserva: «El IVA de esta operación está contabilizado en la F. Reserva de Compra
+  FRC-44. El costo capitalizado es el que la FRC debitó a Mercaderías en Tránsito».
+- **El borrador** publica los importes de la FRC (descuento, neto, IVA y total de línea) manteniendo el costo de la
+  reserva, así que el descuento se ve **antes** de guardar.
+- Modelos: `purchaseInvoices` en `PurchaseReceipt` y `lineSubtotal`/`lineTotal` en las líneas de la FRC (declarados a
+  mano; el schema del backend ya los tenía).
+
+### Medido después (A/B, las mismas sondas y los mismos payloads)
+
+```
+REC-24 (camino de la pantalla)   subtotal 260,99 + IVA 39,01 = total 300,00 · descuento 100,00 · totalCost 360,99
+   líneas: neto 97,87/32,62/130,50 · IVA 14,63/4,88/19,50 · Dto. Total 37,50/12,50/50,00 · costo 135,37/45,12/180,50
+   asiento: Inventario D 360,99 / Tránsito H 360,99   (Σ D = Σ H)
+FRC-44 después: openQty 0 · CLOSED · purchaseReceiptItemId 40/41/42 · purchaseReceiptId 24
+2.ª recepción de la misma FRC → 400 «Cantidad excede lo pendiente por recibir … Pendiente: 0»
+REC-25 (camino multi, medido en paralelo) → mismos importes (260,99 / 39,01 / 300,00, desc 100,00, tránsito 360,99)
+PANTALLA (después): totales «Costo total 360,99 · Descuento −100,00 · Subtotal 260,99 · Total 300,00» SIN el renglón de
+   IVA y con el aviso de la FRC; costos «Dto. Total −37,50 / −12,50 / −50,00», «Costo unit. 135,37 / 45,12 / 180,50»
+```
+
+### Gates
+
+Unitarios **212 suites / 2673 tests**, E2E completo **41 suites / 384 tests** (con el caso `R24` nuevo en
+`purchase-flow`), `tsc`/`eslint` 0 en el backend; en el frontend `tsc` de app y specs **0**, `ng build` AOT **0**,
+**Karma** con 6 casos nuevos y prettier (ratchet) limpio.
+
+### Declarado
+
+- La **entrega desde una FRV** (`delivery-orders/from-reserve-invoice`) y los caminos **`sale-invoices/from-*`** tienen
+  defectos **vivos** medidos en esta ronda (ventas): son la **ronda siguiente** y están en «Pendiente del tramo» con sus
+  números.
+- Los documentos guardados **antes** de esta ronda no traen la FRC en la relación `purchaseInvoices`: la pantalla los
+  reconoce por el `baseDocType` de sus líneas (el **código** de la FRC no se puede mostrar en ese caso).
+- Las incoherencias **históricas** de la auditoría (lista con fechas arriba) **no se reparan**: son documentos de prueba
+  creados por un estado anterior del código y su reparación sería una migración de datos, no un arreglo de código.
+
 ## Pendiente del tramo
 
+- **Ronda 25 (medida, pendiente de arreglo) — los mismos arreglos de compras NO están replicados en ventas**. Medido con
+  documentos nuevos creados por API (canasta 150/50/200, cabecera 25 %, origen 300,00 en todos los casos):
+  - **`POST /sale-invoices/from-order/:id` · `/from-quotation/:id` · `/from-delivery/:id`** (y sus variantes
+    `isReserve` N/Y y `from-multi-*`): la cabecera (por `%` o por importe) se **re-aplica** sobre líneas que el origen
+    **ya materializó** ⇒ el destino vale **225,00 en vez de 300,00** (Δ −75,00), `totalDiscount 75,00 ≠ Σ líneas 100,00`
+    y el asiento cruza `CxC 225,00 / Ventas 295,75 / Descuentos 87,01`. Códigos medidos: `FVE-22`, `FRV-8`, `FVE-23`,
+    `FVE-24`, `FRV-10`, `FRV-6`. **Compras sí tiene la guarda** (`_sourceMaterializedHeader`/`sourceMaterialized` en
+    `purchase-invoices` ×3, `purchase-receipts` y `purchase-returns`): falta el equivalente en ventas.
+  - **`POST /delivery-orders/from-reserve-invoice/:id`** (la entrega desde una FRV, el equivalente de la recepción que
+    esta ronda arregla): replica el descuento y los importes de IVA pero **resta el IVA dos veces del neto** ⇒ la entrega
+    total vale **261,01** contra una FRV de **300,02** (líneas `lineSubtotal 83,25/27,75/111,00` con IVA
+    `14,63/4,88/19,50`). Código medido: `DEL-3`. El **consumo de la FRV sí está bien** (`openQty 0`, `CLOSED`,
+    `deliveryOrderItemId` y `deliveryOrderId`) y una **segunda entrega se rechaza** con 400 «Cantidad excede lo pendiente
+    … Pendiente: 0».
+  - **La raíz es que la MISMA operación tiene dos implementaciones**: `POST /sale-reserve-invoices/from-delivery` (que
+    **sí** replica: `FRV-9` = 300,00 y todos los invariantes en verde) frente a `/sale-invoices/from-delivery` con
+    `isReserve=Y` (`FRV-10` = 225,00). El control en modo **línea** (`FRV-11`) sale bien (400,00 = origen).
+  - Menor, declarado: la FRV neteada deja su total en **300,02** donde la misma canasta/cabecera vale **300,00** en
+    cotización, pedido, entrega y factura (2 centavos por el neteo de la FRV; sus invariantes internos están OK).
 - **T255: CERRADO** (D1-D7 + UI). Declarado del tramo:
   - el **IT** (3 % del neto) no se revierte en la NC —el asiento de la NC es un hecho nuevo, no el espejo—; el
     espejo de la **cancelación** sí cuadra a cero.
@@ -1230,8 +1395,16 @@ borrador se esperaba en 175,00 cuando el prorrateo al centavo de cada línea da 
   `_probe-t255-espejo.ts` (par original/espejo y estados), `_probe-t255-ab.ts` (A/B de la fecha),
   `_probe-t255-ui-final.ts` + `_probe-t255-ui-espejo.ts` + `_probe-t255-ui-asientos.ts` + `_probe-t255-ui-fechas.ts`
   (validación sobre base limpia con los payloads de la pantalla).
-- Sondas de la **ronda 23** (tampoco se commitean): `backend-erp/scripts/_probe-r23-columnas.ts` (lo guardado por el
-  backend frente a lo que pinta la grilla, con el espejo nuevo y el viejo), `_probe-r23-candidatos.js` y
+- Sondas de la **ronda 24** (tampoco se commitean): `_probe-r24-recepcion.ts` (la recepción creada desde la FRC frente a
+  la FRC: importes, IVA y descuento), `_probe-r24-doble-recepcion.ts` (¿se puede recibir dos veces la misma FRC?),
+  `_probe-r24-vinculo.ts` (los dos vínculos FRC ↔ recepción), `_probe-r24-verificacion.ts` (limpieza + A/B del arreglo),
+  `_probe-r24-margen.js`/`_probe-r24-margen2.js` (los precios del artículo para explicar el margen), la **auditoría**
+  `_probe-r24-auditoria.ts` + `_probe-r24-auditoria-iva.ts` (13 invariantes por familia sobre 215 documentos) y las de
+  verificación de ventas del subagente (`_probe-r24-medicion-a*.ts`, `-b*.ts`, `-c.ts`). La sonda **de navegador**
+  (`erp-frontend/e2e/zz-r24-*.spec.ts`) se retira tras medir; para el A/B en pantalla se hace `git stash` en
+  `erp-frontend` y se espera al `Application bundle generation complete` del `ng serve` antes de volver a correrla.
+- Sondas de la **ronda 23** (tampoco se commitean): `_probe-r23-columnas.ts` (lo guardado por el backend frente a lo que
+  pinta la grilla, con el espejo nuevo y el viejo), `_probe-r23-candidatos.js` y
   `_probe-r23-id.js` (documentos guardados con la cabecera materializada y el **id** del código `FRC-44` = **80**:
   el formulario de la FRC se abre por **id**, no por código), y una sonda **de navegador** temporal
   (`erp-frontend/e2e/zz-r23-live-medicion.spec.ts`, **retirada tras medir** para no contaminar la suite funcional:
