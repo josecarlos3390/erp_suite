@@ -1,6 +1,6 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-21)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-22)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
 > diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
 > hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
@@ -984,6 +984,61 @@ CxC/CxP con `requiresPartner` real, verificado en la base); **suite E2E completa
   propia conversión).
 - El **informe ICE por artículo** lee `itemId` de la pata `ICE_PAGAR`, que **hoy ningún builder puebla** (declarado
   por si algún día se puebla).
+
+## Ronda 22 — la FRC se puede RECIBIR (total o parcial) y las parciales suman el tránsito exacto (CERRADA)
+
+### Lo que reportó el usuario
+
+> «acabo de generar la factura de reserva de compra FRC-40, pero no puedo generar la recepción; tengo que poder generar
+> la recepción de mercadería para este flujo, y puedo recibir la mercadería total o parcial; en caso de que lo reciba
+> parcial las 3 recepciones deben sumar el total de la cuenta `1.1.3.02.001 Mercaderías en Tránsito General` para
+> volcar el asiento, tomando en cuenta si la FRC tiene descuento o no para asignar a cada recepción el costo que
+> calculó la FRC».
+
+### Medido antes (sonda `_probe-frc-recepcion.ts` sobre `FRC-42`, canasta 150/50/200 al 25 %, tránsito 360,99)
+
+- `POST /purchase-receipts/draft/multi-reserve-invoice` → **400 «Las FRC seleccionadas no tienen artículos pendientes
+  de recepción»**: el borrador filtra `openQty <= 0` y las tres líneas de la FRC estaban en **`openQty 0`** y
+  `lineStatus CLOSED`.
+- **Causa raíz**: el **confirm** de la FRC (introducido en la **ronda 19** para que la reserva manual naciera con su
+  asiento) cerraba **todas** las líneas (`_executeConfirmLogic`: `data: { openQty: 0 }` + `refreshLineStatus(..., 0)`),
+  cuando la mercadería de una reserva está **en tránsito**: quien la cierra es la **recepción**. El flujo estaba
+  **roto por pantalla** desde entonces (el alta directa por API sí funcionaba y tomaba bien el costo).
+- El costo que la recepción debe capitalizar ya salía de la FRC (bruto con el descuento de cabecera, T239), así que
+  ese punto no necesitaba cambio.
+
+### Entregado
+
+En el confirm, una línea de **FRC sin recepción previa** (`invoice.isReserve === IS_RESERVE &&
+!line.purchaseReceiptItemId`) queda **pendiente de recibir** (`openQty = quantity`, estado `OPEN`); las líneas que
+**sí** vienen de una recepción (ya recibidas) se cierran como hasta ahora. Es la misma distinción que ya usaba el
+camino de creación, y por eso la regla es una: `purchaseReceiptItemId`.
+
+### Medido después (A/B, sonda `_probe-r22-recepcion-parcial.ts` con una FRC nueva)
+
+```
+FRC-43 (150/50/200, 25 %): totalCost 360,99 · tránsito del asiento 360,99 · líneas openQty 1 / OPEN
+Borrador: 201 · 3 líneas
+Recepción parcial 1: cant 0,33/0,33/0,33 · costos 45,08/15,02/60,11 · tránsito 120,21
+Recepción parcial 2: cant 0,33/0,33/0,33 · costos 45,08/15,02/60,11 · tránsito 120,21
+Recepción parcial 3: cant 0,34/0,34/0,34 · costos 45,21/15,07/60,29 · tránsito 120,57
+Σ tránsito de las recepciones = 360,99 = tránsito de la FRC (diferencia 0,00)
+FRC al final: openQty 0 / CLOSED
+```
+
+La **última** parcial absorbe el residuo del redondeo (45,21 frente a 45,08), que es lo que hace que las tres sumen
+**exactamente** el tránsito de la reserva.
+
+### Gates
+
+Unitarios **212 suites / 2673 tests** y **suite E2E completa 41 suites / 383 tests** en verde; `tsc`/`eslint` 0.
+
+### Declarado
+
+- La regla distingue los dos orígenes de una FRC: la que nace **desde una recepción** cierra sus líneas al confirmarse
+  (ya están recibidas) y la que nace **en tránsito** (manual, desde cotización o desde pedido) las deja pendientes.
+- Las recepciones parciales de una misma línea **no** parten el costo en tercios exactos: cada una capitaliza
+  `round(cantidad × costo unitario)` y la **última** toma el resto (por eso el reparto 45,08 + 45,08 + 45,21).
 
 ## Pendiente del tramo
 
