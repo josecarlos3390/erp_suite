@@ -921,9 +921,40 @@ preliminar vs contabilizado: IDÉNTICOS (cuenta a cuenta)
     contra qué medirse).
   - la fecha del diálogo de la NC se propone con el **día del tenant**; las reglas del backend (no anterior, no
     futura, plazo) la validan al confirmar.
-- Del tramo T254 sigue abierto lo declarado entonces: la **edición de cotizaciones** (el dinero del documento queda
-  bien y las líneas sin descuento), `addItem`/`updateItem` con cabecera **por importe** y el `PATCH` que devuelve
-  las líneas de antes.
+- **Del tramo T254 ya NO queda nada abierto**: se corrige aquí lo que esta sección declaraba abierto y las rondas
+  siguientes **cerraron con medición** —
+  - la **edición de cotizaciones** (venta y compra): cerrada en la **ronda 14** (el `update` materializa la cabecera
+    en las líneas con la regla única, publica `lineSubtotal` y los totales salen de las líneas; medido después:
+    `desc` 15,00 / 5,00 / 20,00 al 10 % y 37,50 / 12,50 / 50,00 al importe 100; de paso se cerró el **404** de los
+    dos `PATCH` fuera de la base de desarrollo);
+  - **`addItem`/`updateItem` con cabecera por importe**: **medido en la ronda 16** y **sin defecto** —el importe
+    fijo **no** se redistribuye al agregar una línea (la nueva queda sin parte) y el documento sigue coherente
+    (Σ descuentos de línea = cabecera y total = Σ líneas)—, que es la decisión que T254 dejó escrita en el código;
+  - el **`PATCH` que devolvía las líneas de antes de la edición**: cerrado en la **ronda 15** (la transacción se
+    espera con `await` y el documento se lee **después del commit**; medido después: respuesta y base coinciden).
+- **Observación medida (ronda 20), declarada**: el `PATCH /purchase-credit-notes/:id` es **inalcanzable** en la
+  práctica —el servicio exige una nota **abierta** («Solo se puede editar una nota de crédito abierta») y las notas
+  nacen confirmadas: en la base de desarrollo hay **6 con cabecera y 0 abiertas**, así que la edición de una NC de
+  compra no es un camino vivo. No es un defecto (no hay pérdida de datos), pero se declara para no dejar el endpoint
+  como si se usara; si algún día se permite editar una NC, la carga del formulario **ya repuebla** la cabecera
+  (ronda 20, punto 2).
+- **Ronda 20, punto 2 — CERRADO**: los «Copiar a» repueblan la cabecera. **Medido antes** (sonda
+  `_probe-r20-copiar-a.ts` sobre `FCP-23`, factura de compra nacida de una recepción): el documento y su asiento
+  están bien (`modo=header pct=25 · desc 23,50 · neto 62,39 + IVA 8,11 = 70,50`; `ASI-000087` → `GRIR D 85,89 ·
+  IVA D 8,11 · Descuento H 23,50 · CxP H 70,50`) pero el **preliminar que pedía la pantalla** salía
+  `Inventario D 83,19 · IVA D 10,81 · CxP H 70,50` → **D 94,00 contra H 70,50 (descuadrado por 23,50)** y con el IVA
+  del bruto; con la cabecera cargada el preliminar es **idéntico al contabilizado**. **Entregado**: helper
+  `applyHeaderDiscountFromSource` en la NC de compra (`loadNote`, y reutilizado en `preloadFromInvoice`) y en la
+  factura de compra (`loadFromQuotation`, `loadFromReceipt`, `loadFromReserveInvoice`); el mapper
+  `reserve-invoice-to-invoice` mapea la cabecera (factura de venta «desde F. Reserva»); y los tres campos en los
+  modelos que no los declaraban. **Dos defectos de segundo orden** cerrados en la misma ronda: los drafts de
+  cotización no publican `discountTotal`, así que al repoblar la cabecera `calcTotals` habría **doble-descontado**
+  (`sourceLineDiscountTotal` lo reconstruye con la regla única en la FCP y en la FRC), y la **FRV desde cotización**
+  publicaba `discountTotal: 0` (mismo doble descuento: ahora publica el que el mapper ya aplica, sin copiar el del
+  origen). **Multi-* (decisión medida)**: no se repuebla la cabecera —el backend materializa la de **cada** origen en
+  **sus** líneas y crea el documento en modo **línea**, así que no hay cabecera única—; el formulario queda en el
+  modo real del documento y su preliminar queda cuadrado. **Gates**: `tsc` app/specs 0, **Karma 2350/2350**,
+  `ng build` AOT 0, prettier limpio, y el backend con la **suite E2E completa 41 suites / 383 tests** en verde.
 
 ## Notas del arnés
 
