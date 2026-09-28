@@ -1,6 +1,6 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-12)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-20)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
 > diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
 > hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
