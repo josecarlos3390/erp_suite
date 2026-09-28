@@ -7,7 +7,11 @@
 > de cabecera y la grilla lo muestra prorrateado), la ronda 11 cierra **D10** (el descuento de **línea** no figura
 > en los registros contables; el de **cabecera** sí, prorrateado, en el preliminar y en el contabilizado) y la ronda
 > 12 cierra **D10-b** (las **cadenas heredadas de compra** aplican el descuento una sola vez, la **recepción**
-> capitaliza el bruto —T239— y la factura lo desglosa). Plan del tramo anterior (descuento de cabecera):
+> capitaliza el bruto —T239— y la factura lo desglosa); las rondas 13-18 cierran los declarados de D10-b y de T254
+> (consolidación multi, edición de cotizaciones, `PATCH` del pedido, `addItem`, recepción multi) y la **ronda 19**
+> cierra el reporte del usuario sobre la **FRC manual** (el cuerpo de guardado descartaba la cabecera capturada, la
+> FRC manual era el único camino que no se contabilizaba y la grilla no mostraba «precio/total con descuento»). Plan
+> del tramo anterior (descuento de cabecera):
 > `docs/plans/plan-descuento-cabecera-parte2.md`.
 
 ## Lo que pidió el usuario (2026-09-27)
@@ -764,6 +768,86 @@ En **los dos** caminos (`createFromMultiOrder` y `createFromMultiQuotation`) la 
 ### Medido después (A/B, misma sonda)
 
 `REC-17`: **`subtotal 124,78 + IVA 16,22 = total 141,00`, `desc 47,00`**, líneas `neto 62,39 / desc 23,50 / IVA 8,11 / costo 62,39` y asiento `Inventario D 62,39 / GRIR H 62,39` por línea (antes: documento y líneas en **0,00** salvo el costo).
+
+## Ronda 19 — el descuento de cabecera de la FRC MANUAL: el cuerpo de guardado lo descartaba y la FRC no se contabilizaba (CERRADA)
+
+### Lo que reportó el usuario (2026-09-27)
+
+> «acabo de crear la factura de reserva FRC-26, y cuando visualizo la factura de reserva, veo que no aplicó el
+> descuento de cabecera del 25 % que inicialmente puse, antes de crearlo sí aplicaba, y también veo el contabilizado
+> está mal, porque debería ser el mismo que genera el asiento preliminar, ¿por qué está así? si hiciste tantas
+> pruebas?»
+
+Y después: «y antes de crearla tampoco me calcula el precio con descuento y el total con descuento».
+
+### Medición antes (sonda `_probe-frc26.ts`, base de desarrollo, `FRC-26` = id 53)
+
+```
+== FRC-26 (id=53 isReserve=Y CLOSED) 2026-09-27
+   modo=line pct=- amt=- descTotal=0.00 | subtotal=348.00 IVA=52.00 total=400.00
+   · item=15 cant=1 price=150.00 … neto=130.50 desc=0.00
+   · item=16 cant=1 price=50.00  … neto=43.50  desc=0.00
+   · item=20 cant=1 price=200.00 … neto=174.00 desc=0.00
+   (sin asiento guardado)
+```
+
+Las columnas de origen (`orderId`, `purchaseReceiptId`, `purchaseQuotationId`) están **todas nulas** ⇒ el documento
+nació del alta **manual**. `FRC-25`, creada desde recepción, sí tenía su `ASI-000105` POSTED.
+
+### Las tres causas (las tres medidas)
+
+1. **El payload del alta manual descartaba la cabecera** (frontend): los flujos «desde cotización» y «desde orden»
+   tampoco la enviaban; solo «desde recepción» lo hacía. El **preliminar** sí la aplicaba porque su payload sí lleva
+   `discountMode`/`headerDiscountPct`/`headerDiscountAmt` — de ahí la divergencia que el usuario vio.
+2. **La FRC manual no se contabilizaba** (backend): `createManual` confirmaba **solo** las facturas directas
+   (`if (isReserve === IS_DIRECT)`), y era el **único** de los seis caminos que crean una FRC con esa guarda
+   (`from-receipt`, `from-quotation`, `from-order`, `from-reserve-invoice` y los tres `from-multi-*` confirmaban
+   también la reserva). La FRC nacía `CLOSED` **sin asiento**: el «contabilizado» no existía.
+3. **La grilla no calculaba «precio con descuento» ni «total con descuento»** (frontend): `unitDiscountForRow` /
+   `unitNetForRow` (base compartida) leían solo el descuento **propio** de la línea —vacío en modo cabecera— y el
+   `displayDiscountForRow` de la FRC devolvía **0** en los borradores por su guarda `!isStoredDocument`. Los
+   totalizadores y el preliminar sí aplicaban el 25 %: la grilla era la única que no.
+
+### Entregado
+
+- **Backend**: `createManual` confirma también la reserva (mismo patrón y misma transacción que los otros cinco
+  caminos).
+- **Frontend (FRC)**: helper `headerDiscountPayload()` difundido en los **cuatro** caminos de alta y
+  `applyHeaderDiscountFromSource()` para los dos «Copiar a» (cotización y pedido); `displayDiscountForRow` usa el
+  prorrateo compartido (`rowDiscountDisplay`) **también en borradores**.
+- **Frontend (familia, mismo defecto medido con un barrido de los 58 sitios de escritura)**: `unitDiscountForRow`/
+  `unitNetForRow` de la base compartida muestran el prorrateo en modo cabecera (los 14 formularios); alta manual de
+  **FCP**, **FVE** (manual y desde cotización) y **FRV**; `createFromMultiQuotation` de los dos pedidos (mandaban el
+  modo y omitían el valor); los dos `PATCH` que **borraban** un descuento guardado (pedido de compra
+  `_saveHeaderAndThen` —«Crear recepción»— y `update` de la NC de compra, cuyo DTO estrena los campos).
+
+### Medido después (A/B, sonda `_probe-frc-manual-descuento.ts`, payloads exactos de la pantalla)
+
+| paso | payload | documento | asiento |
+| --- | --- | --- | --- |
+| A | sin los tres campos (lo que mandaba la pantalla) | `modo=line desc 0,00 total 400,00` | **ninguno** |
+| B | preliminar con cabecera 25 % | — | `Asignación D 137,06 + 45,69 + 182,74 · IVA D 34,51 · Descuento H 100,00 · CxP H 300,00` |
+| C | con los tres campos (arreglado) | `modo=header pct=25 desc 100,00 · neto 265,49 + IVA 34,51 = 300,00` | `ASI-000109` POSTED **idéntico al preliminar** |
+
+Líneas del documento arreglado: `neto 99,56 / 33,19 / 132,74` con `desc 37,50 / 12,50 / 50,00`.
+
+### Gates
+
+- **E2E nuevo** en `discount-propagation.e2e-spec.ts`: «la FRC manual con cabecera 25 % se contabiliza al crearse y
+  su asiento = el preliminar» (dinero del documento + existencia del asiento + CxP por lo que se paga + igualdad
+  **cuenta a cuenta** entre el asiento guardado y el preliminar).
+- `discount-propagation` **23/23**, `purchase-flow` **14/14**, unitarios backend **212 suites / 2667 tests**,
+  `tsc`/`eslint` 0; frontend `tsc` app y specs 0, **`ng build` AOT 0**, **Karma 2338/2338** (9 casos nuevos),
+  prettier (ratchet) limpio.
+
+### Declarado
+
+- El **alta manual de la FRC** era la punta del defecto de familia «el cuerpo de escritura descarta la cabecera
+  capturada». Quedan **fuera** de esta ronda los caminos de **copia** cuya **carga** no repuebla la cabecera en el
+  formulario (los tres `multi-*` de compras, los tres de la FRV, FVE desde reserva, FCP desde
+  cotización/recepción/reserva, NCP `loadNote`): el documento guardado **hereda bien** del origen (backend), pero su
+  **preliminar** no muestra el descuento. Se cierran con el mismo patrón (`applyHeaderDiscountFromSource`) y su
+  medición por camino.
 
 ## Pendiente del tramo
 
