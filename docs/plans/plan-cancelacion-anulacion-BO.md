@@ -10,7 +10,9 @@
 > capitaliza el bruto —T239— y la factura lo desglosa); las rondas 13-18 cierran los declarados de D10-b y de T254
 > (consolidación multi, edición de cotizaciones, `PATCH` del pedido, `addItem`, recepción multi) y la **ronda 19**
 > cierra el reporte del usuario sobre la **FRC manual** (el cuerpo de guardado descartaba la cabecera capturada, la
-> FRC manual era el único camino que no se contabilizaba y la grilla no mostraba «precio/total con descuento»). Plan
+> FRC manual era el único camino que no se contabilizaba y la grilla no mostraba «precio/total con descuento»), y la
+> **ronda 20** cierra los **centavos**: la línea reparte al centavo (neto = residuo del importe cobrado) y la
+> cabecera es exactamente Σ líneas, así que **asiento y preliminar son idénticos**. Plan
 > del tramo anterior (descuento de cabecera):
 > `docs/plans/plan-descuento-cabecera-parte2.md`.
 
@@ -848,6 +850,67 @@ Líneas del documento arreglado: `neto 99,56 / 33,19 / 132,74` con `desc 37,50 /
   cotización/recepción/reserva, NCP `loadNote`): el documento guardado **hereda bien** del origen (backend), pero su
   **preliminar** no muestra el descuento. Se cierran con el mismo patrón (`applyHeaderDiscountFromSource`) y su
   medición por camino.
+
+## Ronda 20 — los CENTAVOS: cabecera = Σ líneas = asiento = preliminar (CERRADA)
+
+### Lo que se midió al verificar el reemplazo de la FRC del usuario
+
+La comprobación de la ronda 19 («el asiento del reemplazo debe ser el mismo que el preliminar») dejó
+**1–2 centavos de diferencia**. La sonda `_probe-r20-centavos.ts` (canasta 150/50/200 con cabecera 25 % e
+indicador **IVA por dentro** `BOLIVIA_SIN`, el del documento del usuario: `FRC-33` / `FCP-27`) midió la
+invariante completa y encontró la causa **dentro de la propia línea**:
+
+```
+cabecera: neto 261,00 + IVA 39,00 = 300,00 · desc 100,00
+Σ líneas: neto 261,01 + IVA 39,01 = 300,00 · desc 100,00
+línea:    neto 97,88  + IVA 14,63  = 112,51  ← su lineTotal es 112,50
+asiento:  IVA crédito D 39,01 · descuento H 87,02 + 13,00 = 100,02 (documento: 100,00)
+preliminar vs contabilizado: DIFIEREN (39,00 contra 39,01)
+```
+
+### Causa
+
+El calculador devolvía **precisión completa** (`gross × (1 − tasa)`) y cada columna se redondeaba **por
+separado** al persistir en `Decimal(14,2)`: en el medio centavo **las dos subían** (97,875 → 97,88 y
+14,625 → 14,63). La cabecera, además, acumulaba los montos **sin redondear**, así que no era la suma de lo
+que quedaba guardado en las líneas; y el asiento —que se arma **por línea**— salía un centavo por encima
+del preliminar, que se arma con los totales de la cabecera.
+
+### Entregado (la regla en el sitio único)
+
+`src/common/tax-calculation/*.strategy.ts` (los dos métodos): el importe cobrado y el IVA se redondean a
+centavos y el **neto es el residuo** (`total − IVA`); en IVA sumado, el neto y el impuesto se redondean y el
+total es su suma; `discountTotal` también sale redondeado. Espejo en el frontend (`shared/pricing.util.ts`)
+para que el preliminar que arma la pantalla mande los mismos centavos.
+
+### Medido después (A/B, misma sonda: `FRC-35` y `FCP-29`)
+
+```
+cabecera: neto 260,99 + IVA 39,01 = 300,00 · desc 100,00
+Σ líneas: neto 260,99 + IVA 39,01 = 300,00 · desc 100,00   ⇒ cabecera == Σ líneas
+líneas:   neto 97,87 + IVA 14,63 = 112,50 · neto 32,62 + 4,88 = 37,50
+asiento:  Σ D 400,00 = Σ H 400,00 · descuento 87,00 + 13,00 = 100,00 (exacto, sin plug)
+preliminar vs contabilizado: IDÉNTICOS (cuenta a cuenta)
+```
+
+### Gates
+
+- **Caso E2E nuevo** en `discount-propagation.e2e-spec.ts`: «Ronda 20 — los centavos cuadran: cabecera =
+  Σ líneas = asiento = preliminar (3 líneas, IVA por dentro)» → `discount-propagation` **24/24**.
+- Regresión de dinero: `purchase-flow` + `sales-flow` + `returns-and-credit-notes` **36/36**.
+- Unitarios **212 suites / 2667 tests** con los **dos casos reescritos** en `pricing.util.spec.ts` (fijaban
+  la precisión completa: `88,49557522`/`11,50442478` y `159,2920354`/`20,7079646`), ahora con la aserción
+  `neto + IVA = total`; `tsc`/`eslint` 0.
+- Frontend: `tsc` app y specs 0, **`ng build` AOT 0**, **Karma 2339/2339** y prettier (ratchet) limpio.
+
+### Declarado
+
+- El cambio es **transversal al dinero**: en los casos de medio centavo el neto puede moverse **un centavo**
+  respecto de lo que se guardaba antes. Es el arreglo (ahora cuadra con el IVA y con el total), no una
+  regresión; queda anotado porque afecta a cualquier documento con IVA por dentro.
+- Sigue abierto el declarado de la ronda 19: los caminos de **copia** cuya **carga** no repuebla la cabecera
+  en el formulario (los tres `multi-*` de compras, los tres de la FRV, FVE desde reserva, FCP desde
+  cotización/recepción/reserva, NCP `loadNote`).
 
 ## Pendiente del tramo
 
