@@ -1110,7 +1110,10 @@ mientras que en un documento guardado esa misma línea ya la trae.
   (cotizaciones de venta y compra, pedidos de venta y compra, FVE, FRV, FRC, FCP y NC de compra).
 - **El getter**: `isStoredDocument` en la base compartida (`!!this.documentId`); FRC, FRV y FCP lo tenían **privado**
   y pasa a **público**, y la **FVE** estrena el equivalente (`!!id && !isDraft`, porque en `/new` los formularios
-  hacen `Number(idParam)` = `NaN`).
+  hacen `Number(idParam)` = `NaN`). En la base el valor por defecto se respalda con un campo
+  `protected readonly storedDocument = false` y **no** con un `return false` literal: la regla
+  `class-literal-property-style` de ESLint rechaza un `get` que devuelve un literal, y el **hook del primer
+  `git commit`** no selló hasta cambiarlo (el `get` sigue siendo lo que las familias sobrescriben).
 - **Los helpers de fila** (`headerDiscountShareForRow`, `unitDiscountForRow`, `unitNetForRow`,
   `displayDiscountForRow` de FRC/FRV/FCP) usan la misma regla: **no reparten** nada cuando la línea de un documento
   guardado trae su descuento.
