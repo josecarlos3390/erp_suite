@@ -1,6 +1,6 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-26)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-27)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
 > diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
 > hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
@@ -24,7 +24,10 @@
 > IVA dos veces y el neteo de la FRV derivaba centavos): **con esto los arreglos de compras quedan replicados en
 > ventas**. La **ronda 26** cierra el reporte del usuario sobre la **FRC-43**: la recepción **parcial** también conoce
 > su FRC de origen, la **regresión de layout** de los totales (la nota ensanchaba la caja) queda reparada y los
-> totales de **todos** los documentos se leen como una cuenta (`bruto − descuento = neto`, `neto + IVA = total`). Plan
+> totales de **todos** los documentos se leen como una cuenta (`bruto − descuento = neto`, `neto + IVA = total`). La
+> **ronda 27** cierra el rótulo de origen que sobrevivía en esa misma pantalla: el borrador de la recepción desde una
+> F. Reserva de Compra (medido con la `FRC-51`) ya **no** se anuncia «Recepción manual» —lo decide el **origen**, no el
+> modo de captura— y el rótulo de captura manual queda para el documento **suelto**. Plan
 > del tramo anterior (descuento de cabecera):
 > `docs/plans/plan-descuento-cabecera-parte2.md`.
 
@@ -1441,6 +1444,71 @@ FRC/FVE/PO:   Precio de lista 360,99 · Descuento −100,00 · Neto 260,99 · IV
   `cost`/`totalCost`.
 - El renglón de IVA **vuelve** a mostrarse en la recepción (la r24 lo ocultaba): con las filas sumando y la etiqueta «ya
   contabilizado» el usuario entiende el 300,00; si prefiere ocultarlo otra vez, se cambia `[showTax]` en una línea.
+
+## Ronda 27 — el rótulo de origen de la recepción (CERRADA, solo frontend)
+
+### Lo que reportó el usuario (2026-09-28, probando con la FRC-51)
+
+> «cuando creo la recepción desde la factura de reserva FRC-51 en la recepción me muestra "Recepción vinculada a Factura
+> de Reserva. Ajusta las cantidades según lo realmente recibido." Pero aparece otro label arriba de Proveedor que dice
+> "Recepción Manual" ¿por qué sigue apareciendo? eso debería aparecer cuando genero un documento suelto, pero esta
+> recepción no está suelta, proviene de la factura de reserva.»
+
+### Medición antes (sonda de navegador `e2e/zz-r27-rotulos-origen.spec.ts`)
+
+```
+A — «Copiar a → Recepción de Mercadería → Solo esta F. Reserva» desde la FRC-51 (id 88, CLOSED, cabecera 25 %,
+    tres líneas en OPEN con openQty 1 · sin ninguna recepción todavía)
+    URL: http://localhost:4200/purchase-receipts/new?reserveInvoiceId=88
+    TÍTULO (h1): "Nueva Recepción desde F. Reserva"
+    manual-badge: ["Recepción manual"]          ← EL DEFECTO (arriba de Proveedor)
+    avisos: ["Recepción vinculada a Factura de Reserva. Ajusta las cantidades según lo realmente recibido."]
+    veces «manual» en el formulario: 1
+B — recepción nueva sin documento origen (control por URL pelada /purchase-receipts/new)
+    TÍTULO: "" · manual-badge: [] · avisos: [] · veces «manual»: 0   ← la pantalla quedaba muda
+C — recepción guardada REC-24 (origen FRC-44)
+    TÍTULO: "Recepción" · manual-badge: [] · veces «manual»: 0
+```
+
+Causa: el rótulo (y el banner) colgaban de `isManualMode && !receiptId`, y la recepción desde una FRC **sí** es una
+captura libre (`loadFromReserveInvoice` pone `isManualMode = true` a propósito: cantidades editables, sin pedido
+detrás) —es la misma confusión que la r24 arregló en el **diálogo** y que la r26 arregló en las **recepciones
+guardadas**—. `isManualMode` dice **cómo se captura**, no **de dónde viene** el documento.
+
+### Entregado (frontend; backend sin cambios)
+
+- `esRecepcionIndependiente` (`isManualMode && !receiptId && sin orden, sin cotización y sin FRC`) es ahora la **única**
+  condición del rótulo «Recepción manual» y del banner de captura manual.
+- `tituloBorrador` reúne en **un solo sitio** el título del borrador (antes cuatro bloques `@if` en la plantilla) con la
+  precedencia F. Reserva › orden › cotización › manual, y el de la FRC **nombra el código** (`Nueva Recepción desde F.
+  Reserva FRC-51`) —también en el camino «varias FRC», que antes no ponía título—.
+- La ruta `.../new` **sin parámetros** cae en la captura manual (es el destino del botón «Nueva recepción» del listado):
+  antes la pantalla quedaba sin título, sin rótulo y **sin botón de guardar**.
+
+### Medido después (misma sonda, mismos documentos)
+
+```
+A (FRC-51): TÍTULO "Nueva Recepción desde F. Reserva FRC-51" · manual-badge [] · veces «manual» 0
+            + aviso «vinculada a Factura de Reserva» y la caja «Valor de referencia (documento origen)» intacta
+B (/new):   TÍTULO "Nueva Recepción Manual" · manual-badge ["Recepción manual"] · aviso de captura manual
+C (REC-24): TÍTULO "Recepción" · manual-badge [] · veces «manual» 0
+```
+
+### Gates
+
+`tsc` app/spec/e2e **0**, **Karma 2374/2374** (5 casos nuevos en `purchase-receipts-form.component.spec.ts`: FRC simple,
+varias FRC, `?manual=1`, URL pelada y recepción guardada), **`ng build` AOT 0** y prettier (ratchet) limpio. El backend
+**no se toca** en esta ronda (los rótulos son de pantalla) y sus sondas no cambian.
+
+### Declarado
+
+- El **modo de captura** de una recepción de FRC sigue siendo libre (cantidades editables y «Agregar línea» siguen
+  disponibles): es lo que pide el aviso «ajusta las cantidades según lo realmente recibido». Una línea añadida a mano en
+  una recepción de FRC **no** tiene origen (el backend la trata como independiente, sin prorrateo de la reserva): es el
+  comportamiento que ya tenía y queda declarado, no cambiado.
+- La sonda de navegador es **temporal** (no se commitea): la regresión queda pinzada en Karma sobre el estado que la
+  plantilla consume (`esRecepcionIndependiente`, `esRecepcionDeFrc`, `tituloBorrador`), que es el nivel que el arnés de
+  Karma puede comprobar (reemplaza la plantilla por `<div></div>`); el contrato de DOM lo mide la sonda en el navegador.
 
 ## Pendiente del tramo
 
