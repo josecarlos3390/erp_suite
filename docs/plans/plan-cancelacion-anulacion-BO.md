@@ -1,6 +1,6 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-27)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-28)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
 > diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
 > hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
@@ -27,7 +27,11 @@
 > totales de **todos** los documentos se leen como una cuenta (`bruto − descuento = neto`, `neto + IVA = total`). La
 > **ronda 27** cierra el rótulo de origen que sobrevivía en esa misma pantalla: el borrador de la recepción desde una
 > F. Reserva de Compra (medido con la `FRC-51`) ya **no** se anuncia «Recepción manual» —lo decide el **origen**, no el
-> modo de captura— y el rótulo de captura manual queda para el documento **suelto**. Plan
+> modo de captura— y el rótulo de captura manual queda para el documento **suelto**. La **ronda 28** cierra la pregunta
+> de fondo que dejó esa prueba: el flujo **se completa desde el documento donde se inició** (recepciones y F. Reserva
+> parciales sucesivas en compras **y** ventas), se corrigen el payload de la reserva desde recepción y la mezcla de las
+> dos direcciones del vínculo (`reserveInvoices`), y queda escrita la **matriz de flujos** con las cuatro reglas que
+> sostienen la flexibilidad del ERP. Plan
 > del tramo anterior (descuento de cabecera):
 > `docs/plans/plan-descuento-cabecera-parte2.md`.
 
@@ -1509,6 +1513,117 @@ varias FRC, `?manual=1`, URL pelada y recepción guardada), **`ng build` AOT 0**
 - La sonda de navegador es **temporal** (no se commitea): la regresión queda pinzada en Karma sobre el estado que la
   plantilla consume (`esRecepcionIndependiente`, `esRecepcionDeFrc`, `tituloBorrador`), que es el nivel que el arnés de
   Karma puede comprobar (reemplaza la plantilla por `<div></div>`); el contrato de DOM lo mide la sonda en el navegador.
+
+## Ronda 28 — el flujo se completa desde el documento donde se inició (CERRADA)
+
+### Lo que reportó y preguntó el usuario (2026-09-28, con la FRC-51)
+
+> «tengo la factura de reserva de compra FRC-51 y generé una recepción parcial REC-26, pero no puedo generar más entregas
+> parciales; se supone que deberían generar todas las entregas parciales hasta cubrir toda la factura reserva, ¿es un bug?
+> ¿o no tenemos este control? ¿nos ocurre en otros documentos? Debería también poder hacer una Recepción manual y luego
+> generar facturas de reserva parciales hasta cubrir toda la recepción, ese funcionamiento en ventas como compras debe
+> funcionar. […] un flujo puede iniciar desde cualquier documento, puede empezar desde una cotización, desde un pedido,
+> desde una entrega o recepción, o desde una factura reserva o normal, y debe tener la capacidad de siempre completar el
+> flujo desde el documento que se inicie […] ¿es posible manejarlo así? ¿qué sugieres? ¿qué propones? creo que es la
+> particularidad de este ERP, la flexibilidad en los flujos, ¿es correcto que sea así? ¿o debe ser más estricto?»
+
+### Medición (sondas `_probe-r28-parciales.ts`, `-b.ts`, `-fixtures.ts`, `-frc51-parcial.ts` + navegador `zz-r28-parciales.spec.ts`)
+
+**El motor ya soporta los cuatro caminos** (documentos nuevos, cantidades 10 con parcial de 4):
+
+```
+A) FRC-52 (2×10) → REC-27 (4) + REC-28 (6+10): Σ costo capitalizado = 1.305,00 = tránsito EXACTO de la FRC · 3.ª → 400 «Pendiente: 0»
+B) REC-30 (2×10) → FRC-53 (4) + FRC-54 (6+10): Σ totales = 1.500,00 = total de la recepción      · 3.ª → 400 «Pendiente: 0»
+C) FRV-20 (2×10) → DEL-16 (4) + DEL-17 (6+10)                                                    · 3.ª → 400 «Pendiente: 0»
+D) DEL-18 (2×10) → FRV-21 (4) + FRV-22 (6+10)                                                    · 3.ª → 400 «Pendiente: 0»
+```
+
+**Lo que fallaba era la PUERTA de la pantalla** (medido en el navegador):
+
+```
+FRC-51  (2 de 3 líneas pendientes, REC-26 parcial emitida)  «Copiar a → Recepción de Mercadería»  🔒 BLOQUEADA
+REC-31  (FRC-55 parcial de 4 emitida, 16 pendientes)        menú «Copiar a»  ✗ NO APARECÍA
+DEL-19  (FRV-23 parcial de 4 emitida, 16 pendientes)        «Fact. Reserva Cliente»  🔒 «ya está cubierta por una F. Reserva»
+FRV-24  (entrega parcial emitida, 16 pendientes)            «Entrega»  ✅ (control: ventas ya lo hacía bien)
+borrador desde la FRC-51                                    cargaba TODAS las líneas con la cantidad ORIGINAL
+```
+
+**Y dos defectos de fondo**, uno de contrato y otro de semántica:
+
+```
+· PurchaseReserveInvoicesService.createFromReceipt mandaba `receiptItemId` (campo del endpoint de FACTURAS)
+  y el DTO de la reserva (`PrvFromReceiptItemDto`) exige `purchaseReceiptItemId`
+  → «Fact. Reserva Compra» desde una recepción respondía 400 SIEMPRE (medido con el payload de la pantalla)
+· GET /purchase-receipts/:id sumaba a `reserveInvoices` las facturas GENERADAS DESDE la recepción
+  (`purchaseInvoices`, la dirección contraria) ⇒ REC-31 (que emitió su propia FRC-55) decía
+  `isFromReserveInvoice: true` y la pantalla la leía como «venida de una reserva»   [corrección de la r26]
+```
+
+### Entregado
+
+- **F. Reserva (compras)**: `canCopyTo` ya no exige `isManualMode` (el modo de captura no dice el origen) y
+  `canCopyToReceipt` vive mientras quede alguna línea sin cerrar —misma regla que la entrega desde una FRV en ventas—.
+- **Recepción (compras)**: `canCopyTo` se gatea por **origen** (`!esRecepcionDeFrc`, que se resuelve por las LÍNEAS desde la
+  r26) y no por `hasLinkedReserveInvoice` (que significa «tiene reservas ligadas», la dirección contraria).
+- **Entrega (ventas)**: `canCopyToReserveInvoice` usa solo el **pendiente**; la entrega que **nace** de una FRV ya marca sus
+  líneas facturadas al 100 %, así que se bloquea sola con el motivo correcto.
+- **Borrador de la recepción desde una FRC**: propone el **pendiente** de cada línea (`openQty`, declarado en el modelo) y
+  **omite** las ya recibidas.
+- **Payload**: la reserva desde recepción manda `purchaseReceiptItemId`.
+- **Semántica del origen**: `reserveInvoices`/`isFromReserveInvoice` (backend) y `esRecepcionDeFrc` (frontend) dejan de
+  mezclar las dos direcciones del vínculo de cabecera.
+
+### Medido después (misma sonda, mismos documentos)
+
+```
+FRC-51 → «Recepción de Mercadería» ✅ · borrador con 2 filas (los 2 pendientes; la línea ya recibida no se ofrece)
+REC-31 → menú visible: Factura de Compra ✅ · Precio de Entrega ✅ · Fact. Reserva Compra ✅ · Devolución ✅
+DEL-19 → «Fact. Reserva Cliente» ✅        FRV-24 → «Entrega» ✅ (control)
+API: REC-31 isFromReserveInvoice=false · REC-24/26 true con FRC-44/FRC-51 · REC-30 false
+```
+
+### La matriz de flujos medida (endpoints declarados, `@Post` de los controladores)
+
+| Documento DESTINO | Orígenes que puede tomar hoy |
+|---|---|
+| **Entrega** (ventas) | manual · cotización · pedido · **F. Reserva Venta** · multi-cotización · multi-pedido · multi-FRV |
+| **F. Reserva Venta** (FRV) | manual · cotización · pedido · **entrega** · multi-* |
+| **Factura de Venta** (FVE) | manual · cotización · pedido · entrega · FRV · multi-* |
+| **Devolución venta** / **NC venta** | entrega / factura |
+| **Recepción** (compras) | manual · pedido · **cotización** (manual + `purchaseQuotationId` + línea) · **F. Reserva Compra** · multi-pedido · multi-cotización · multi-FRC |
+| **F. Reserva Compra** (FRC) | manual · cotización · pedido · **recepción** |
+| **Factura de Compra** (FCP) | manual · cotización · pedido · recepción · FRC · multi-* |
+| **Devolución compra** / **NC compra** / **Precio de entrega** | recepción / factura / recepción |
+| **Factura normal** (FVE/FCP) | **terminal en logística**: mueve inventario ⇒ no genera entregas ni recepciones |
+
+**Conclusión de diseño** (lo que se propone como canon, ya aplicado en esta ronda): la flexibilidad **es correcta** y es la
+particularidad del ERP, pero se sostiene sobre **cuatro reglas**, y todos los defectos de esta ronda y de las anteriores
+(r24, r26, r27) fueron violaciones de la regla 2 y 4:
+
+1. **Cualquier documento puede iniciar el flujo** y debe poder **completarse desde donde se inició**: el origen puede
+   generar **N** documentos destino (parciales) hasta agotar el pendiente.
+2. **El pendiente se DERIVA de las líneas de los documentos activos** (facturas/recepciones/entregas no canceladas), nunca
+   de un flag ni de una columna denormalizada (`invoicedQty`/`reservedQty`/`openQty` de cabecera se desvían — T96/T97/T98).
+3. **La trazabilidad real es POR LÍNEA** (`baseDocType`/`baseDocId`/`baseLineId`): el vínculo de cabecera es **un solo
+   campo** y lo escriben las **dos** direcciones, así que solo sirve de pista, nunca de criterio.
+4. **Cada transición se gatea por OPCIÓN y por PENDIENTE** (nunca apagando todo el menú del documento), y el modo de
+   **captura** (`isManualMode`) no es el **origen**.
+
+**Declarado**:
+
+- La recepción de compra **no** tiene un `POST /purchase-receipts/from-quotation/:id` de primera clase: la cotización →
+  recepción se arma con el alta manual + `purchaseQuotationId` + `purchaseQuotationItemId` por línea (consume el `openQty`
+  de la cotización y deja la traza), mientras ventas sí tiene `delivery-orders/from-quotation`. Es una **asimetría de
+  nombre**, no un hueco de flujo: si se quiere simetría, es un endpoint de una línea sobre el camino que ya funciona.
+- La **factura normal** (FVE/FCP) es terminal en logística por diseño (mueve inventario); su reversa es la NC/devolución.
+- Las sondas de navegador y de API de esta ronda son **temporales** (no se commitean): la regresión queda pinzada en Karma
+  (6 casos nuevos) y en los dos casos E2E `R28-A`/`R28-B`.
+- **Medido en la base de desarrollo** (`_probe-r28-legacy.ts`): de las **10** recepciones con una reserva ligada, las que
+  **nacen** de una FRC (`REC-24/26/27`) traen la **traza por línea** (`baseDocType = PURCHASE_RESERVE_INVOICE`) y las **7
+  sin traza** son **todas** de la dirección contraria (la recepción **emitió** la reserva: `REC-2/4/7/9/11/30/31`). O sea:
+  la regla «el origen se decide por la LÍNEA» no deja ninguna recepción histórica sin reconocer —el único caso ambiguo sería
+  una recepción nacida de una FRC por el camino **anterior a la r24**, que no escribía traza, y ese camino tampoco consumía
+  la reserva—.
 
 ## Pendiente del tramo
 
