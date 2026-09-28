@@ -1,6 +1,6 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-24)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-25)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
 > diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
 > hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
@@ -19,8 +19,10 @@
 > volver a prorratear la cabecera). La **ronda 24** cierra las observaciones de pantalla de la **recepción desde una
 > FRC** (origen real, sin IVA visual, con el descuento de la reserva) **y** el defecto de dinero que destapó su
 > medición —la misma FRC se podía **recibir dos veces**—, y deja **auditados con medición** los valores guardados de
-> 215 documentos de compras y ventas: lo incoherente es **histórico** y los **tres defectos vivos** que aparecieron
-> son de **ventas** (ronda siguiente, medida y con números). Plan
+> 215 documentos de compras y ventas. La **ronda 25** cierra los **tres defectos vivos de ventas** que esa auditoría
+> destapó (los `sale-invoices/from-*` re-aplicaban el descuento ya materializado, la entrega desde una FRV restaba el
+> IVA dos veces y el neteo de la FRV derivaba centavos): **con esto los arreglos de compras quedan replicados en
+> ventas**. Plan
 > del tramo anterior (descuento de cabecera):
 > `docs/plans/plan-descuento-cabecera-parte2.md`.
 
@@ -1311,27 +1313,69 @@ Unitarios **212 suites / 2673 tests**, E2E completo **41 suites / 384 tests** (c
 - Las incoherencias **históricas** de la auditoría (lista con fechas arriba) **no se reparan**: son documentos de prueba
   creados por un estado anterior del código y su reparación sería una migración de datos, no un arreglo de código.
 
+## Ronda 25 — los arreglos de compras, replicados en VENTAS (CERRADA)
+
+### Lo que preguntó el usuario (2026-09-28)
+
+> «Estas correcciones que hicimos en compras ¿también se replican en ventas, verdad?»
+
+**La respuesta medida era NO**: la auditoría de la ronda 24 dejó tres defectos **vivos** de ventas y esta ronda los cierra.
+
+### Medición antes (sondas `_probe-r24-medicion-b.ts` y `-b-bis.ts`, canasta 150/50/200 con cabecera 25 %, origen `300,00`)
+
+```
+(1) POST /sale-invoices/from-order|from-quotation|from-delivery  (+ isReserve N/Y)
+    destino 225,00  vs  origen 300,00   (Δ −75,00) · totalDiscount 75,00 ≠ Σ líneas 100,00
+    asiento: CxC 225,00 · Ventas 295,75 · Descuentos 87,01     [FVE-22/23/24, FRV-6/8/10]
+    COMPRAS ya tenía la guarda `_sourceMaterializedHeader`; VENTAS no.
+(2) POST /delivery-orders/from-reserve-invoice/:id   (FRV-7 300,02 → DEL-3)
+    entrega 261,01 (su subtotal) con líneas lineSubtotal 83,25/27,75/111,00
+    el neto de la FRV se tomaba como «importe cobrado» y se le restaba el IVA otra vez.
+(3) neteo de la FRV: round(130,50 × 0,75) = 97,88 y round(19,50 × 0,75) = 14,63
+    ⇒ neto + IVA = 112,51 donde el cobrado es 112,50  ⇒  FRV = 261,01 / 99,98 / 300,02
+    (la misma canasta vale 260,99 / 100,00 / 300,00 en cotización, pedido, entrega y factura)
+```
+
+### Causa
+
+- (1) y (3): los caminos de venta aplicaban el descuento de cabecera como un **ratio** sobre montos que el origen **ya había neteado** (T254 materializa la cabecera en las líneas). En compras eso se cerró en D10-b con la guarda `_sourceMaterializedHeader`; en ventas no existía y el ratio se aplicaba **dos veces** (y en el neteo de la FRV, **por columnas**: neto e IVA por separado, en vez del canon «cobrado redondeado una vez, IVA aparte, neto por diferencia» de la ronda 20).
+- (2): la entrega desde una FRV usaba `prorateLineAmounts`, documentado para documentos cuyo `subtotal` es el **importe cobrado** (cotizaciones y pedidos), sobre una **factura** —donde `subtotal` es la **base neta**—: la traducción la hace `prorateInvoiceLineAmounts`, que ya existía y no se usaba ahí.
+
+### Entregado (backend, sin cambios de frontend)
+
+- `SaleInvoicesService._sourceMaterializedHeader` (misma guarda que compras) en `createFromQuotation`, `createFromOrder` y `createFromDelivery`: con el origen materializado, `docTotals` sale **de las líneas** (cabecera referencial) y el ratio es **1**.
+- `delivery-orders`: `createFromReserveInvoice` usa `prorateInvoiceLineAmounts`; `createFromMultiReserveInvoice` publica además `subtotal`/`lineSubtotal`/`lineTotal`/`taxAmount`/`discountTotal` (antes los dejaba vacíos).
+- `sale-reserve-invoices.applyHeaderDiscountNetting`: **canon del dinero** (el importe cobrado se prorratea y redondea una sola vez; el IVA es su cifra; el neto es el residuo; el descuento es la caída exacta del bruto). Aplica a **todas** las altas de FRV (el helper es compartido).
+- Caso E2E nuevo en `discount-propagation`: la cadena cotización → FVE desde cotización, cotización → pedido → entrega → FVE desde entrega, la FRV manual y la entrega desde la FRV, con el **dinero del destino contra el del origen** y el canon de la FRV.
+
+### Medido después (A/B, mismas sondas)
+
+```
+A FVE desde pedido      300,00  Δ 0,00     E FRV desde entrega (dedicado) 300,00  Δ 0,00
+B FRV desde pedido      300,00  Δ 0,00     F FRV desde entrega (alias)    300,00  Δ 0,00
+C FVE desde cotización  300,00  Δ 0,00     G control modo LÍNEA           400,00  Δ 0,00
+D FVE desde entrega     300,00  Δ 0,00
+  (antes: A-D y F = 225,00 con Δ −75,00)
+DEL-9/DEL-14/DEL-15 (entrega desde la FRV): 260,99 + 39,01 = 300,00 · desc 100,00 · 3/3 líneas cuadran
+  (antes: DEL-3 = subtotal 222,00 + IVA 39,01 = total 261,01)
+FRV-13 (antes) 261,01 / 39,01 / 300,02 / 99,98   →   FRV-18/19 (después) 260,99 / 39,01 / 300,00 / 100,00
+```
+
+### Gates
+
+Unitarios **212 suites / 2673 tests**, E2E completo **41 suites** (con el caso `R25` nuevo), `tsc` (app y e2e) y `eslint` 0.
+
+### Declarado
+
+- El `subtotal` de **línea** mantiene sus **dos significados** por familia (importe **cobrado** en cotizaciones y pedidos; **base neta** en facturas, NC y devoluciones) —es el P10 de la auditoría de la ronda 24—: por eso el caso E2E pincha el **dinero del destino contra el del origen** y no `Σ líneas == cabecera` en todas las familias.
+- La **respuesta del alta** `POST /delivery-orders/from-reserve-invoice` no publica `totalDiscount` (el `GET` y la base **sí**: medido `DEL-15` → `100,00` en ambos); el caso E2E lee el documento **persistido**. Queda como observación menor de contrato de API.
+- El canon del neteo cambia los centavos de la FRV en los casos de medio centavo (es el arreglo): los importes de la FRV ahora coinciden con los del resto de familias.
+
 ## Pendiente del tramo
 
-- **Ronda 25 (medida, pendiente de arreglo) — los mismos arreglos de compras NO están replicados en ventas**. Medido con
-  documentos nuevos creados por API (canasta 150/50/200, cabecera 25 %, origen 300,00 en todos los casos):
-  - **`POST /sale-invoices/from-order/:id` · `/from-quotation/:id` · `/from-delivery/:id`** (y sus variantes
-    `isReserve` N/Y y `from-multi-*`): la cabecera (por `%` o por importe) se **re-aplica** sobre líneas que el origen
-    **ya materializó** ⇒ el destino vale **225,00 en vez de 300,00** (Δ −75,00), `totalDiscount 75,00 ≠ Σ líneas 100,00`
-    y el asiento cruza `CxC 225,00 / Ventas 295,75 / Descuentos 87,01`. Códigos medidos: `FVE-22`, `FRV-8`, `FVE-23`,
-    `FVE-24`, `FRV-10`, `FRV-6`. **Compras sí tiene la guarda** (`_sourceMaterializedHeader`/`sourceMaterialized` en
-    `purchase-invoices` ×3, `purchase-receipts` y `purchase-returns`): falta el equivalente en ventas.
-  - **`POST /delivery-orders/from-reserve-invoice/:id`** (la entrega desde una FRV, el equivalente de la recepción que
-    esta ronda arregla): replica el descuento y los importes de IVA pero **resta el IVA dos veces del neto** ⇒ la entrega
-    total vale **261,01** contra una FRV de **300,02** (líneas `lineSubtotal 83,25/27,75/111,00` con IVA
-    `14,63/4,88/19,50`). Código medido: `DEL-3`. El **consumo de la FRV sí está bien** (`openQty 0`, `CLOSED`,
-    `deliveryOrderItemId` y `deliveryOrderId`) y una **segunda entrega se rechaza** con 400 «Cantidad excede lo pendiente
-    … Pendiente: 0».
-  - **La raíz es que la MISMA operación tiene dos implementaciones**: `POST /sale-reserve-invoices/from-delivery` (que
-    **sí** replica: `FRV-9` = 300,00 y todos los invariantes en verde) frente a `/sale-invoices/from-delivery` con
-    `isReserve=Y` (`FRV-10` = 225,00). El control en modo **línea** (`FRV-11`) sale bien (400,00 = origen).
-  - Menor, declarado: la FRV neteada deja su total en **300,02** donde la misma canasta/cabecera vale **300,00** en
-    cotización, pedido, entrega y factura (2 centavos por el neteo de la FRV; sus invariantes internos están OK).
+- **Ronda 25 — CERRADA** (los tres defectos vivos de ventas que destapó la auditoría de la ronda 24): los caminos
+  `sale-invoices/from-*` (single y multi) **replican** su origen, la **entrega desde una FRV** la espeja y el **neteo de
+  la FRV** deja de derivar centavos. Medición A/B, entregado, gates y declarados en la sección «Ronda 25» de arriba.
 - **T255: CERRADO** (D1-D7 + UI). Declarado del tramo:
   - el **IT** (3 % del neto) no se revierte en la NC —el asiento de la NC es un hecho nuevo, no el espejo—; el
     espejo de la **cancelación** sí cuadra a cero.
@@ -1395,6 +1439,10 @@ Unitarios **212 suites / 2673 tests**, E2E completo **41 suites / 384 tests** (c
   `_probe-t255-espejo.ts` (par original/espejo y estados), `_probe-t255-ab.ts` (A/B de la fecha),
   `_probe-t255-ui-final.ts` + `_probe-t255-ui-espejo.ts` + `_probe-t255-ui-asientos.ts` + `_probe-t255-ui-fechas.ts`
   (validación sobre base limpia con los payloads de la pantalla).
+- Sondas de la **ronda 25** (tampoco se commitean): `_probe-r24-medicion-b.ts` (la cadena de venta y la entrega desde
+  la FRV) y `_probe-r24-medicion-b-bis.ts` (los **siete** caminos que heredan cabecera, A-G) —escritas en la ronda 24 y
+  reutilizadas como A/B—, `_probe-r25-frv-deriva.ts` (las líneas de la FRV contra la regla única) y
+  `_probe-r25-respuesta.ts` (¿la **respuesta** del alta publica `totalDiscount`? base y `GET` sí).
 - Sondas de la **ronda 24** (tampoco se commitean): `_probe-r24-recepcion.ts` (la recepción creada desde la FRC frente a
   la FRC: importes, IVA y descuento), `_probe-r24-doble-recepcion.ts` (¿se puede recibir dos veces la misma FRC?),
   `_probe-r24-vinculo.ts` (los dos vínculos FRC ↔ recepción), `_probe-r24-verificacion.ts` (limpieza + A/B del arreglo),
