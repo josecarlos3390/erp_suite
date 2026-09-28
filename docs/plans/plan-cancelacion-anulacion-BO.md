@@ -1029,6 +1029,19 @@ CxC/CxP con `requiresPartner` real, verificado en la base); **suite E2E completa
   modo real del documento y su preliminar queda cuadrado. **Gates**: `tsc` app/specs 0, **Karma 2350/2350**,
   `ng build` AOT 0, prettier limpio, y el backend con la **suite E2E completa 41 suites / 383 tests** en verde.
 
+- **Ronda 21 — declarado (decisiones/observaciones medidas, no trabajo pendiente)**:
+  - en un **agregado** el asiento **no atribuye** el total a una línea de documento concreta: `sourceTransactionLineId`
+    queda en `null` (siempre) y `itemId`/`warehouseId`/`itemGroupId` y `sourceTransactionType`/`sourceTransactionId`
+    **solo si difieren** entre las agrupadas. El **informe por norma de reparto** ve **una** fila donde antes veía N
+    del mismo documento, **con el mismo total**; los tramos de una misma norma **no** se agrupan entre sí (difieren en
+    `dimension`), así que los informes por centro de costo siguen cuadrando.
+  - el saldo por cuenta de la **columna de moneda secundaria** (USD) puede moverse **±1 centavo**: la línea agrupada
+    lleva su **propia** conversión en vez de la del grupo.
+  - el **informe ICE por artículo** lee `itemId` de la pata `ICE_PAGAR`, que **hoy ningún builder puebla** (declarado
+    por si algún día se puebla).
+  - Si se prefiere otra política en cualquiera de los tres (p. ej. conservar el `itemId` de la primera línea o
+    agrupar también con ejes distintos), se cambia con la medición delante.
+
 ## Notas del arnés
 
 - Base de desarrollo: `npm run db:recreate` exige parar el API; tras recrear hay que registrar la **tasa del día**
