@@ -742,6 +742,25 @@ En los dos sitios: calcular el costo desde el **modo del documento** (`payload.d
 
 Sonda: dos pedidos manuales con cabecera 25 % → `POST /purchase-receipts/from-multi-order` con los dos → comparar `cost`/`totalCost` de la línea con el débito de inventario del asiento y con el costo que el alta manual (`from-order`) ya deja bruto. Ídem para `from-multi-quotation`.
 
+## Ronda 18 — D10-b: la recepción `from-multi-order` (MEDIDO: el costo está bien; los IMPORTES no se persisten)
+
+### Medición (sonda `_probe-d10b-rec-multi.ts`, base de desarrollo)
+
+Dos pedidos manuales con cabecera 25 % (94 con IVA incluido) → `POST /purchase-receipts/from-multi-order`:
+
+| Qué | Medido | Veredicto |
+| --- | --- | --- |
+| Modo del documento | `modo=line` (el destino de la consolidación multi materializa la cabecera a línea, R2) | ✔ coherente |
+| **Costo** de la línea | `costo 62,39` (el neto de la línea del pedido) | ✔ **correcto**: el asiento debita `Inventario D 62,39 / GRIR H 62,39` por línea, así que el kardex valúa lo mismo que el mayor (la regla T239/D10-b se cumple en modo línea con el **neto**) |
+| **Importes** de la línea | `lineSubtotal`, `subtotal`, `discountTotal` y `taxAmount` = **0,00** | ✗ **no se persisten** |
+| Totales del documento | `subtotal 0,00`, `IVA 0,00`, `total 0,00`, `desc 0,00` | ✗ (el confirm los recalcula de las líneas: también 0) |
+
+**Conclusión**: el punto declarado del **costo** queda **cerrado con la medición** (el neto de esos caminos es el correcto porque su documento es modo línea, no un descuido) — y de paso la sonda destapó un defecto **distinto y nuevo**: en `createFromMultiOrder` las líneas de la recepción publican **solo el costo**, así que la recepción multi-pedido muestra importes en **cero** y su `discountTotal` no conserva el prorrateo (lo que el objetivo pedía para las cadenas). El mismo patrón hay que comprobarlo en `createFromMultiQuotation` (~4678).
+
+### Arreglo pendiente (nuevo punto, fuera del alcance de esta ronda)
+
+En los dos caminos: persistir por línea los importes que ya se calculan en el bucle (`lineSubtotal`/`subtotal` = el neto, `taxAmount`, `discountPct`/`discountAmt` y `discountTotal` = el descuento efectivo de la línea del origen) y dejar que el `confirm` / `recalcTotalsFromPersistedLines` compongan los totales del documento desde esas líneas (la invariante ya usada en el resto del ERP).
+
 ## Pendiente del tramo
 
 - **T255: CERRADO** (D1-D7 + UI). Declarado del tramo:
