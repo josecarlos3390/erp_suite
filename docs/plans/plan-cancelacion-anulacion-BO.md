@@ -1,6 +1,6 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-20)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-21)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
 > diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
 > hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
@@ -911,6 +911,79 @@ preliminar vs contabilizado: IDÉNTICOS (cuenta a cuenta)
 - Sigue abierto el declarado de la ronda 19: los caminos de **copia** cuya **carga** no repuebla la cabecera
   en el formulario (los tres `multi-*` de compras, los tres de la FRV, FVE desde reserva, FCP desde
   cotización/recepción/reserva, NCP `loadNote`).
+
+## Ronda 21 — el asiento AGRUPA la misma cuenta y cuadra la divisa en la línea de ajuste (CERRADA)
+
+### Lo que reportó el usuario (al crear la FRC-36)
+
+> «me ha generado por cada artículo una cuenta de inventario, pero como es la misma cuenta debería agruparlo y
+> totalizar; se debe disgregar cuando la cuenta es diferente» y «se observa en los dólares que el asiento tiene 0.01
+> de diferencia, ¿no debería ir a la cuenta de diferencia de cambio? ¿o el prorrateo quedó mal para los dólares?»
+
+### Medido antes (sonda `_probe-frc36.ts` sobre `FRC-36` / `ASI-000118`; BOB TC 1, cabecera 25 %)
+
+```
+2.1.1.01.001 CxP            H 300,00   (USD 24,89 → lo correcto es 300 ÷ 12,05 = 24,90)
+5.1.2.01.005 Descuento      H  87,00   (7,22)
+1.1.2.06.005 IVA del desc.  H  13,00   (1,08)
+1.1.6.01.001 IVA crédito    D  39,01   (3,24)
+1.1.3.02.001 Tránsito       D 180,50   (14,98)  ← misma cuenta
+1.1.3.02.001 Tránsito       D  45,12   ( 3,74)  ← misma cuenta
+1.1.3.02.001 Tránsito       D 135,37   (11,23)  ← misma cuenta (exacto: 11,24)
+Σ D = Σ H = 400,00 · 7 líneas
+```
+
+En **bolivianos cuadra** (`neto 260,99 + IVA 39,01 = 300,00`, `desc 100,00`); los dos defectos son **(1)** la
+cuenta repetida en tres patas y **(2)** el reparto del centavo de la **columna de moneda secundaria**, que se
+cuadraba por diferencia en la **primera línea de crédito** —el CxP— en vez de en la línea de ajuste. **No es
+diferencia de cambio**: esa nace al pagar a otra tasa; un centavo así es redondeo.
+
+### Decisiones del usuario
+
+1. Agrupar **solo** cuando coincidan la cuenta **y** los ejes analíticos (proyecto, dimensiones, norma de reparto,
+   tercero) y el mismo lado (débito/crédito) —como SAP B1, para no romper los informes por centro de costo—.
+2. Cada línea con **su propia** conversión y el centavo del residuo en la **línea de ajuste/redondeo** (nunca en el
+   pagable).
+
+### Entregado — la regla en el punto único (`src/common/accounting/journal-entry-core.ts`, las 7 familias)
+
+- `_groupJournalLines` / `_journalLineGroupKey` / `_mergeJournalLines`, aplicados en `_persist` **después** de
+  expandir las normas de reparto y **antes** de la doble expresión; `_buildPreviewResponse` usa el **mismo**
+  agrupado (preliminar == asiento).
+- Clave: `accountId | lado | partnerId | branchId | contraAccountId | projectId | projectCode | dimension1..5 |
+  distributionRuleId | sourceDistributionRuleId | currency | exchangeRate | taxRate | dueDate | ref1 | ref2`. No se
+  agrupan importes cero ni líneas con doble expresión preestablecida; con una línea no cambia nada.
+- `_balanceConvertedExpressions` + `_resolveConvertedResidualIndex`: el residuo va por prioridad a la **línea de
+  ajuste de redondeo** → a la de **descuento** → a la **mayor línea que no sea de tercero** (CxC/CxP se identifican
+  por `requiresPartner`), así que el pagable nunca absorbe el centavo.
+
+### Medido después (A/B, sonda `_probe-r21-agrupado.ts`, ANTES = build limpio de HEAD en un puerto aparte)
+
+| caso | antes | después |
+| --- | --- | --- |
+| FRC, 3 artículos con la **misma** cuenta | 7 líneas · Tránsito en 3 patas · CxP USD **24,89** · Σsys 33,19 | **5 líneas** · Tránsito **360,99** (USD 29,96) · CxP USD **24,90** · Σsys **33,20 = 33,20** |
+| FCP, **dos cuentas distintas** (`acctCode` 140/143) | 4 líneas | 4 líneas (**no agrupa**) |
+| FCP, **misma** cuenta (130,50 + 43,50) | 4 líneas | **3 líneas** (174,00) |
+
+Preliminar **idéntico** al contabilizado en los tres.
+
+### Gates
+
+`tsc` de app y specs **0**; **unitarios 212 suites / 2667 tests** (dos expectativas de conteo reescritas con el
+motivo: dos patas de GRIR de la misma cuenta se totalizan y `COGS/Inventario` pasa de 4 a 2 líneas; el mock marca
+CxC/CxP con `requiresPartner` real, verificado en la base); **suite E2E completa 41 suites / 383 tests** en verde
+(el cambio toca el punto único de todas las familias); `eslint` 0 y prettier limpio.
+
+### Declarado
+
+- En un **agregado**, `sourceTransactionLineId` queda en `null` (siempre) y `itemId`/`warehouseId`/`itemGroupId` y
+  `sourceTransactionType`/`sourceTransactionId` **solo si difieren**: el total no se atribuye a una línea de
+  documento concreta. El **informe por norma de reparto** ve una fila donde antes veía N del mismo documento, con el
+  mismo total; los **tramos de una misma norma no se agrupan entre sí** (difieren en `dimension`).
+- El saldo por cuenta de la **columna de moneda secundaria** puede moverse **±1 centavo** (la línea agrupada lleva su
+  propia conversión).
+- El **informe ICE por artículo** lee `itemId` de la pata `ICE_PAGAR`, que **hoy ningún builder puebla** (declarado
+  por si algún día se puebla).
 
 ## Pendiente del tramo
 
