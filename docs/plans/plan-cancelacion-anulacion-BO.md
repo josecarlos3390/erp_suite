@@ -626,7 +626,7 @@ El dinero era correcto en los tres (`subtotal 124,78 + IVA 16,22 = 141,00`, `des
 
 - Los dos caminos de recepción **desde factura** que toman el costo de la línea del payload (3378/4655) siguen neteando: mismo arreglo, con el modo del documento como discriminante.
 
-## Ronda 14 — T254: la EDICIÓN de cotizaciones (MEDICIÓN HECHA, implementación pendiente)
+## Ronda 14 — T254: la EDICIÓN de cotizaciones (CERRADA)
 
 ### Medición (sonda `_probe-t254-cot-edit.ts`, base de desarrollo: canasta 150/50/200 con cabecera 25 %)
 
@@ -650,6 +650,25 @@ En todas las líneas `lineSubtotal` queda **0/null** (y `lineTotal` también): l
 3. **Totales del documento desde las líneas** (`calcDocumentTotalsFromLines`) y la cabecera **referencial** (modo + pct/amt), de modo que `Σ líneas = documento`.
 4. El mismo tratamiento en el **alta** para publicar `lineSubtotal` (hoy queda en 0).
 5. Gate: caso E2E que edite una cotización con cabecera **porcentual** y **por importe** y pinche el dinero por línea (12,50/37,50/50,00), `Σ líneas = totalDiscount` y `lineSubtotal` poblado, en venta y compra.
+
+### Entregado
+
+- **Los dos `update`** (venta y compra) con el pre-pase de la regla única, el descuento efectivo por línea (sin el ratio), `lineSubtotal` persistido y los totales desde las líneas; **el alta** también publica `lineSubtotal`.
+- **El defecto que destapó el gate nuevo**: `PATCH /sales-quotations/:id` y `PATCH /purchase-quotations/:id` respondían **404 «Cotización no encontrada»** en cualquier empresa donde el **id del usuario ≠ id del tenant**, porque los dos controladores llamaban `service.update(+id, dto, user.sub, user.tenantId)` contra la firma `update(id, dto, tenantId, updatedById?)` —argumentos **cambiados**—; en la base de desarrollo usuario y tenant son **1** y el defecto quedaba oculto. Los otros tres controladores con esa forma (devoluciones de venta y compra, solicitudes de compra) tienen la firma en el orden contrario y **no** estaban afectados.
+- Gate E2E nuevo en `discount-propagation.e2e-spec.ts` (venta y compra; cabecera porcentual y por importe).
+
+### Medido después (A/B, misma sonda)
+
+**Venta** PATCH cabecera 10 % → `318,58 + 41,42 = 360,00`, `desc 40,00`, líneas `pct=10` con `desc` **15,00 / 5,00 / 20,00** (Σ = 40 = el documento) y `neto` 119,47 / 39,82 / 159,29; PATCH cabecera **importe 100** → **37,50 / 12,50 / 50,00** (prorrateo **por valor**) y Σ = 100 con el documento en 300,00; **compra** PATCH 10 % → `pct=10` con **15,00 / 5,00 / 20,00**; el alta publica `lineSubtotal` (99,56 / 33,19 / 132,74 al 25 %).
+
+### Gates
+
+- Unitarios **212 suites / 2667 tests**; E2E `discount-propagation` con el caso nuevo (y **21/22** en la corrida nocturna: el único fallo es un *flake* del arnés —`today` en UTC contra el día del tenant, ver abajo—); `tsc` (app y e2e) y `eslint` 0.
+
+### Declarado
+
+- **Flake del arnés E2E (no del flujo)**: `today` se calcula con `toISOString()` (UTC), así que a partir de las **20:00 de La Paz (UTC−4)** el día del tenant va **uno por detrás** y la NC «de hoy» cae en el futuro: `assertCreditNoteDate` responde 400 y el caso T254 (7b) falla por la hora a la que se corra. Se deja anotado en el propio caso.
+- Siguen abiertos: `addItem`/`updateItem` con cabecera **por importe** (re-prorrateo entre líneas) y el `PATCH` que devuelve las líneas de antes de la edición.
 
 ## Pendiente del tramo
 
