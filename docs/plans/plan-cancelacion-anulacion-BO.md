@@ -718,6 +718,30 @@ El importe **no** se redistribuye al agregar una línea —la nueva no recibe pa
 
 - Queda **un** punto del objetivo: los dos caminos de **recepción desde factura** que toman el costo de la línea del payload y siguen neteando (el resto de la cadena de compra ya usa el costo bruto/neto según el modo).
 
+## Ronda 17 — D10-b: el costo de la recepción en los caminos `multi-*` (ALCANCE CORREGIDO, pendiente de medición y arreglo)
+
+### Lo que dice el código (inspección, `purchase-receipts.service.ts`)
+
+Los cinco caminos que crean una recepción y su costo:
+
+| Camino | Método | Costo que persiste | Estado |
+| --- | --- | --- | --- |
+| Desde **pedido** | `createFromOrder` (~712) | ya arreglado en la ronda 12 | ✔ bruto en cabecera |
+| **Manual** | `createManual` (~1208) | ídem | ✔ bruto en cabecera |
+| Desde **varias FRC** (`from-multi-reserve-invoice`) | `createFromMultiReserveInvoice` (~4022) | `ii.cost` — el costo que la **FRC** capitalizó | ✔ (la FRC ya aplica el modo; en cabecera es bruto) |
+| Desde **varios pedidos** (`from-multi-order`) | `createFromMultiOrder` (~3378) | `line.priceNet ?? line.price ?? oi.priceNet ?? oi.price ?? catálogo` | ✗ **neto** |
+| Desde **varias cotizaciones** (`from-multi-quotation`) | `createFromMultiQuotation` (~4625) | ídem (con la rama de cotización vencida) | ✗ **neto** |
+
+**Corrección del declarado**: el camino «recepción desde factura» **no** estaba afectado (toma el costo de la FRC, que ya lo descuenta según su modo); los dos que quedan son los de **multi-pedido** y **multi-cotización**.
+
+### Arreglo (mismo patrón que la ronda 12 en `createFromOrder`)
+
+En los dos sitios: calcular el costo desde el **modo del documento** (`payload.discountMode ?? order.discountMode ?? 'line'`): **bruto** = neto de la línea + `discountTotal` prorrateado por la cantidad facturada; **neto** = el que ya usa. Después, verificar con la sonda que la recepción y su asiento (`Inventario D = bruto`) valúan lo mismo, y que `totalCost` = costo × cantidad.
+
+### Medición pendiente
+
+Sonda: dos pedidos manuales con cabecera 25 % → `POST /purchase-receipts/from-multi-order` con los dos → comparar `cost`/`totalCost` de la línea con el débito de inventario del asiento y con el costo que el alta manual (`from-order`) ya deja bruto. Ídem para `from-multi-quotation`.
+
 ## Pendiente del tramo
 
 - **T255: CERRADO** (D1-D7 + UI). Declarado del tramo:
