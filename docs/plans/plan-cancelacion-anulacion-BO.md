@@ -757,9 +757,13 @@ Dos pedidos manuales con cabecera 25 % (94 con IVA incluido) → `POST /purchase
 
 **Conclusión**: el punto declarado del **costo** queda **cerrado con la medición** (el neto de esos caminos es el correcto porque su documento es modo línea, no un descuido) — y de paso la sonda destapó un defecto **distinto y nuevo**: en `createFromMultiOrder` las líneas de la recepción publican **solo el costo**, así que la recepción multi-pedido muestra importes en **cero** y su `discountTotal` no conserva el prorrateo (lo que el objetivo pedía para las cadenas). El mismo patrón hay que comprobarlo en `createFromMultiQuotation` (~4678).
 
-### Arreglo pendiente (nuevo punto, fuera del alcance de esta ronda)
+### Entregado (misma ronda)
 
-En los dos caminos: persistir por línea los importes que ya se calculan en el bucle (`lineSubtotal`/`subtotal` = el neto, `taxAmount`, `discountPct`/`discountAmt` y `discountTotal` = el descuento efectivo de la línea del origen) y dejar que el `confirm` / `recalcTotalsFromPersistedLines` compongan los totales del documento desde esas líneas (la invariante ya usada en el resto del ERP).
+En **los dos** caminos (`createFromMultiOrder` y `createFromMultiQuotation`) la línea de la recepción **publica sus importes** con el mismo prorrateo del alta desde pedido (`prorateLineAmounts(oi|qi, cantidad, cantidadDelOrigen)`): `lineSubtotal`/`subtotal` (el neto), `lineTotal`, `taxAmount`, `discountPct`/`discountAmt` del origen y `discountTotal`; los **totales del documento** salen de las líneas (el `confirm` los recompone con la invariante de siempre). El **costo** se queda en el **neto** porque el destino es modo **línea** —y coincide con el débito de inventario del asiento—.
+
+### Medido después (A/B, misma sonda)
+
+`REC-17`: **`subtotal 124,78 + IVA 16,22 = total 141,00`, `desc 47,00`**, líneas `neto 62,39 / desc 23,50 / IVA 8,11 / costo 62,39` y asiento `Inventario D 62,39 / GRIR H 62,39` por línea (antes: documento y líneas en **0,00** salvo el costo).
 
 ## Pendiente del tramo
 
