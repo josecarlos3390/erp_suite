@@ -600,6 +600,32 @@ FCP manual de control) quedan **idénticos**: `subtotal 62,39 + IVA 8,11 = total
 - **T254** sigue abierto (edición de cotizaciones con materialización, `addItem`/`updateItem` con cabecera por
   importe y el `PATCH` que devuelve las líneas de antes).
 
+## Ronda 13 — D10-b, cierre: la CONSOLIDACIÓN MULTI (CERRADA)
+
+### Medición (sonda `_probe-d10b-multi.ts`, base de desarrollo: dos pedidos/cotizaciones/recepciones con cabecera 25 % facturados juntos)
+
+| Camino | Modo del destino | Línea antes (`lineSubtotal` / `desc` / `cost`) | Línea después |
+| --- | --- | --- | --- |
+| `from-multi-order` | **line** (R2) | 0,00 / 23,50 / **85,89** (bruto) | 62,39 / 23,50 / **62,39** (neto) |
+| `from-multi-quotation` | **line** | 0,00 / 23,50 / **85,89** (bruto) | 62,39 / 23,50 / **62,39** (neto) |
+| `from-multi-receipt` | **line** | 0,00 / 23,50 / **1.650,00** (costo del maestro) | 62,39 / 23,50 / **85,89** (el bruto que la recepción capitalizó y que la factura limpia del GRIR) |
+
+El dinero era correcto en los tres (`subtotal 124,78 + IVA 16,22 = 141,00`, `desc 47,00`): el descuento viaja **materializado a línea** (R2), así que no se aplicaba dos veces. Lo que estaba mal era el **`lineSubtotal`** (null/0, y el builder lee `lineSubtotal ?? subtotal`) y el **costo**, desalineado del asiento en los tres.
+
+### Entregado
+
+- `lineSubtotal` persistido en los tres caminos.
+- Costo capitalizable con `_capitalizedUnitCost` y el modo del **destino**: **neto** en multi-pedido y multi-cotización (modo línea: el descuento no figura en el asiento) y, en multi-recepción, el costo de la **línea de la recepción** (`ri.cost`, el bruto que el asiento limpia del GRIR) en vez del costo del maestro del artículo; `totalCost` = costo × cantidad.
+- **Defecto que destapó el gate nuevo**: la confirmación de la factura multi fallaba con **500** «Asiento desbalanceado … D=159,34 C=159,33». Causa: los totales se calculaban **en agregado** y el impuesto de la línea se **persiste redondeado** a centavos (`Decimal(14,2)`: 9,17) mientras el agregado sumaba el valor sin redondear (9,165 × 2 = 18,33) —el asiento, que sí suma las líneas, daba 18,34—. Cerrado: los totales se acumulan con el importe **redondeado** en multi-pedido y multi-cotización y salen **de las líneas persistidas** en multi-recepción (la invariante de `recalcHeader`).
+
+### Gates
+
+- Unitarios **212 suites / 2667 tests**; E2E `discount-propagation` **con caso nuevo** (la consolidación multi: destino en modo línea, `lineSubtotal` persistido, costo = neto en multi-pedido y = neto + descuento en multi-recepción) y `purchase-flow` en verde; `tsc` (app y e2e) y `eslint` 0.
+
+### Declarado
+
+- Los dos caminos de recepción **desde factura** que toman el costo de la línea del payload (3378/4655) siguen neteando: mismo arreglo, con el modo del documento como discriminante.
+
 ## Pendiente del tramo
 
 - **T255: CERRADO** (D1-D7 + UI). Declarado del tramo:
