@@ -695,6 +695,29 @@ La respuesta y la base **coinciden** (`[2, 2, 2]` en las dos) ✓. Y se cerró, 
 - `addItem`/`updateItem` con cabecera **por importe** (re-prorrateo entre líneas) sigue pendiente: hay que medirlo con un pedido **nacido de una cotización** (la sonda ya está escrita) y decidir el reparto del importe entre las líneas existentes y la nueva.
 - Los dos caminos de **recepción desde factura** que toman el costo de la línea del payload.
 
+## Ronda 16 — T254: `addItem` con cabecera por IMPORTE (MEDIDO: no hay defecto; la decisión ya estaba tomada)
+
+### Medición (sonda `_probe-t254-ped-add.ts`, base de desarrollo)
+
+Cotización 150/50/200 con cabecera **por importe** de 100 → pedido con **dos** líneas → `addItem` de la tercera (200):
+
+| Momento | Documento | Líneas | Σ descuentos vs cabecera |
+| --- | --- | --- | --- |
+| Pedido desde la cotización (2 líneas) | `total 100,00`, `desc 100,00` | `amt` **25** (50) y **75** (150) — prorrateo **por valor** ✓ | 100 = 100 ✔ |
+| Tras `addItem` (3.ª línea de 200) | `total 300,00`, `desc 100,00` | la nueva `amt=-`, `desc 0,00`; las otras conservan 25 y 75 | 100 = 100 ✔ |
+
+El importe **no** se redistribuye al agregar una línea —la nueva no recibe parte—, pero el documento queda **coherente**: su descuento sigue siendo el importe fijo (100), la suma de los descuentos de línea **igual** a la cabecera y el total del documento **igual** a la suma de sus líneas. Es la decisión que T254 dejó escrita en el propio código («con cabecera por IMPORTE no se toca aquí: el importe se prorratea sobre el documento y repartirlo línea a línea lo contaría dos veces»), y la alternativa (redistribuir el importe por valor entre las tres líneas: 12,50 / 37,50 / 50,00) **reescribiría retroactivamente** el descuento de líneas que el usuario no tocó. **Conclusión: no hay defecto que corregir; el declarado se cierra con la medición.** El caso **porcentual** sí recibía su parte desde T254 ✓.
+
+`updateItem` sobre una línea vinculada sigue su guarda de cantidad (`400 «Cantidad excede lo cotizado»` si se sube por encima de lo cotizado) — comportamiento correcto, medido.
+
+### Gates
+
+- Sonda en vivo (A/B arriba) + los gates ya verdes del tramo: unitarios **212 suites / 2667 tests**, E2E `discount-propagation` **33/33** y `sales-flow`; `tsc` y `eslint` 0. **Sin cambios de código** en esta ronda.
+
+### Declarado
+
+- Queda **un** punto del objetivo: los dos caminos de **recepción desde factura** que toman el costo de la línea del payload y siguen neteando (el resto de la cadena de compra ya usa el costo bruto/neto según el modo).
+
 ## Pendiente del tramo
 
 - **T255: CERRADO** (D1-D7 + UI). Declarado del tramo:
