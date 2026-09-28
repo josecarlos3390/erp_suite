@@ -670,6 +670,31 @@ En todas las líneas `lineSubtotal` queda **0/null** (y `lineTotal` también): l
 - **Flake del arnés E2E (no del flujo)**: `today` se calcula con `toISOString()` (UTC), así que a partir de las **20:00 de La Paz (UTC−4)** el día del tenant va **uno por detrás** y la NC «de hoy» cae en el futuro: `assertCreditNoteDate` responde 400 y el caso T254 (7b) falla por la hora a la que se corra. Se deja anotado en el propio caso.
 - Siguen abiertos: `addItem`/`updateItem` con cabecera **por importe** (re-prorrateo entre líneas) y el `PATCH` que devuelve las líneas de antes de la edición.
 
+## Ronda 15 — T254: el `PATCH` del pedido devolvía las líneas de ANTES (CERRADA)
+
+### Medición (sonda `_probe-t254-ped-edit.ts`, base de desarrollo)
+
+Pedido manual con cabecera **por importe** de 100 sobre la canasta 150/50/200 —el alta reparte bien (`desc` **37,50 / 12,50 / 50,00**, Σ = 100 = la cabecera)— y después un `PATCH` que sube la cantidad de todas las líneas a 2: la **respuesta** traía las cantidades **[1, 1, 1]** mientras la base ya tenía **[2, 2, 2]**.
+
+La misma sonda midió dos cosas más: `addItem` y `updateItem` **exigen una línea vinculada a una cotización** (`quotationItemId`): `addItem` responde **400 «quotationItemId must be an integer number»** y `updateItem` sobre una línea manual **400 «No se puede editar una línea desvinculada»** —así que el caso declarado de la cabecera **por importe** con esas dos operaciones necesita un pedido nacido de una cotización—; y las líneas del pedido no publican `lineSubtotal` (el `subtotal` del pedido es el **importe cobrado**, no el neto, así que publicarlo cambiaría lo que leen los documentos de la cadena: se deja como está, medido).
+
+### Causa y arreglo
+
+`sales-orders.update` terminaba su `$transaction` con `return this.findOne(id, tenantId)` y `findOne` lee con `this.prisma` —**otra** conexión—, así que dentro de la transacción (todavía sin confirmar) devolvía el estado **anterior**. Ahora la transacción se espera con `await` y el documento se lee **después del commit**.
+
+### Medido después (A/B)
+
+La respuesta y la base **coinciden** (`[2, 2, 2]` en las dos) ✓. Y se cerró, de paso, el ***flake* del arnés** que aparecía de noche: el caso T254 (7b) calculaba `today` con `toISOString()` (UTC) y a partir de las 20:00 de La Paz el día del tenant va uno por detrás, así que la NC «de hoy» caía en el futuro (`assertCreditNoteDate` → 400); ahora el «hoy» del caso se toma del **día del tenant** (`Intl.DateTimeFormat` con `America/La_Paz`) y el caso pasa a cualquier hora ✅.
+
+### Gates
+
+- Unitarios **212 suites / 2667 tests**; E2E `sales-flow` en verde y `discount-propagation` **33/33** (el caso de la fecha ya no depende de la hora); `tsc` y `eslint` 0.
+
+### Declarado
+
+- `addItem`/`updateItem` con cabecera **por importe** (re-prorrateo entre líneas) sigue pendiente: hay que medirlo con un pedido **nacido de una cotización** (la sonda ya está escrita) y decidir el reparto del importe entre las líneas existentes y la nueva.
+- Los dos caminos de **recepción desde factura** que toman el costo de la línea del payload.
+
 ## Pendiente del tramo
 
 - **T255: CERRADO** (D1-D7 + UI). Declarado del tramo:
