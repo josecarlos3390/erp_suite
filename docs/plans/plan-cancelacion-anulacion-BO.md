@@ -1,6 +1,6 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-25)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-26)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
 > diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
 > hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
@@ -22,7 +22,9 @@
 > 215 documentos de compras y ventas. La **ronda 25** cierra los **tres defectos vivos de ventas** que esa auditoría
 > destapó (los `sale-invoices/from-*` re-aplicaban el descuento ya materializado, la entrega desde una FRV restaba el
 > IVA dos veces y el neteo de la FRV derivaba centavos): **con esto los arreglos de compras quedan replicados en
-> ventas**. Plan
+> ventas**. La **ronda 26** cierra el reporte del usuario sobre la **FRC-43**: la recepción **parcial** también conoce
+> su FRC de origen, la **regresión de layout** de los totales (la nota ensanchaba la caja) queda reparada y los
+> totales de **todos** los documentos se leen como una cuenta (`bruto − descuento = neto`, `neto + IVA = total`). Plan
 > del tramo anterior (descuento de cabecera):
 > `docs/plans/plan-descuento-cabecera-parte2.md`.
 
@@ -1370,6 +1372,75 @@ Unitarios **212 suites / 2673 tests**, E2E completo **41 suites** (con el caso `
 - El `subtotal` de **línea** mantiene sus **dos significados** por familia (importe **cobrado** en cotizaciones y pedidos; **base neta** en facturas, NC y devoluciones) —es el P10 de la auditoría de la ronda 24—: por eso el caso E2E pincha el **dinero del destino contra el del origen** y no `Σ líneas == cabecera` en todas las familias.
 - La **respuesta del alta** `POST /delivery-orders/from-reserve-invoice` no publica `totalDiscount` (el `GET` y la base **sí**: medido `DEL-15` → `100,00` en ambos); el caso E2E lee el documento **persistido**. Queda como observación menor de contrato de API.
 - El canon del neteo cambia los centavos de la FRV en los casos de medio centavo (es el arreglo): los importes de la FRV ahora coinciden con los del resto de familias.
+
+## Ronda 26 — el origen de la recepción PARCIAL, la regresión de los totales y totales más explicativos (CERRADA)
+
+### Lo que reportó el usuario (2026-09-28, probando con la FRC-43)
+
+> «acabo de crear la factura de reserva FRC-43, y cuando genero la recepción me muestra "Recepción Manual" ¿por qué muestra eso,
+> si no es manual, esa recepción viene de un flujo, o sea se está generando desde la FRC?; la visualización de los totales se
+> modificó: ahora usa todo el ancho y en los documentos la visualización es más ajustada, en todos los documentos; además los
+> totales que muestra la recepción no se entienden, porque dice Descuento −100, subtotal (sin IVA) 260.99 y Total 300, ¿puede ser
+> más explicativo? ¿qué sugieres, qué propones?»
+
+### Medición antes (sonda de navegador `zz-r26-totales-origen.spec.ts` + `_probe-r26-frc43.ts`)
+
+```
+(1) ORIGEN
+    REC-19/20/21 (recepciones de la FRC-43, camino «varias FRC» de la r22):
+      líneas con baseDocType = PURCHASE_INVOICE · baseDocId = 79 (FRC-43)
+      FRC-43.purchaseReceiptId = null  ⇒  hasLinkedReserveInvoice = false
+      pantalla: origen no reconocido (margen «—», caja sin el origen)
+    (el DIÁLOGO de una recepción NUEVA ya decía «¿Crear recepción desde la F. Reserva FRC-43?»: eso lo cerró la r24)
+(2) LAYOUT — la regresión de la r24
+    la nota dentro de `.totals-box` (flex column) ensanchaba la caja:
+      recepción: caja de totales 260 px → 920 px (todo el ancho) y las cajas apiladas en DOS filas
+      otros documentos: 260 px lado a lado (correcto)
+(3) TOTALES ILEGIBLES
+    recepción (borrador): «Descuento −100,00 · Subtotal (sin IVA) 260,99 · Total 300,00»
+      el subtotal YA es el neto (las filas no suman) y el renglón de IVA estaba OCULTO (r24) ⇒ el salto de 39,01 era invisible
+```
+
+### Entregado
+
+**(backend)** `findOneInternal` resuelve las FRC **desde las líneas** (`baseDocId` de las líneas con `baseDocType` de factura
+de compra → facturas con `isReserve = 'Y'`) y devuelve `reserveInvoices` + `isFromReserveInvoice`: toda recepción de una
+reserva publica su origen y su código, incluidas las **parciales** y las del camino **multi** (sin tocar el `baseDocType` de
+la línea, que el builder del asiento usa para Tránsito vs GRIR).
+
+**(frontend)** el formulario usa esos campos (origen, código de la FRC, margen y etiquetas); la nota salió de la caja a un slot
+propio de la sección (`[totalsSectionNote]` + `.totals-section-note` con `flex-basis: 100%`); y el bloque de totales
+**compartido por todos los documentos** pinta ahora **`Precio de lista (sin IVA)`** (`neto + descuento`) antes del descuento y
+titula el neto **`Neto (sin IVA)`** cuando hay descuento ⇒ `bruto − descuento = neto`; en la recepción el IVA **vuelve a
+mostrarse** etiquetado `IVA de la F. Reserva (ya contabilizado)` y el total como `Total de la F. Reserva`.
+
+### Medido después (misma sonda)
+
+```
+recepción (borrador): Precio de lista (sin IVA) 360,99 · Descuento −100,00 · Neto (sin IVA) 260,99 ·
+                      IVA de la F. Reserva (ya contabilizado) 39,01 · Total de la F. Reserva 300,00
+                      + nota al pie de la sección (fueraDeLaCaja = true)
+layout: cajas 260 px + 360 px en la MISMA fila (antes 920 px apiladas)
+REC-19/20/21: reconocidas como de la FRC-43 (Total de la F. Reserva + aviso + margen calculado)
+FRC/FVE/PO:   Precio de lista 360,99 · Descuento −100,00 · Neto 260,99 · IVA (13 %) 39,01 · Total (con IVA) 300,00
+```
+
+### Gates
+
+`tsc` de app y specs **0**, **Karma** (2 casos nuevos: el bruto+neto de la caja y la nota proyectada **fuera** de la caja),
+`ng build` AOT **0**, prettier limpio; backend unitarios **212 suites / 2673 tests** y E2E completo **41 suites**.
+
+### Declarado
+
+- **La redacción es una propuesta**: `grossLabel`, `netSubtotalLabel`, `taxLabel` y `totalLabel` son *inputs* del componente
+  compartido; cambiar el texto (o volver a ocultar el IVA en la recepción) es una línea.
+- Los importes de **referencia** de las recepciones parciales suman **±0,01** frente a su FRC (cada parcial prorratea por su
+  cuenta); el **costo capitalizado** (lo que contabiliza el asiento) suma exacto.
+- Las recepciones anteriores a la r24 de la base de desarrollo se **repararon** (sonda
+  `_probe-r26-reparar-recepciones.ts --aplicar`): es una **migración de datos de prueba**, no un cambio de código, y no toca
+  `cost`/`totalCost`.
+- El renglón de IVA **vuelve** a mostrarse en la recepción (la r24 lo ocultaba): con las filas sumando y la etiqueta «ya
+  contabilizado» el usuario entiende el 300,00; si prefiere ocultarlo otra vez, se cambia `[showTax]` en una línea.
 
 ## Pendiente del tramo
 
