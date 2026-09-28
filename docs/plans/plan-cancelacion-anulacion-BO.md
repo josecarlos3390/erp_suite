@@ -1088,6 +1088,11 @@ En el **espejo** (`_probe-r23-columnas.ts`, `rowDiscountDisplay(…, stored = fa
 `discTotal 65,63 / 21,88 / 87,50` (**Σ 175,01**, que no es el descuento de ningún documento) y «total con
 descuento» Σ 224,99 contra un documento de 300,00.
 
+La misma sonda de navegador midió la pestaña «💰 Costos» de la `FRC-44` (**antes y después**, sin cambios):
+`COSTO UNIT.`/`COSTO TOTAL` = **135,37 / 45,12 / 180,50** (Σ **360,99** = el tránsito que el asiento capitaliza) y
+`MARGEN VS. COSTO` = 0,00: el costo que se ve es el **guardado** (neto + descuento, T239) y es derivable de la
+propia grilla (`97,87 + 37,50 = 135,37`).
+
 ### Causa
 
 La **ronda 19** quitó la guarda `isStoredDocument` del prorrateo visual (D9) para que el **borrador** también lo
@@ -1228,13 +1233,13 @@ borrador se esperaba en 175,00 cuando el prorrateo al centavo de cada línea da 
 - Sondas de la **ronda 23** (tampoco se commitean): `backend-erp/scripts/_probe-r23-columnas.ts` (lo guardado por el
   backend frente a lo que pinta la grilla, con el espejo nuevo y el viejo), `_probe-r23-candidatos.js` y
   `_probe-r23-id.js` (documentos guardados con la cabecera materializada y el **id** del código `FRC-44` = **80**:
-  el formulario de la FRC se abre por **id**, no por código), y la sonda **de navegador**
-  `erp-frontend/e2e/zz-r23-live-medicion.spec.ts`, que se corre con
-  `npx playwright test e2e/zz-r23-live-medicion.spec.ts --project=chromium --no-deps` contra el `ng serve` vivo
-  (`localhost:4200`, que escucha en **`[::1]`**: `Test-NetConnection 127.0.0.1` da falso aunque esté arriba) y lee la
-  pestaña «💸 Descuentos» de `FRC-44` y de `PO-1`. Para el **A/B en la pantalla** se hace `git stash` en
-  `erp-frontend` y se espera a que el log del `ng serve` diga `Application bundle generation complete` antes de
-  volver a correr la sonda; después `git stash pop`.
+  el formulario de la FRC se abre por **id**, no por código), y una sonda **de navegador** temporal
+  (`erp-frontend/e2e/zz-r23-live-medicion.spec.ts`, **retirada tras medir** para no contaminar la suite funcional:
+  se corre con `npx playwright test e2e/<archivo>.spec.ts --project=chromium --no-deps` contra el `ng serve` vivo
+  —`localhost:4200`, que escucha en **`[::1]`**: `Test-NetConnection 127.0.0.1` da falso aunque esté arriba— y lee las
+  pestañas «💸 Descuentos» y «💰 Costos» de `FRC-44` y la de descuentos de `PO-1`). Para el **A/B en la pantalla** se
+  hace `git stash` en `erp-frontend` y se espera a que el log del `ng serve` diga `Application bundle generation
+  complete` antes de volver a correr la sonda; después `git stash pop`.
 - En una **base limpia** los artículos de las sondas ya no existen: se toman tres artículos de la semilla con
   `trackingType: 'NONE'` (los serializados exigen número de serie) y el precio se manda en el documento.
 - El campo del espejo es `reversalJournalEntryId` **en el original** (apunta al espejo); el espejo **no** lleva
