@@ -1677,6 +1677,49 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
 
+## Ronda 36 — el motivo y el congelado también cubren las F. Reserva (CERRADA)
+
+Cierra un **defecto de las rondas 33-b2 y 34**: el mapa ruta→modelo del descuento apuntaba a las tablas
+`SaleReserveInvoice`/`PurchaseReserveInvoice`, que están **vacías**.
+
+### Lo que se midió ANTES (sonda `_probe-r36-frc-congelada.ts`)
+
+```
+filas: PurchaseInvoice isReserve='Y' 57 · PurchaseReserveInvoice 0
+       SaleInvoice    isReserve='Y' 25 · SaleReserveInvoice    0
+
+FRC manual (FRC-58) -> PurchaseInvoice isReserve=Y status=CLOSED pct=25 motivo=null  asiento=1
+                        (el motivo tecleado NO se guardó: updateMany sobre una tabla sin filas)
+```
+
+El congelado, además, **no encontraba el documento** por la ruta de la reserva (el `findFirst` del modelo «Reserve»
+devolvía `null` y el guard salía sin decidir).
+
+### Entregado
+
+`src/common/discount-document.util.ts`: las rutas `/sale-reserve-invoices` y `/purchase-reserve-invoices` resuelven a
+los modelos de **factura** (`saleInvoice`/`purchaseInvoice`), con la medición documentada en el propio archivo. El
+id de la ruta es el de la fila de factura.
+
+### Medido DESPUÉS (misma sonda)
+
+```
+FRC manual (FRC-59) -> PurchaseInvoice isReserve=Y status=CLOSED pct=25
+                       motivo="sonda r36: motivo de la FRC"   ← persistido
+                       PATCH cabecera 30 % por /purchase-invoices/:id   -> 409 · pct sigue 25
+```
+
+### Gates
+
+Backend `eslint`/`tsc` **0**, unitarios **215 suites / 2719 tests** (2 casos nuevos) y **E2E completo 41 suites /
+390 tests** (caso `R36` en `discount-propagation`). El frontend no se toca.
+
+### Declarado
+
+1. Las tablas `SaleReserveInvoice`/`PurchaseReserveInvoice` quedan **vestigiales** (0 filas); la migración de b2 les
+   añadió la columna por simetría.
+2. El caso E2E `R36` pincha las dos cosas: el motivo persistido y el 409 por la ruta de la reserva.
+
 ## Ronda 35 — el permiso del tope se concede desde la pantalla, y limpieza de sondas (CERRADA)
 
 Cierra los dos huecos declarados tras el tramo: **(1)** el permiso `discounts:authorize` no se podía conceder desde la
