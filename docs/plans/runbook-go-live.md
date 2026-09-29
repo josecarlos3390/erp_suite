@@ -205,6 +205,41 @@ railway run -- npx prisma db seed
 > pendientes (`20260905010000_bulk_import_lock_managed`,
 > `20260905020000_journal_source_type_enum`).
 
+### Reset + seed **dentro** del contenedor (medido 2026-09-29)
+
+Con `railway ssh` se ejecuta en el contenedor, donde el host privado **sí** resuelve. La
+secuencia completa, ya probada de punta a punta (`determined-recreation` / `backend-erp`):
+
+```bash
+railway ssh -s backend-erp 'npx prisma migrate reset --force --skip-seed'
+railway ssh -s backend-erp 'npx prisma db push --skip-generate --accept-data-loss'
+railway ssh -s backend-erp 'node scripts/apply-manual-migrations.mjs --best-effort'
+railway ssh -s backend-erp 'NODE_OPTIONS=--max-old-space-size=768 npx ts-node --transpile-only prisma/seed.ts'
+```
+
+Por qué así:
+
+- `prisma migrate reset` **corta la cadena** en su paso de `generate` (el `&&` del
+  `npm run db:recreate` no sigue) ⇒ los tres pasos siguientes van **a mano**.
+- `db push` pide **`--accept-data-loss`** (la BD recién reseteada está vacía: no hay nada
+  que perder).
+- El seed **no** puede ser `npx prisma db seed` en un contenedor de **1 GB**
+  (`/sys/fs/cgroup/memory.max` = 999.997.440 B): el type-checking de `ts-node` **muere con
+  `FATAL ERROR: Reached heap limit`**. Con **`--transpile-only`** y el heap acotado
+  (`--max-old-space-size=768`) termina bien (el chequeo de tipos ya lo hizo el build). Se
+  puede llamar también por `prisma db seed` una vez que la imagen incluye `src/`,
+  `tsconfig*.json` y `prisma.config.ts` (**Dockerfile desde `0d89e16`**).
+- **Sin deploy disponible** (p. ej. durante el incidente de Railway del 2026-09-29, que
+  dejó el webhook sin disparar y respondía *Deploys have been paused temporarily*), los
+  fuentes se pueden **subir al contenedor vivo** por SSH:
+  `tar -czf - src tsconfig.json tsconfig.build.json prisma.config.ts | railway ssh -s backend-erp 'cd /app && tar -xzf -'`
+  (por `cmd`/`bash`, para no romper el binario con la tubería de PowerShell). Es efímero:
+  se pierde al redesplegar.
+
+Verificación de paridad local↔Railway (misma huella por API, con el token del tenant):
+`/items` **137** · `/partners` **14** · `/warehouses` **4** · `/exchange-rates` **1** ·
+`/settings` **35 claves**, y `/health` **200** en ambos.
+
 ---
 
 ## 4. Despliegue del frontend (SSR)
