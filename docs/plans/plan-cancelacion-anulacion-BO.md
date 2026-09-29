@@ -1724,7 +1724,9 @@ fecha o algo así».
   `_dayAnchor()` en `src/document-series/document-series.service.ts` —con la zona de la configuración del tenant, que
   `SettingsService` ya cachea por tenant— que usan los **tres** caminos: resolución automática, override explícito
   (`requestedSeriesId`) y preview. Los dos helpers (`_seriesCoversDate`, `_seriesCoversDateRange`) comparan ahora
-  `startDate <= día && endDate >= día`.
+  `startDate <= día && endDate >= día`. Y el `?date=` del **preview** del correlativo se resuelve con `resolveDocumentDate`
+  (medianoche del tenant, igual que el alta) en vez de `new Date(date)`: la pantalla manda un **día** (`YYYY-MM-DD`) y como
+  instante UTC se anclaba en el día anterior (el chip podía anunciar una serie distinta de la que el guardado usaría).
 
 ### Medido DESPUÉS
 
@@ -1735,6 +1737,16 @@ fecha o algo así».
 - **Réplica de la consulta (misma sonda)**: el 31/12 pasa de `NINGUNA` a `COT-2026` en las **dos** sesiones de Postgres.
 - **Base local restaurada**: se borraron **4** cotizaciones residuales de la medición anterior (`COT-1..4`, sin
   pedidos, sin enlaces y sin asientos) y el correlativo de `COT-2026` volvió al valor del seed (**1**).
+- **PRODUCCIÓN (Railway `backend-erp-production-5c3b` + Vercel `erp-frontend-gules`)**: el push a
+  `josekilla3390/backend-erp` disparó el despliegue del commit `518e67b`; `GET /health` → **200** y, con el endpoint de
+  **solo lectura** `GET /document-series/next-preview?docType=SALES_QUOTATION&date=2026-12-31` (no consume correlativo),
+  el backend desplegado responde **`COT-2026 · COT-1`** mientras `?date=2027-01-01` responde **`code: null`** —ese
+  `null` prueba además que el día se ancla en la zona del **tenant** y no en UTC: con el parseo anterior el 01/01 a
+  medianoche UTC caía en el 31/12 y habría anunciado serie—; en el navegador de producción, las series se leen
+  **`01/01/2026 → 31/12/2026`** (cero filas con `31/12/2025` o `30/12/2026`) y el correlativo de la base de producción
+  sigue en **1** (la verificación no escribió nada). Los cuatro espejos quedaron con el mismo SHA que el local
+  (`backend origin`/`deploy` `518e67b`, `frontend origin` `106eaf43`, `raíz origin` `613ae52`, comprobado con
+  `git ls-remote`).
 
 ### Gates
 
@@ -1742,7 +1754,7 @@ fecha o algo así».
   limpio en 8 archivos.
 - Backend: `eslint`/`tsc` **0**, **215 suites / 2766 tests** (9 casos nuevos: 4 en `document-series.service.spec.ts` y 5
   en `timezone.util.spec.ts` para `tenantCalendarDay`) y **E2E completo 41 suites / 394 tests** (caso `R41` en
-  `sales-flow`).
+  `sales-flow`, que incluye las dos aserciones del preview del correlativo).
 
 ### Declarado
 
