@@ -1,6 +1,6 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-30)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-31)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
 > diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
 > hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
@@ -1676,6 +1676,60 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
   sería correcto, porque el payload también lo llevaría).
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
+
+## Ronda 31 — el descuento de cabecera VIAJA y los listados lo identifican (CERRADA en su primer incremento)
+
+### Lo que preguntó el usuario
+
+> «¿el descuento sirve para que viaje en los flujos? Por ejemplo si coloco un descuento de cabecera en una cotización,
+> ¿viaja en el flujo hasta la factura? […] yo creo que debe ser referencial, al final los cálculos se hacen con el descuento
+> en línea que se replica o se prorratea en las líneas que se generan por el descuento en cabecera.»
+
+### Medición (sondas `_probe-r31-viaje.ts`, `-multi.ts` y `-asiento-fve.ts`; cadenas NUEVAS, cabecera 25 %, canasta 150/50)
+
+```
+VENTAS    COT-36 → PED-29 → DEL-22 → FVE-29
+COMPRAS   PCOT-33 → PO-31 → REC-35 → FRC-56          (las CUATRO de cada cadena)
+   modo=header · cabPct=25,00 · cabAmt=0,00 · totalDiscount=50,00 · total=150,00
+   líneas: pct 25 · desc 37,50 / 12,50                ← el EFECTO, materializado en la línea
+ASIENTO FVE-29 (cabecera)              ASIENTO FVE-20 (modo línea, desc 3,00)
+   Descuentos sobre Ventas      D 43,50   (SIN pata de descuento — D10)
+   Crédito Fiscal Desc. Ventas  D  6,50   Ventas H 80,53 · CxC D 91,00
+   Ventas de Mercaderías        H 180,49
+   IVA — Débito Fiscal          H  19,51
+   CxC Clientes                 D 150,00
+MULTI     FRC-57 (consolidación de dos recepciones con cabecera)
+   modo=line · cabPct=null · totalDiscount=100,00 · 4 líneas `pct 25`   ← nace en modo LÍNEA (R2)
+```
+
+**Conclusión**: la intuición del usuario es la correcta y es el canon. La cabecera guarda la **intención** (modo + valor) y
+es lo que (a) **viaja** por el flujo, (b) permite que el **asiento** desglose el descuento solo cuando es de cabecera (D10)
+y (c) permite **distinguirlo** en un listado o reporte. El **hecho** vive en la línea (`discountPct`/`discountAmt` +
+`discountTotal`). Y una regla para los reportes: **el `%` de cabecera no se suma ni se multiplica** — el dinero es
+`totalDiscount` o la cuenta de descuentos del asiento.
+
+### Entregado (primer incremento: el indicador; solo frontend)
+
+`shared/utils/header-discount.pipe.ts` (pipe `headerDiscount` + `headerDiscountLabel`: solo en modo cabecera, un valor y no
+dos —`%` o importe, como el motor—, y el modo anunciado si la cabecera está vacía) y la columna **«Dto. cabecera»** con el
+chip `.header-discount-chip` en los listados de las cuatro familias donde el descuento **aterriza**: **FCP, FVE, FRC, FRV**.
+Medido antes de escribirlo: las respuestas de listado de las seis familias **ya traen** `discountMode`,
+`headerDiscountPct`, `headerDiscountAmt` y `totalDiscount` ⇒ **sin cambios de backend**.
+
+### Gates
+
+`tsc` app/spec/e2e **0**, **Karma 2398/2398** (5 casos nuevos del pipe + 1 por cada listado), **`ng build` AOT 0** y
+prettier limpio.
+
+### Declarado (siguientes incrementos, en el orden propuesto)
+
+1. **Filtro** «solo documentos con descuento de cabecera»: requiere un parámetro nuevo (`discountMode`) en los `findAll` de
+   las cuatro familias (backend) y su control en la barra de filtros; el indicador ya está.
+2. **Tope + motivo + autorización** del descuento de cabecera (umbral configurable por empresa, p. ej. 10 %).
+3. Extender el indicador a **pedidos y cotizaciones** (donde el descuento se **captura**): las respuestas de listado ya
+   traen los campos.
+4. **Congelar la cabecera referencial** al contabilizar (una factura emitida no debería mover su descuento; eso se corrige
+   con NC).
 
 ## Pendiente del tramo
 
