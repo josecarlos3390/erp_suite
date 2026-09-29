@@ -1677,6 +1677,55 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
 
+## Ronda 34 (c) — la cabecera referencial se CONGELA al contabilizar (CERRADA)
+
+Cierra el último declarado del tramo de descuentos: «una factura emitida no debería mover su descuento; eso se corrige
+con NC».
+
+### Lo que se midió ANTES (sonda `_probe-r34-congelar.ts`)
+
+```
+COT (borrador)  PATCH cabecera 25 % → 30 %  -> 200 · pct=30          (el borrador SÍ es editable)
+FCP manual      asiento=true · status=OPEN
+                PATCH cabecera 25 % → 30 %  -> 200 · pct=30 desc=45 total=105   ← el asiento seguía en 25 %
+                PATCH solo el motivo        -> 200 · motivo reescrito
+```
+
+Es decir: **un documento contabilizado podía mover su cabecera y su motivo**, dejando el mayor y el documento en
+desacuerdo.
+
+### Entregado
+
+- **`src/common/discount-document.util.ts`** (nuevo): el mapa **ruta → modelo** y los tipos de asiento por familia,
+  compartido por el interceptor del motivo y el guard (antes el mapa vivía dentro del interceptor).
+- **Congelado en `DiscountPolicyGuard`**: en `PATCH`/`PUT` de un documento concreto cuyos campos de cabecera
+  **cambian** respecto de lo guardado, si el documento **ya tiene asiento** → **409** con la salida correcta. El candado
+  mira **tener asiento**, no el `status` (medido: la factura manual está `OPEN` y contabilizada a la vez), y reenviar el
+  mismo descuento (lo que hacen los formularios al guardar) **no** se bloquea.
+
+### Medido DESPUÉS (misma sonda)
+
+```
+COT (borrador)  PATCH cabecera 25 % → 30 %  -> 200 · pct=30
+FCP contabilizada  PATCH 25 % → 30 %        -> 409 «… ya está contabilizado … nota de crédito …»
+                   documento                 -> intacto (pct=25 · desc=37,50 · total=112,50)
+                   PATCH solo el motivo      -> 409
+```
+
+### Gates
+
+Backend `eslint`/`tsc` **0**, unitarios **215 suites / 2717 tests** (5 casos nuevos del congelado) y **E2E completo
+41 suites / 389 tests** (caso nuevo en `discount-propagation`). El frontend **no** se toca en esta ronda, así que sus
+gates no se re-ejecutan (Karma 2413/2413 y `ng build` AOT 0 siguen siendo los de b2).
+
+### Declarado
+
+1. El congelado cubre las **ocho** familias que capturan el descuento (las demás lo heredan de su origen).
+2. Un documento **histórico** con cabecera y **sin motivo** exige teclear el motivo al re-guardarlo: es la regla de b2.
+3. El **frontend** no deshabilita los campos (la pantalla no sabe si el documento tiene asiento): el usuario recibe el
+   409 con el porqué. Deshabilitarlos es un paso siguiente declarado.
+4. La corrección es **NC o anulación**: no hay edición «con reversa automática» del asiento.
+
 ## Ronda 33 (b2) — el MOTIVO del descuento de cabecera: obligatorio sobre el umbral y guardado en el documento (CERRADA)
 
 Cierra el declarado «**motivo**» del tramo (el tope y la autorización entraron en b1).
