@@ -1677,6 +1677,52 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
 
+## Ronda 37 — el descuento de un documento contabilizado queda bloqueado en pantalla (CERRADA)
+
+Cierra el punto **(3)** declarado tras el tramo: el backend ya respondía 409 (ronda 34-c), pero el usuario lo descubría
+**al guardar**.
+
+### Lo que se midió ANTES
+
+```
+GET /purchase-invoices/105 (FCP-44)  -> transactionId=229   ← el GET ya lo publica
+GET /sale-invoices/54      (FVE-29)  -> transactionId=217
+GET /purchase-reserve-invoices/107 (FRC-59) -> transactionId=235
+GET /sale-reserve-invoices/53      (FRV-25) -> transactionId=214
+
+asientos por tipo de documento origen: QUOTATION 0 · SALES_ORDER 0 · PURCHASE_ORDER 0
+```
+
+Es decir: el candado se puede saber **sin backend nuevo** en las cuatro familias de factura/reserva, y cotizaciones y
+pedidos **nunca** se contabilizan (no necesitan candado).
+
+### Entregado
+
+- `@Input() locked` en el componente compartido `document-discount-mode`: deshabilita el **toggle** y el **motivo** y
+  añade el aviso «Documento contabilizado: el descuento de cabecera no se puede modificar. Se corrige con una **nota de
+  crédito** o anulando el documento.» (con `data-testid="discount-locked"`).
+- Los **cuatro** formularios de factura/reserva mapean `transactionId` al cargar el documento y pasan
+  `[locked]="!!form.get('transactionId')?.value"`; los tipos (`transactionId?: number | null`) en modelos, servicios y
+  formularios.
+
+### Medido DESPUÉS
+
+Con `transactionId`: los dos botones del toggle y el campo del motivo quedan **deshabilitados**, el aviso aparece y
+pulsar el toggle **no** cambia de modo. Sin él (borrador): todo operativo.
+
+### Gates
+
+Frontend `tsc` app/spec **0**, **Karma 2417/2417** (3 casos nuevos), **`ng build` AOT 0** y prettier (ratchet) limpio
+en **19 archivos**. El backend **no** cambia (sus gates siguen en 215 suites / 2719 tests y E2E 41 / 390 de la ronda 36).
+
+### Declarado
+
+1. El candado se calcula en el frontend desde `transactionId`; una factura **anulada** lo conserva y se muestra
+   bloqueada (razonable: su descuento ya no se toca).
+2. El **409** del backend sigue siendo la red de seguridad para quien llame al API directamente.
+3. El arnés de Karma **stubea la plantilla** en los formularios, así que la regresión se pinza en el **estado** que la
+   plantilla consume y en el spec del componente compartido (DOM real).
+
 ## Ronda 36 — el motivo y el congelado también cubren las F. Reserva (CERRADA)
 
 Cierra un **defecto de las rondas 33-b2 y 34**: el mapa ruta→modelo del descuento apuntaba a las tablas
