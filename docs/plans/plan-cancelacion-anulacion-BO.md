@@ -1677,6 +1677,40 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
 
+## Ronda 35 — el permiso del tope se concede desde la pantalla, y limpieza de sondas (CERRADA)
+
+Cierra los dos huecos declarados tras el tramo: **(1)** el permiso `discounts:authorize` no se podía conceder desde la
+UI (el hueco real del incremento del tope) y **(4)** las sondas y sus datos de prueba seguían en el árbol y en la BD de
+desarrollo.
+
+### (1) El permiso, concedible desde la pantalla
+
+- **Medido antes**: `pages/permissions/permissions.service.ts` tenía **94 módulos y 17 acciones** y **ni** el módulo
+  `discounts` **ni** la acción `authorize`: la pantalla no ofrecía la casilla, así que el permiso del tope solo se
+  concedía con `PUT /permissions` a mano.
+- **Entregado**: el módulo **«Descuentos»** (grupo *Documentos*) y la acción **«Autorizar»**, con un caso de Karma que
+  pincha que concederla escribe `discounts: ['authorize']` en la configuración del rol (y que el JWT lo lleva al
+  guard, que es quien lo lee).
+- **Gates**: `tsc` app/spec **0**, **Karma 2414/2414**, **`ng build` AOT 0** y prettier (ratchet) limpio.
+- **Declarado**: la columna «Autorizar» se muestra en **todos** los módulos (el catálogo de acciones es global); hoy solo
+  `discounts` la consume.
+
+### (4) Limpieza de sondas y de los datos de prueba
+
+| qué | cómo se limpió |
+| --- | --- |
+| usuario de prueba `r33-user` (rol USER, 0 documentos) | borrado |
+| tipo de cambio USD→BOB copiado a hoy por la sonda | borrado (la BD queda como estaba) |
+| `COT-48..52` y `PED-35` (sin asiento) | borrados con sus líneas |
+| `FCP-40/41/42/44` (con asiento y stock) | **anuladas por la APP** (`POST /purchase-invoices/:id/cancel`): revierte stock y contabiliza la reversa — nada se borró a mano |
+| 24 scripts `_r3*.js`, 91 logs `_r3*.log`, 9 sondas `_probe-r3*.ts`, 6 specs Playwright `zz-*.spec.ts` | borrados (temporales por diseño, nunca se commitearon) |
+
+- **Medido después**: `facturas de sonda sin anular: 0`; los cuatro contadores en **0** y `git status` de los tres
+  repos **sin ruido**.
+- **Declarado**: quedan **85** `_probe-*.ts` de rondas anteriores sin commitear (temporales por diseño: la regresión
+  vive en las suites) y los documentos de sondeo de rondas previas siguen en la BD de desarrollo; se pueden borrar si se
+  quiere, pero **no** son de esta ronda.
+
 ## Ronda 34 (c) — la cabecera referencial se CONGELA al contabilizar (CERRADA)
 
 Cierra el último declarado del tramo de descuentos: «una factura emitida no debería mover su descuento; eso se corrige
