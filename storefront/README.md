@@ -44,10 +44,13 @@ tienda cargado.
 | Variable               | Obligatoria                          | Para que                                                                      |
 | ---------------------- | ------------------------------------ | ----------------------------------------------------------------------------- |
 | `ERP_API_URL`          | si (default `http://localhost:3001`) | URL base del ERP. El canal vive en `/storefront/...`, **sin** prefijo `/api`. |
-| `STOREFRONT_API_KEY`   | **si**                               | Clave del canal (`x-storefront-key`). **Solo servidor.**                      |
+| `STOREFRONT_API_KEY`   | **si**                               | Clave del canal (`x-storefront-key`). **Solo servidor.** Una clave = una empresa. |
 | `STOREFRONT_CITY`      | si (default `SCZ`)                   | Ciudad por defecto cuando el cliente todavia no eligio.                       |
 | `ERP_TIMEOUT_MS`       | no (default `8000`)                  | Tope de cada peticion al ERP.                                                 |
-| `NEXT_PUBLIC_SITE_URL` | no (default `http://localhost:3000`) | Canonicos, Open Graph, sitemap y JSON-LD.                                     |
+| `NEXT_PUBLIC_SITE_URL` | no (default `http://localhost:3000`) | Canonicos, Open Graph, sitemap y JSON-LD. **Obligatoria en produccion.**      |
+| `NEXT_PUBLIC_SITE_NAME` | no (default `Tienda ERP`)           | Nombre de la empresa en cabecera, pie, `<title>`, Open Graph y JSON-LD.       |
+| `NEXT_PUBLIC_SITE_DESCRIPTION` | no (default del codigo)      | Descripcion de la empresa para buscadores y redes.                            |
+| `IMAGE_REMOTE_HOSTS`   | no (default: solo marcadores)        | Hosts **ajenos** de las fotos reales, separados por comas (`next/image` solo optimiza hosts declarados). |
 
 ### Regla «server-only» (decision D10)
 
@@ -57,6 +60,102 @@ Server Actions o route handlers, con `x-storefront-key` tomada de `process.env.S
 de filtrar la clave. Los unicos islotes cliente son: buscador, selector de ciudad, contador y
 pagina del carrito, galeria, boton de compra, navegacion de categorias (para marcar la activa) y
 **conmutador de tema** (F9.1); ninguno conoce la clave ni la URL del ERP.
+
+## Despliegue: una tienda por empresa (Vercel)
+
+**El modelo, medido en el codigo**: el tenant **no** sale del dominio ni de un subdominio, sale de
+la **clave del canal** (`StorefrontApiKeyGuard` → `WebApiKey.keyHash` → `tenantId`). Una clave
+pertenece a **una** empresa, asi que **una tienda publicada = un despliegue con su clave**:
+
+```
+        repo (monorepo)                     Vercel                      ERP (un backend)
+  ┌────────────────────────┐        ┌──────────────────────┐      ┌────────────────────────┐
+  │ backend-erp/  (API)    │◄───────┤ tienda-a             │      │ WebApiKey (empresa A)  │
+  │ erp-frontend/ (back)   │        │  root: storefront    │─────►│ WebApiKey (empresa B)  │
+  │ storefront/   (tienda) ├───────►│  STOREFRONT_API_KEY=A│      │ WebApiKey (empresa C)  │
+  └────────────────────────┘        ├──────────────────────┤      └────────────────────────┘
+                                    │ tienda-b             │
+                                    │  STOREFRONT_API_KEY=B│
+                                    └──────────────────────┘
+```
+
+### Alta de una empresa nueva (ERP)
+
+```bash
+cd backend-erp
+npm run crear:tenant2                     # o POST /tenants/:id/seed para maestros
+npm run storefront:seed -- --tenant <slug|id> --check   # resuelve el contexto, sin escribir
+npm run storefront:seed -- --tenant <slug|id>           # catalogo web de esa empresa
+npm run storefront:key -- --tenant <slug|id> --label "Tienda A" \
+  --origins https://tienda-a.com,https://www.tienda-a.com
+```
+
+`storefront:key` imprime **una sola vez** la clave en claro (en la base solo queda su SHA-256) y
+deja el bloque de variables listo para copiar. `--list` muestra las claves de todas las empresas y
+`--deactivate <prefijoDelHash>` apaga una (rotacion).
+
+**En produccion** los dos scripts corren **dentro** del contenedor (el `DATABASE_URL` de Railway no
+resuelve desde el portatil) y con `--transpile-only`:
+
+```bash
+railway ssh -s backend-erp 'cd /app && NODE_OPTIONS=--max-old-space-size=768 \
+  npx ts-node --transpile-only scripts/create-storefront-key.ts --tenant empresa-a \
+  --label "Tienda A" --origins https://tienda-a.com'
+```
+
+### Alta de la tienda (Vercel)
+
+1. **New Project** → el mismo repositorio → **Root Directory: `storefront`** (es un monorepo: sin
+   esto el build falla).
+2. **Environment Variables** (por proyecto, no compartidas):
+
+   | Variable                       | Valor                                        |
+   | ------------------------------ | -------------------------------------------- |
+   | `ERP_API_URL`                  | `https://backend-erp-production-5c3b.up.railway.app` |
+   | `STOREFRONT_API_KEY`           | la clave **de esa** empresa (paso anterior)  |
+   | `STOREFRONT_CITY`              | la ciudad por defecto de esa tienda (`SCZ`, `LPZ`, …) |
+   | `NEXT_PUBLIC_SITE_URL`         | `https://tienda-a.com`                        |
+   | `NEXT_PUBLIC_SITE_NAME`        | el nombre comercial de la empresa            |
+   | `NEXT_PUBLIC_SITE_DESCRIPTION` | su descripcion (opcional)                     |
+   | `IMAGE_REMOTE_HOSTS`           | sus hosts de fotos reales (opcional)          |
+
+3. **Dominio**: el dominio propio de la empresa (`tienda-a.com`) en ese proyecto.
+4. **CORS del canal**: el dominio ya esta declarado en `allowedOrigins` de la clave (paso del
+   ERP). No es imprescindible mientras la tienda hable **solo desde el servidor** (D10), pero es
+   lo que deja el canal cerrado si algun dia el navegador llama directo.
+
+### Verificacion (sin navegador)
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H 'x-storefront-key: sf_...' \
+  https://backend-erp-production-5c3b.up.railway.app/storefront/cities
+```
+
+**200** = la clave y el canal de esa empresa responden; **401** = clave inactiva o inexistente;
+**403** = el `Origin` del navegador no esta declarado en esa clave. Para comprobar el aislamiento,
+la **misma** ruta con la clave de otra empresa debe devolver **su** catalogo.
+
+### Rotacion de la clave (sin cortar la tienda)
+
+1. `npm run storefront:key -- --tenant <slug> --label "Tienda A (2026-10)" --origins ...` → crea la
+   clave **nueva** (la vieja sigue viva).
+2. Cambia `STOREFRONT_API_KEY` en el proyecto de Vercel de esa tienda y **redespliega**.
+3. `npm run storefront:key -- --deactivate <prefijoDelHashViejo>` → apaga la vieja.
+
+### Limites declarados de este modelo
+
+1. **No hay resolucion por host**: una sola app sirviendo N dominios (lo que preveia el §5 del plan
+   del e-commerce) exigiria middleware + una fuente de verdad host→clave que **hoy no existe**
+   (no hay columna de dominio; solo `allowedOrigins`). Es una fase aparte, no un flag.
+2. **No hay pantalla de claves**: el alta y la rotacion son estos scripts; la pantalla «Canales de
+   tienda» (clave, dominios, activa/inactiva) es trabajo del back office.
+3. **Identidad visual por empresa**: el nombre y la descripcion ya son variables, pero el **color de
+   marca** (`--sf-*` de `src/styles/brand.css`) y el **logo** siguen en el codigo: con el modelo de
+   un despliegue por empresa se cambian en la hoja de marca de ese despliegue; la pantalla por
+   empresa es D23 (pendiente declarado).
+4. **Las fotos reales** necesitan su host en `IMAGE_REMOTE_HOSTS` (y dejar de ser un marcador de
+   posicion para que la tienda no dibuje su placeholder, D24).
 
 ## Comandos
 
@@ -71,7 +170,7 @@ pagina del carrito, galeria, boton de compra, navegacion de categorias (para mar
 | `npm run sync:tokens:check` | gate: falla si `tokens.css` esta desincronizado                                                           |
 | `npm run sync:fonts`        | copia los `.woff2` de Inter del ERP a `public/fonts`                                                      |
 | `npm run sync:fonts:check`  | gate: falla si falta una fuente o difiere de la del ERP                                                   |
-| `npm run e2e`               | Playwright sobre `next start` en `:3100` contra la API real (27 casos)                                    |
+| `npm run e2e`               | Playwright sobre `next start` en `:3100` contra la API real (43 casos)                                    |
 | `npm run e2e:visual`        | gate visual (F9.6): 15 capturas contra el **fixture grabado** del canal, `next start` en `:3200`          |
 | `npm run e2e:visual:update` | regenera las capturas; con `STORE_VISUAL_RECORD=1` **vuelve a grabar** el fixture (API del ERP en marcha) |
 | `npm run e2e:a11y`          | `axe-core` (WCAG 2.0/2.1 A y AA + best-practice) sobre 17 pantallas, claro y oscuro                       |
@@ -134,6 +233,14 @@ productos de sus subcategorias, ficha con precio/disponibilidad/JSON-LD, busqued
 idempotencia, error de existencia), referencia del pago offline, seguimiento publico y cambio de
 ciudad (SCZ vs LPZ). El articulo sin existencia en La Paz y el producto de la subcategoria **se
 descubren por la API en la propia prueba**, nunca se codifican a mano.
+
+> **El gate E2E ESCRIBE en la base de desarrollo** (medido el 2026-09-29): una corrida completa
+> (43 casos) deja **9 pedidos web (WEB-1..9), 1 entrega (DEL-1) y 1 factura de reserva (FRV-1)
+> contabilizadas** (2 asientos), ademas de 1 resena, 1 solicitud de servicio y sus clientes web.
+> No es un fallo de los casos —alta real del pedido es justo lo que miden— pero **no hay limpieza
+> automatica** (`afterAll`): la base queda sucia y deja de ser comparable con el seed. Para volver
+> al estado del seed: `cd backend-erp && npm run db:recreate` (con la API parada, porque una
+> conexion viva bloquea el reset). Pendiente declarado: que el arnés limpie lo que crea.
 
 ## Gates de cierre (F9.6): visual, accesibilidad, contraste y rendimiento
 

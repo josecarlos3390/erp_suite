@@ -1895,3 +1895,88 @@ foco). Ademas: `typecheck` **0**, `lint` **0/0**, `build` **0**, `audit:contrast
 **Declarado**: el desplegable es un **islote cliente** (la nav ya lo era, para el `aria-current`); sin
 JavaScript el panel no se abre. El carril sigue teniendo scroll horizontal en pantallas estrechas, que
 es lo que permite que el panel viva fuera de el.
+
+## §20 Despliegue multi-tenant por empresa (T216-bis — 2026-09-29)
+
+**Lo que preguntó el usuario**: «si tengo 2 o 3 tenants debería desplegar una url de ecommerce para
+cada tenant, pero actualmente nuestro ecommerce corre en localhost puerto 3000, ¿y para los otros
+tenants? ¿cómo va a funcionar? Si lo quiero desplegar en Vercel, ¿cómo es la estructura del ecommerce
+para cada tenant?».
+
+### Lo que se midió ANTES (el hueco real)
+
+1. **El tenant sale de la CLAVE, no del host**: `StorefrontApiKeyGuard` hashea `x-storefront-key`, busca
+   `WebApiKey.keyHash` y de ahí saca el `tenantId` (comentario textual del guard: *«el tenant sale de la
+   clave, no del `Host`»*). En la tienda hay **0** usos de `headers()`/`Host` (medido). Es decir: **una
+   clave = una empresa = un despliegue**; `localhost:3000` es la tienda de la empresa 1.
+2. **La clave no se podía crear**: se creaba **solo** en `prisma/seed-storefront.ts` (medido: **0**
+   escrituras de `WebApiKey` fuera de la semilla y las pruebas, y **ningún** endpoint/pantalla: los
+   controladores del canal son `storefront`, `web-orders`, `web-promotions`, `web-stores`), y su hash se
+   calculaba a mano en **tres** sitios (semilla, guardia, prueba).
+3. **El catálogo web no se podía sembrar para otra empresa**: `seedStorefront()` solo lo llamaba
+   `prisma/seed.ts` (empresa 1). Existe `npm run crear:tenant2` (empresa + admin + maestros), pero
+   **nada** le sembraba la tienda.
+4. **La tienda no tenía identidad por empresa**: `SITE_NAME`/`SITE_DESCRIPTION` **fijos** en
+   `src/lib/site.ts` ⇒ dos empresas publicadas se llamaban «Tienda ERP» en cabecera, `<title>`, Open
+   Graph y JSON-LD.
+5. **Las fotos reales no se optimizarían**: `next.config.mjs` solo declaraba los hosts de **marcador de
+   posición** (picsum); `next/image` solo optimiza hosts declarados.
+6. **El README de la tienda no tenía sección de despliegue** (solo `npm run build`).
+
+### Entregado
+
+- **`storefront-key.util.ts`** (backend): formato de la clave (`sf_` + 24 bytes `base64url`),
+  `hashStorefrontKey()` como **pieza única** (la consumen la semilla y la guardia: ya no pueden
+  divergir) y `parseAllowedOrigins()` con la **misma** normalización que compara la guardia
+  (`normalizeOrigin`). Spec de **10 casos**, con el hash de la clave de desarrollo **fijado** contra el
+  valor medido fuera del código (`07b6b01918fa…`).
+- **`npm run storefront:key`** (`scripts/create-storefront-key.ts`): alta con clave **generada o
+  propia**, dominios validados/normalizados, **idempotente por hash**, `--list` (empresa, estado,
+  dominios, último uso) y `--deactivate <prefijo>` para rotar; imprime el bloque de variables del
+  despliegue y avisa de que la clave **no se puede recuperar**.
+- **`npm run storefront:seed`** (`scripts/seed-storefront-tenant.ts`): arma el contexto del canal desde
+  los datos **reales** de la empresa (sucursal `PRIN`, UoM `UNIDAD`, IVA por defecto, grupos) y llama a
+  la **misma** `seedStorefront()`; `--check` no escribe y, si falta un maestro, **no inventa**: dice cuál
+  y con qué se crea.
+- **Tienda**: `NEXT_PUBLIC_SITE_NAME` / `NEXT_PUBLIC_SITE_DESCRIPTION` y `IMAGE_REMOTE_HOSTS`.
+- **Runbook** en `storefront/README.md`: modelo (diagrama), alta en el ERP, proyecto de Vercel con
+  **`Root Directory: storefront`**, tabla de variables por proyecto, verificación por `curl`, rotación
+  en tres pasos y límites declarados.
+
+### Medido DESPUÉS (A/B con la API real)
+
+| Prueba | Resultado |
+| --- | --- |
+| `cities` con la clave **generada por el script** (sin `Origin`) | **200** (el camino de la tienda) |
+| `cities` con `Origin` declarado | **200** |
+| `cities` con el `Origin` declarado **con barra final** | **200** (la trampa del CORS, cubierta por la normalización) |
+| `cities` con `Origin` ajeno | **403** |
+| `cities` con clave inexistente | **401** |
+| Reejecutar con la misma `--key` | **actualiza** etiqueta/dominios, no duplica |
+| `--origins "tienda.example,ftp://x"` | **✗ se rechaza** con el motivo (exit 1) |
+| `--tenant no-existe` | **✗** lista las empresas que hay (exit 1) |
+| `storefront:seed --check` (empresa 1) | `moneda=BOB sucursal=1 uom=1 impuesto=3 grupos=ELEC,INFO,OFIC,LIMP,SERV,HOGAR,DEPO,MODA,NINO`, sin escribir |
+
+**Gates**: backend `tsc`/`eslint` **0** y **216 suites / 2779 tests** (suite nueva del canal); tienda
+`next lint` **0**, `tsc --noEmit` **0**, `next build` **0** y **E2E 43/43** contra la API real.
+
+### Declarado
+
+1. **El modelo sigue siendo un despliegue por empresa**. La **resolución por host** que preveía §5
+   (`tienda.<slug>` o dominio propio) **no** está implementada: exigiría middleware en la tienda y una
+   fuente de verdad host→clave que hoy **no existe** (no hay columna de dominio: solo
+   `WebApiKey.allowedOrigins`, que es CORS, no enrutado). Es una fase aparte, con su propia medición.
+2. **No hay pantalla** de claves ni dominios: el alta y la rotación son estos dos scripts. La pantalla
+   «Canales de tienda» (clave, dominios, activa/inactiva) es trabajo del back office.
+3. **Identidad visual por empresa a medias**: el nombre y la descripción ya son variables; el **color de
+   marca** (`--sf-*` de `brand.css`) y el **logo** siguen en el código (D23 pendiente).
+4. **El gate E2E de la tienda ESCRIBE la base de desarrollo y no limpia** (medido hoy): una corrida de 43
+   casos deja **9 pedidos web (`WEB-1..9`), 1 entrega (`DEL-1`) y 1 factura de reserva (`FRV-1`)** con
+   **2 asientos** contabilizados, más 1 reseña, 1 solicitud de servicio y clientes web. Es coherente con
+   lo que miden (alta real del pedido) pero no hay `afterAll` que lo limpie; la base local se restauró
+   con `npm run db:recreate` (verificado: 0 asientos, 0 facturas, 108 publicados, 3 clientes web). Queda
+   como pendiente **que el arnés limpie lo que crea**.
+5. **En producción** los dos scripts corren **dentro** del contenedor (`railway ssh`), con
+   `--transpile-only` (el contenedor tiene ~1 GB: la lección del seed), porque el `DATABASE_URL` de
+   Railway no resuelve desde el portátil.
+
