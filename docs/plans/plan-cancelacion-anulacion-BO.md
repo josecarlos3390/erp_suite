@@ -1677,6 +1677,58 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
 
+## Ronda 32 — el indicador y el filtro «Dto. cabecera» llegan a PEDIDOS y COTIZACIONES (CERRADA, incremento a)
+
+Cierra el **declarado (2) de la ronda 31**: el indicador y el filtro existían solo en las familias donde el descuento
+**aterriza**, y faltaban en las dos donde se **captura** (pedidos y cotizaciones, de venta y de compra).
+
+### Medición (sonda `_probe-r32-filtro.ts`, API real, empresa 1)
+
+```
+ANTES (el parámetro se ignoraba en las CUATRO familias)
+PO     sin filtro 31  (31 cabecera / 0 línea)   ?header 31   ?line 31   ← ?line = el total sin filtrar
+PED    sin filtro 29  (27 / 2)                  ?header 29   ?line 29
+PCOT   sin filtro 33  (33 / 0)                  ?header 33   ?line 33
+COT    sin filtro 36  (34 / 2)                  ?header 36   ?line 36
+       y las cuatro respuestas YA traían discountMode / headerDiscountPct / headerDiscountAmt
+       (el findMany no recorta campos) ⇒ el INDICADOR no necesitaba backend
+
+DESPUÉS (misma sonda, mismos documentos)
+PO     ?header 31 = base 31   ?line  0 = base 0    ← la cara que discrimina: 31 → 0
+PED    ?header 27 = base 27   ?line  2 = base 2    ← 29 → 27 y 29 → 2
+PCOT   ?header 33 = base 33   ?line  0 = base 0    ← 33 → 0
+COT    ?header 34 = base 34   ?line  2 = base 2    ← 36 → 34 y 36 → 2
+```
+
+### Entregado
+
+- **Backend**: `where.discountMode` en los `findAll` de `purchase-orders`, `sales-orders`, `purchase-quotations` y
+  `sales-quotations` (dato **referencial**, mismo contrato y comentario que la ronda 31) y `@Query('discountMode')` en los
+  cuatro controladores.
+- **Frontend**: la columna **«Dto. cabecera»** con el chip `.header-discount-chip` en los cuatro listados —reutilizando el
+  pipe `headerDiscount` de la ronda 31, sin tocarlo—, el control **«Descuento»** en las cuatro barras de filtros
+  (`discountFilter` + `setDiscountFilter(mode)`: fija el filtro, vuelve a la página 1 y recarga) y el parámetro en los
+  cuatro `getAll`. **Spec nuevo** para el listado de **cotizaciones de compra**, que no tenía ninguno.
+- **Diff neto**: 16 archivos de frontend + 8 de backend.
+
+### Gates
+
+Frontend `tsc` app/spec/e2e **0**, **Karma 2409/2409** (9 casos nuevos: 2 por listado —el del filtro y el de la
+columna— más el `should create` del spec nuevo), **`ng build` AOT 0** y prettier (ratchet) limpio; backend `eslint` y
+`tsc` **0**, unitarios **212 suites / 2673 tests** y **E2E completo 41 suites / 387 tests** (corrido con
+`HEALTH_DISK_THRESHOLD_PERCENT=0.98`: el caso `/health` es **ambiental** —`D:` al **90,4 %** de uso contra el umbral del
+**90 %** del endpoint— y con el umbral alto pasa).
+
+### Declarado
+
+1. El **ratchet de prettier** obligó a **formatear los cuatro listados legacy** tocados (arrastraban formato previo): el
+   churn queda **dentro** de esos archivos y se **revirtió** lo que un glob formateó de más (los `*-form`, los pickers y
+   los specs de formularios), para no ensanchar el diff.
+2. El filtro es **referencial**: filtra la **intención** con la que se pactó el documento, no el importe descontado
+   (para dinero, `totalDiscount` o la cuenta de descuentos del asiento).
+3. Siguen abiertos el **tope + motivo + autorización** del descuento de cabecera y **congelar la cabecera referencial**
+   al contabilizar.
+
 ## Ronda 31 — el descuento de cabecera VIAJA y los listados lo identifican y lo filtran (CERRADA, dos incrementos)
 
 ### Lo que preguntó el usuario
