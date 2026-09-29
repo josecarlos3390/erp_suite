@@ -824,14 +824,22 @@ export async function createOrder(
   });
 }
 
-/** GET /storefront/tracking?order=&email= — null si el pedido no existe (404). */
+/**
+ * GET /storefront/tracking?order=&email=|code= — null si el pedido no existe (404).
+ *
+ * El número de pedido **solo no basta** (decisión del usuario, 2026-09-29): hay que enviar
+ * el **correo del pedido** o su **código de seguimiento**, el que la confirmación le enseña
+ * al comprador. Medido antes: `?order=WEB-1` sin credencial devolvía 200 con las líneas y
+ * los importes, y los números son secuenciales, así que las ventas web eran enumerables.
+ */
 export async function getTracking(
   order: string,
   email?: string,
+  code?: string,
 ): Promise<OrderView | null> {
   return erpGetOrNull<OrderView>(
     "/storefront/tracking",
-    { order: order.trim(), email: email?.trim() },
+    { order: order.trim(), email: email?.trim(), code: code?.trim() },
     REVALIDATE.tracking,
   );
 }

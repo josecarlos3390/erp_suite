@@ -369,7 +369,14 @@ export function CheckoutForm({
       // El pedido ya existe en el ERP: se vacia el carrito y se va a la
       // confirmacion, que vuelve a leer el pedido del canal.
       clear();
-      router.push(`/pedido/${encodeURIComponent(order.orderNumber)}`);
+      // El **codigo de seguimiento** viaja en la URL: el canal no entrega un pedido solo por
+      // su numero (medido: `?order=WEB-1` sin credencial devolvia el pedido entero y los
+      // numeros son secuenciales). Va el codigo y no el correo porque no es un dato personal.
+      const orderPath = `/pedido/${encodeURIComponent(order.orderNumber)}`;
+      const trackingCode = order.trackingCode ?? '';
+      router.push(
+        trackingCode === '' ? orderPath : `${orderPath}?c=${encodeURIComponent(trackingCode)}`,
+      );
     } catch (error) {
       const message =
         error instanceof CheckoutRequestError

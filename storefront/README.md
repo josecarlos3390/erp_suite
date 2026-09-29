@@ -345,6 +345,27 @@ comparador y favoritos). La promo se administra desde el back office
 (`GET/PATCH /web-promotions`, permiso `web-promotions:view|edit`) y la tienda la pinta como capa
 propia en la ficha, el carrito y el desglose del checkout.
 
+### Seguimiento del pedido (F3): el numero solo no basta
+
+La consulta publica del pedido exige **una prueba de propiedad** ademas del numero: el **correo** con
+el que se compro **o** el **codigo de seguimiento** (`WEB-XXXXXXXX`, que la confirmacion le ensena al
+comprador). Sin ninguna de las dos el canal responde **404** —no 403: no confirma si el pedido
+existe—. Medido antes (2026-09-29): `?order=WEB-1` **sin credencial** devolvia **200** con las lineas,
+los importes y el `salesOrderId`, y los numeros son **secuenciales**, asi que las ventas web de la
+empresa eran enumerables; ademas el correo se comparaba **con mayusculas** (el mismo correo con otra
+caja respondia 404 «No existe el pedido»). Las dos pruebas se comparan ahora **sin distinguir
+mayusculas** y la regla vive en un solo sitio del backend (`provesOrderOwnership`).
+
+- `/seguimiento?order=&proof=`: el campo **«Correo o codigo de seguimiento» es obligatorio**; el
+  servidor lo envia al canal como `email` o `code` segun su forma (un correo lleva `@`).
+- `/pedido/[orderNumber]?c=<codigo>`: la confirmacion lleva el **codigo** en la URL (no el correo: no
+  es un dato personal y no acaba en el historial ni en los logs). Sin el codigo, esa direccion responde
+  **404**.
+- **Declarado**: el numero de pedido sigue siendo secuencial (es el del documento del ERP) — lo que se
+  cierra es que **por si solo** abra el pedido; y un pedido **sin** correo y **sin** codigo no se puede
+  consultar en publico (el alta escribe el codigo siempre, asi que solo puede venir de filas antiguas).
+  Esto **no** es una cuenta de cliente (F4 sigue pendiente): sigue sin haber sesion.
+
 ### Modalidad de facturacion (F7)
 
 En el **paso 2** del checkout el comprador elige **cuando** quiere su factura, y esa eleccion viaja

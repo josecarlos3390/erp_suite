@@ -5,7 +5,9 @@ import { notFound } from 'next/navigation';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { OrderSummary } from '@/components/order-summary';
 import { PaymentReferenceForm } from '@/components/payment-reference-form';
+import { CHECKOUT_LIMITS } from '@/lib/checkout';
 import { getTracking } from '@/lib/erp';
+import { readParam, type SearchParams } from '@/lib/query';
 
 export const metadata: Metadata = {
   title: 'Confirmacion del pedido',
@@ -17,20 +19,30 @@ export const dynamic = 'force-dynamic';
 
 interface OrderPageProps {
   params: { orderNumber: string };
+  searchParams: SearchParams;
 }
 
 /**
- * Confirmacion del pedido (`/pedido/[orderNumber]`).
+ * Confirmacion del pedido (`/pedido/[orderNumber]?c=<codigoDeSeguimiento>`).
  *
- * Se lee del canal **desde el servidor** (`GET /storefront/tracking?order=`), con
- * el numero de pedido y sin correo: es la pantalla inmediatamente posterior a la
- * compra, no una consulta publica —para consultar despues esta `/seguimiento`, que
- * si puede pedir el correo—. Si el pedido no existe (o el numero esta mal), la
- * pagina responde 404 en vez de inventar un estado.
+ * Se lee del canal **desde el servidor** (`GET /storefront/tracking`) con el numero **y el
+ * codigo de seguimiento** que el checkout acaba de recibir y que la propia pantalla le
+ * ensena al comprador: el canal **no** entrega un pedido solo por su numero (medido: antes
+ * si, y los numeros son secuenciales ⇒ las ventas web eran enumerables). El codigo viaja en
+ * la URL en vez del correo a proposito: no es un dato personal y no acaba en el historial ni
+ * en los logs.
+ *
+ * Si el pedido no existe, el numero esta mal **o falta el codigo**, la pagina responde 404 en
+ * vez de inventar un estado (para consultar despues esta `/seguimiento`).
  */
-export default async function OrderPage({ params }: OrderPageProps): Promise<JSX.Element> {
+export default async function OrderPage({
+  params,
+  searchParams,
+}: OrderPageProps): Promise<JSX.Element> {
   const orderNumber = decodeURIComponent(params.orderNumber).trim();
-  const order = orderNumber === '' ? null : await getTracking(orderNumber);
+  const code = readParam(searchParams['c'])?.slice(0, CHECKOUT_LIMITS.trackingCode);
+  const order =
+    orderNumber === '' ? null : await getTracking(orderNumber, undefined, code);
 
   if (order === null) {
     notFound();

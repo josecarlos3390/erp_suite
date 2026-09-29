@@ -405,14 +405,22 @@ export async function placeOrder(input: ApiOrderInput): Promise<ApiOrder> {
   });
 }
 
-/** `GET /storefront/tracking` — `null` cuando el canal responde 404. */
+/**
+ * `GET /storefront/tracking` — `null` cuando el canal responde 404.
+ *
+ * El numero de pedido **solo no basta** (decision del usuario, 2026-09-29): hay que enviar
+ * el correo del pedido o su **codigo de seguimiento**. Antes, `?order=WEB-1` sin credencial
+ * devolvia 200 con las lineas y los importes, y los numeros son secuenciales, asi que las
+ * ventas web eran enumerables.
+ */
 export async function trackOrder(
   order: string,
-  email?: string,
+  proof: { email?: string; code?: string } = {},
 ): Promise<ApiOrder | null> {
   const url = new URL(`${ERP_API_URL}/storefront/tracking`);
   url.searchParams.set("order", order);
-  if (email !== undefined) url.searchParams.set("email", email);
+  if (proof.email !== undefined) url.searchParams.set("email", proof.email);
+  if (proof.code !== undefined) url.searchParams.set("code", proof.code);
   const response = await fetch(url, {
     headers: {
       accept: "application/json",

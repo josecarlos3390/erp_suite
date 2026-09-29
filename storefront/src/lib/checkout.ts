@@ -66,6 +66,8 @@ export const INVOICING_MODE_LABELS: Readonly<Record<string, string>> = {
 export const CHECKOUT_LIMITS = {
   cityCode: 20,
   idempotencyKey: 80,
+  /** Codigo de seguimiento del pedido (`WEB-XXXXXXXX`), la prueba de propiedad en la consulta. */
+  trackingCode: 40,
   notes: 500,
   items: 50,
   quantity: 20,
@@ -521,4 +523,4 @@ export const TAX_NOTICE =
 
 /** Aviso de donde se sigue el pedido despues de confirmarlo. */
 export const TRACKING_NOTICE =
-  'El estado del pedido se consulta en cualquier momento en /seguimiento con el numero de pedido y tu correo.';
+  'El estado del pedido se consulta en cualquier momento en /seguimiento con el numero de pedido y el correo con el que compraste (o el codigo de seguimiento que ves aqui).';

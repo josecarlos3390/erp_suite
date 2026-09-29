@@ -29,10 +29,17 @@ interface Lookup {
   error: string | null;
 }
 
+/** Un correo se reconoce por la arroba; lo demas se trata como codigo de seguimiento. */
+function proofParts(proof: string | undefined): { email?: string; code?: string } {
+  if (proof === undefined) return {};
+  return proof.includes('@') ? { email: proof } : { code: proof };
+}
+
 /** Consulta el pedido en el canal; el 404 se devuelve como estado vacio honesto. */
-async function lookup(orderNumber: string, email: string | undefined): Promise<Lookup> {
+async function lookup(orderNumber: string, proof: string | undefined): Promise<Lookup> {
   try {
-    const order = await getTracking(orderNumber, email);
+    const parts = proofParts(proof);
+    const order = await getTracking(orderNumber, parts.email, parts.code);
     return { order, error: null };
   } catch (error) {
     if (error instanceof ErpError) {
@@ -48,18 +55,22 @@ async function lookup(orderNumber: string, email: string | undefined): Promise<L
 /**
  * Seguimiento publico (`/seguimiento`).
  *
- * El formulario es un `GET` a esta misma pagina: el servidor lee `order` y `email`
- * de la query, consulta el canal (`GET /storefront/tracking`) y pinta el estado.
- * El navegador nunca habla con el ERP (D10). Reglas de honestidad:
+ * El formulario es un `GET` a esta misma pagina: el servidor lee `order` y `proof` de la
+ * query, consulta el canal (`GET /storefront/tracking`) y pinta el estado. El navegador
+ * nunca habla con el ERP (D10). Reglas de honestidad:
  *  - sin numero de pedido, estado vacio que explica que hace falta;
- *  - pedido inexistente o correo que no corresponde -> el 404 del canal se muestra
- *    como «no encontramos ese pedido», **sin** confirmar si el numero existe.
+ *  - **el numero solo no basta** (medido el 2026-09-29: `?order=WEB-1` sin credencial
+ *    devolvia el pedido entero y los numeros son secuenciales): `proof` lleva el **correo
+ *    del pedido** o su **codigo de seguimiento**, y se envia al canal como `email` o `code`
+ *    segun su forma;
+ *  - pedido inexistente, correo ajeno o codigo ajeno -> el 404 del canal se muestra como
+ *    «no encontramos ese pedido», **sin** confirmar si el numero existe.
  */
 export default async function TrackingPage({ searchParams }: TrackingPageProps): Promise<JSX.Element> {
   const orderNumber = readParam(searchParams['order'])?.slice(0, CHECKOUT_LIMITS.idempotencyKey);
-  const email = readParam(searchParams['email'])?.slice(0, CHECKOUT_LIMITS.email);
+  const proof = readParam(searchParams['proof'])?.slice(0, CHECKOUT_LIMITS.email);
   const lookupResult =
-    orderNumber === undefined ? null : await lookup(orderNumber, email);
+    orderNumber === undefined ? null : await lookup(orderNumber, proof);
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,8 +79,10 @@ export default async function TrackingPage({ searchParams }: TrackingPageProps):
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-fg">Seguimiento de pedido</h1>
         <p className="text-sm text-fg-secondary">
-          Consulta el estado de tu pedido con el numero que te dio la tienda. Si registraste un
-          correo al comprar, escribelo igual para ver el detalle.
+          Consulta el estado de tu pedido con el numero que te dio la tienda <strong>y</strong> el
+          correo con el que compraste o el codigo de seguimiento (por ejemplo
+          <span className="font-mono"> WEB-1A2B3C4D</span>). Las dos cosas salen en tu
+          confirmacion.
         </p>
       </header>
 
@@ -93,19 +106,20 @@ export default async function TrackingPage({ searchParams }: TrackingPageProps):
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label htmlFor="seguimiento-email" className="text-xs font-medium text-fg-secondary">
-              Correo (opcional)
+            <label htmlFor="seguimiento-proof" className="text-xs font-medium text-fg-secondary">
+              Correo o codigo de seguimiento <span aria-hidden="true">*</span>
             </label>
             <input
-              id="seguimiento-email"
-              name="email"
-              type="email"
-              defaultValue={email ?? ''}
+              id="seguimiento-proof"
+              name="proof"
+              type="text"
+              required
+              defaultValue={proof ?? ''}
               maxLength={CHECKOUT_LIMITS.email}
-              placeholder="nombre@dominio.com"
-              autoComplete="email"
+              placeholder="nombre@dominio.com o WEB-1A2B3C4D"
+              autoComplete="off"
               className="sf-field"
-              data-testid="tracking-email-input"
+              data-testid="tracking-proof-input"
             />
           </div>
         </div>

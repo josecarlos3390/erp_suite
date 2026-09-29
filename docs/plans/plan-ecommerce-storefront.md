@@ -140,7 +140,7 @@ de determinación de cuentas. La tienda **no** escribe asientos ni stock: **crea
   tienda (una por tenant, rotable) y **CORS restringido** a los dominios del tenant.
 - **Solo lectura** salvo el pedido: `GET catálogo`, `GET categoría`, `GET ficha` (por slug),
   `GET búsqueda`, `GET ciudades`, `GET sucursales`, `GET cuotas`, `POST pedido` (idempotente),
-  `GET pedido?order=&email=` (seguimiento público), `POST contacto/WhatsApp`.
+  `GET pedido?order=&email=|code=` (seguimiento público: el número solo **no** basta, ver §23), `POST contacto/WhatsApp`.
 - **Caché y límites**: ETag/`Cache-Control` + caché en la tienda (ISR) y límite por IP/tenant
   (el throttler del ERP existe; el canal tendrá su propia política, **distinta** del login 5/min).
 - **Nunca** expone costos, márgenes, stock exacto de otros almacenes, datos de terceros ni el
@@ -2122,5 +2122,87 @@ pantalla de login de Vercel): el enlace es alcanzable por cualquiera, medido.
    correcto también cuando llegue el dominio propio.
 3. Sigue pendiente **probar el checkout completo en producción** (no se crean pedidos reales sin
    pedirlo) y **rotar/desactivar la clave de la semilla** (`tienda-dev-key-cambiar`).
+
+## §23 El seguimiento público exige prueba de propiedad (T216-quinquies — 2026-09-29)
+
+**Lo que preguntó el usuario**: «varios usuarios pueden entrar al ecommerce ¿y es una sesión distinta
+para cada uno? ¿o lo que yo hago en mi carrito otra persona lo puede ver?».
+
+### Lo que se midió ANTES
+
+El **carrito** no se comparte: vive en el `localStorage` del navegador (`storefront_cart_v1`, igual
+que favoritos, comparador y tema), **no hay** endpoint de carrito ni sesión de cliente (0
+coincidencias de `login`/`session`/`authToken` en la tienda; la única cookie que se escribe es
+`storefront_city`) ⇒ el servidor no sabe quién eres y nadie ve tu carrito. El matiz honesto es que
+`localStorage` es por **perfil de navegador**: dos personas en el mismo PC y el mismo perfil de Chrome
+(o dos pestañas) comparten el carrito.
+
+Pero la misma medición destapó un hueco **real** en el **pedido** (API real, pedido `WEB-1` creado por
+la sonda):
+
+| Consulta | Antes |
+| --- | --- |
+| `GET /storefront/tracking?order=WEB-1` **sin credencial** | **200** → líneas, importes, estado, forma de pago, tipo de entrega, `salesOrderId` y el `trackingCode` |
+| `…&email=ajeno@example.com` | 404 ✓ |
+| `…&email=comprador.r42@example.com` | 200 ✓ |
+| `…&email=Comprador.R42@Example.com` | **404** ← defecto |
+
+Lo que veía un desconocido con **solo el número**: qué se compró (SKU, nombre, cantidad, precio),
+descuentos, IVA, totales, el `salesOrderId` **interno** y el código de seguimiento. **No** veía nombre,
+correo, teléfono ni dirección (no viajan en la vista). Y los números son **secuenciales**
+(`WEB-1`, `WEB-2`, …) ⇒ cualquiera podía recorrerlos y **reconstruir las ventas web de la empresa**.
+
+El correo, ofrecido como «Correo (opcional)», no protegía nada, y el propio código tenía escrito el
+principio para **escribir** —«escribir en un pedido ajeno no puede bastar con conocer su número»,
+`create-web-order.dto.ts`— pero **no** para leer.
+
+### Decisión (del usuario, con la medición delante)
+
+**Correo o código de seguimiento, obligatorio.** La confirmación no puede pedir el correo (es la
+pantalla inmediata tras comprar), pero el comprador **ya recibe el `trackingCode`** (`WEB-XXXXXXXX`,
+aleatorio) y el plan ya decía que el seguimiento se consulta «con el número y el código de pedido»
+(D16). Se eligió frente a «solo el correo» (que obligaría a llevar el correo en la URL: dato personal
+en el historial y en los logs) y frente a no tocar nada.
+
+### Entregado
+
+| Pieza | Dónde |
+| --- | --- |
+| La regla, en un solo sitio y **pura** | `src/common/web-order-access.util.ts` (`provesOrderOwnership`) |
+| El canal | `StorefrontService.trackOrder(ctx, order, email?, code?)`; `code` en `StorefrontTrackingQueryDto` y `@Query('code')` |
+| La confirmación | `/pedido/[orderNumber]?c=<codigo>` (el checkout lo añade al redirigir) |
+| El seguimiento | `/seguimiento?order=&proof=` — «Correo o código de seguimiento», **obligatorio**; el servidor lo manda como `email` o `code` según su forma (un correo lleva `@`) |
+
+Las dos pruebas se comparan **sin distinguir mayúsculas ni espacios** y el fallo es **404** —no 403—
+para no confirmar que el pedido existe. El código lo escribe **siempre** el alta
+(`buildTrackingCode`), así que ningún pedido queda legible solo por su número.
+
+### Medido DESPUÉS (A/B, misma sonda)
+
+| Consulta | Antes | Después |
+| --- | --- | --- |
+| Sin credencial | **200** con líneas e importes | **404** |
+| Código (en minúsculas) | 404 | **200** |
+| Correo (en mayúsculas) | **404** | **200** |
+| Código ajeno / correo ajeno | 404 | **404** |
+| El pedido de otra empresa, **con su código** | 404 | **404** |
+| `GET /pedido/WEB-1` en la tienda (sin `?c=`) | **200** con el pedido | **404** |
+
+**Gates**: utilidad **11 casos**; `storefront.service.spec.ts` **137 tests / 2 suites**; **E2E del
+canal 1 suite / 55 tests** con **4 casos nuevos** (el número solo → 404, el correo en mayúsculas →
+200, el código ajeno → 404, el aislamiento entre empresas **con** su código); tienda `next lint` **0**,
+`tsc --noEmit` **0** y `next build` **0** (todas las rutas `ƒ`).
+
+### Declarado
+
+1. Un pedido **sin correo y sin código** no se puede consultar en público: no hay nada con lo que
+   probar propiedad. El alta escribe el código **siempre**, así que ese caso solo puede venir de filas
+   anteriores a la columna; siguen visibles en el back office.
+2. El correo sigue siendo **opcional en el alta** (el comprador puede no darlo): en ese caso la prueba
+   es el código.
+3. El **número de pedido sigue siendo secuencial** —es el número del documento del ERP y no se
+   toca—: lo que se cierra es que ese número **por sí solo** abra el pedido.
+4. Esto **no** es una cuenta de cliente (F4 sigue pendiente): sigue sin haber sesión, y quien tenga el
+   código o el correo del pedido lo ve. La diferencia es que ya no basta con contar hasta el número.
 
 

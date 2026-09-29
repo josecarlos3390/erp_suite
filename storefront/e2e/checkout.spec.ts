@@ -104,6 +104,17 @@ async function createRealOrder(prefix: string): Promise<{ order: ApiOrder; buyer
   return { order, buyer };
 }
 
+/**
+ * La confirmacion se abre con el **codigo de seguimiento** en la URL (`?c=`): el canal no
+ * entrega un pedido solo por su numero (decision del usuario, 2026-09-29).
+ */
+function confirmPath(order: Pick<ApiOrder, 'orderNumber' | 'trackingCode'>): string {
+  const base = `/pedido/${encodeURIComponent(order.orderNumber)}`;
+  return order.trackingCode === null
+    ? base
+    : `${base}?c=${encodeURIComponent(order.trackingCode)}`;
+}
+
 test.describe('Checkout de invitado', () => {
   test('el checkout muestra los totales que cotiza el ERP para un articulo y una ciudad reales', async ({
     page,
@@ -182,11 +193,14 @@ test.describe('Checkout de invitado', () => {
     expect(orderNumber.startsWith('WEB-')).toBe(true);
     expect(trackingCode).not.toBe('—');
     expect(trackingCode.length).toBeGreaterThan(0);
-    await expect(page).toHaveURL(new RegExp(`/pedido/${orderNumber}$`));
+    await expect(page).toHaveURL(
+      new RegExp(`/pedido/${orderNumber}\\?c=${trackingCode}$`),
+    );
     await expect(page.getByTestId('order-confirmed-number')).toHaveText(orderNumber);
 
-    // El pedido del canal coincide con lo que muestra la confirmacion.
-    const stored = await trackOrder(orderNumber);
+    // El pedido del canal coincide con lo que muestra la confirmacion. Se consulta con el
+    // codigo que la pantalla acaba de publicar (el numero solo no abre el pedido).
+    const stored = await trackOrder(orderNumber, { code: trackingCode });
     expect(stored).not.toBeNull();
     if (stored === null) return;
     expect(stored.orderNumber).toBe(orderNumber);
@@ -252,8 +266,9 @@ test.describe('Checkout de invitado', () => {
     await page.getByTestId('checkout-confirm').click();
     await expect(page.getByTestId('order-number')).toBeVisible();
     const orderNumber = (await page.getByTestId('order-number').innerText()).trim();
+    const trackingCode = (await page.getByTestId('order-tracking-code').innerText()).trim();
 
-    const stored = await trackOrder(orderNumber);
+    const stored = await trackOrder(orderNumber, { code: trackingCode });
     expect(stored).not.toBeNull();
     if (stored === null) return;
     expect(stored.webInvoicingMode).toBe('PAY_NOW');
@@ -342,9 +357,10 @@ test.describe('Checkout de invitado', () => {
     await page.getByTestId('checkout-confirm').click();
     await expect(page.getByTestId('order-number')).toBeVisible();
     const orderNumber = (await page.getByTestId('order-number').innerText()).trim();
+    const trackingCode = (await page.getByTestId('order-tracking-code').innerText()).trim();
 
     // Y el pedido real cobra esa misma mercancia descontada.
-    const stored = await trackOrder(orderNumber);
+    const stored = await trackOrder(orderNumber, { code: trackingCode });
     expect(stored).not.toBeNull();
     if (stored === null) return;
     const goods = stored.items.find((item) => item.itemId === target.itemId);
@@ -383,7 +399,7 @@ test.describe('Checkout de invitado', () => {
     // referencia se anota aparte, sin que eso marque el pedido como pagado.
     const { order, buyer } = await createRealOrder('referencia');
 
-    await page.goto(`/pedido/${order.orderNumber}`);
+    await page.goto(confirmPath(order));
     await expect(page.getByTestId('order-number')).toHaveText(order.orderNumber);
     await expect(page.getByTestId('order-payment-reference')).toHaveCount(0);
     await expect(page.getByTestId('payment-reference-form')).toBeVisible();
@@ -404,14 +420,16 @@ test.describe('Checkout de invitado', () => {
 
     // El pedido del canal la publica (no es solo pantalla) y sigue **sin pagar**: la
     // conciliacion es del ERP y el estado del pago se deriva de su factura.
-    const stored = await trackOrder(order.orderNumber);
+    const stored = await trackOrder(order.orderNumber, {
+      code: order.trackingCode ?? undefined,
+    });
     expect(stored?.paymentReference).toBe('TRANSF-884422');
     expect(stored?.paymentReferenceAt).not.toBeNull();
     expect(stored?.paymentStatus).toBe('pending');
 
     // Al volver a la confirmacion, la referencia aparece en el desglose y el formulario
     // ya no se ofrece (no hay nada que anotar dos veces).
-    await page.goto(`/pedido/${order.orderNumber}`);
+    await page.goto(confirmPath(order));
     await expect(page.getByTestId('order-payment-reference')).toHaveText('TRANSF-884422');
     await expect(page.getByTestId('payment-reference-form')).toHaveCount(0);
   });
@@ -525,7 +543,7 @@ test.describe('Seguimiento publico', () => {
     await expect(page.getByTestId('tracking-empty')).toBeVisible();
 
     await page.getByTestId('tracking-order-input').fill(order.orderNumber);
-    await page.getByTestId('tracking-email-input').fill(buyer.email);
+    await page.getByTestId('tracking-proof-input').fill(buyer.email);
     await page.getByTestId('tracking-submit').click();
 
     await expect(page.getByTestId('order-summary')).toBeVisible();
@@ -552,6 +570,21 @@ test.describe('Seguimiento publico', () => {
     expect(await readMoney(page.getByTestId('order-total'))).toBe(order.total);
   });
 
+  test('el codigo de seguimiento tambien abre el pedido, sin saber el correo del comprador', async ({
+    page,
+  }) => {
+    const { order } = await createRealOrder('codigo');
+
+    await page.goto(
+      `/seguimiento?order=${encodeURIComponent(order.orderNumber)}&proof=${encodeURIComponent(
+        order.trackingCode ?? '',
+      )}`,
+    );
+
+    await expect(page.getByTestId('order-number')).toHaveText(order.orderNumber);
+    await expect(page.getByTestId('tracking-not-found')).toHaveCount(0);
+  });
+
   test('un numero de pedido inexistente da el estado honesto de no encontrado', async ({
     page,
   }) => {
@@ -571,20 +604,51 @@ test.describe('Seguimiento publico', () => {
     const { order, buyer } = await createRealOrder('correo');
 
     // El canal responde 404 cuando el correo no coincide con el de la compra.
-    await expect(trackOrder(order.orderNumber, 'ajeno@example.com')).resolves.toBeNull();
+    await expect(
+      trackOrder(order.orderNumber, { email: 'ajeno@example.com' }),
+    ).resolves.toBeNull();
 
     await page.goto(
-      `/seguimiento?order=${encodeURIComponent(order.orderNumber)}&email=ajeno%40example.com`,
+      `/seguimiento?order=${encodeURIComponent(order.orderNumber)}&proof=ajeno%40example.com`,
     );
     await expect(page.getByTestId('tracking-not-found')).toBeVisible();
     await expect(page.getByTestId('order-summary')).toHaveCount(0);
 
     // Y con el correo de la compra el mismo pedido aparece.
     await page.goto(
-      `/seguimiento?order=${encodeURIComponent(order.orderNumber)}&email=${encodeURIComponent(
+      `/seguimiento?order=${encodeURIComponent(order.orderNumber)}&proof=${encodeURIComponent(
         buyer.email,
       )}`,
     );
+    await expect(page.getByTestId('order-number')).toHaveText(order.orderNumber);
+  });
+
+  /**
+   * Regresion del hueco medido el 2026-09-29: `GET /storefront/tracking?order=WEB-1` **sin
+   * credencial** respondia **200** con las lineas, los importes y el `salesOrderId`, y los
+   * numeros son secuenciales (`WEB-1`, `WEB-2`, …), asi que cualquiera podia recorrerlos y
+   * reconstruir las ventas web de la empresa.
+   */
+  test('el numero de pedido solo ya no revela el pedido (antes devolvia el pedido entero)', async ({
+    page,
+  }) => {
+    const { order } = await createRealOrder('sin-prueba');
+
+    // Canal: sin correo ni codigo, 404 (el «no existe» que no confirma si el numero existe).
+    await expect(trackOrder(order.orderNumber)).resolves.toBeNull();
+
+    // Tienda: el seguimiento publico no muestra nada…
+    await page.goto(`/seguimiento?order=${encodeURIComponent(order.orderNumber)}`);
+    await expect(page.getByTestId('tracking-not-found')).toBeVisible();
+    await expect(page.getByTestId('order-summary')).toHaveCount(0);
+
+    // …y la confirmacion **sin el codigo** responde 404 en vez de publicar el pedido.
+    const bare = await page.goto(`/pedido/${encodeURIComponent(order.orderNumber)}`);
+    expect(bare?.status()).toBe(404);
+    await expect(page.getByTestId('order-summary')).toHaveCount(0);
+
+    // Con el codigo, la misma direccion si abre el pedido: el comprador no pierde nada.
+    await page.goto(confirmPath(order));
     await expect(page.getByTestId('order-number')).toHaveText(order.orderNumber);
   });
 });
