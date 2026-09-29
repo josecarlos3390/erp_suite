@@ -132,6 +132,12 @@ railway ssh -s backend-erp 'cd /app && NODE_OPTIONS=--max-old-space-size=768 \
 
 ### Alta de la tienda (Vercel)
 
+> **El `Root Directory` no es opcional.** El repositorio es el **monorepo raíz** (`erp_suite`), así
+> que si el proyecto lo deja **vacío** Vercel busca Next en la raíz, no lo encuentra y **el
+> despliegue automático de Git falla en 6 s** con «Error: No Next.js version detected … check your
+> Root Directory setting». Medido: con `''` → ● Error 6 s; con `storefront` → ● Ready 42 s. El ajuste
+> solo se cambia en **Settings → Root Directory** del panel (o por API): el CLI no tiene comando.
+
 **Modo A** — un proyecto por empresa:
 
 1. **New Project** → el repositorio **raíz** (`erp_suite`) → **Root Directory: `storefront`**.
@@ -181,6 +187,20 @@ El gate E2E **pincha los dos modos**: arranca el servidor con un mapa de dos dom
 (`tienda-a.local`, `tienda-b.local`), resuelve los hosts a `127.0.0.1` con `--host-resolver-rules` y
 comprueba identidad, canónica, `robots.txt`, `sitemap.xml` y el 404 de `tienda-c.local`
 (`e2e/multidominio.spec.ts`).
+
+### Comprobar que el `push` publica (despliegue automatico)
+
+El proyecto queda enlazado al repositorio raiz y a la rama de produccion (`master`): cada `push`
+compila solo. Para comprobarlo sin navegador, tras un `push`:
+
+```bash
+vercel ls erp-storefront                     # el despliegue nuevo debe quedar ● Ready
+curl -s https://<alias>/ | grep -o '<title>[^<]*'   # y el alias sirve ESE despliegue
+```
+
+Medido en el despliegue de produccion (proyecto `erp-storefront`,
+**https://erp-storefront-inky.vercel.app**): ● Ready en **42 s**, `robots.txt` y las **131** URLs del
+`sitemap.xml` con el dominio publico y la home con **16** tarjetas de producto.
 
 ### Rotacion de la clave (sin cortar la tienda)
 

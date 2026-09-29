@@ -2067,4 +2067,60 @@ redesplegar.
 4. **Los puertos no estándar se conservan** en la canónica a propósito (local y previews); un
    despliegue real no los lleva.
 
+## §22 Despliegue real en Vercel (T216-quater — 2026-09-29)
+
+**Lo que pidió el usuario**: «entonces ¿qué sigue? ¿podemos desplegarlo en Vercel? ¿mediante qué link
+podemos acceder?» y, ante la causa del fallo, «hagámoslo» (que el *Root Directory* lo dejara yo por
+API con la sesión de su CLI).
+
+### Lo que se midió ANTES
+
+- El proyecto `erp-storefront` (scope `josecarlos3390s-projects`) existía **solo con un despliegue
+  manual por CLI**, que funcionaba: la tienda se servía entera. Pero el **despliegue automático de
+  Git** —el que hace que un `push` publique— **fallaba en 6 s** con
+  «Error: No Next.js version detected … check your Root Directory setting», porque el proyecto
+  apuntaba al **repositorio raíz** (`github/erp_suite`) y su `rootDirectory` era `''` (la cadena
+  vacía): Vercel buscaba `package.json`/Next en la raíz del monorepo, donde no hay ninguno.
+- La medición dejó además dos datos del proyecto: `productionBranch = master` y `framework = nextjs`.
+
+### Entregado
+
+- `rootDirectory: 'storefront'` en el proyecto, fijado por API (`PATCH /v9/projects/{id}?teamId=…`;
+  el ajuste **solo** se puede tocar por panel o API — el CLI no tiene comando para él). Medido antes
+  `''` → después `'storefront'`.
+- Commit vacío de comprobación (`ab4390e`) empujado a `master` para disparar el camino automático.
+
+### Medido DESPUÉS (A/B)
+
+| Medición | Antes (`…fuvbyxr1k…`) | Después (`…gg9rpwcg1…`) |
+| --- | --- | --- |
+| Despliegue disparado por el `push` | ● **Error** en **6 s** | ● **Ready** en **42 s**, *Production* |
+| Alias público | apuntaba al despliegue manual | apunta al **automático** |
+| `/` | — | **200**, **16** tarjetas, `Tienda ERP · Catalogo en linea` |
+| `robots.txt` | — | `Host`/`Sitemap` con el **dominio público** |
+| `sitemap.xml` | — | **131** URLs, **todas** con el dominio público |
+| `/productos/iphone-13-128gb` | — | **200**, `iPhone 13 128GB · Apple · Tienda ERP`, precio **5499**, botón de compra |
+| `/categorias`, `/sucursales`, `/carrito` | — | **200** con su título propio |
+
+Los tres alias del proyecto (`erp-storefront-inky`, `erp-storefront-git-master-…`,
+`erp-storefront-josecarlos3390s-projects`) apuntan **al mismo** despliegue automático, así que el
+camino de Git y el dominio publicado quedan unidos.
+
+**Enlace público**: **https://erp-storefront-inky.vercel.app**
+
+**Nota sobre la protección de despliegue**: el CLI avisa «Deployment Protection is on — use
+`vercel curl`», pero un `curl` **sin credenciales** devuelve **200** con contenido real (no la
+pantalla de login de Vercel): el enlace es alcanzable por cualquiera, medido.
+
+### Declarado
+
+1. El proyecto **no tiene** `STOREFRONT_CHANNELS`: es el **modo A** (una empresa por despliegue) y el
+   middleware queda inerte (sin 404 por host). El modo B está documentado y probado en el gate, pero
+   no configurado en producción.
+2. `NEXT_PUBLIC_SITE_URL` está **sin definir a propósito**: la canónica se deriva del host de la
+   petición (`https://erp-storefront-inky.vercel.app/productos/iphone-13-128gb`, medido), que es lo
+   correcto también cuando llegue el dominio propio.
+3. Sigue pendiente **probar el checkout completo en producción** (no se crean pedidos reales sin
+   pedirlo) y **rotar/desactivar la clave de la semilla** (`tienda-dev-key-cambiar`).
+
 
