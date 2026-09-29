@@ -1677,6 +1677,86 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
 
+## Ronda 39 — el motivo se ve en los listados, la paginación de entregas deja de mentir y se limpia el residuo de sondas (CERRADA)
+
+Cierra los cuatro pendientes declarados al terminar el tramo de descuentos.
+
+### (1) El motivo del descuento, visible en los listados
+
+**Medido antes**: `headerDiscountReason` aparecía en modelos, formularios, servicios y payloads y **0 veces** en
+plantillas de listado ⇒ el motivo solo se descubría abriendo la ficha.
+
+**Entregado**: `headerDiscountDetail()` + el pipe `headerDiscountTitle` (en
+`shared/utils/header-discount.pipe.ts`, reutilizando `headerDiscountLabel`) y, en los **14** listados con el chip «Dto.
+cabecera», `[title]="row | headerDiscountTitle"`: `Descuento de cabecera 25.00 % · Motivo: «acuerdo comercial con el
+proveedor»`. Sin motivo (por debajo del umbral) devuelve **solo el valor**: no se inventa un «sin motivo» que el motor
+no exige.
+
+### (2) Los scripts de sonda, fuera
+
+**Medido antes**: **86** archivos `_probe-*` sin versionar en `backend-erp/scripts` (83 `.ts` + 4 `.js` menos los de
+esta ronda), declarados desde la ronda 35. Comprobado antes de borrar que **ningún** archivo versionado los invoca
+(`git grep _probe` sobre `package.json`, `.github`, `scripts`, `Dockerfile*`, `*.mjs`, `*.js` → sin resultados).
+**Medido después**: **0** archivos `_probe-*` y **0** entradas sin versionar en el repo.
+
+### (3) Los documentos de sonda de la BD de desarrollo
+
+**Medido antes** (sonda de solo lectura): **14** documentos con «sonda/prueba» en las notas, **todos** en las tablas de
+facturas de compra y **sin ninguna referencia** desde otros documentos (`baseDocId` en las nueve tablas de líneas → 0):
+
+```
+FRC-27/29/30/37/38/39/40  CLOSED  asiento=1  stock=0
+FRC-28                    CLOSED  asiento=0  stock=0   ← el único sin rastro contable
+FCP-30/31/32/33/34/35     OPEN    asiento=1  stock=2   ← NO eran borradores: nacen contabilizadas
+```
+
+**Entregado**: **13 anulados por la APP** (`POST /purchase-invoices/:id/cancel` y
+`POST /purchase-reserve-invoices/:id/cancel` con motivo, que revierten stock y contabilizan la reversa — nada a mano)
+y **FRC-28 borrada** (no tenía asiento ni stock ni referencias). **Medido después**: **13** documentos de sonda y
+**0 sin anular**; el tipo de cambio del día que la anulación exige se creó para la limpieza y se **borró** al terminar.
+
+**Declarado**: los 13 quedan `CANCELLED` (con su reversa contabilizada), igual que las facturas de sonda que dejó la
+ronda 35: borrar un documento contabilizado dejaría asientos huérfanos. Y los 6 `FCP` **no** eran borradores —mi
+previsión era borrarlos— porque medido tenían **1 asiento y 2 movimientos de stock** cada uno: se anularon como el
+resto.
+
+### (4) La paginación del listado de entregas
+
+**Medido antes** (API real, 22 entregas en la empresa): `GET /delivery-orders?limit=1` → **`total=1`**, `totalPages=1`:
+el servicio descartaba el `count` (`const [_total, data]`) y respondía `filtered.length`, es decir el tamaño de la
+**página**. Y el filtro por `invoiceStatus` —estado **derivado** de las líneas (facturado vs devuelto), que no cabe en
+el `where`— se aplicaba sobre la página ya cortada, así que `limit=1&invoiceStatus=PENDING` también daba `total=1`.
+
+**Entregado**: sin filtro en memoria, `total = count` y la página la corta la base (`skip`/`take`); con
+`invoiceStatus`, se trae el conjunto completo, se filtra y **después** se pagina, con `total = filtrado.length`.
+
+**Medido después** (misma API):
+
+```
+?limit=1                      total=22  filas=1  totalPages=22     (antes total=1)
+?limit=5                      total=22  filas=5  totalPages=5
+?limit=100                    total=22  filas=22 totalPages=1
+?limit=1&invoiceStatus=PENDING total=2  filas=1  totalPages=2      (antes total=1)
+?limit=1&discountMode=header   total=12 filas=1  totalPages=12
+```
+
+**Declarado**: con `invoiceStatus` el servicio carga **todas** las filas que cumplen el `where` (con sus líneas) para
+poder filtrar y paginar bien; el listado de la pantalla **no** usa ese filtro (filtra en cliente), así que el coste
+extra solo lo paga un consumidor de API que lo pida explícitamente.
+
+### Gates
+
+Backend `eslint` y `tsc` **0**, unitarios **215 suites / 2757 tests** (4 casos nuevos de paginación en
+`delivery-orders.service.spec.ts`) y **E2E completo 41 suites / 393 tests** (caso `R39` en `sales-flow`); frontend
+`tsc` app/spec/e2e **0**, **Karma 2437/2437** (4 casos nuevos del pipe), **`ng build` AOT 0** y prettier (ratchet)
+limpio en 30 archivos.
+
+### Declarado (de la ronda)
+
+1. El motivo se muestra en el **`title` del chip** (no en una columna): 200 caracteres de texto libre por fila no caben
+   en catorce tablas; una columna «Motivo» con truncado reutilizaría el mismo dato.
+2. `sales-returns` sigue **sin filas** y `purchase-returns` con **una**: su congelado se pinza en tests, no en vivo.
+
 ## Ronda 38 — el indicador y el filtro del descuento llegan a las SEIS familias que lo heredan, y el motivo deja de perderse (CERRADA)
 
 Cierra el punto **(2)** declarado tras el tramo: las rondas 31/32 dejaron el indicador «Dto. cabecera» y el filtro por
