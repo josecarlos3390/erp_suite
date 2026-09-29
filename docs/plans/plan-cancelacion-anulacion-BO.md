@@ -1677,6 +1677,82 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
 
+## Ronda 41 — las fechas de CALENDARIO (`@db.Date`) dejan de correrse un día: la vigencia de las series se lee 01/01→31/12 y el ÚLTIMO día de la vigencia ya numera documentos (CERRADA)
+
+**Lo que reportó el usuario** (2026-09-29): «las series empiezan el 30 de diciembre del 2025 y finalizan el 30 de
+diciembre del 2026 […] debería empezar desde el día 1 hasta el 31 […] creo que hay un problema con el casteo de la
+fecha o algo así».
+
+### Lo que se midió ANTES
+
+- **Los datos están bien**: las **31** series y la `Gestión 2026` son `2026-01-01T00:00:00.000Z → 2026-12-31T00:00:00.000Z`
+  (sonda `_probe-r41-fechas.ts`, Prisma + API), y **Prisma entrega _todos_ los `@db.Date` como medianoche UTC** —
+  serie, gestión, período y tasa de cambio (sonda `_probe-r41-raw.ts`)—. Los `@db.Date` del esquema son **14**, en
+  `DocumentSeries`, `FiscalYear`, `AccountingPeriod`, `ExchangeRate`, `BankStatement`, `BankStatementLine`,
+  `BankReconciliation` y `TenantMetrics`.
+- **El defecto visible era del frontend** (navegador, Playwright, zona `America/La_Paz` = UTC−4): la lista de series
+  mostraba **`31/12/2025 → 30/12/2026`** en las 31 filas, mientras la lista de gestiones (`01/01/2026 31/12/2026`), el
+  detalle de la gestión y sus 12 períodos se veían **bien**. La columna «Vigencia» usaba
+  `new Date(v).toLocaleDateString('es-ES')` (zona del **navegador**); `tenantDate.formatDateOnly` (zona del **tenant**)
+  habría hecho lo mismo. Las gestiones y los períodos se veían bien porque usan el helper UTC `formatCalendarDate` y el
+  pipe `calendarDate` —la tabla de períodos la pinta la **plantilla**, y el getter `periodColumns`, que declaraba
+  `type: 'date'` sobre esas fechas, era **código muerto**—. El mismo patrón defectuoso estaba en **tres** pantallas más
+  (`Fecha Extracto` y `Período` de extractos bancarios, `Período` de conciliaciones) y en la columna `date` de tasas de
+  cambio, que tenía su **propio `slice`** a mano (una quinta copia).
+- **Y un defecto de fondo del backend**: `POST /sales-quotations` con fecha **2026-12-31** → **400** «No existe una
+  serie activa de SALES_QUOTATION que cubra la fecha del documento (2026-12-31)» mientras la del **30/12** → **201**.
+  Réplica de las consultas del servicio (sondas `_probe-r41-limites.ts` y `_probe-r41-periodos.ts`): la cobertura pedía
+  `startDate <= 00:00 local` **y** `endDate >= 23:59:59.999 local` del día del documento —o sea, ya **el día
+  siguiente**— y en Postgres `'2026-12-31'::date >= '2026-12-31T23:59:59.999Z'` es **false** (medido en crudo, en sesión
+  `America/La_Paz` **y** en `UTC` con `SET LOCAL TimeZone`), así que **el último día de toda vigencia era inusable**;
+  además los límites se calculaban con `setHours` (zona del **proceso**, no la del tenant).
+- **La misma clase se midió en otros tres sitios y se descartó** (con la medición delante, sin tocar código): el guarda
+  de **período contable** (`journal-entry-core._resolveAccountingPeriod` y `accounting-periods.validatePostingDate`), el
+  solapamiento de gestiones y el cronograma de activos fijos dan **el mismo resultado en las dos sesiones** de Postgres
+  (Prisma liga el parámetro de una columna `date` truncándolo al día, así que `endDate >= <medianoche del tenant>`
+  acierta en ambas). También se comprobó que el `OR` del solapamiento de gestiones es un **único objeto** con las dos
+  condiciones (semántica `AND`, correcta): una hipótesis inicial de defecto que la sonda desmintió.
+
+### Entregado
+
+- **Frontend** — una sola implementación, el helper `formatCalendarDate` (`@core/tenant-date/calendar-date.pipe`), que
+  ya usaba la lista de gestiones: columna «Vigencia» de series, `Fecha Extracto` y `Período` de extractos bancarios,
+  `Período` de conciliaciones y la columna `date` de tasas de cambio. Y se **eliminó** el getter muerto `periodColumns`
+  del detalle de gestión, que era una trampa (`type: 'date'` sobre fechas de calendario).
+- **Backend** — `tenantCalendarDay()` en `src/common/timezone.util.ts` (el **día calendario del tenant anclado a
+  medianoche UTC**, el mismo ancla que ya usaba `storefront.service.ts` para localizar la gestión) y un punto único
+  `_dayAnchor()` en `src/document-series/document-series.service.ts` —con la zona de la configuración del tenant, que
+  `SettingsService` ya cachea por tenant— que usan los **tres** caminos: resolución automática, override explícito
+  (`requestedSeriesId`) y preview. Los dos helpers (`_seriesCoversDate`, `_seriesCoversDateRange`) comparan ahora
+  `startDate <= día && endDate >= día`.
+
+### Medido DESPUÉS
+
+- **Navegador (misma sonda)**: las 31 series muestran **`01/01/2026 → 31/12/2026`**; gestiones y períodos siguen igual.
+- **API en vivo (sonda `_probe-r41-vivo.ts`)**: **2026-12-31 → 201** (antes 400, cotización creada y borrada al
+  terminar), 2026-01-01 y 2026-12-30 → 201 (sin cambio) y **2027-01-01 → 400** «No existe una serie activa…» (el rango
+  **no** se afloja).
+- **Réplica de la consulta (misma sonda)**: el 31/12 pasa de `NINGUNA` a `COT-2026` en las **dos** sesiones de Postgres.
+- **Base local restaurada**: se borraron **4** cotizaciones residuales de la medición anterior (`COT-1..4`, sin
+  pedidos, sin enlaces y sin asientos) y el correlativo de `COT-2026` volvió al valor del seed (**1**).
+
+### Gates
+
+- Frontend: `tsc` app/spec/e2e **0**, **Karma 2443/2443** (4 casos nuevos), **`ng build` AOT 0** y prettier (ratchet)
+  limpio en 8 archivos.
+- Backend: `eslint`/`tsc` **0**, **215 suites / 2766 tests** (9 casos nuevos: 4 en `document-series.service.spec.ts` y 5
+  en `timezone.util.spec.ts` para `tenantCalendarDay`) y **E2E completo 41 suites / 394 tests** (caso `R41` en
+  `sales-flow`).
+
+### Declarado
+
+- `type: 'date'` sigue siendo lo correcto para los **instantes** (`createdAt`, `postingDate`), por eso no se cambió el
+  comportamiento de `luna-data-table`: la fecha de **calendario** se formatea con el helper explícito.
+- El guarda de **período contable** se midió y **no** requería cambio (ver arriba); tampoco el solapamiento de
+  gestiones ni el cronograma de activos fijos.
+- El **correlativo no retrocede**: una serie cuyo último día se usó sigue avanzando (por diseño).
+- Los formularios de extracto y conciliación ya usaban `.slice(0, 10)` y no cambian.
+
 ## Ronda 40 — el Centro de configuración ya muestra los pendientes que cuenta (CERRADA)
 
 **Lo que reportó el usuario**: «me muestra "Falta 4" con rojo y "23 OK" pero no veo cuáles son esas 4 que
