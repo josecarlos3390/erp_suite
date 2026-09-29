@@ -1677,6 +1677,71 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
 
+## Ronda 33 — el TOPE del descuento de cabecera: configurable por empresa y con autorización por permiso (CERRADA, incremento b1)
+
+Cierra el declarado «**tope + autorización**» del tramo de descuentos. El **motivo** (con su umbral) queda como
+incremento **b2**, con su medición delante.
+
+### Lo que se midió ANTES (sonda `_probe-r33-tope.ts`, API real, con un usuario de rol USER creado por la sonda)
+
+```
+GET /settings  -> 33 claves, NINGUNA de descuento
+rol USER       -> ningún módulo de descuento en su configuración de permisos
+POST /sales-orders  cabecera 90 % SIN motivo  -> 201 · persistido PED-30
+                     modo=header pct=90 desc=135 total=15   (una línea de 150)
+POST con headerDiscountReason                 -> 400 «property headerDiscountReason should not exist»
+```
+
+Es decir: **no había tope, ni motivo obligatorio, ni autorización** — cualquiera que pudiera crear el documento podía
+descontar el 90 %.
+
+### Entregado
+
+- **`src/common/discount-policy.ts`** — el **punto único** de la decisión (puro, sin Nest ni Prisma):
+  `effectiveHeaderDiscountPct` (el `%` capturado o, si la cabecera es por **importe**, `importe ÷ bruto de las líneas
+  × 100`), `evaluateHeaderDiscountPolicy` (tope + permisos) y `headerDiscountPolicyMessage` (mensaje accionable).
+- **`src/common/discount-policy.guard.ts`** — **guard global de escritura**, registrado al final de la cadena de guards
+  de `app.module` (donde ya hay sesión y tenant). Cubre **todas** las familias y **todos** los caminos (altas, ediciones,
+  `from-*`, `multi-*`, POS) **sin tocar 14 servicios ni ~78 puntos de escritura**; solo mira POST/PATCH/PUT cuyo
+  cuerpo traiga descuento de cabecera.
+- **Ajustes**: `SettingsService.headerDiscountMaxPct` (**default 25**, acotado 0..100; `100` = sin tope práctico) +
+  el campo en `UpdateSettingsDto` y en `GET/PUT /settings`.
+- **Permiso `discounts:authorize`**: el admin lo tiene por el wildcard `*:*`; se concede **por rol** editando la
+  configuración de permisos (no viene por defecto en USER, que es lo que le da sentido).
+- **Frontend**: sección **«Descuentos»** en Configuración con el campo del tope (default 25).
+
+### Medido DESPUÉS (misma sonda)
+
+```
+GET /settings              -> 34 claves, con headerDiscountMaxPct
+USER   cabecera 90 %       -> 403 «El descuento de cabecera 90,00 % supera el tope de 25,00 % configurado para la
+                               empresa. Solicítalo a un usuario con el permiso «descuentos: autorizar»
+                               (discounts:authorize) o baja el descuento.»
+ADMIN  cabecera 90 %       -> 201   (tiene *:*: puede autorizar)
+ADMIN  cabecera 25 %       -> 201   (dentro del tope)
+headerDiscountReason       -> 400   (el motivo es b2, declarado)
+```
+
+### Gates
+
+Backend `eslint` y `tsc` **0**, unitarios **214 suites / 2693 tests** (dos suites nuevas, **20 casos**: 11 de la
+política y 9 del guard) y **E2E completo 41 suites / 387 tests** (corrido con `--max-old-space-size=12288`: con el tope
+de 6144 el runner agotó el heap a los ~15 min en esta sesión larga — **headroom del arnés**, no del cambio); frontend
+`tsc` app/spec/e2e **0**, **Karma 2410/2410** (1 caso nuevo), **`ng build` AOT 0** y prettier (ratchet) limpio.
+
+### Declarado
+
+1. El **motivo obligatorio** (umbral configurable, p. ej. 10 %) es el incremento **b2**: el campo
+   `headerDiscountReason` **no existe todavía** (medido: 400 «property … should not exist») y su persistencia toca
+   **14 modelos** y ~78 puntos de escritura, así que va con su propia migración.
+2. El tope se mide sobre el **porcentaje efectivo**. Con cabecera por **importe** y **sin líneas** en el cuerpo (los
+   caminos `from-*`, donde el descuento viene del origen y ya se validó al capturarse) la decisión **no aplica**.
+3. La autorización es **por permiso/rol** (`discounts:authorize`), no por usuario ni por documento: granularizarla por
+   familia es declarar el permiso en cada módulo (`sales-orders:authorize`, …).
+4. `100` en el tope equivale a **no tener tope** en la práctica.
+5. El guard es **global** y barato: descarta por método y por cuerpo antes de leer los ajustes (que además tienen caché
+   por tenant de 5 minutos).
+
 ## Ronda 32 — el indicador y el filtro «Dto. cabecera» llegan a PEDIDOS y COTIZACIONES (CERRADA, incremento a)
 
 Cierra el **declarado (2) de la ronda 31**: el indicador y el filtro existían solo en las familias donde el descuento
