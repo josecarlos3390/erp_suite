@@ -1677,6 +1677,106 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
 
+## Ronda 38 — el indicador y el filtro del descuento llegan a las SEIS familias que lo heredan, y el motivo deja de perderse (CERRADA)
+
+Cierra el punto **(2)** declarado tras el tramo: las rondas 31/32 dejaron el indicador «Dto. cabecera» y el filtro por
+modo de descuento en las **ocho** familias donde el descuento se **captura** (cotización, pedido, factura y F. Reserva,
+de venta y de compra), y faltaban las **seis** que lo **heredan** de su origen: entrega, recepción, devolución de
+venta/compra y NC de venta/compra.
+
+### Lo que se midió ANTES (sondas `_probe-r38-seis.ts`, `-ab.ts`, `-escritura.ts`)
+
+```
+columnas: las seis tablas YA tienen discountMode / headerDiscountPct / headerDiscountAmt
+          y NINGUNA tiene headerDiscountReason (information_schema)
+
+filas en modo cabecera: entrega 12/22 · recepción 21/39 · NC venta 10/11 · NC compra 6/6
+                        devolución venta 0/0 · devolución compra 0/1   ← hay datos reales
+
+GET del listado: publica discountMode/headerDiscountPct/headerDiscountAmt/totalDiscount
+                 y NO publica headerDiscountReason (AUSENTE)
+
+filtro ?discountMode: IGNORADO en las seis
+  entrega 22/22/22 · recepción 39/39/39 · NC venta 11/11/11 · NC compra 6/6/6
+  devolución compra 1/1/1 · devolución venta 0/0/0        (sin filtro / header / line)
+
+asientos por sourceDocumentType (groupBy real): PURCHASE_RECEIPT 39 · DELIVERY_ORDER 22
+  SALES_CREDIT_NOTE 11 · PURCHASE_CREDIT_NOTE 6 · PURCHASE_RETURN 1 · SALES_RETURN 0
+
+PATCH con la cabecera cambiada (con el tipo de cambio del día creado; sin él el guard
+global de FX responde 400 ANTES que el del descuento):
+  FVE-29 (mapeada, control)  → 409 GUARD congelado   (documento intacto)
+  FRC-59 (mapeada, control)  → 409 GUARD congelado   (documento intacto)
+  DEL-22  (4 asientos)       → 400 del SERVICIO «items must be an array»   ← el guard dejó pasar
+  REC-39  (3 asientos)       → 400 del SERVICIO «items must be an array»
+  NCR-11  (6 asientos)       → 400 del SERVICIO «Solo se puede editar una nota de crédito abierta»
+  NCP-6   (6 asientos)       → 400 del SERVICIO «Solo se puede editar una nota de crédito abierta»
+  PATCH sin motivo (20 %)    → 400 GUARD motivo en las cuatro  ← la política SÍ las cubría
+```
+
+Dos defectos medidos, no una simple falta de columna: en las seis familias el guard **ya exigía** el motivo (la política
+es *route-agnostic*) pero el motivo **se perdía** —sin columna y sin entrada en el mapa ruta→modelo— y el **congelado no
+las cubría** (la petición llegaba al servicio en vez de responder 409).
+
+### Entregado
+
+- **Migración** `20260930120000_header_discount_reason_seis_familias`: `headerDiscountReason` en `DeliveryOrder`,
+  `PurchaseReceipt`, `SalesReturn`, `SalesCreditNote`, `PurchaseReturn` y `PurchaseCreditNote` (+ los campos en
+  `schema.prisma`).
+- **Mapa** `src/common/discount-document.util.ts`: las seis rutas → sus modelos y sus tipos de asiento
+  (`DELIVERY_ORDER`, `PURCHASE_RECEIPT`, `SALES_RETURN`, `PURCHASE_RETURN`, `SALES_CREDIT_NOTE`,
+  `PURCHASE_CREDIT_NOTE`), medidos con el `groupBy` de arriba. Con eso el **motivo** y el **congelado** llegan a las seis.
+- **Interceptors** (`DiscountReasonInterceptor`): manda el **modo del documento** que publica la respuesta (no el de la
+  petición) —una familia que hereda la cabecera puede ignorar la del DTO y entonces el motivo se **limpia** en vez de
+  quedar colgado de un documento en modo línea— y **no actúa** en los endpoints de simulación (`preview`, `draft/*`).
+- **Filtro** (backend): `where.discountMode` en los seis `findAll` + `@Query('discountMode')` en los seis controladores.
+- **Listados** (frontend): columna **«Dto. cabecera»** (pipe `headerDiscount` de la r31) y control **«Descuento»**
+  (`Todos / Con cabecera / Solo línea`) sobre `discountFilter` + `setDiscountFilter(mode)` en los seis listados.
+
+### Medido DESPUÉS (mismas sondas + caso E2E)
+
+```
+columna headerDiscountReason en las seis tablas: SÍ
+GET del listado: publica headerDiscountReason (null si no hay)
+
+filtro ?discountMode: DISCRIMINA y no pierde ni inventa documentos
+  recepción 39 = 21 header + 18 line · NC venta 11 = 10 + 1 · NC compra 6 = 6 + 0
+  entrega 22 = 12 + 10 · devolución compra 1 = 0 + 1
+
+PATCH con la cabecera cambiada en un documento contabilizado:
+  DEL-6 / REC-1 / NCR-1 / NCP-1 → 409 «ya está contabilizado… nota de crédito» y documento intacto
+
+E2E `R38` (base de tests): cotización 25 % → pedido → ENTREGA (hereda la cabecera) con el motivo
+  en el cuerpo → la entrega guarda motivo, el listado lo publica, `?discountMode=header` la trae y
+  `?line` no, y su PATCH responde 409 con el documento intacto.
+E2E `R38` (segundo caso): alta manual de devolución de venta con cabecera en el cuerpo que el
+  servicio IGNORA (T255-D7: la copia del origen) → el documento queda `line` y el motivo **null**
+  (no se guarda un motivo que contradice al documento).
+```
+
+### Gates
+
+Backend `eslint` y `tsc` **0**, unitarios **215 suites / 2753 tests** (34 casos nuevos: 13 del guard y 21 del
+interceptor) y **E2E completo 41 suites / 392 tests** (dos casos `R38` en `discount-propagation`); frontend `tsc`
+app/spec/e2e **0**, **Karma 2433/2433** (16 casos nuevos), **`ng build` AOT 0** y prettier (ratchet) limpio en 24
+archivos.
+
+### Declarado
+
+1. Tres de los seis listados no tenían columna «Total»: «Dto. cabecera» se colocó junto a la **última columna
+   monetaria** (`totalCost` en las devoluciones, `currency` en la recepción). Es mover un bloque si se quiere otra
+   posición.
+2. El listado de **entregas** informa `total` como el tamaño de la **página** (devuelve `filtered.length`, no el `count`):
+   defecto de **paginación** preexistente y ajeno al descuento; medido (`limit=1` → `total=1` con 22 filas) y **no**
+   tocado en esta ronda.
+3. La **devolución de venta manual** no captura la cabecera del DTO: la copia del documento de origen (T255-D7). El
+   alta manual con `discountMode: 'header'` en el cuerpo nace `line` y, con la regla nueva, **sin** motivo.
+4. `sales-returns` **no tiene filas** en la base de desarrollo (0): su filtro y su motivo se pinzan en tests (unitarios +
+   E2E), no con datos reales; y `purchase-returns` solo tiene **1** fila, en modo línea, así que el congelado no se pudo
+   medir en vivo por esa familia (sí en entrega, recepción y las dos NC).
+5. El **tipo de cambio del día** que la ronda 35 había borrado se creó para medir la política (el guard global de FX
+   responde 400 antes que el del descuento) y se **borró** al terminar.
+
 ## Ronda 37 — el descuento de un documento contabilizado queda bloqueado en pantalla (CERRADA)
 
 Cierra el punto **(3)** declarado tras el tramo: el backend ya respondía 409 (ronda 34-c), pero el usuario lo descubría
