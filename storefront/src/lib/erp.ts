@@ -1,5 +1,7 @@
 import "server-only";
 
+import { currentChannel } from "./channels";
+
 /**
  * Cliente tipado del canal publico del storefront del ERP.
  *
@@ -381,6 +383,24 @@ export class ErpError extends Error {
   }
 }
 
+/**
+ * Deja pasar las **senales de control de Next** cuando caen dentro de un `try`: `headers()` (que
+ * usa la resolucion de canal) marca la ruta como dinamica lanzando `DYNAMIC_SERVER_USAGE`, y
+ * `notFound()`/`redirect()` lanzan `NEXT_*`. Convertirlas en `ErpError` rompe el render (y el
+ * `next build`) en vez de que Next haga lo suyo. Se detectan por su `digest`, el contrato publico
+ * de Next para estos flujos.
+ */
+function rethrowIfNextControlFlow(error: unknown): void {
+  const digest =
+    typeof error === "object" && error !== null
+      ? (error as { digest?: unknown }).digest
+      : undefined;
+  if (typeof digest !== "string") return;
+  if (digest === "DYNAMIC_SERVER_USAGE" || digest.startsWith("NEXT_")) {
+    throw error;
+  }
+}
+
 /** Segundos de cache por endpoint (ISR de datos). */
 const REVALIDATE = {
   catalog: 60,
@@ -403,12 +423,26 @@ const REVALIDATE = {
 
 type QueryValue = string | number | undefined;
 
-/** Devuelve la clave del canal o corta con un mensaje accionable. */
-function apiKey(): string {
-  const key = process.env.STOREFRONT_API_KEY;
+/**
+ * Clave del canal para **este** host, o corta con un mensaje accionable.
+ *
+ * La clave la elige `currentChannel()` (host → `STOREFRONT_CHANNELS`): un despliegue puede servir
+ * varios dominios, cada uno con la clave de **su** empresa. Sin mapa de canales el comportamiento
+ * es el de siempre (`STOREFRONT_API_KEY`).
+ */
+async function apiKey(): Promise<string> {
+  // `currentChannel()` lanza `UnknownHostError` si el dominio no está declarado y no hay comodín
+  // `"*"`. El **middleware** ya responde 404 a ese dominio antes de renderizar, así que esta
+  // excepción solo puede alcanzar a un camino degradado (middleware desactivado): se propaga tal
+  // cual —mensaje accionable— en vez de servir el catálogo de otra empresa. **No** se llama a
+  // `notFound()` desde aquí: el pie de página también lee el canal al pintar el 404 y el render
+  // entraría en bucle (medido).
+  const channel = await currentChannel();
+  const key = channel.key;
   if (key === undefined || key.trim() === "") {
     throw new ErpError(
-      "Falta STOREFRONT_API_KEY: copiar .env.example a .env.local con la clave del canal.",
+      "Falta STOREFRONT_API_KEY: copiar .env.example a .env.local con la clave del canal " +
+        "(o declarar la clave de este dominio en STOREFRONT_CHANNELS).",
       0,
       "/storefront",
     );
@@ -456,12 +490,18 @@ async function erpGet<T>(
   const timeout =
     Number.isFinite(TIMEOUT_MS) && TIMEOUT_MS > 0 ? TIMEOUT_MS : 8000;
 
+  // La clave se resuelve **fuera** del `try`: `currentChannel()` usa `headers()`, y Next marca la
+  // ruta como dinamica lanzando una senal de control (`Dynamic server usage`) que el `try` de abajo
+  // convertiria en un error de render y **romperia el build** (defecto medido al implementar el
+  // canal por host). `rethrowIfNextControlFlow` cubre ademas cualquier otra senal que caiga dentro.
+  const key = await apiKey();
+
   let response: Response;
   try {
     response = await fetch(url, {
       headers: {
         accept: "application/json",
-        "x-storefront-key": apiKey(),
+        "x-storefront-key": key,
       },
       signal: AbortSignal.timeout(timeout),
       // `revalidate: 0` = **sin cache**: el estado del pedido es lo que el comprador
@@ -473,6 +513,7 @@ async function erpGet<T>(
         : { cache: "no-store" as const }),
     });
   } catch (error) {
+    rethrowIfNextControlFlow(error);
     const detail = error instanceof Error ? error.message : String(error);
     throw new ErpError(
       `No se pudo consultar el ERP en ${endpoint} (${detail}).`,
@@ -533,6 +574,10 @@ async function erpPost<T>(endpoint: string, body: unknown): Promise<T> {
   const timeout =
     Number.isFinite(TIMEOUT_MS) && TIMEOUT_MS > 0 ? TIMEOUT_MS : 8000;
 
+  // Ver el comentario de la lectura: la clave se resuelve fuera del `try` para no tragarse la
+  // senal de Next que marca la ruta como dinamica.
+  const key = await apiKey();
+
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}${endpoint}`, {
@@ -540,13 +585,14 @@ async function erpPost<T>(endpoint: string, body: unknown): Promise<T> {
       headers: {
         accept: "application/json",
         "content-type": "application/json",
-        "x-storefront-key": apiKey(),
+        "x-storefront-key": key,
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(timeout),
       cache: "no-store",
     });
   } catch (error) {
+    rethrowIfNextControlFlow(error);
     const detail = error instanceof Error ? error.message : String(error);
     throw new ErpError(
       `No se pudo consultar el ERP en ${endpoint} (${detail}).`,

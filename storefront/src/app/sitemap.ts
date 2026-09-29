@@ -1,18 +1,19 @@
 import type { MetadataRoute } from 'next';
 
+import { currentChannelOrDefault } from '@/lib/channels';
 import { getCategories, getPublishedSlugs } from '@/lib/erp';
-import { siteUrl } from '@/lib/site';
-
-export const revalidate = 3600;
 
 /**
- * Sitemap construido desde el catalogo publicado del ERP.
+ * Sitemap construido desde el catalogo publicado del ERP, **por host**: cada dominio sirve las
+ * URLs de su propia tienda (con `NEXT_PUBLIC_SITE_URL` unico, el sitemap de la empresa B habria
+ * publicado las URLs de la A).
  *
  * Si el canal no responde, el sitemap se sirve con las rutas fijas: preferimos un
  * sitemap incompleto antes que romper la ruta.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = siteUrl();
+  const channel = await currentChannelOrDefault();
+  const base = channel.url;
   const now = new Date();
 
   const entries: MetadataRoute.Sitemap = [

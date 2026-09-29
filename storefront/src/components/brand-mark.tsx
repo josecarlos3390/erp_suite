@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { SITE_NAME } from '@/lib/site';
+import { currentChannelOrDefault } from '@/lib/channels';
 
 interface BrandMarkProps {
   /** `true` para el pie (monocromo, sin enlace). */
@@ -15,8 +15,12 @@ interface BrandMarkProps {
  * monograma en el color de marca con la silueta de una bolsa de compra y el
  * nombre de la tienda. Un tenant puede sustituirlo por su logo real
  * (`SITE_NAME` + hoja de marca), que es lo que pide D23.
+ *
+ * El nombre sale del **canal del host** (`STOREFRONT_CHANNELS`): un despliegue sirviendo varios
+ * dominios enseña el nombre de cada empresa, no el del despliegue.
  */
-export function BrandMark({ plain = false, className }: BrandMarkProps): JSX.Element {
+export async function BrandMark({ plain = false, className }: BrandMarkProps): Promise<JSX.Element> {
+  const channel = await currentChannelOrDefault();
   const content = (
     <>
       <span
@@ -30,7 +34,7 @@ export function BrandMark({ plain = false, className }: BrandMarkProps): JSX.Ele
         </svg>
       </span>
       <span className="flex flex-col leading-none">
-        <span className="text-md font-extrabold tracking-tight text-fg">{SITE_NAME}</span>
+        <span className="text-md font-extrabold tracking-tight text-fg">{channel.name}</span>
         <span className="sf-eyebrow mt-0.5 hidden sm:block">Catalogo en linea</span>
       </span>
     </>

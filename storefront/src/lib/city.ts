@@ -2,6 +2,7 @@ import 'server-only';
 
 import { cookies } from 'next/headers';
 
+import { currentChannel } from './channels';
 import { getCities, type City } from './erp';
 
 /** Nombre de la cookie que guarda la ciudad elegida por el cliente. */
@@ -10,12 +11,14 @@ export const CITY_COOKIE = 'storefront_city';
 /** Ciudad de respaldo cuando no hay cookie ni configuracion. */
 export const FALLBACK_CITY = 'SCZ';
 
-function defaultCity(): string {
-  const configured = process.env.STOREFRONT_CITY;
-  if (configured !== undefined && configured.trim() !== '') {
-    return configured.trim().toUpperCase();
-  }
-  return FALLBACK_CITY;
+/**
+ * Ciudad por defecto de **este** host: la declara el canal (`STOREFRONT_CHANNELS[host].city`) y,
+ * si no, `STOREFRONT_CITY`. Con N dominios en un despliegue, una ciudad global seria la de otra
+ * tienda.
+ */
+async function defaultCity(): Promise<string> {
+  const channel = await currentChannel();
+  return channel.city !== '' ? channel.city : FALLBACK_CITY;
 }
 
 /**
@@ -34,7 +37,7 @@ export interface CityContext {
 export async function getCityContext(): Promise<CityContext> {
   const cities = await getCities();
   const requested = cookies().get(CITY_COOKIE)?.value?.trim().toUpperCase();
-  const fallback = defaultCity();
+  const fallback = await defaultCity();
 
   const selected =
     cities.find((item) => item.code === requested) ??

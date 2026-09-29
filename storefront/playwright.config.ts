@@ -16,6 +16,47 @@ const ERP_API_URL = process.env.ERP_API_URL ?? 'http://localhost:3001';
 const STOREFRONT_API_KEY = process.env.STOREFRONT_API_KEY ?? 'tienda-dev-key-cambiar';
 const STOREFRONT_CITY = process.env.STOREFRONT_CITY ?? 'SCZ';
 
+/**
+ * **Canales por host (T216-ter)**: el gate arranca la tienda con un mapa de **dos** dominios de
+ * prueba (más el comodín `"*"` para los casos que navegan a `127.0.0.1`) para pinchar que la
+ * resolución es por host: identidad, `robots.txt`, `sitemap.xml` y el **404** de un dominio no
+ * declarado. Los hosts se resuelven a `127.0.0.1` en el navegador con `--host-resolver-rules`
+ * (sin tocar el DNS ni el fichero `hosts`, que exigiría privilegios).
+ */
+export const E2E_DOMAINS = {
+  a: 'tienda-a.local',
+  b: 'tienda-b.local',
+  unknown: 'tienda-c.local',
+} as const;
+
+const STOREFRONT_CHANNELS =
+  process.env.STOREFRONT_CHANNELS ??
+  JSON.stringify({
+    [E2E_DOMAINS.a]: {
+      key: STOREFRONT_API_KEY,
+      name: 'Tienda A (e2e)',
+      city: STOREFRONT_CITY,
+    },
+    [E2E_DOMAINS.b]: {
+      key: STOREFRONT_API_KEY,
+      name: 'Tienda B (e2e)',
+      city: STOREFRONT_CITY,
+    },
+    // Los 43 casos que ya existian navegan a `127.0.0.1`: se declaran **explicitos** (con el nombre
+    // de siempre para no cambiar su identidad) en vez de usar el comodin `"*"`, porque con comodin
+    // no habria forma de medir el **404** de un dominio no declarado.
+    '127.0.0.1': { key: STOREFRONT_API_KEY },
+    localhost: { key: STOREFRONT_API_KEY },
+  });
+
+const HOST_RESOLVER_RULES = [
+  `MAP ${E2E_DOMAINS.a} 127.0.0.1`,
+  `MAP ${E2E_DOMAINS.b} 127.0.0.1`,
+  `MAP ${E2E_DOMAINS.unknown} 127.0.0.1`,
+].join(', ');
+
+export const E2E_BASE_URL = BASE_URL;
+
 export default defineConfig({
   testDir: './e2e',
   // El gate visual, la auditoria de accesibilidad y el presupuesto de rendimiento
@@ -32,6 +73,10 @@ export default defineConfig({
   outputDir: 'test-results',
   use: {
     baseURL: BASE_URL,
+    // Los dominios de prueba (T216-ter) se resuelven a 127.0.0.1 en el navegador.
+    launchOptions: {
+      args: [`--host-resolver-rules=${HOST_RESOLVER_RULES}`],
+    },
     // Ninguna accion puede esperar para siempre (Playwright lo deja en 0).
     actionTimeout: 30_000,
     trace: 'retain-on-failure',
@@ -51,6 +96,7 @@ export default defineConfig({
       ERP_API_URL,
       STOREFRONT_API_KEY,
       STOREFRONT_CITY,
+      STOREFRONT_CHANNELS,
       NEXT_PUBLIC_SITE_URL: BASE_URL,
     },
   },

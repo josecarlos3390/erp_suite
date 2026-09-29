@@ -8,16 +8,28 @@ import { JsonLd } from '@/components/json-ld';
 import { ProductGrid } from '@/components/product-grid';
 import { PromoBand } from '@/components/promo-band';
 import { SectionHeader } from '@/components/ui/section-header';
+import { currentChannelOrDefault } from '@/lib/channels';
 import { getCityContext } from '@/lib/city';
 import { getBanners, getCatalog, getCategories, getOffers } from '@/lib/erp';
 import { itemListJsonLd } from '@/lib/jsonld';
 
-export const metadata: Metadata = {
-  title: 'Catalogo en linea',
-  description:
-    'Ofertas vigentes, productos destacados y todas las categorias publicadas desde el ERP, con la existencia de tu ciudad.',
-  alternates: { canonical: '/' },
-};
+/**
+ * Titulo y descripcion de la home **por host** (T216-ter).
+ *
+ * `app/page.tsx` y `app/layout.tsx` son **el mismo segmento de ruta**, y `title.template` no se
+ * aplica al segmento donde se define: con un `title` fijo aqui, la home se titulaba
+ * `Catalogo en linea` **sin el nombre de la tienda** (defecto medido). Al resolverlo por canal, la
+ * portada —la pagina que mas se comparte— dice de que empresa es.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const channel = await currentChannelOrDefault();
+  return {
+    title: `${channel.name} · Catalogo en linea`,
+    description:
+      'Ofertas vigentes, productos destacados y todas las categorias publicadas desde el ERP, con la existencia de tu ciudad.',
+    alternates: { canonical: '/' },
+  };
+}
 
 const OFFER_COUNT = 8;
 const FEATURED_COUNT = 8;

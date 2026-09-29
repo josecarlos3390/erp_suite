@@ -1,22 +1,19 @@
 /**
- * Identidad y URL publica de la tienda.
+ * **Valores por defecto del despliegue** (identidad y URL publica de la tienda).
  *
- * **Una instancia = una empresa** (decision de despliegue, T216-bis): el tenant del canal
- * sale de la clave (`STOREFRONT_API_KEY`), asi que cada tienda publicada es su propio
- * despliegue y su identidad se configura por variables de entorno en ese despliegue. Lo que
- * hoy es configurable:
+ * Ojo: la identidad y la URL **efectivas** las resuelve `@/lib/channels` **por host**
+ * (`STOREFRONT_CHANNELS`), porque un solo despliegue puede servir varios dominios: cada tienda
+ * publica su nombre, su descripcion y su canonica. Este modulo es el respaldo que se usa cuando no
+ * hay mapa de canales (una empresa por despliegue, el modo de siempre) y el valor base de
+ * `NEXT_PUBLIC_SITE_URL` para `robots`/`sitemap` cuando no hay host en la peticion.
  *
- *  - `NEXT_PUBLIC_SITE_NAME` / `NEXT_PUBLIC_SITE_DESCRIPTION`: el nombre y la descripcion
- *    que ven el comprador y los buscadores (cabecera, pie, `<title>`, Open Graph y
- *    JSON-LD). Antes estaban **fijos** en el codigo (`Tienda ERP`), asi que dos empresas
- *    publicadas se llamaban igual.
- *  - `NEXT_PUBLIC_SITE_URL` es obligatorio en produccion: canonicos, Open Graph, sitemap y
- *    JSON-LD salen de aqui (por defecto `http://localhost:3000`, que en un despliegue real
- *    seria un canonico roto).
+ *  - `NEXT_PUBLIC_SITE_NAME` / `NEXT_PUBLIC_SITE_DESCRIPTION`: nombre y descripcion por defecto.
+ *  - `NEXT_PUBLIC_SITE_URL` es obligatorio en produccion en el modo de una empresa por despliegue
+ *    (canonicos, Open Graph, sitemap y JSON-LD); con `STOREFRONT_CHANNELS` cada host deriva la suya.
  *
- * Lo que **no** es configurable todavia esta declarado en el README: el color de marca
- * (`--sf-*` de `brand.css`) y el logo por empresa siguen siendo del codigo (D23 dejo las
- * variables preparadas; la pantalla del back office es trabajo aparte del ERP).
+ * Lo que **no** es configurable todavia esta declarado en el README: el color de marca (`--sf-*` de
+ * `brand.css`) y el logo por empresa siguen siendo del codigo (D23 dejo las variables preparadas;
+ * la pantalla del back office es trabajo aparte del ERP).
  */
 
 /** Texto de una variable de entorno, o el respaldo si viene vacia. */
@@ -39,9 +36,4 @@ export function siteUrl(): string {
       ? configured.trim()
       : 'http://localhost:3000';
   return base.replace(/\/+$/, '');
-}
-
-export function absoluteUrl(path: string): string {
-  const normalized = path.startsWith('/') ? path : `/${path}`;
-  return `${siteUrl()}${normalized}`;
 }

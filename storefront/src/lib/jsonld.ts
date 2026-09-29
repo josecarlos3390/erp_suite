@@ -1,9 +1,16 @@
-import { SITE_NAME, absoluteUrl } from './site';
+import { currentChannelOrDefault } from './channels';
 import type { Product } from './erp';
 
 export interface Crumb {
   label: string;
   href?: string;
+}
+
+/** URL absoluta **del host que sirve la tienda** (con N dominios, la del dominio de la peticion). */
+async function absoluteUrl(path: string): Promise<string> {
+  const channel = await currentChannelOrDefault();
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return `${channel.url}${normalized}`;
 }
 
 /**
@@ -13,8 +20,12 @@ export interface Crumb {
  * esta vigente), asi que es el que se publica en el `Offer`. La disponibilidad
  * se toma de la ciudad elegida.
  */
-export function productJsonLd(product: Product, cityName: string): Record<string, unknown> {
-  const url = absoluteUrl(`/productos/${product.slug}`);
+export async function productJsonLd(
+  product: Product,
+  cityName: string,
+): Promise<Record<string, unknown>> {
+  const channel = await currentChannelOrDefault();
+  const url = await absoluteUrl(`/productos/${product.slug}`);
   const images = product.images.length > 0 ? product.images : product.image !== null ? [product.image] : [];
 
   return {
@@ -36,7 +47,7 @@ export function productJsonLd(product: Product, cityName: string): Record<string
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
       itemCondition: 'https://schema.org/NewCondition',
-      seller: { '@type': 'Organization', name: SITE_NAME },
+      seller: { '@type': 'Organization', name: channel.name },
       areaServed: cityName,
       ...(product.deliveryDays !== null
         ? {
@@ -73,34 +84,46 @@ export function productJsonLd(product: Product, cityName: string): Record<string
 }
 
 /** JSON-LD de migas de pan. */
-export function breadcrumbJsonLd(items: readonly Crumb[]): Record<string, unknown> {
+export async function breadcrumbJsonLd(
+  items: readonly Crumb[],
+): Promise<Record<string, unknown>> {
+  const resolved = await Promise.all(
+    items.map(async (item) => ({
+      '@type': 'ListItem',
+      name: item.label,
+      ...(item.href !== undefined ? { item: await absoluteUrl(item.href) } : {}),
+    })),
+  );
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: items.map((item, index) => ({
-      '@type': 'ListItem',
+    itemListElement: resolved.map((item, index) => ({
+      ...item,
       position: index + 1,
-      name: item.label,
-      ...(item.href !== undefined ? { item: absoluteUrl(item.href) } : {}),
     })),
   };
 }
 
 /** JSON-LD de listado (categorias, busqueda, home). */
-export function itemListJsonLd(
+export async function itemListJsonLd(
   name: string,
   products: readonly Product[],
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
+  const entries = await Promise.all(
+    products.map(async (product) => ({
+      '@type': 'ListItem',
+      url: await absoluteUrl(`/productos/${product.slug}`),
+      name: product.name,
+    })),
+  );
   return {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     name,
     numberOfItems: products.length,
-    itemListElement: products.map((product, index) => ({
-      '@type': 'ListItem',
+    itemListElement: entries.map((item, index) => ({
+      ...item,
       position: index + 1,
-      url: absoluteUrl(`/productos/${product.slug}`),
-      name: product.name,
     })),
   };
 }

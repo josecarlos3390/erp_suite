@@ -44,13 +44,14 @@ tienda cargado.
 | Variable               | Obligatoria                          | Para que                                                                      |
 | ---------------------- | ------------------------------------ | ----------------------------------------------------------------------------- |
 | `ERP_API_URL`          | si (default `http://localhost:3001`) | URL base del ERP. El canal vive en `/storefront/...`, **sin** prefijo `/api`. |
-| `STOREFRONT_API_KEY`   | **si**                               | Clave del canal (`x-storefront-key`). **Solo servidor.** Una clave = una empresa. |
-| `STOREFRONT_CITY`      | si (default `SCZ`)                   | Ciudad por defecto cuando el cliente todavia no eligio.                       |
+| `STOREFRONT_API_KEY`   | si (o `STOREFRONT_CHANNELS`)         | Clave del canal (`x-storefront-key`). **Solo servidor.** Una clave = una empresa. Respaldo del modo de una empresa por despliegue. |
+| `STOREFRONT_CHANNELS`  | no                                   | **Varios dominios en un despliegue**: JSON `host → { key, name, description, city, url }`. La clave de cada empresa, su identidad y su ciudad por defecto. **Solo servidor.** |
+| `STOREFRONT_CITY`      | si (default `SCZ`)                   | Ciudad por defecto cuando el cliente todavia no eligio. Cada canal puede pisarla con su `city`. |
 | `ERP_TIMEOUT_MS`       | no (default `8000`)                  | Tope de cada peticion al ERP.                                                 |
-| `NEXT_PUBLIC_SITE_URL` | no (default `http://localhost:3000`) | Canonicos, Open Graph, sitemap y JSON-LD. **Obligatoria en produccion.**      |
-| `NEXT_PUBLIC_SITE_NAME` | no (default `Tienda ERP`)           | Nombre de la empresa en cabecera, pie, `<title>`, Open Graph y JSON-LD.       |
-| `NEXT_PUBLIC_SITE_DESCRIPTION` | no (default del codigo)      | Descripcion de la empresa para buscadores y redes.                            |
-| `IMAGE_REMOTE_HOSTS`   | no (default: solo marcadores)        | Hosts **ajenos** de las fotos reales, separados por comas (`next/image` solo optimiza hosts declarados). |
+| `NEXT_PUBLIC_SITE_URL` | no (default `http://localhost:3000`) | Canonicos, Open Graph, sitemap y JSON-LD **del modo de una empresa por despliegue**; con `STOREFRONT_CHANNELS` cada host deriva la suya. |
+| `NEXT_PUBLIC_SITE_NAME` | no (default `Tienda ERP`)           | Nombre por defecto (el de cada host sale de `STOREFRONT_CHANNELS`).           |
+| `NEXT_PUBLIC_SITE_DESCRIPTION` | no (default del codigo)      | Descripcion por defecto para buscadores y redes.                              |
+| `IMAGE_REMOTE_HOSTS`   | no (default: solo marcadores)        | Hosts **ajenos** de las fotos reales, separados por comas. Con varios dominios en un despliegue es la **union** de los hosts de todas las empresas. |
 
 ### Regla «server-only» (decision D10)
 
@@ -61,23 +62,49 @@ de filtrar la clave. Los unicos islotes cliente son: buscador, selector de ciuda
 pagina del carrito, galeria, boton de compra, navegacion de categorias (para marcar la activa) y
 **conmutador de tema** (F9.1); ninguno conoce la clave ni la URL del ERP.
 
-## Despliegue: una tienda por empresa (Vercel)
+## Despliegue: una o varias tiendas
 
-**El modelo, medido en el codigo**: el tenant **no** sale del dominio ni de un subdominio, sale de
-la **clave del canal** (`StorefrontApiKeyGuard` → `WebApiKey.keyHash` → `tenantId`). Una clave
-pertenece a **una** empresa, asi que **una tienda publicada = un despliegue con su clave**:
+**El modelo, medido en el codigo**: el tenant **no** sale del dominio, sale de la **clave del canal**
+(`StorefrontApiKeyGuard` → `WebApiKey.keyHash` → `tenantId`). Lo que se elige por dominio es **cual es
+esa clave**, su identidad y su ciudad por defecto. Hay dos modos, y los dos funcionan hoy:
+
+| Modo | Como | Cuando conviene |
+| ---- | ---- | --------------- |
+| **A. Un despliegue por empresa** | `STOREFRONT_API_KEY` + `NEXT_PUBLIC_SITE_*` en cada proyecto de Vercel | Aislamiento total (logs, rollback y variables por tienda); una empresa con **codigo o tema propio** |
+| **B. Un despliegue, N dominios** | `STOREFRONT_CHANNELS` (JSON `host → canal`) en **un** proyecto, con los dominios apuntando a el | 2-10 tiendas con el **mismo** codigo: se da de alta un dominio y su clave **sin crear otro proyecto** |
 
 ```
-        repo (monorepo)                     Vercel                      ERP (un backend)
-  ┌────────────────────────┐        ┌──────────────────────┐      ┌────────────────────────┐
-  │ backend-erp/  (API)    │◄───────┤ tienda-a             │      │ WebApiKey (empresa A)  │
-  │ erp-frontend/ (back)   │        │  root: storefront    │─────►│ WebApiKey (empresa B)  │
-  │ storefront/   (tienda) ├───────►│  STOREFRONT_API_KEY=A│      │ WebApiKey (empresa C)  │
-  └────────────────────────┘        ├──────────────────────┤      └────────────────────────┘
-                                    │ tienda-b             │
-                                    │  STOREFRONT_API_KEY=B│
-                                    └──────────────────────┘
+     Modo A (un proyecto por empresa)                 Modo B (un proyecto, N dominios)
+  ┌──────────────┐  ┌──────────────┐            ┌───────────────────────────────┐
+  │ tienda-a     │  │ tienda-b     │            │ storefront (un despliegue)     │
+  │ KEY A        │  │ KEY B        │            │ STOREFRONT_CHANNELS = {        │
+  └──────┬───────┘  └──────┬───────┘            │   "tienda-a.com": KEY A,       │
+         └────────┬────────┘                     │   "tienda-b.com": KEY B }      │
+                  ▼                              └───────────────┬───────────────┘
+          ERP (un backend, /storefront/...)              dominios → mismo proyecto
 ```
+
+### Modo B: qué hace la tienda con el host (medido)
+
+1. **`src/middleware.ts` — enrutado**: si el dominio no está en el mapa (y no hay comodín `"*"`),
+   responde **404** con una página que dice qué variable tocar. El middleware **no** toca la clave ni
+   pide datos al ERP: es solo enrutado (y corre en Edge, así que no puede filtrar la clave al
+   navegador).
+2. **`src/lib/channels.ts` — datos**: resuelve el canal del `Host` (coincidencia exacta → variante
+   `www.` → comodín `"*"`) y de ahí salen la **clave** (server-only), la **ciudad por defecto** y la
+   **identidad**.
+3. **Por host**: nombre y descripción en cabecera, pie, `<title>`, Open Graph y JSON-LD; canónica,
+   `robots.txt` y `sitemap.xml` con **las URLs de ese dominio** (antes salían de un
+   `NEXT_PUBLIC_SITE_URL` fijo, que con N dominios publicaba las de otra empresa).
+4. **La clave nunca viaja al navegador** (D10): todo pasa por el servidor de Next. Un caso del gate
+   lo pincha.
+
+**Por qué así y no todo dentro del middleware** (decisión medida): la clave es server-only y elegir el
+tenant es una decisión de **datos**, no de enrutado; y todas las rutas de la tienda **ya** se renderizan
+por petición (`ƒ` en el build), así que leer el `Host` en el servidor no cuesta optimización estática.
+El middleware se queda con lo que **solo** él puede hacer: cortar una petición con 404 antes de
+renderizar. Medido al no tenerlo: lanzar `notFound()` desde el cliente del canal entraba en **bucle**,
+porque el pie de página vuelve a leer el canal al pintar la propia página de 404.
 
 ### Alta de una empresa nueva (ERP)
 
@@ -105,24 +132,30 @@ railway ssh -s backend-erp 'cd /app && NODE_OPTIONS=--max-old-space-size=768 \
 
 ### Alta de la tienda (Vercel)
 
-1. **New Project** → el mismo repositorio → **Root Directory: `storefront`** (es un monorepo: sin
-   esto el build falla).
-2. **Environment Variables** (por proyecto, no compartidas):
+**Modo A** — un proyecto por empresa:
 
-   | Variable                       | Valor                                        |
-   | ------------------------------ | -------------------------------------------- |
-   | `ERP_API_URL`                  | `https://backend-erp-production-5c3b.up.railway.app` |
-   | `STOREFRONT_API_KEY`           | la clave **de esa** empresa (paso anterior)  |
-   | `STOREFRONT_CITY`              | la ciudad por defecto de esa tienda (`SCZ`, `LPZ`, …) |
-   | `NEXT_PUBLIC_SITE_URL`         | `https://tienda-a.com`                        |
-   | `NEXT_PUBLIC_SITE_NAME`        | el nombre comercial de la empresa            |
-   | `NEXT_PUBLIC_SITE_DESCRIPTION` | su descripcion (opcional)                     |
-   | `IMAGE_REMOTE_HOSTS`           | sus hosts de fotos reales (opcional)          |
+1. **New Project** → el repositorio **raíz** (`erp_suite`) → **Root Directory: `storefront`**.
+2. **Environment Variables**: `ERP_API_URL`, `STOREFRONT_API_KEY` (la de esa empresa),
+   `STOREFRONT_CITY`, `NEXT_PUBLIC_SITE_URL=https://tienda-a.com`, `NEXT_PUBLIC_SITE_NAME`, y
+   `IMAGE_REMOTE_HOSTS` si tiene fotos propias.
+3. **Dominio**: el de esa empresa.
 
-3. **Dominio**: el dominio propio de la empresa (`tienda-a.com`) en ese proyecto.
-4. **CORS del canal**: el dominio ya esta declarado en `allowedOrigins` de la clave (paso del
-   ERP). No es imprescindible mientras la tienda hable **solo desde el servidor** (D10), pero es
-   lo que deja el canal cerrado si algun dia el navegador llama directo.
+**Modo B** — un proyecto, N dominios:
+
+1. Igual: **New Project** → repo raíz → **Root Directory: `storefront`**.
+2. **Environment Variables**:
+
+   ```
+   ERP_API_URL=https://backend-erp-production-5c3b.up.railway.app
+   STOREFRONT_CHANNELS={"tienda-a.com":{"key":"sf_...","name":"Tienda A","city":"SCZ"},"tienda-b.com":{"key":"sf_...","name":"Tienda B","city":"LPZ"},"*":{"key":"sf_...","name":"Previews"}}
+   IMAGE_REMOTE_HOSTS=cdn.tienda-a.com,cdn.tienda-b.com
+   ```
+3. **Dominios**: `tienda-a.com` y `tienda-b.com` en **ese mismo** proyecto.
+4. **CORS del canal**: cada clave declara sus dominios en `allowedOrigins` (paso del ERP). No es
+   imprescindible mientras la tienda hable **solo desde el servidor** (D10), pero deja el canal
+   cerrado si algun dia el navegador llama directo.
+5. **Alta de otra empresa**: `storefront:seed` + `storefront:key` en el ERP y **añadir su host al
+   JSON** + su dominio en Vercel. Sin proyecto nuevo.
 
 ### Verificacion (sin navegador)
 
@@ -136,26 +169,39 @@ curl -s -o /dev/null -w '%{http_code}\n' \
 **403** = el `Origin` del navegador no esta declarado en esa clave. Para comprobar el aislamiento,
 la **misma** ruta con la clave de otra empresa debe devolver **su** catalogo.
 
+Con varios dominios, ademas:
+
+```bash
+# Cada host sirve su identidad y su canonica (y un host no declarado responde 404)
+curl -s -H 'Host: tienda-a.com' https://<despliegue>/ | grep -o '<title>[^<]*'
+curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: no-declarado.com' https://<despliegue>/
+```
+
+El gate E2E **pincha los dos modos**: arranca el servidor con un mapa de dos dominios de prueba
+(`tienda-a.local`, `tienda-b.local`), resuelve los hosts a `127.0.0.1` con `--host-resolver-rules` y
+comprueba identidad, canónica, `robots.txt`, `sitemap.xml` y el 404 de `tienda-c.local`
+(`e2e/multidominio.spec.ts`).
+
 ### Rotacion de la clave (sin cortar la tienda)
 
 1. `npm run storefront:key -- --tenant <slug> --label "Tienda A (2026-10)" --origins ...` → crea la
    clave **nueva** (la vieja sigue viva).
-2. Cambia `STOREFRONT_API_KEY` en el proyecto de Vercel de esa tienda y **redespliega**.
+2. Cambia la clave en el despliegue (variable del proyecto en el modo A; entrada del host en
+   `STOREFRONT_CHANNELS` en el modo B) y **redespliega**.
 3. `npm run storefront:key -- --deactivate <prefijoDelHashViejo>` → apaga la vieja.
 
 ### Limites declarados de este modelo
 
-1. **No hay resolucion por host**: una sola app sirviendo N dominios (lo que preveia el §5 del plan
-   del e-commerce) exigiria middleware + una fuente de verdad host→clave que **hoy no existe**
-   (no hay columna de dominio; solo `allowedOrigins`). Es una fase aparte, no un flag.
-2. **No hay pantalla de claves**: el alta y la rotacion son estos scripts; la pantalla «Canales de
-   tienda» (clave, dominios, activa/inactiva) es trabajo del back office.
-3. **Identidad visual por empresa**: el nombre y la descripcion ya son variables, pero el **color de
-   marca** (`--sf-*` de `src/styles/brand.css`) y el **logo** siguen en el codigo: con el modelo de
-   un despliegue por empresa se cambian en la hoja de marca de ese despliegue; la pantalla por
-   empresa es D23 (pendiente declarado).
-4. **Las fotos reales** necesitan su host en `IMAGE_REMOTE_HOSTS` (y dejar de ser un marcador de
-   posicion para que la tienda no dibuje su placeholder, D24).
+1. **No hay pantalla de claves ni de dominios**: el alta y la rotacion son estos scripts (el modelo
+   por host vive en `STOREFRONT_CHANNELS`, que es configuración de despliegue).
+2. **Identidad visual por empresa**: el nombre y la descripción ya son por host, pero el **color de
+   marca** (`--sf-*` de `src/styles/brand.css`) y el **logo** siguen en el código: en el modo A se
+   cambian en la hoja de marca de ese despliegue, en el modo B son comunes (D23 pendiente).
+3. **Las fotos reales** necesitan su host en `IMAGE_REMOTE_HOSTS` (y dejar de ser un marcador de
+   posición para que la tienda no dibuje su placeholder, D24).
+4. **Un cambio de `STOREFRONT_CHANNELS` exige redesplegar** (Vercel congela la configuración del
+   despliegue). El middleware lee la variable en runtime —medido con `next start`—, pero un
+   despliegue nuevo la toma en su build.
 
 ## Comandos
 

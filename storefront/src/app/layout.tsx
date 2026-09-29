@@ -5,36 +5,44 @@ import { CartHydration } from '@/components/cart-hydration';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { ThemeScript } from '@/components/theme-toggle';
-import { SITE_DESCRIPTION, SITE_NAME, siteUrl } from '@/lib/site';
+import { currentChannelOrDefault } from '@/lib/channels';
 
 import './globals.css';
 
-function metadataBaseUrl(): URL {
+function metadataBaseUrl(url: string): URL {
   try {
-    return new URL(siteUrl());
+    return new URL(url);
   } catch {
     return new URL('http://localhost:3000');
   }
 }
 
-export const metadata: Metadata = {
-  metadataBase: metadataBaseUrl(),
-  title: {
-    default: `${SITE_NAME} · Catalogo en linea`,
-    template: `%s · ${SITE_NAME}`,
-  },
-  description: SITE_DESCRIPTION,
-  applicationName: SITE_NAME,
-  alternates: { canonical: '/' },
-  openGraph: {
-    type: 'website',
-    locale: 'es_BO',
-    siteName: SITE_NAME,
-    title: SITE_NAME,
-    description: SITE_DESCRIPTION,
-  },
-  robots: { index: true, follow: true },
-};
+/**
+ * Metadatos **por host**: con un despliegue sirviendo varios dominios, el título, la descripción,
+ * el `metadataBase` y el Open Graph tienen que ser los de la tienda de **ese** dominio (antes eran
+ * constantes del despliegue y la canónica apuntaba siempre al mismo sitio).
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const channel = await currentChannelOrDefault();
+  return {
+    metadataBase: metadataBaseUrl(channel.url),
+    title: {
+      default: `${channel.name} · Catalogo en linea`,
+      template: `%s · ${channel.name}`,
+    },
+    description: channel.description,
+    applicationName: channel.name,
+    alternates: { canonical: '/' },
+    openGraph: {
+      type: 'website',
+      locale: 'es_BO',
+      siteName: channel.name,
+      title: channel.name,
+      description: channel.description,
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 interface RootLayoutProps {
   children: ReactNode;

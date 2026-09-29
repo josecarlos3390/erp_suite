@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
+import { currentChannelOrDefault } from '@/lib/channels';
 import { getPageLinks } from '@/lib/erp';
-import { SITE_NAME } from '@/lib/site';
 
 import { BrandMark } from './brand-mark';
 
@@ -17,7 +17,10 @@ import { BrandMark } from './brand-mark';
  * checkout), y aqui solo se repite que el ERP es la fuente de verdad.
  */
 export async function SiteFooter(): Promise<JSX.Element> {
-  const pages = await getPageLinks();
+  const [pages, channel] = await Promise.all([
+    getPageLinks(),
+    currentChannelOrDefault(),
+  ]);
 
   return (
     <footer className="mt-12 border-t border-line bg-elevated">
@@ -98,7 +101,7 @@ export async function SiteFooter(): Promise<JSX.Element> {
       <div className="border-t border-line-subtle">
         <div className="sf-container flex flex-col gap-2 py-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-2xs text-fg-tertiary">
-            {SITE_NAME} · precios, existencia y pedidos provistos por el ERP.
+            {channel.name} · precios, existencia y pedidos provistos por el ERP.
           </p>
           <p className="text-2xs text-fg-tertiary">
             Los precios pueden cambiar sin aviso; el importe final se confirma en el checkout.

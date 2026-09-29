@@ -1980,3 +1980,91 @@ para cada tenant?».
    `--transpile-only` (el contenedor tiene ~1 GB: la lección del seed), porque el `DATABASE_URL` de
    Railway no resuelve desde el portátil.
 
+## §21 Canales por host: un despliegue sirviendo N dominios (T216-ter — 2026-09-29)
+
+**Lo que preguntó el usuario**: «¿crees que es mejor implementar un middleware? Porque si es mejor hay
+que hacerlo, ¿qué opinas o qué sugieres?».
+
+### Decisión (con la medición delante): **sí a resolver por host, no a meterlo en el middleware**
+
+| Pieza | Dónde | Por qué |
+| --- | --- | --- |
+| **Enrutado** (404 de dominio no declarado) | `src/middleware.ts` (Edge) | Es lo **único** que la capa de datos no puede hacer: cambiar el código de estado y evitar que la página se renderice |
+| **Datos** (clave, ciudad, identidad) | `src/lib/channels.ts` (Node, `server-only`) | La clave **no** puede pasar por el Edge ni acercarse al navegador (D10); elegir el tenant es una decisión de datos |
+| **La regla** (normalizar host, `www.`, comodín) | `src/lib/channel-map.ts` (puro) | La usan **los dos** runtimes: si cada uno tuviera su copia, un dominio podría pasar el middleware y quedarse sin canal |
+
+**Por qué NO todo en el middleware** (medido): (1) **no se pierde nada** al leer el `Host` en el
+servidor porque **todas** las rutas de la tienda ya se renderizan por petición (`ƒ` en el build; las
+únicas estáticas eran `robots.txt` y `sitemap.xml`, que con N dominios tienen que ser por host de todas
+formas); (2) el middleware corre en **cada** petición (incluidos assets) en runtime Edge: coste puro
+para algo que solo importa al hablar con el ERP; (3) la clave quedaría en una capa de enrutado.
+
+### Lo que se midió ANTES
+
+- La tienda resolvía el canal con **una** `STOREFRONT_API_KEY` global y un `NEXT_PUBLIC_SITE_URL` fijo:
+  con N dominios en un despliegue, **todos** los hosts habrían servido la misma empresa y la misma
+  canónica (duplicado de contenido y catálogo de otra empresa en un dominio ajeno).
+- `robots.txt` y `sitemap.xml` eran las **únicas** rutas estáticas del build (`○`), así que no podían
+  ser por host.
+- `app/page.tsx` y `app/layout.tsx` son **el mismo segmento** de ruta y `title.template` no se aplica
+  al segmento donde se define: la home se titulaba `Catalogo en linea` **sin el nombre de la tienda**
+  (defecto preexistente, medido en la primera corrida del caso multi-dominio).
+
+### Entregado
+
+- `channel-map.ts` (regla pura) + `channels.ts` (`currentChannel()` / `currentChannelOrDefault()`,
+  memoizados por petición con `cache`) + `middleware.ts` (404 + página que dice qué variable tocar).
+- Por host: **identidad** (cabecera, pie, `<title>`, Open Graph, JSON-LD), **canónica** derivada del
+  host de la petición (conservando puertos no estándar: `:3000`/`:3100`), `robots.txt` y `sitemap.xml`
+  con las URLs de **ese** dominio, y `city` por defecto por canal.
+- `STOREFRONT_CHANNELS` (JSON server-only) documentado en `.env.example` y en el README, con los dos
+  modelos de despliegue (uno por empresa / uno para N dominios) y la rotación en cada uno.
+
+### Dos defectos encontrados y corregidos por el camino
+
+1. **El `try` del cliente del canal se tragaba las señales de control de Next**: `headers()` marca la
+   ruta como dinámica lanzando `DYNAMIC_SERVER_USAGE`, y al convertirla en `ErpError` **el `next build`
+   fallaba** («Export encountered errors on /, /buscar, /carrito, /categorias, /comparar, /favoritos,
+   /sucursales, /_not-found»). Corregido: la clave se resuelve **fuera** del `try` y
+   `rethrowIfNextControlFlow()` deja pasar `DYNAMIC_SERVER_USAGE` y `NEXT_*` (el `digest` es el
+   contrato público de Next para estos flujos). Era un defecto **latente**: antes `apiKey()` solo leía
+   `process.env`, así que ninguna señal de Next caía dentro del `try`.
+2. **La canónica perdía el puerto**: derivarla del host normalizado (`sin puerto`) dejaba
+   `http://tienda-b.local/` en vez de `:3100` ⇒ en local y en previsualizaciones apuntaba al 80.
+   Corregido: se quitan solo los puertos por defecto (`:80` con http, `:443` con https).
+
+### Medido DESPUÉS (gate E2E con dos dominios reales)
+
+El gate arranca el servidor con un mapa de **dos** dominios (`tienda-a.local`, `tienda-b.local`) y los
+resuelve a `127.0.0.1` en el navegador con `--host-resolver-rules` (sin tocar DNS ni el fichero
+`hosts`). Casos nuevos en `e2e/multidominio.spec.ts` (**5**), suite funcional **48/48**:
+
+| Caso | Medición |
+| --- | --- |
+| Cada dominio sirve su identidad y su catálogo | `<title>` y cabecera con **`Tienda A (e2e)`** vs **`Tienda B (e2e)`**, catálogo visible en los dos |
+| `robots.txt` y la canónica salen del host | `http://tienda-a.local:3100` en el de A y `http://tienda-b.local:3100` en el de B, **sin** el otro dominio |
+| `sitemap.xml` por host | URLs `http://tienda-b.local:3100/...` y **ninguna** de A |
+| Dominio no declarado | **404** + «Este dominio no tiene tienda configurada», **cero** tarjetas de producto y ninguna identidad ajena |
+| La clave no llega al navegador | El HTML no contiene `x-storefront-key` ni el valor de la clave (D10) |
+
+Medido además con `curl -H 'Host: …'` (sin navegador): `127.0.0.1` y `tienda-c.local` (no declarados,
+sin comodín) → **404**; `tienda-a.local` → su título y su identidad. **El middleware lee
+`process.env.STOREFRONT_CHANNELS` en runtime** (medido con `next start` y la variable puesta después
+del build), así que el mapa no queda congelado en la imagen; en Vercel, cambiar la variable exige
+redesplegar.
+
+**Gates**: tienda `next lint` **0**, `tsc --noEmit` **0**, `next build` **0** (todas las rutas `ƒ`,
+`Middleware 27.4 kB`) y **E2E 48/48**.
+
+### Declarado
+
+1. **Un `STOREFRONT_CHANNELS` con comodín `"*"` desactiva el 404** de dominios desconocidos: es
+   deliberado (sirve para las URLs de previsualización de Vercel) y el gate lo evita declarando
+   `127.0.0.1`/`localhost` explícitos, para poder medir el 404.
+2. **Sin mapa**, el modo de una empresa por despliegue sigue igual: el middleware no interviene.
+3. Sigue **sin haber pantalla** de claves/dominios (los scripts) y el **color de marca/logo** por
+   empresa sigue en el código (D23): en el modo de N dominios son comunes.
+4. **Los puertos no estándar se conservan** en la canónica a propósito (local y previews); un
+   despliegue real no los lleva.
+
+
