@@ -5,16 +5,26 @@
 > rollback para producción. Complementa `AGENTS.md` (estado del proyecto) y
 > `AUDIT.md` (QA de go-live: baterías 18-28, seguridad, SSR).
 >
-> **Hosts actuales (2026-08-25):** backend en **Railway**
-> (`https://erp-backend-production-ae06.up.railway.app`, Dockerfile + entrypoint
-> que migra solo; Postgres de Railway con red privada) y frontend en **Vercel**
-> (`https://erp-frontend.vercel.app`, SSR). El deploy del backend usa el repo
-> `josekilla3390/backend-erp` (copia) —**desde la ronda 38 (2026-09-29)**, porque el
-> repo anterior `joseka3390-design/erp-backend` dejó de existir: `git ls-remote` →
-> *Repository not found*; el remoto local `deploy` ya apunta al nuevo y `origin` se
-> quedó con un solo `pushurl`—; el pipeline de SQL manuales incluye
-> `20260825_sync_schema_drift.sql` (drift de schema idempotente — BDs frescas
-> despliegan completas).
+> **Hosts actuales (2026-09-29):** backend en **Railway**, cuenta **`josekilla3390`**,
+> proyecto `determined-recreation`, servicio `backend-erp` (repo `josekilla3390/backend-erp`,
+> Dockerfile + entrypoint que migra solo; Postgres de Railway con red privada):
+> **`https://backend-erp-production-5c3b.up.railway.app`** (dominio generado con
+> `railway domain`; `GET /health` → **200**). Frontend en **Vercel**:
+> **`https://erp-frontend-gules.vercel.app`** (es el valor de `FRONTEND_URL` del backend, o
+> sea el CORS ya coincide). El frontend apunta al backend por la constante
+> `erp-frontend/src/environments/environment.prod.ts` → `apiUrl` (Vercel **no** lee variables
+> de entorno para esto: `npm run build` hornea esa constante), así que **cambiar de backend
+> es cambiar esa línea y empujar**; verificado en el bundle desplegado
+> (`chunk-IIIKBBAT.js` contiene el host nuevo). *(Histórico: hasta el 2026-09-29 el backend
+> era `https://erp-backend-production-ae06.up.railway.app` en la cuenta
+> `joseka3390-design`; quedó sirviendo **404** porque su servicio apuntaba al repo borrado
+> `joseka3390-design/erp-backend` y estaba sin deployments. Y hasta la ronda 38 el deploy
+> usaba ese repo como «copia»; ahora el espejo del backend es `josekilla3390/backend-erp`,
+> remoto local `deploy`, y `origin` se quedó con un solo `pushurl`.)* El pipeline de SQL
+> manuales incluye `20260825_sync_schema_drift.sql` (drift de schema idempotente) y, desde
+> el 2026-09-29, el entrypoint los aplica con **`--best-effort`**: en una base ya sincronizada
+> con `prisma db push` el primer archivo choca (`column "isIndexUnit" already exists`) y sin
+> esa tolerancia el contenedor **moría antes de arrancar la API** (crash loop y 502).
 
 ---
 
@@ -176,6 +186,16 @@ railway run -- npx prisma db seed
 > En PowerShell (Windows) el paso 3 usa archivo: crear `reset-mark-manual.sql`
 > con el `CREATE TABLE` + `INSERT` de arriba y correr
 > `railway run -- npx prisma db execute --file reset-mark-manual.sql`.
+
+> **Ojo con `railway run` (medido 2026-09-29).** El CLI ejecuta el comando **en tu
+> máquina**, con las variables del servicio: `DATABASE_URL` apunta a
+> `postgres.railway.internal:5432`, que **solo resuelve dentro de la red del proyecto**, así
+> que desde el portátil esos `railway run` fallan al conectar. Para tocar la base hay dos
+> vías: `railway ssh` (ejecuta **dentro** del contenedor, donde el host privado sí resuelve)
+> o **habilitar un TCP Proxy** al Postgres en *Settings → Networking* y usar esa URL con
+> `DATABASE_URL=... npx prisma ...` en local. Y el paso 3 ya **no** es obligatorio para
+> arrancar: desde el 2026-09-29 el entrypoint aplica los SQL manuales con `--best-effort`
+> (tolera el «ya existe» en vez de morir), aunque marcarlos sigue siendo lo correcto.
 
 > **Si la BD SÍ tiene datos que conservar — NO resetear.** Verificar paridad y
 > resolver: `prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel
