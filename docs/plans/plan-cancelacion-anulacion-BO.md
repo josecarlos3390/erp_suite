@@ -2335,32 +2335,35 @@ umbral por defecto del endpoint (**90 %**) el indicador `disk` responde *down* y
 
 - Base de desarrollo: `npm run db:recreate` exige parar el API; tras recrear hay que registrar la **tasa del día**
   (`POST /exchange-rates`, USD→BOB 6,96) o el guard bloquea las operaciones.
-- Sondas (no se commitean): `backend-erp/scripts/_probe-t255-anulacion.ts` (cancelación + NC parcial + límites),
-  `_probe-t255-espejo.ts` (par original/espejo y estados), `_probe-t255-ab.ts` (A/B de la fecha),
-  `_probe-t255-ui-final.ts` + `_probe-t255-ui-espejo.ts` + `_probe-t255-ui-asientos.ts` + `_probe-t255-ui-fechas.ts`
-  (validación sobre base limpia con los payloads de la pantalla).
-- Sondas de la **ronda 25** (tampoco se commitean): `_probe-r24-medicion-b.ts` (la cadena de venta y la entrega desde
-  la FRV) y `_probe-r24-medicion-b-bis.ts` (los **siete** caminos que heredan cabecera, A-G) —escritas en la ronda 24 y
-  reutilizadas como A/B—, `_probe-r25-frv-deriva.ts` (las líneas de la FRV contra la regla única) y
-  `_probe-r25-respuesta.ts` (¿la **respuesta** del alta publica `totalDiscount`? base y `GET` sí).
-- Sondas de la **ronda 24** (tampoco se commitean): `_probe-r24-recepcion.ts` (la recepción creada desde la FRC frente a
-  la FRC: importes, IVA y descuento), `_probe-r24-doble-recepcion.ts` (¿se puede recibir dos veces la misma FRC?),
-  `_probe-r24-vinculo.ts` (los dos vínculos FRC ↔ recepción), `_probe-r24-verificacion.ts` (limpieza + A/B del arreglo),
-  `_probe-r24-margen.js`/`_probe-r24-margen2.js` (los precios del artículo para explicar el margen), la **auditoría**
-  `_probe-r24-auditoria.ts` + `_probe-r24-auditoria-iva.ts` (13 invariantes por familia sobre 215 documentos) y las de
-  verificación de ventas del subagente (`_probe-r24-medicion-a*.ts`, `-b*.ts`, `-c.ts`). La sonda **de navegador**
-  (`erp-frontend/e2e/zz-r24-*.spec.ts`) se retira tras medir; para el A/B en pantalla se hace `git stash` en
-  `erp-frontend` y se espera al `Application bundle generation complete` del `ng serve` antes de volver a correrla.
-- Sondas de la **ronda 23** (tampoco se commitean): `_probe-r23-columnas.ts` (lo guardado por el backend frente a lo que
-  pinta la grilla, con el espejo nuevo y el viejo), `_probe-r23-candidatos.js` y
-  `_probe-r23-id.js` (documentos guardados con la cabecera materializada y el **id** del código `FRC-44` = **80**:
-  el formulario de la FRC se abre por **id**, no por código), y una sonda **de navegador** temporal
-  (`erp-frontend/e2e/zz-r23-live-medicion.spec.ts`, **retirada tras medir** para no contaminar la suite funcional:
-  se corre con `npx playwright test e2e/<archivo>.spec.ts --project=chromium --no-deps` contra el `ng serve` vivo
-  —`localhost:4200`, que escucha en **`[::1]`**: `Test-NetConnection 127.0.0.1` da falso aunque esté arriba— y lee las
-  pestañas «💸 Descuentos» y «💰 Costos» de `FRC-44` y la de descuentos de `PO-1`). Para el **A/B en la pantalla** se
-  hace `git stash` en `erp-frontend` y se espera a que el log del `ng serve` diga `Application bundle generation
-  complete` antes de volver a correr la sonda; después `git stash pop`.
+- Sondas: **borradas en la ronda 39** (86 archivos `_probe-*` de todas las rondas del tramo; el conocimiento que
+  destilaron vive en los tests unitarios y E2E y en las mediciones anotadas en cada ronda). Lo que sigue es el
+  **registro** de qué medía cada una, por si hay que rehacer una medición:
+  - **T255**: `_probe-t255-anulacion.ts` (cancelación + NC parcial + límites), `_probe-t255-espejo.ts` (par
+    original/espejo y estados), `_probe-t255-ab.ts` (A/B de la fecha) y `_probe-t255-ui-*.ts` (validación sobre base
+    limpia con los payloads de la pantalla).
+  - **Ronda 25**: `_probe-r24-medicion-b.ts` (la cadena de venta y la entrega desde la FRV) y
+    `_probe-r24-medicion-b-bis.ts` (los **siete** caminos que heredan cabecera, A-G) —escritas en la ronda 24 y
+    reutilizadas como A/B—, `_probe-r25-frv-deriva.ts` (las líneas de la FRV contra la regla única) y
+    `_probe-r25-respuesta.ts` (¿la **respuesta** del alta publica `totalDiscount`? base y `GET` sí).
+  - **Ronda 24**: `_probe-r24-recepcion.ts` (la recepción creada desde la FRC frente a la FRC: importes, IVA y
+    descuento), `_probe-r24-doble-recepcion.ts` (¿se puede recibir dos veces la misma FRC?), `_probe-r24-vinculo.ts`
+    (los dos vínculos FRC ↔ recepción), `_probe-r24-verificacion.ts` (limpieza + A/B del arreglo),
+    `_probe-r24-margen*.js` (los precios del artículo para explicar el margen) y la **auditoría**
+    `_probe-r24-auditoria*.ts` (13 invariantes por familia sobre 215 documentos).
+  - **Ronda 38/39**: `_probe-r38-seis.ts` (columnas, filas en cabecera y filtro ignorado en las seis familias),
+    `_probe-r38-ab.ts` (la política y el congelado, con el tipo de cambio del día), `_probe-r38-escritura.ts` (el
+    `groupBy` de `sourceDocumentType`) y `_probe-r39-*.ts` (estado y referencias de los documentos de sonda).
+- Las sondas **de navegador** (`erp-frontend/e2e/zz-r24-*.spec.ts`, `zz-r27-*`, `zz-r28-*`, `zz-r29-*`, `zz-r30-*`) se
+  **retiran tras medir** (las de las rondas 24-30 ya no están en el árbol); para el A/B en pantalla se hace
+  `git stash` en `erp-frontend` y se espera al `Application bundle generation complete` del `ng serve` antes de volver
+  a correrlas.
+- **Ronda 23** (registro; la sonda se borró en la r39): `_probe-r23-columnas.ts` (lo guardado por el backend frente a lo
+  que pinta la grilla, con el espejo nuevo y el viejo), `_probe-r23-candidatos.js` y `_probe-r23-id.js` (documentos
+  guardados con la cabecera materializada y el **id** del código `FRC-44` = **80**: el formulario de la FRC se abre por
+  **id**, no por código). La sonda **de navegador** temporal (`erp-frontend/e2e/zz-r23-live-medicion.spec.ts`, ya
+  retirada) se corría con `npx playwright test e2e/<archivo>.spec.ts --project=chromium --no-deps` contra el `ng serve`
+  vivo —`localhost:4200`, que escucha en **`[::1]`**: `Test-NetConnection 127.0.0.1` da falso aunque esté arriba— y leía
+  las pestañas «💸 Descuentos» y «💰 Costos» de `FRC-44` y la de descuentos de `PO-1`.
 - En una **base limpia** los artículos de las sondas ya no existen: se toman tres artículos de la semilla con
   `trackingType: 'NONE'` (los serializados exigen número de serie) y el precio se manda en el documento.
 - El campo del espejo es `reversalJournalEntryId` **en el original** (apunta al espejo); el espejo **no** lleva
