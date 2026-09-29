@@ -1,6 +1,6 @@
 # T255 — Cancelación vs Anulación (BO): memoria de trabajo
 
-> Estado: **CERRADO (rondas 1-28)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
+> Estado: **CERRADO (rondas 1-30)**. D1-D7 y la **UI** cerrados en la ronda 8 (interruptores de
 > Configuración, botón «Anular con nota de crédito» en facturas de venta y compra, y el campo de fecha fuera de los
 > diálogos de cancelación); la ronda 9 cierra **D8** (la cancelación revierte IT y descuentos —espejo exacto— y el
 > hecho **nuevo** va al **precio ya descontado**), la ronda 10 cierra **D9** (el preliminar materializa el descuento
@@ -1624,6 +1624,58 @@ particularidad del ERP, pero se sostiene sobre **cuatro reglas**, y todos los de
   la regla «el origen se decide por la LÍNEA» no deja ninguna recepción histórica sin reconocer —el único caso ambiguo sería
   una recepción nacida de una FRC por el camino **anterior a la r24**, que no escribía traza, y ese camino tampoco consumía
   la reserva—.
+
+## Ronda 30 — la grilla muestra el descuento que el documento va a guardar (CERRADA, solo visualización)
+
+### Lo que pidió el usuario
+
+> «si hazlo por favor, ¿es lo correcto verdad? guíame también con las buenas prácticas, no siempre es lo que yo diga a veces
+> puedo estar equivocado, pero tú estás más al tanto de las buenas prácticas en un ERP.»
+
+Era el cierre de la ronda 29: en la **FCP** y en las **dos cotizaciones** la celda `DTO. %` de la línea mostraba **43,75**
+al aplicar 25 % de cabecera, mientras la caja y el documento descontaban **25 %**.
+
+### Medición
+
+```
+ANTES (navegador, 25 % de línea → 25 % de cabecera, línea de 150)
+   FRC: línea limpia (r29) · celda 25,00 · caja Total 112,50           ✅ coherente
+   FCP: línea con el % de la cabecera · celda 43,75 · caja 112,50      ✗ dos lecturas del mismo hecho
+API (payload del alta en modo cabecera)
+   FCP-38  línea limpia + cabecera 25 %  → desc 37,50 · total 112,50   ← lo que la pantalla manda
+   FCP-39  línea 25 % + cabecera 25 %    → desc 65,63 · total 84,37   ← payload que la pantalla NO produce
+DISCRIMINADOR (navegador, e2e/zz-r30-discounttotal.spec.ts)
+   descuento de línea TECLEADO por el usuario → discountPct 25 · discountTotal 37,50  (FCP y FRC)
+   cabecera MATERIALIZADA por el borrador     → discountPct 25 · discountTotal  0,00
+```
+
+### Entregado (visualización: ningún payload, ninguna regla de dinero, nada de backend)
+
+`isMaterializedHeaderShare(row)` en `shared/utils/line-discount-display.util.ts`: `%` o importe con `discountTotal` en
+**0** en un **borrador** ⇒ ese descuento es la **cabecera** que el propio formulario escribió, así que no se suma (la base
+del prorrateo vuelve al bruto, como cuando la línea viaja limpia, y el `%` compuesto no la acumula). La acumulación
+**legítima** (línea con descuento propio **persistido**, `discountTotal > 0`) sigue igual y el documento **guardado** sigue
+mandando por `stored` (ronda 23).
+
+### Medido después (misma sonda)
+
+```
+FRC y FCP → celda DTO. % = 25,00 (antes 43,75 en la FCP) · caja Total 112,50 (un solo 25 %)
+```
+
+### Gates
+
+`tsc` app/spec/e2e **0**, **Karma** (3 casos nuevos del util: materialización porcentual, materialización por importe y el
+control de un descuento propio persistido; + 1 caso reescrito **con la medición delante** —el fixture ponía `%` sin importe,
+forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
+
+### Declarado
+
+- El discriminador es `discountTotal == 0` **en un borrador**: es la forma exacta que deja la materialización del patrón
+  SAP/Odoo. Si algún día un formulario escribiera la cabecera en la línea **con** su importe, la celda volvería a sumar (y
+  sería correcto, porque el payload también lo llevaría).
+- La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
+  documento **guardado** se lee siempre de la línea (ronda 23).
 
 ## Pendiente del tramo
 
