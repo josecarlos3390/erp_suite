@@ -1677,6 +1677,61 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
 
+## Ronda 33 (b2) — el MOTIVO del descuento de cabecera: obligatorio sobre el umbral y guardado en el documento (CERRADA)
+
+Cierra el declarado «**motivo**» del tramo (el tope y la autorización entraron en b1).
+
+### Lo que se midió ANTES (sonda `_probe-r33-tope.ts`)
+
+```
+POST /sales-orders con headerDiscountReason  -> 400 «property headerDiscountReason should not exist»
+POST /sales-orders cabecera 90 % SIN motivo  -> 201 · persistido PED-30 (pct=90 desc=135 total=15)
+```
+
+### Entregado
+
+- **Migración `20260930000000_header_discount_reason`**: `headerDiscountReason String?` en los **ocho modelos que
+  capturan** el descuento (cotización, pedido, factura y F. Reserva, de venta y de compra).
+- **Ajustes**: `headerDiscountReasonMinPct` (**default 10**; `0` = siempre, `100` = nunca) + `UpdateSettingsDto` +
+  `GET/PUT /settings`, y la perilla en la sección «Descuentos» de Configuración.
+- **DTO**: `headerDiscountReason` (opcional, `@MaxLength(200)`) en `CommercialDocumentHeaderDto` (la base de todas
+  las cabeceras comerciales).
+- **Punto único de la decisión**: `discount-policy.ts` incorpora `reasonRequired`/`reason`/`reasonMissing` y el
+  mensaje accionable; `DiscountPolicyGuard` responde **400** si falta el motivo — **después** del 403 del tope.
+- **Punto único de la persistencia**: `DiscountReasonInterceptor` (APP_INTERCEPTOR) escribe el motivo en el documento
+  con el `id` de la respuesta, lo limpia al volver a modo línea y no tumba la operación si el guardado falla.
+  Se eligió frente a tocar **23 payloads × 8 formularios** y **~78 puntos de escritura** de los servicios.
+- **Frontend**: el campo «Motivo del descuento» en el componente compartido `document-discount-mode` (una vez para los
+  ocho formularios) + el binding y el campo en los payloads/cargas de los ocho + los tipos.
+
+### Medido DESPUÉS (misma sonda)
+
+```
+GET /settings                 -> 35 claves (headerDiscountMaxPct, headerDiscountReasonMinPct)
+ADMIN 90 % SIN motivo         -> 400 «… 90,00 % supera el umbral de 10,00 % … Motivo del descuento …»
+ADMIN 20 % SIN motivo         -> 400
+ADMIN  5 % SIN motivo         -> 201   (bajo el umbral)
+ADMIN 25 % CON motivo         -> 201
+ADMIN 90 % CON motivo         -> 201 · persistido PED-35 modo=header motivo="acuerdo comercial con el proveedor"
+USER  90 % SIN motivo         -> 403 del tope (se comprueba antes que el motivo)
+```
+
+### Gates
+
+Backend `eslint`/`tsc` **0**, unitarios **215 suites / 2712 tests** (**39 casos**: 17 de la
+política, 13 del guard y 9 del interceptor) y **E2E completo 41 suites / 388 tests**; frontend `tsc` app/spec/e2e
+**0**, **Karma 2413/2413** (3 casos nuevos), **`ng build` AOT 0** y prettier (ratchet) limpio en **39 archivos**.
+
+### Declarado
+
+1. El motivo se guarda **en la cabecera del documento** (no en una tabla aparte): viaja con él, se precarga al
+   reabrirlo y sirve para informes/impresión; **quién lo aplicó** queda por `createdById`/`updatedById` del documento.
+2. La persistencia es un **UPDATE posterior** a la escritura (un statement extra por alta con motivo): es el precio de
+   no tocar 23 payloads × 8 formularios.
+3. El umbral se mide sobre el **porcentaje efectivo** (como el tope): con cabecera por **importe** y sin líneas en el
+   cuerpo (caminos `from-*`) no aplica.
+4. El **frontend no replica** el umbral: el usuario lo descubre por el 400, que dice el `%`, el umbral y el campo.
+
 ## Ronda 33 — el TOPE del descuento de cabecera: configurable por empresa y con autorización por permiso (CERRADA, incremento b1)
 
 Cierra el declarado «**tope + autorización**» del tramo de descuentos. El **motivo** (con su umbral) queda como
