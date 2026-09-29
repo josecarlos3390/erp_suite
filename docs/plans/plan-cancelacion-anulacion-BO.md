@@ -1752,9 +1752,10 @@ fecha o algo así».
 
 - Frontend: `tsc` app/spec/e2e **0**, **Karma 2443/2443** (4 casos nuevos), **`ng build` AOT 0** y prettier (ratchet)
   limpio en 8 archivos.
-- Backend: `eslint`/`tsc` **0**, **215 suites / 2766 tests** (9 casos nuevos: 4 en `document-series.service.spec.ts` y 5
-  en `timezone.util.spec.ts` para `tenantCalendarDay`) y **E2E completo 41 suites / 394 tests** (caso `R41` en
-  `sales-flow`, que incluye las dos aserciones del preview del correlativo).
+- Backend: `eslint`/`tsc` **0**, **215 suites / 2769 tests** (12 casos nuevos: 4 en `document-series.service.spec.ts`, 5
+  en `timezone.util.spec.ts` para `tenantCalendarDay` y 3 en `document-series.controller.spec.ts` para el `?date=` del
+  preview) y **E2E completo 41 suites / 394 tests** (caso `R41` en `sales-flow`, que incluye las dos aserciones del
+  preview del correlativo).
 
 ### Declarado
 
