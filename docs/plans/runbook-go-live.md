@@ -9,7 +9,10 @@
 > (`https://erp-backend-production-ae06.up.railway.app`, Dockerfile + entrypoint
 > que migra solo; Postgres de Railway con red privada) y frontend en **Vercel**
 > (`https://erp-frontend.vercel.app`, SSR). El deploy del backend usa el repo
-> `joseka3390-design/erp-backend` (copia); el pipeline de SQL manuales incluye
+> `josekilla3390/backend-erp` (copia) —**desde la ronda 38 (2026-09-29)**, porque el
+> repo anterior `joseka3390-design/erp-backend` dejó de existir: `git ls-remote` →
+> *Repository not found*; el remoto local `deploy` ya apunta al nuevo y `origin` se
+> quedó con un solo `pushurl`—; el pipeline de SQL manuales incluye
 > `20260825_sync_schema_drift.sql` (drift de schema idempotente — BDs frescas
 > despliegan completas).
 
@@ -167,7 +170,7 @@ ON CONFLICT DO NOTHING;
 SQL
 # 4) Sembrar el tenant por defecto (admin/admin123 + roles + plan de cuentas)
 railway run -- npx prisma db seed
-# 5) Redesplegar (botón Redeploy o push a joseka3390-design/erp-backend) → boot verde
+# 5) Redesplegar (botón Redeploy o push a josekilla3390/backend-erp) → boot verde
 ```
 
 > En PowerShell (Windows) el paso 3 usa archivo: crear `reset-mark-manual.sql`

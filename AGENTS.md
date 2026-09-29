@@ -382,10 +382,19 @@ npm run audit:contrast   # contraste WCAG de los 34 pares de la paleta (incluye 
 > sobre lo que está en stage—; el costo está en el **pre-push**, que es la suite completa
 > (**205 suites / 2.576 tests** con `ts-jest`: **209,4 y 230,3 s** medidos en dos corridas)
 > y que **git ejecuta una vez por CADA `pushurl`**. Desde 2026-09-25 el `origin` del backend
-> declara **dos `pushurl`** —`git remote set-url --add --push origin <url>` dos veces, con
+> declaró **dos `pushurl`** —`git remote set-url --add --push origin <url>` dos veces, con
 > `josecarlos3390/backend-erp` y `joseka3390-design/erp-backend`—, así que **un solo
-> `git push origin main` sella los dos espejos** y ya no se puede empujar a uno y olvidar el
-> otro; el remoto `deploy` sigue existiendo intacto, pero **no** hay que empujarlo aparte.
+> `git push origin main` sellaba los dos espejos** y no se podía empujar a uno y olvidar el
+> otro; el remoto `deploy` seguía existiendo intacto, pero **no** había que empujarlo aparte.
+> **Cambio (r38, 2026-09-29)**: el espejo `joseka3390-design/erp-backend` **dejó de existir**
+> (medido: `git ls-remote` → *Repository not found* y el push → *Invalid username or token*),
+> así que se **quitó** su `pushurl` de `origin` —que queda con **uno solo**,
+> `josecarlos3390/backend-erp`— y el remoto **`deploy`** apunta a la dirección nueva
+> **`josekilla3390/backend-erp`** (con userinfo `josekilla3390@` para que el Credential
+> Manager busque esa cuenta). Empujar son **dos comandos**: `git push origin main` y
+> `git push deploy main`; el **sello por contenido** hace que la segunda corrida de la suite
+> se **omita** (medido al crear el espejo: `pre-push: la suite ya pasó para f0340af… (mismo
+> contenido, segundo remoto: se omite)`).
 > Ese comando **por sí solo no** ahorra la mitad del hook —medido: **459,7 s** = 209,4 s +
 > 230,3 s, una corrida por destino—, así que el ahorro lo hace el **sello por contenido**:
 > `.husky/pre-push` guarda en `.git/pre-push-verified` los SHA locales que git anuncia
