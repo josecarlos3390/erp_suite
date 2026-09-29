@@ -1677,6 +1677,66 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
 
+## Ronda 40 — el Centro de configuración ya muestra los pendientes que cuenta (CERRADA)
+
+**Lo que reportó el usuario**: «me muestra "Falta 4" con rojo y "23 OK" pero no veo cuáles son esas 4 que
+faltan, ¿no está actualizado nuestro centro de configuración?».
+
+### Lo que se midió ANTES
+
+`GET /setup/checklist` (tenant recién sembrado, perfil contable BO):
+
+```
+resumen: { total: 27, ok: 23, warn: 0, missing: 4, notRequired: 0, requiredPending: 0 }
+
+grupos que emite el BACKEND (7): Empresa(4) · Contabilidad(4) · Parametrización(1) ·
+                                 Gestión y series(3) · Maestros(11) · Validación operativa(4)
+grupos en SETUP_GROUP_ORDER (5): Empresa · Contabilidad · Gestión y series · Maestros ·
+                                 Usuarios y acceso          ← faltan dos
+
+los 4 MISSING (todos `severity: recommended`):
+  flowSales      Flujo de ventas        (order 30)
+  flowPurchases  Flujo de compras       (order 31)
+  flowInventory  Flujo de inventario    (order 32)
+  flowTreasury   Flujo de tesorería     (order 33)
+```
+
+**Causa**: `groups` devolvía `SETUP_GROUP_ORDER.filter((g) => presentes.has(g))`, así que los ítems de un grupo
+**no listado** —`Parametrización` (1, en estado OK) y `Validación operativa` (4, los «Falta»)— se contaban en el
+resumen y **no se pintaban**: 22 filas renderizadas de 27. El test con un grupo desconocido fallaba con
+`Expected 6 to be 7` (una fila de siete, invisible), que es el invariante del defecto.
+
+### Entregado
+
+- `SETUP_GROUP_ORDER` incorpora **`Parametrización`** (tras Contabilidad, `order` 5.5) y **`Validación operativa`**
+  (al final, `order` 30-33).
+- `groups` es **a prueba de fallos**: primero el orden curado y **después cualquier grupo presente que no esté en la
+  lista**, ordenado por el `order` de su primer ítem (`primerOrden`). Un grupo nuevo ya no puede desaparecer.
+- Dos casos nuevos en `setup.component.spec.ts`: el grupo desconocido se pinta al final **y todo ítem visible se
+  renderiza** (`filas.length === visibles`), y los canónicos van antes que un desconocido con `order` menor.
+
+### Medido DESPUÉS (navegador, Playwright contra el `ng serve` con el tenant sembrado)
+
+```
+RESUMEN : OK 23 | Revisar 0 | Falta 4 | No aplica 0
+GRUPOS  : Empresa · Contabilidad · Parametrización · Gestión y series · Maestros · Validación operativa
+ÍTEMS pintados: 27 · etiquetas «Falta»: 4        (antes 22)
+QUÉ FALTA: Flujo de ventas · Flujo de compras · Flujo de inventario · Flujo de tesorería
+```
+
+### Gates
+
+Frontend `tsc` app/spec/e2e **0**, **Karma 2439/2439** (2 casos nuevos), **`ng build` AOT 0** y prettier (ratchet)
+limpio.
+
+### Declarado
+
+1. Los 4 «Falta» son **recomendaciones, no bloqueantes** (`requiredPending: 0`): el banner dice «Casi listo».
+2. Son el estado **esperado tras sembrar de cero** (0 transacciones): se resuelven al registrar la primera factura
+   de venta, la primera de compra, un movimiento de inventario y un cobro.
+3. `Usuarios y acceso` está en el orden curado pero el backend **no emite ítems** de ese grupo en este tenant: no se
+   pinta ninguna sección vacía.
+
 ## Ronda 39 — el motivo se ve en los listados, la paginación de entregas deja de mentir y se limpia el residuo de sondas (CERRADA)
 
 Cierra los cuatro pendientes declarados al terminar el tramo de descuentos.
