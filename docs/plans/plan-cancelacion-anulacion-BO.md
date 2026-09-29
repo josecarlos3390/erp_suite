@@ -1677,7 +1677,7 @@ forma que la UI no produce—), **`ng build` AOT 0** y prettier limpio.
 - La regla del **motor** sigue siendo acumulativa (T254) para un documento que **legítimamente** traiga las dos capas, y el
   documento **guardado** se lee siempre de la línea (ronda 23).
 
-## Ronda 31 — el descuento de cabecera VIAJA y los listados lo identifican (CERRADA en su primer incremento)
+## Ronda 31 — el descuento de cabecera VIAJA y los listados lo identifican y lo filtran (CERRADA, dos incrementos)
 
 ### Lo que preguntó el usuario
 
@@ -1716,19 +1716,35 @@ chip `.header-discount-chip` en los listados de las cuatro familias donde el des
 Medido antes de escribirlo: las respuestas de listado de las seis familias **ya traen** `discountMode`,
 `headerDiscountPct`, `headerDiscountAmt` y `totalDiscount` ⇒ **sin cambios de backend**.
 
+### Entregado (segundo incremento: el filtro; backend + frontend)
+
+`PaginationParams.discountMode` (documentado como **referencial** en `src/common/paginated-result.ts`) + `where.discountMode`
+en los `findAll` de las **cuatro** familias (`purchase-invoices` sirve a la FCP **y** a la FRC —la reserva delega con
+`isReserve: 'Y'`—, `sale-invoices`, `sale-reserve-invoices` y `purchase-reserve-invoices`), el `@Query('discountMode')` en los
+cuatro controladores, el parámetro en los cuatro `getAll` del frontend y el control **«Descuento»**
+(`Todos / Con descuento de cabecera / Solo descuento de línea`) en las cuatro barras de filtros, sobre `discountFilter` +
+`setDiscountFilter(mode)` —fija el filtro, vuelve a la **página 1** y recarga—.
+
+El gate encontró un **defecto real antes de commitear**: `LunaSelectComponent` estaba **importado** en los cuatro listados
+pero **no declarado** en su `imports:` ⇒ `NG0304 'luna-select' is not a known element` y `NG01203` tumbaban el spec de la FCP
+(7 de 7 `ERROR` y el navegador colgado 5 minutos); corregido, el foco de los cuatro listados da **18/18**. El filtro se
+midió **antes** de escribirlo, por API (`_r31-svc.js`): facturas de compra sin filtro **39**, `discountMode=header` **31** y
+`discountMode=line` **8** (31 + 8 = 39: no pierde ni inventa documentos).
+
 ### Gates
 
-`tsc` app/spec/e2e **0**, **Karma 2398/2398** (5 casos nuevos del pipe + 1 por cada listado), **`ng build` AOT 0** y
-prettier limpio.
+Frontend `tsc` app/spec/e2e **0**, **Karma 2400/2400** (2 casos nuevos del filtro: FCP y FVE), **`ng build` AOT 0** y
+prettier limpio; backend unitarios **212 suites / 2673 tests** y **E2E completo 41 suites / 387 tests** (corrido con
+`HEALTH_DISK_THRESHOLD_PERCENT=0.98`: el caso `/health` del arnés es **ambiental** —con `D:` al **90,4 %** de uso contra el
+umbral por defecto del endpoint (**90 %**) el indicador `disk` responde *down* y devuelve **503**
+(`{"prisma":"up","memory":"up","disk":"down"}`); con el umbral alto el mismo caso pasa **3/3**: no es regresión de la ronda).
 
 ### Declarado (siguientes incrementos, en el orden propuesto)
 
-1. **Filtro** «solo documentos con descuento de cabecera»: requiere un parámetro nuevo (`discountMode`) en los `findAll` de
-   las cuatro familias (backend) y su control en la barra de filtros; el indicador ya está.
-2. **Tope + motivo + autorización** del descuento de cabecera (umbral configurable por empresa, p. ej. 10 %).
-3. Extender el indicador a **pedidos y cotizaciones** (donde el descuento se **captura**): las respuestas de listado ya
-   traen los campos.
-4. **Congelar la cabecera referencial** al contabilizar (una factura emitida no debería mover su descuento; eso se corrige
+1. **Tope + motivo + autorización** del descuento de cabecera (umbral configurable por empresa, p. ej. 10 %).
+2. Extender el indicador **y el filtro** a **pedidos y cotizaciones** (donde el descuento se **captura**): las respuestas
+   de listado ya traen los campos; falta el parámetro en sus `findAll`.
+3. **Congelar la cabecera referencial** al contabilizar (una factura emitida no debería mover su descuento; eso se corrige
    con NC).
 
 ## Pendiente del tramo
