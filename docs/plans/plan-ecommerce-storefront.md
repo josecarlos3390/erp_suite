@@ -2694,6 +2694,55 @@ puede medir) y `e2e:perf` **6/6** con `LCP 184 ms · CLS 0 · JS 114,6 kB · CSS
 determinista **sin** tocar el fixture: sin cookie, `/api/cuenta` responde **sin** llamar al canal y
 la página pinta el formulario.
 
+## §34 El checkout completo en PRODUCCIÓN, con su correo — y la limpieza de residuos (2026-09-30)
+
+**Lo que pidió el usuario**: «crea el checkout, estamos en base de pruebas aún, no rotemos la clave
+aún porque por ahí la necesitamos, limpiar los residuos que haya». Con eso queda **autorizado** el
+punto (5) del §24 —crear un pedido real en producción— y se **decide no rotar** ninguna clave.
+
+### Medido en producción (Railway `backend-erp-production-5c3b` + tienda `erp-storefront-inky`)
+
+| Paso | Resultado |
+| --- | --- |
+| Catálogo | `WEB-0026 · Mouse Inalámbrico HP 150 · Bs 129 · disponible 14` |
+| A/B de la cotización (mismo carrito) | domicilio **envío 20 / total 142,55** · retiro **envío 0 / total 122,55** |
+| Pedido real con retiro | **`WEB-3` 201** — estado `PENDING`, pago `pending`, **envío 0**, total 122,55, tienda `SCZ-CENTRO`, código `WEB-73288392` |
+| Seguimiento público | `WEB-3` con `shipping: 0`, la tienda publicada (`SCZ-CENTRO · Sucursal Centro · Av. Principal #100…`) y el documento del ERP (`OPEN`/`pending`) |
+| Bandeja del ERP | **3** pedidos web y el `WEB-3` con `deliveryType: STORE`, `pickupStore: SCZ-CENTRO` y `salesOrderId: 4` |
+| Correo | **Apagado**: el log decía `Aviso no enviado a delivered@resend.dev (sin RESEND_API_KEY: el correo queda apagado)` |
+
+**Hallazgo (y arreglo)**: el correo del §28 funcionaba en local pero en **producción estaba APAGADO**
+porque las variables no existían en Railway. Se configuraron en el servicio `backend-erp`
+(`RESEND_API_KEY`, `MAIL_FROM = Tienda ERP <onboarding@resend.dev>`, `STOREFRONT_PUBLIC_URL`), Railway
+redesplegó y, con el pedido **`WEB-5`**, el log pasó a
+**`LOG [MailService] Aviso enviado (id=01a0f406-83b5-7848-9093-cc480f49e430)`** ⇒ la cadena completa
+(cotización → pedido → retiro → **correo por Resend**) funciona en producción.
+
+### Limpieza de residuos
+
+| Dónde | Antes | Acción | Después |
+| --- | --- | --- | --- |
+| Producción (pedidos de prueba **míos**: `WEB-3`, `WEB-4`, `WEB-5`) | `PENDING` | **Anulados por la APP** (`POST /web-orders/:id/cancel`: revierte stock y contabiliza la reversa) | **`CANCELLED`** los tres; los del usuario (`WEB-1`, `WEB-2`) **intactos** |
+| Base de desarrollo local | `WebOrder 68 · SalesOrder 68 · DeliveryOrder 3 · ItemReview 3 · JournalEntry 9` (los 61 pedidos `e2e-%` de las corridas anteriores al arnés) | **`npm run db:recreate`** (migraciones + semilla) con el API parado | **`WebOrder 0 · SalesOrder 0 · DeliveryOrder 0 · ItemReview 0 · JournalEntry 0`** y los 3 clientes de la semilla |
+
+**Huella nueva de referencia de la base local**: `bba79950…` (198 tablas). A partir de aquí el arnés
+del §29 preserva **una base limpia**: cualquier corrida del E2E deja la huella idéntica.
+
+### Declarado
+
+1. **No se rota ninguna clave** (decisión explícita del usuario: la de la semilla y la de Resend se
+   siguen necesitando). Queda anotado que la de la semilla **está activa en producción** y que la de
+   Resend **se compartió por chat**: cuando se roten, el runbook está en el README de la tienda y en
+   `storefront:key --deactivate`.
+2. `MAIL_FROM` usa el remitente de **pruebas** de Resend (`onboarding@resend.dev`): entregar a un
+   buzón de cliente exige **verificar un dominio** propio. Lo que se ha medido es que el envío sale
+   aceptado por la API con el destinatario de pruebas (`delivered@resend.dev`).
+3. Los pedidos de producción quedan **`CANCELLED`** (no borrados): anular es el camino de la app y
+   deja la reversa contabilizada; borrar un documento con asientos dejaría el mayor huérfano.
+4. La limpieza local borró también los **~7 pedidos de prueba del usuario** (eran datos de prueba y
+   el usuario pidió limpiar): el estado es el de la **semilla**, no una base con datos suyos.
+
+
 ### Declarado
 
 1. La **fecha** del historial se formatea con la **zona del navegador** (`toLocaleDateString('es-BO')`),
