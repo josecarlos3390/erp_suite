@@ -28,6 +28,7 @@ import {
 } from '@/lib/checkout';
 import { CheckoutRequestError, requestOrder, requestQuote } from '@/lib/checkout-client';
 import { describeLineSku, formatMoney } from '@/lib/format';
+import { buildMapLink } from '@/lib/map-link';
 import type { QuoteView } from '@/lib/order-view';
 import { MAX_LINE_QUANTITY, cartItemCount, cartSubtotal, useCartStore } from '@/store/cart';
 
@@ -248,6 +249,39 @@ interface PickupStoreOption {
   name: string;
   address: string | null;
   openingHours: string | null;
+  /** T236-bis — el mapa del punto (enlace del maestro o coordenadas); puede no haber ninguno. */
+  mapUrl: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+/**
+ * T236-bis — enlace **«Como llegar»** de una tienda del paso 2.
+ *
+ * La URL la arma `buildMapLink` (`@/lib/map-link`), el **mismo** helper que la pagina de
+ * sucursales: `mapUrl` del maestro si viene y, si no, las coordenadas. Sin ninguno de los dos el
+ * enlace **no se pinta** (nada de `href="#"`, que seria prometer un mapa inexistente): por eso el
+ * `null` sale del componente entero, para no dejar ni el hueco de la fila.
+ */
+function PickupStoreMapLink({ store }: { store: PickupStoreOption }): JSX.Element | null {
+  const href = buildMapLink(store);
+  if (href === null) return null;
+  return (
+    <span className="mt-1 block text-xs">
+      <a
+        className="sf-link"
+        href={href}
+        data-testid={`checkout-pickup-map-${store.code}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        // El nombre accesible nombra la tienda: en el paso 2 hay un enlace por tienda y «Como
+        // llegar» a secas no diria **a cual** (el texto visible sigue siendo «Como llegar»).
+        aria-label={`Como llegar a ${store.name}`}
+      >
+        Como llegar
+      </a>
+    </span>
+  );
 }
 
 interface CheckoutFormProps {
@@ -284,6 +318,12 @@ export function CheckoutForm({
    * se retira seria confirmar a ciegas (el paso 2 ya se cerro).
    */
   const pickupStore = pickupStores.find((store) => store.code === pickupStoreCode) ?? null;
+  /**
+   * T236-bis — el mapa de la tienda elegida, con el **mismo** helper que la pagina de
+   * sucursales. `null` = esa tienda no publica ni enlace ni coordenadas, y entonces el resumen
+   * no ofrece un «Como llegar» que no llevaria a ningun sitio.
+   */
+  const pickupMapHref = pickupStore === null ? null : buildMapLink(pickupStore);
   const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>('TRANSFER');
   /**
    * F7: **cuando** quiere facturar el comprador. Con «pagar ahora» el ERP emite la factura de
@@ -694,6 +734,8 @@ export function CheckoutForm({
                               {store.address ?? 'Direccion en la pagina de sucursales'}
                               {store.openingHours !== null ? ` · ${store.openingHours}` : ''}
                             </span>
+                            {/* T236-bis — el comprador ve donde retiraria **antes** de elegir. */}
+                            <PickupStoreMapLink store={store} />
                           </span>
                         </label>
                       ))
@@ -1058,11 +1100,27 @@ export function CheckoutForm({
                   {deliveryType === 'STORE' ? 'Retiras en' : 'Direccion'}
                 </dt>
                 {/* Con retiro, la direccion del comprador **no** es donde recibe: lo que se
-                    confirma es la direccion de la tienda (la del maestro, ya resuelta). */}
+                    confirma es la direccion de la tienda (la del maestro, ya resuelta), con su
+                    «Como llegar» al lado cuando la tienda publica mapa (T236-bis). */}
                 <dd className="text-right font-medium text-fg" data-testid="checkout-summary-address">
                   {deliveryType === 'STORE'
                     ? (pickupStore?.address ?? cityName)
                     : `${buyer.street.trim()} · ${buyer.district.trim()}`}
+                  {deliveryType === 'STORE' && pickupMapHref !== null ? (
+                    <>
+                      {' · '}
+                      <a
+                        className="sf-link"
+                        href={pickupMapHref}
+                        data-testid="checkout-summary-map"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Como llegar a ${pickupStore?.name ?? cityName}`}
+                      >
+                        Como llegar
+                      </a>
+                    </>
+                  ) : null}
                 </dd>
               </div>
               <div className="flex items-center justify-between">

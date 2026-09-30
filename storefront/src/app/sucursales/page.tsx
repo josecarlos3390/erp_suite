@@ -5,6 +5,7 @@ import { JsonLd } from '@/components/json-ld';
 import { getCities } from '@/lib/erp';
 import { describeShipping } from '@/lib/format';
 import { breadcrumbJsonLd } from '@/lib/jsonld';
+import { buildMapLink, type MapPoint } from '@/lib/map-link';
 
 export const metadata: Metadata = {
   title: 'Ciudades y sucursales',
@@ -12,6 +13,34 @@ export const metadata: Metadata = {
     'Ciudades habilitadas por el canal, con su sucursal de despacho, almacen, plazo y costo de envio.',
   alternates: { canonical: '/sucursales' },
 };
+
+/**
+ * Fila «Como llegar» de un punto de la empresa (sucursal de despacho o tienda).
+ *
+ * El enlace lo arma **`buildMapLink`** (la regla vive en un solo sitio, `@/lib/map-link`): usa el
+ * `mapUrl` del maestro y, si no viene, las coordenadas. **Si la tienda no trae ni enlace ni
+ * coordenadas, esta fila no se pinta**: un enlace a `#` o vacio anunciaria un mapa que no existe.
+ */
+function MapRow({ point, testId }: { point: MapPoint; testId: string }): JSX.Element | null {
+  const href = buildMapLink(point);
+  if (href === null) return null;
+  return (
+    <div className="flex justify-between gap-3">
+      <dt>Como llegar</dt>
+      <dd className="text-right">
+        <a
+          className="sf-link"
+          href={href}
+          data-testid={testId}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Ver en el mapa
+        </a>
+      </dd>
+    </div>
+  );
+}
 
 /** Ciudades y sucursales publicadas por el canal (`GET /storefront/cities`). */
 export default async function BranchesPage(): Promise<JSX.Element> {
@@ -31,7 +60,14 @@ export default async function BranchesPage(): Promise<JSX.Element> {
 
       <ul className="grid gap-4 sm:grid-cols-2">
         {cities.map((city) => (
-          <li key={city.code} className="sf-card flex flex-col gap-2 p-4" data-testid="city-card">
+          // `data-city` lleva el codigo de la ciudad del canal: los E2E localizan la tarjeta por
+          // el mismo dato con el que la publica el ERP, no por su texto.
+          <li
+            key={city.code}
+            className="sf-card flex flex-col gap-2 p-4"
+            data-testid="city-card"
+            data-city={city.code}
+          >
             <h2 className="text-lg font-semibold text-fg">
               {city.name} <span className="text-xs font-normal text-fg-tertiary">({city.code})</span>
             </h2>
@@ -64,22 +100,7 @@ export default async function BranchesPage(): Promise<JSX.Element> {
                   </dd>
                 </div>
               ) : null}
-              {city.branch?.mapUrl ? (
-                <div className="flex justify-between gap-3">
-                  <dt>Como llegar</dt>
-                  <dd className="text-right">
-                    <a
-                      className="sf-link"
-                      href={city.branch.mapUrl}
-                      data-testid="branch-map"
-                      target="_blank"
-                      rel="noreferrer noopener"
-                    >
-                      Ver el mapa
-                    </a>
-                  </dd>
-                </div>
-              ) : null}
+              {city.branch !== null ? <MapRow point={city.branch} testId="branch-map" /> : null}
               {city.branch?.pickupEnabled === true ? (
                 <div className="flex justify-between gap-3" data-testid="branch-pickup">
                   <dt>Retiro en tienda</dt>
@@ -116,10 +137,13 @@ export default async function BranchesPage(): Promise<JSX.Element> {
                 </h3>
                 <ul className="flex flex-col gap-2">
                   {city.stores.map((store) => (
+                    // `data-code` lleva el codigo de la tienda del canal: los E2E localizan la
+                    // tarjeta por el mismo dato con el que la publica el ERP, no por su texto.
                     <li
                       key={store.code}
                       className="rounded-md border border-border-subtle bg-bg-subtle p-3 text-xs text-fg-secondary"
                       data-testid="city-store"
+                      data-code={store.code}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-semibold text-fg">{store.name}</span>
@@ -157,22 +181,9 @@ export default async function BranchesPage(): Promise<JSX.Element> {
                             </dd>
                           </div>
                         ) : null}
-                        {store.mapUrl ? (
-                          <div className="flex justify-between gap-3">
-                            <dt>Como llegar</dt>
-                            <dd className="text-right">
-                              <a
-                                className="sf-link"
-                                href={store.mapUrl}
-                                data-testid="store-map"
-                                target="_blank"
-                                rel="noreferrer noopener"
-                              >
-                                Ver el mapa
-                              </a>
-                            </dd>
-                          </div>
-                        ) : null}
+                        {/* T236-bis — el mapa de la tienda, con el `mapUrl` del maestro o con
+                            sus coordenadas. Sin ninguno de los dos no se pinta (ver `MapRow`). */}
+                        <MapRow point={store} testId="store-map" />
                       </dl>
                     </li>
                   ))}

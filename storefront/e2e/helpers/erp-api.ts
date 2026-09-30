@@ -133,7 +133,22 @@ export interface ApiCity {
   shippingCost: number;
   freeShippingFrom: number | null;
   warehouse: { id: number; code: string; name: string } | null;
-  branch: { id: number; code: string; name: string } | null;
+  /**
+   * Sucursal de despacho de la ciudad. Ademas de su identidad publica la **ubicacion** (T233):
+   * direccion, telefono, horario, coordenadas, enlace del mapa y si ofrece retiro en tienda.
+   */
+  branch: {
+    id: number;
+    code: string;
+    name: string;
+    address?: string | null;
+    phone?: string | null;
+    openingHours?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    mapUrl?: string | null;
+    pickupEnabled?: boolean;
+  } | null;
   /** Tiendas de la ciudad, con la herencia del maestro ya resuelta por el canal. */
   stores?: ApiCityStore[];
 }

@@ -49,6 +49,8 @@ export default async function CheckoutPage(): Promise<JSX.Element> {
         cityName={city.name}
         cityDeliveryDays={city.deliveryDays}
         // F5 — solo las que ofrecen **retiro**: un punto de solo venta no es una opcion.
+        // T236-bis — viajan tambien el enlace del mapa y las coordenadas: el checkout arma el
+        // «Como llegar» con el **mismo** helper que la pagina de sucursales.
         pickupStores={(city.stores ?? [])
           .filter((store) => store.pickupEnabled)
           .map((store) => ({
@@ -56,6 +58,9 @@ export default async function CheckoutPage(): Promise<JSX.Element> {
             name: store.name,
             address: store.address,
             openingHours: store.openingHours,
+            mapUrl: store.mapUrl,
+            latitude: store.latitude,
+            longitude: store.longitude,
           }))}
       />
     </div>

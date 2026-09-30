@@ -2423,4 +2423,80 @@ y que esté funcional».
    (`shippingCharged: false`). Se midió al escribir el caso E2E: la aserción contra la cotización era
    falsa y se corrigió en vez de ampliar el contrato sin consumidor.
 
+## §28 Correo transaccional y mapa del retiro (2026-09-30) — dos pendientes del §24
+
+**Lo que pidió el usuario**: tras la lista de pendientes eligió **cinco** frentes y decidió el
+proveedor de correo: «email con resend api» (con su clave). Esta ronda cierra **dos**: el **correo**
+(F4) y el **mapa** de las tiendas.
+
+### Correo (F4)
+
+**Medido antes**: `sendMail|sendEmail|mailer|MailService|smtp` → **0** coincidencias en el backend;
+las 4 que aparecían al buscar `createTransport` eran `CreateTransportGuide` (guía de **transporte**,
+no de correo), así que el bloqueo declarado de F4 seguía en pie.
+
+**Entregado**: `src/mail/` —`MailService` (pieza única del envío), `mail.templates.ts` (plantillas
+**puras**) y `MailModule` (`@Global`)— y el aviso enganchado al alta del pedido del canal, **después**
+de crearlo y auditarlo, con la tienda de retiro que el comprador acaba de elegir.
+
+**Decisiones medidas/deliberadas**:
+
+| Decisión | Por qué |
+| --- | --- |
+| **Resend por HTTP** (`POST https://api.resend.com/emails`) con el `fetch` del runtime | **Ninguna dependencia nueva** (`nodemailer`/SDK descartados): la imagen de producción no cambia y no hace falta abrir SMTP saliente |
+| **Sin `RESEND_API_KEY` o sin `MAIL_FROM` el servicio queda apagado** (`skipped` + motivo en el log) | Desarrollo y pruebas sin credenciales, y un despliegue a medio configurar **no** falla |
+| **Nunca lanza** (devuelve `failed` con el texto del proveedor) | Un correo no puede tumbar un pedido ya creado |
+| Cuerpo en **texto** | No hay motor de plantillas y un HTML a mano con datos del comprador sería superficie de inyección sin ganancia medida |
+| De éxito se registra **solo el id** del proveedor | El destinatario ya viaja en el correo; no hace falta en el log |
+| `STOREFRONT_PUBLIC_URL` **opcional** | Sin ella el correo sale sin enlace: mejor eso que un enlace a `localhost` en producción |
+
+**Medido después**: `mail.service.spec.ts` **11/11** —sin clave → `skipped` y **no** llama al
+proveedor; sin remitente → `skipped`; 200 → `sent` con id y el cuerpo exacto (incluido `reply_to`);
+422 del proveedor → `failed` **sin lanzar**; caída de red → `failed` **sin lanzar**; y las
+plantillas: el pedido **con retiro** lleva tienda, dirección, horario y mapa y **no** la dirección del
+comprador, el de **domicilio** lleva la dirección y no menciona tiendas, ningún campo ausente se
+escribe como `null`, y sin URL no hay enlace—; `storefront.service.spec.ts` con un caso nuevo que
+pincha **con qué datos** se avisa (comprador, pedido y tienda de retiro); **contra la API real**:
+`POST /emails` con la clave del entorno **aceptado** (`id=01a0f395-…`) y, por el **camino completo**
+(`POST /storefront/orders` con retiro en `SCZ-CENTRO` → pedido `WEB-58`), el log escribe
+`Aviso enviado (id=01a0f3ae-8958-7cd2-8037-ed24ac75e4be)`.
+
+**Declarado**: el `to` de la prueba fue `delivered@resend.dev` y el `from`
+`onboarding@resend.dev` (los de **prueba** de Resend): el envío está aceptado por la API, pero
+entregar en un buzón de cliente exige **verificar un dominio** propio y ponerlo en `MAIL_FROM`
+(`GET /domains` responde **401** con esta clave: es de envío, no de administración); el aviso se
+manda al **crear** el pedido (el «ya puedes pasar a retirarlo» necesita un estado propio de retiro,
+que sigue pendiente); la clave vive **solo** en variables de entorno (`.env` ignorado por git y la
+del despliegue) y —al haberse compartido por chat— conviene **rotarla**.
+
+### Mapa del retiro
+
+**Medido antes** (canal real): de las **3** tiendas del seed, **2** publican `mapUrl` y coordenadas y
+**1** no publica ninguna de las dos (`SCZ-EQUIPETROL`) ⇒ el caso «sin enlace» existe de verdad;
+**ninguno** de los **33** JSON del fixture del gate visual trae `mapUrl` ni `stores`.
+
+**Entregado**: `src/lib/map-link.ts` —`buildMapLink()`, **puro** y en **un solo sitio**— con la regla
+`mapUrl` → coordenadas (`https://www.google.com/maps?q=<lat>,<lng>`, las dos finitas y en rango) →
+`null`; el enlace «Ver en el mapa» en `/sucursales` y «Cómo llegar» en el paso 2 del checkout y en el
+resumen del paso 3, siempre con el mismo helper; **sin ubicación no se pinta nada**.
+
+**Gates**: tienda `tsc` **0**, `next lint` **0**, `next build` **0**, `e2e/mapa-tiendas.spec.ts`
+**3/3** (regla pura; la página contra un oráculo calculado desde el canal, con **0** enlaces en la
+tienda sin mapa; y el checkout comprobando que el `href` es el mapa de **esa** tienda y que el
+`mapUrl` del maestro **no** coincide con lo que saldría de las coordenadas) y la suite funcional
+**64/64**.
+
+**Declarado**: ninguna tienda del seed publica **coordenadas sin** `mapUrl`, así que esa rama queda
+pinzada por el caso puro y el oráculo, no por una página renderizada; el gate visual **no** se
+ejecutó (no hay baseline que mover: el fixture no trae `stores`/`mapUrl` y sus capturas de checkout
+son a domicilio); y no se midió si pulsar el enlace del paso 2 (dentro del `<label>`) selecciona
+además la radio — el E2E no hace clic, para no salir a Google.
+
+### Lo que sigue de la lista
+
+El **gate E2E de la conciliación del cobro** (factura → cobro → seguimiento en pagado), **que el
+arnés E2E de la tienda no ensucie la base de desarrollo** y **probar el checkout completo en
+producción** (con el OK del usuario). Y el «listo para retirar» ya tiene **con qué avisarse**: es el
+siguiente incremento natural del retiro.
+
 
