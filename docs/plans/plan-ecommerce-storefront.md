@@ -2223,7 +2223,7 @@ host, **contenido (banners y páginas) desde el ERP** (§25) y el despliegue aut
 | 4 | **Mapa de sucursales** | `/sucursales` publica dirección y datos; **0** referencias a mapas (0 `openstreetmap`/`iframe`/`leaflet`/`mapbox`) | Trabajo de UI |
 | 5 | **WhatsApp como canal** | **8** menciones, todas **texto** («te enviamos los datos por WhatsApp»): no hay integración ni enlace `wa.me` | Decisión de producto |
 | 6 | **Guías de compra («Elige Bien»)** | **0** coincidencias: no existe | Trabajo de contenido |
-| 7 | **Conciliación del cobro de punta a punta** | **Hueco de prueba** (§15): ningún E2E cierra `factura → IncomingPayment → seguimiento en paid` | Sin decisiones: solo el caso |
+| 7 | ~~**Conciliación del cobro de punta a punta**~~ **CERRADO — verificado el 2026-09-30** | **Medido**: el caso «la cadena reserva → cobro → entrega deja el pedido pagado y solo entonces entregado» (`backend-erp/test/storefront-channel.e2e-spec.ts`) **ya** cierra el bucle **por el seguimiento del canal**: `POST /api/storefront/orders` → reserva → **`POST /api/incoming-payments`** → `tracking.paymentStatus === 'paid'` → entrega. Ejecutado en aislado: **1/1** (56 en la suite, el resto omitidos por `-t`) | — (el §24 estaba **desactualizado**: el caso existe y pasa) |
 | 8 | **Pantalla de claves y dominios del canal** | Sigue por **script** (`storefront:key`, `STOREFRONT_CHANNELS`); no hay pantalla | Trabajo de UI + decisión de dónde vive el mapa host→clave |
 | 9 | **Color de marca y logo por empresa** | Siguen en el **código** (D23): en el modo de N dominios son comunes | Trabajo de UI/tokens |
 | 10 | **Marketplace con liquidaciones** | **Parcial**: hay filtro por vendedor y «Vendido por»; no hay marketplace | Decisión de producto |
@@ -2555,6 +2555,36 @@ tablas: la base de desarrollo quedo como estaba`.
    quedan en `test-results/` (ignorado por git) y `npm run e2e:restore-db` los aplica a mano.
 4. Los gates **visual**, de **accesibilidad** y de **rendimiento** no necesitan volcado: miden contra
    el fixture grabado, no contra la base.
+
+## §30 La conciliación del cobro ya estaba cubierta, y las pruebas dejaron de llamar a Resend (2026-09-30)
+
+**Cierre del punto (3) de la lista elegida**, con un hallazgo: **no había que escribir el gate, sino
+comprobarlo**. El §24 pedía «un E2E que cierre `factura → IncomingPayment → seguimiento en paid`» y
+ese caso **ya existía** en `backend-erp/test/storefront-channel.e2e-spec.ts`: crea el pedido por el
+canal, emite la **reserva** desde el pedido, registra el **cobro** con `POST /api/incoming-payments`
+contra la reserva y comprueba que `GET /api/storefront/tracking` publica **`paymentStatus: 'paid'`**
+—y que **solo entonces** la entrega deja el pedido entregado—. **Medido**: ejecutado en aislado,
+**1/1** (`-t "cadena reserva"`, 2,6 s), así que el pendiente era **una entrada desactualizada de la
+lista**; queda cerrado en el §24 con su evidencia.
+
+**El caso destapó un defecto real**: al ejecutarlo, el log mostró
+`ERROR [MailService] Aviso a cadena@example.com fallido (Resend respondio 422: Invalid to field.
+Please use our testing email address instead of domains like example.com)`. Es decir, el correo que
+se implementó en el §28 **sí se disparaba durante las pruebas** —el alta del pedido lo llama y el
+arnés del backend tiene credenciales en el `.env` local—: el pedido **no** se rompía (el servicio
+**nunca lanza**, que es justo lo que se diseñó), pero una prueba **no debe llamar a un tercero**
+(consume cuota, ensucia los logs y ata el resultado a la red). **Entregado**: `test/setup-e2e.ts`
+**apaga el correo en las pruebas** (`process.env.RESEND_API_KEY = ''`), con el motivo y la medición
+escritos en el fichero; **medido después**: el mismo caso pasa (**1/1**) y **ya no aparece** ninguna
+llamada al proveedor.
+
+**Declarado**: la cabecera de `AGENTS.md`/`AUDIT.md` recogerá esta verificación junto con el
+incremento de la **cuenta de cliente (F4)**, que es el bloque grande que queda de la lista elegida
+—el **correo** ya está implementado y funcionando, así que F4 deja de estar bloqueado por el
+proveedor y pasa a ser trabajo de producto (registro/login, perfil, direcciones, historial)—; y el
+punto (5) —**probar el checkout completo en producción**— sigue esperando el OK explícito del usuario
+porque crea un pedido real en la base de producción.
+
 
 
 
