@@ -2694,12 +2694,35 @@ Suite completa **68/68** y la base de desarrollo **restaurada por el arnés** (h
    poder entregar correo de verdad (dominio verificado en Resend).
 3. El **alta** revela que un correo ya está registrado (el 409 del canal se muestra tal cual).
 4. La entrada en la **cabecera** queda pendiente por el coste medido (17 capturas del gate visual).
-5. **Hallazgo abierto (declarado, sin cerrar)**: la huella de la base cambió entre la restauración del
-   §31 (`03643110…`) y el arranque de esta ronda (`1d0c1977…`) —y el único proceso que corrió en medio
-   fue el **`pre-push` del backend** (la suite unitaria), cuyo log muestra
-   `StorefrontMaintenanceService … barrido de pedidos abandonados — anulados 1`—, lo que apunta a que
-   **la suite unitaria también escribe en la base de desarrollo** (el arnés del §29 solo envuelve al
-   E2E de la tienda). Queda para la ronda siguiente: medirlo y, si se confirma, envolverlo igual.
+5. **~~Hallazgo abierto~~ CORREGIDO en el §33**: la huella cambió entre rondas **no** por la suite
+   unitaria (medido: la suite completa deja la huella **idéntica**), sino porque la base de desarrollo
+   **ya arrastraba restos** de las corridas anteriores al arnés. Ver el §33.
+
+## §33 Corrección del §32: la suite unitaria NO escribe en la base; el arnés funciona como se diseñó (2026-09-30)
+
+**Lo que declaré en el §32** (hallazgo 5): «la huella cambió entre la restauración del §31 y el
+arranque de esta ronda y el único proceso que corrió en medio fue el `pre-push` del backend… apunta a
+que la suite unitaria también escribe en la base de desarrollo». **Era una hipótesis, y es FALSA.**
+
+### Medido (con el arnés envolviendo la corrida: snapshot → suite → restore)
+
+| Medición | Resultado |
+| --- | --- |
+| Suite unitaria completa del backend tras el volcado | **220 suites / 2833 tests** y huella **idéntica** (`1d0c1977bb90…`), `changed: []` |
+| Mecanismo que sí escribe | El **API en marcha** tiene el barrido de pedidos abandonados **programado** (`@Cron(ABANDONED_ORDERS_CRON)` en `storefront-maintenance.service.ts`): es la aplicación haciendo su trabajo sobre la base de desarrollo |
+| Lo que el arnés **sí** limpia | Los **clientes** que creó la corrida del E2E de cuenta: tras el `restore`, `WebCustomer` con correo `e2e-%` → **0** |
+| Lo que el arnés **no** puede limpiar | La **basura histórica**: la base tiene **61** pedidos web con correo `e2e-%` de **68** totales, de las corridas **anteriores** al arnés (el arnés restaura «lo que encontró», y encontró eso) |
+
+### Conclusión honesta
+
+1. **La suite unitaria no escribe**: la afirmación del §32 queda **retirada** con la medición delante.
+2. **El arnés hace lo que promete**: dentro de su ventana, la base vuelve **exactamente** al estado
+   inicial (huella idéntica, `changed: []`) y los restos de la corrida se van.
+3. **Queda un residuo histórico** que el arnés no puede deshacer: **61** pedidos web de prueba de las
+   rondas anteriores. Limpiarlo de raíz significa `npm run db:recreate` (base + semilla), que **borra
+   también los ~7 pedidos que el usuario creó probando** ⇒ es una decisión **suya**, no mía; queda
+   declarada aquí con los números. Desde el §29, cualquier corrida nueva **no** añade basura.
+
 
 
 
