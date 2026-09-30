@@ -85,6 +85,11 @@ export async function requestQuote(
   cityCode: string,
   items: CheckoutRequestBody['items'],
   customerEmail?: string,
+  /**
+   * F5 — el **retiro en tienda** se cotiza con la tienda elegida: el canal no cobra el envío y
+   * el total que ve el comprador es el del pedido.
+   */
+  pickup?: { deliveryType?: CheckoutRequestBody['deliveryType']; pickupStoreCode?: string },
 ): Promise<QuoteView> {
   const email = customerEmail?.trim();
   return readQuote(
@@ -93,6 +98,12 @@ export async function requestQuote(
       cityCode,
       items,
       ...(email === undefined || email === '' ? {} : { customerEmail: email }),
+      ...(pickup?.deliveryType === undefined
+        ? {}
+        : { deliveryType: pickup.deliveryType }),
+      ...(pickup?.pickupStoreCode === undefined || pickup.pickupStoreCode === ''
+        ? {}
+        : { pickupStoreCode: pickup.pickupStoreCode }),
     }),
   );
 }

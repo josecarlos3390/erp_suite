@@ -318,12 +318,20 @@ export interface QuoteRequest {
   items: QuoteRequestLine[];
   /** Correo del comprador: con el, la cotizacion usa el precio del cliente registrado. */
   customerEmail?: string;
+  /**
+   * F5 — el **retiro en tienda** tambien se cotiza: con la tienda elegida el canal no cobra el
+   * envio, asi que el checkout tiene que pedirlo para ensenar el total del pedido.
+   */
+  deliveryType?: DeliveryType;
+  pickupStoreCode?: string;
 }
 
 export interface CreateOrderRequest extends QuoteRequest {
   idempotencyKey: string;
   deliveryType: DeliveryType;
   paymentMethod: PaymentMethod;
+  /** F5 — la tienda de retiro (solo con `deliveryType: 'STORE'`). */
+  pickupStoreCode?: string;
   /** F7: la modalidad la elige el comprador y decide la cadena de facturacion. */
   webInvoicingMode: InvoicingMode;
   customer: OrderCustomer;
@@ -795,6 +803,13 @@ export async function quoteOrder(request: QuoteRequest): Promise<QuoteView> {
       quantity: line.quantity,
     })),
     ...(email === undefined || email === "" ? {} : { customer: { email } }),
+    // F5 — el retiro viaja con la cotizacion: sin esto el total ensenado incluiria el envio.
+    ...(request.deliveryType === undefined
+      ? {}
+      : { deliveryType: request.deliveryType }),
+    ...(request.pickupStoreCode === undefined
+      ? {}
+      : { pickupStoreCode: request.pickupStoreCode }),
   });
 }
 
@@ -811,6 +826,10 @@ export async function createOrder(
     idempotencyKey: request.idempotencyKey,
     cityCode: request.cityCode.trim().toUpperCase(),
     deliveryType: request.deliveryType,
+    // F5 — la tienda de retiro (la elige el comprador entre las publicadas de su ciudad).
+    ...(request.pickupStoreCode === undefined
+      ? {}
+      : { pickupStoreCode: request.pickupStoreCode }),
     paymentMethod: request.paymentMethod,
     // F7: la modalidad elegida por el comprador viaja con el pedido (el canal decide con ella
     // si emite la factura de reserva al crear o la deja para la entrega).

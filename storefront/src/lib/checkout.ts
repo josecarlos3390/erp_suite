@@ -117,6 +117,12 @@ export interface CheckoutRequestBody {
   customerEmail?: string;
   idempotencyKey?: string;
   deliveryType?: CheckoutDeliveryType;
+  /**
+   * F5 — la **tienda de retiro** elegida (solo con `deliveryType: 'STORE'`), por su **código**:
+   * el canal exime del envío con ella y de ella salen la sucursal y el almacén del pedido.
+   * Viaja también en la **cotización** para que el total que ve el comprador sea el del pedido.
+   */
+  pickupStoreCode?: string;
   paymentMethod?: CheckoutPaymentMethod;
   /** F7: como quiere pagar el comprador (decide la cadena de facturacion del pedido). */
   webInvoicingMode?: CheckoutInvoicingMode;
@@ -134,12 +140,15 @@ export type SanitizedCheckout =
       cityCode: string;
       items: CheckoutItemInput[];
       customerEmail?: string;
+      deliveryType?: CheckoutDeliveryType;
+      pickupStoreCode?: string;
     }
   | {
       intent: 'order';
       idempotencyKey: string;
       cityCode: string;
       deliveryType: CheckoutDeliveryType;
+      pickupStoreCode?: string;
       paymentMethod: CheckoutPaymentMethod;
       /**
        * F7: la modalidad la **elige el comprador** y viaja con el pedido. Por defecto
@@ -303,6 +312,13 @@ export function validateCheckoutBody(body: unknown): ValidationResult {
     const rawEmail = optionalText(body['customerEmail'], CHECKOUT_LIMITS.email);
     const customerEmail =
       rawEmail !== undefined && isDeliverableEmail(rawEmail) ? rawEmail : undefined;
+    // F5 — el **retiro** viaja también en la cotización: con la tienda elegida el canal no cobra
+    // el envío, así que el total que ve el comprador antes de confirmar es el del pedido.
+    const quoteDeliveryType = readDeliveryType(body['deliveryType']);
+    const quotePickupCode = optionalText(
+      body['pickupStoreCode'],
+      CHECKOUT_LIMITS.cityCode,
+    );
     return {
       ok: true,
       value: {
@@ -310,6 +326,12 @@ export function validateCheckoutBody(body: unknown): ValidationResult {
         cityCode: cityCode.toUpperCase(),
         items,
         ...(customerEmail === undefined ? {} : { customerEmail }),
+        ...(quoteDeliveryType === undefined
+          ? {}
+          : { deliveryType: quoteDeliveryType }),
+        ...(quotePickupCode === undefined
+          ? {}
+          : { pickupStoreCode: quotePickupCode }),
       },
     };
   }
@@ -347,6 +369,13 @@ export function validateCheckoutBody(body: unknown): ValidationResult {
 
   const customer = sanitizeCustomer(body['customer']);
   const notes = optionalText(body['notes'], CHECKOUT_LIMITS.notes);
+  // F5 — la **tienda de retiro** (código, igual que la ciudad). Opcional: con un retiro sin
+  // código el canal mantiene el comportamiento anterior en vez de romper la compra; con un
+  // código **inválido** responde 400 con el motivo.
+  const pickupStoreCode = optionalText(
+    body['pickupStoreCode'],
+    CHECKOUT_LIMITS.cityCode,
+  );
 
   return {
     ok: true,
@@ -355,6 +384,7 @@ export function validateCheckoutBody(body: unknown): ValidationResult {
       idempotencyKey,
       cityCode: cityCode.toUpperCase(),
       deliveryType,
+      ...(pickupStoreCode === undefined ? {} : { pickupStoreCode }),
       paymentMethod,
       webInvoicingMode,
       items,
