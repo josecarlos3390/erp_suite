@@ -2742,6 +2742,63 @@ del §29 preserva **una base limpia**: cualquier corrida del E2E deja la huella 
 4. La limpieza local borró también los **~7 pedidos de prueba del usuario** (eran datos de prueba y
    el usuario pidió limpiar): el estado es el de la **semilla**, no una base con datos suyos.
 
+## §35 Flujo DECIDIDO del cobro en el ecommerce: no hay documento sin cobro (2026-09-30)
+
+**Decisión del usuario** (literal): «en este caso del ecommerce **no se debería poder generar una
+factura sin que se haya confirmado el pago**; al momento de confirmarse el pago, ese momento se genera
+**primero la factura de reserva y luego el pago relacionado a la factura**; si la confirmación del pago
+falla, **no se crea factura ni pago**; **siempre manejamos factura de reserva** en el ecommerce».
+
+### La regla
+
+| # | Regla |
+| --- | --- |
+| 1 | **Un pedido web nace SIN documento fiscal**: solo el pedido, su pedido de venta y el **stock comprometido** |
+| 2 | El **cobro se confirma** en la bandeja (cuando entra el dinero) o en el mostrador/entrega (pagar al recibir) |
+| 3 | Al confirmar: **primero la FRV**, **después el `IncomingPayment` contra esa FRV** |
+| 4 | Si el cobro falla, **no queda nada**: se revierte la reserva (patrón de compensación que ya existe) |
+| 5 | **Siempre FRV** en el ecommerce (no factura de venta emitida al cobrar) |
+| 6 | El **estado del pago del comprador se deriva de la FRV** (D13): una sola verdad |
+| 7 | **«Generar Entrega» sale de la reserva** y se habilita después del cobro |
+
+### Por qué es correcto (medido)
+
+- **El stock ya está asegurado sin la reserva**: `Stock.stockCommitted` existe y el **pedido de venta**
+  lo compromete al crearse (`sales-orders.service.ts`: «Cancelar pedido → libera `stockCommitted`»), y
+  el barrido de abandonados lo libera al anular («la existencia comprometida queda libre»). La FRV es
+  **documento**, no candado de mercancía ⇒ retrasarla hasta el cobro **no** arriesga la entrega.
+- **La cadena ya funciona** (`reserva → cobro → entrega desde la reserva → seguimiento en paid`, E2E
+  del canal **1/1**): lo que falta es el **camino desde la bandeja**, porque hoy «Conciliar» **no
+  contabiliza** (su propio código: «No contabiliza —el asiento es del `IncomingPayment`») y el
+  comprador puede ver «pago pendiente» mientras la bandeja dice «conciliado».
+- **Hoy**, con «pagar ahora», el canal emite la FRV **al confirmar el pedido** (antes de que exista
+  dinero): eso es justo lo que la decisión elimina.
+
+### Consecuencias declaradas (lo que hay que tocar)
+
+1. **Canal**: `createOrder` **deja de** emitir la FRV en el alta (también con `PAY_NOW`);
+   `reserveInvoiceId/Code` nacen `null` y el estado de pago del comprador queda **pendiente** hasta el
+   cobro. Los casos que hoy pinchan «la reserva nace con el pedido» **cambian de expectativa**.
+2. **Compensación**: al anular un pedido ya no hay reserva previa que anular (el camino
+   `cancelReserveThenOrder` queda para el caso de fallo del cobro).
+3. **Entrega**: el borrador sigue saliendo **de la reserva** (`from-reserve-invoice`), así que la
+   entrega **exige** que el cobro se haya confirmado.
+4. **Tienda**: el texto del checkout de «pagar ahora» («factura de reserva al confirmar el pedido»)
+   **deja de ser cierto** y se ajusta; y en «pagar al recibir» se **quita** el formulario de
+   referencia de pago (que hoy se ofrece en los dos modos) y se pone **aviso + confirmación**.
+5. **Operación**: como el pedido **retiene** existencia sin documento, el **barrido de abandonados**
+   (o un plazo configurable) sigue siendo lo que libera la mercancía de un pedido que nadie paga.
+
+### Incrementos
+
+| # | Incremento | Contenido |
+| --- | --- | --- |
+| 1 | **Canal** | Quitar la FRV del alta; `POST /web-orders/:id/collect` (método, referencia, importe, fecha) que crea **FRV + pago** y, si el pago falla, **revierte la reserva**; permiso propio; spec + actualización de los E2E que esperan la reserva al crear |
+| 2 | **Bandeja del ERP** | Botón **«Cobrar»** (con los datos que dejó el comprador), **bloqueo** tras cobrar, y «Generar Entrega» habilitado después; la ficha muestra FRV + pago + entrega con enlace al mapa |
+| 3 | **Tienda** | Aviso + confirmación en «pagar al recibir» sin formulario de referencia; texto de «pagar ahora» ajustado |
+| 4 | **Gate** | E2E del **camino de la bandeja**: cobrar → el comprador ve `paid` → entrega desde la reserva; y el invariante «un documento, dos ramas (pago, entrega)» |
+
+
 
 ### Declarado
 
