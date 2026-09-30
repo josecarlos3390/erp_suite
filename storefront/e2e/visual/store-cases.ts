@@ -1,4 +1,4 @@
-import { expect, type BrowserContext, type Page } from '@playwright/test';
+import { expect, type BrowserContext, type Page } from "@playwright/test";
 
 /**
  * Casos compartidos por el **gate visual**, la **auditoria de accesibilidad** y el
@@ -14,25 +14,25 @@ export const FIXED_CART = {
     lines: [
       {
         itemId: 36,
-        slug: 'iphone-15-128gb',
-        name: 'iPhone 15 128GB',
-        sku: 'WEB-0005',
+        slug: "iphone-15-128gb",
+        name: "iPhone 15 128GB",
+        sku: "WEB-0005",
         price: 7499,
-        currency: 'BOB',
+        currency: "BOB",
         image: null,
         quantity: 1,
-        cityCode: 'SCZ',
+        cityCode: "SCZ",
       },
       {
         itemId: 35,
-        slug: 'smartphone-poco-x6-pro-512gb',
-        name: 'Smartphone Poco X6 Pro 512GB',
-        sku: 'WEB-0004',
+        slug: "smartphone-poco-x6-pro-512gb",
+        name: "Smartphone Poco X6 Pro 512GB",
+        sku: "WEB-0004",
         price: 2699,
-        currency: 'BOB',
+        currency: "BOB",
         image: null,
         quantity: 1,
-        cityCode: 'SCZ',
+        cityCode: "SCZ",
       },
     ],
   },
@@ -41,11 +41,11 @@ export const FIXED_CART = {
 
 /** Comprador fijo: la cotizacion de la pantalla 3 depende de estos datos. */
 export const BUYER = {
-  email: 'visual@example.com',
-  name: 'Comprador Visual',
-  phone: '70012345',
-  street: 'Av. Los Sauces #120',
-  district: 'Equipetrol',
+  email: "visual@example.com",
+  name: "Comprador Visual",
+  phone: "70012345",
+  street: "Av. Los Sauces #120",
+  district: "Equipetrol",
 };
 
 /**
@@ -57,11 +57,16 @@ export const BUYER = {
 export const FIXED_COMPARE = {
   state: {
     entries: [
-      { itemId: 36, slug: 'iphone-15-128gb', name: 'iPhone 15 128GB', image: null },
+      {
+        itemId: 36,
+        slug: "iphone-15-128gb",
+        name: "iPhone 15 128GB",
+        image: null,
+      },
       {
         itemId: 35,
-        slug: 'smartphone-poco-x6-pro-512gb',
-        name: 'Smartphone Poco X6 Pro 512GB',
+        slug: "smartphone-poco-x6-pro-512gb",
+        name: "Smartphone Poco X6 Pro 512GB",
         image: null,
       },
     ],
@@ -76,11 +81,16 @@ export const FIXED_COMPARE = {
 export const FIXED_WISHLIST = {
   state: {
     entries: [
-      { itemId: 36, slug: 'iphone-15-128gb', name: 'iPhone 15 128GB', image: null },
+      {
+        itemId: 36,
+        slug: "iphone-15-128gb",
+        name: "iPhone 15 128GB",
+        image: null,
+      },
       {
         itemId: 35,
-        slug: 'smartphone-poco-x6-pro-512gb',
-        name: 'Smartphone Poco X6 Pro 512GB',
+        slug: "smartphone-poco-x6-pro-512gb",
+        name: "Smartphone Poco X6 Pro 512GB",
         image: null,
       },
     ],
@@ -91,7 +101,7 @@ export const FIXED_WISHLIST = {
 export interface StorePageCase {
   name: string;
   route: string;
-  theme: 'light' | 'dark';
+  theme: "light" | "dark";
   /** `true` inyecta el carrito fijo antes de cargar la pagina. */
   cart?: boolean;
   /** `true` inyecta la lista del comparador antes de cargar la pagina (F6). */
@@ -107,21 +117,21 @@ export interface StorePageCase {
 }
 
 export async function fillBuyer(page: Page): Promise<void> {
-  await page.getByTestId('checkout-email').fill(BUYER.email);
-  await page.getByTestId('checkout-name').fill(BUYER.name);
-  await page.getByTestId('checkout-phone').fill(BUYER.phone);
-  await page.getByTestId('checkout-street').fill(BUYER.street);
-  await page.getByTestId('checkout-district').fill(BUYER.district);
-  await page.getByTestId('checkout-next-1').click();
+  await page.getByTestId("checkout-email").fill(BUYER.email);
+  await page.getByTestId("checkout-name").fill(BUYER.name);
+  await page.getByTestId("checkout-phone").fill(BUYER.phone);
+  await page.getByTestId("checkout-street").fill(BUYER.street);
+  await page.getByTestId("checkout-district").fill(BUYER.district);
+  await page.getByTestId("checkout-next-1").click();
 }
 
 export async function chooseDeliveryAndPayment(page: Page): Promise<void> {
-  await page.getByTestId('checkout-delivery-home').check();
-  await page.getByTestId('checkout-payment-qr').check();
-  await page.getByTestId('checkout-next-2').click();
+  await page.getByTestId("checkout-delivery-home").check();
+  await page.getByTestId("checkout-payment-qr").check();
+  await page.getByTestId("checkout-next-2").click();
   // La cotizacion de la pantalla 3 la responde el fixture: si falta, el spec falla
   // aqui (y no da por buena una pantalla de error).
-  await expect(page.getByTestId('checkout-quote-total')).toBeVisible();
+  await expect(page.getByTestId("checkout-quote-total")).toBeVisible();
 }
 
 async function prepareCheckoutSummary(page: Page): Promise<void> {
@@ -131,68 +141,123 @@ async function prepareCheckoutSummary(page: Page): Promise<void> {
 
 /** Pantallas del gate visual: la captura de referencia de cada una. */
 export const VISUAL_CASES: readonly StorePageCase[] = [
-  { name: 'inicio-claro', route: '/', theme: 'light', waitForTestId: 'home-hero' },
-  { name: 'inicio-oscuro', route: '/', theme: 'dark', waitForTestId: 'home-hero' },
-  { name: 'categoria-claro', route: '/categorias/celulares', theme: 'light', waitForTestId: 'product-grid' },
-  { name: 'busqueda-claro', route: '/buscar?q=iphone', theme: 'light', waitForTestId: 'search-summary' },
   {
-    name: 'busqueda-sin-resultados-claro',
-    route: '/buscar?q=zzzsinresultados',
-    theme: 'light',
-    waitForTestId: 'search-empty-state',
+    name: "inicio-claro",
+    route: "/",
+    theme: "light",
+    waitForTestId: "home-hero",
   },
-  { name: 'producto-claro', route: '/productos/iphone-15-128gb', theme: 'light', waitForTestId: 'detail-price' },
-  { name: 'producto-oscuro', route: '/productos/iphone-15-128gb', theme: 'dark', waitForTestId: 'detail-price' },
-  { name: 'carrito-lleno-claro', route: '/carrito', theme: 'light', cart: true, waitForTestId: 'cart-line' },
-  { name: 'carrito-lleno-oscuro', route: '/carrito', theme: 'dark', cart: true, waitForTestId: 'cart-line' },
-  { name: 'carrito-vacio-claro', route: '/carrito', theme: 'light', waitForTestId: 'cart-empty' },
   {
-    name: 'checkout-paso-2-claro',
-    route: '/checkout',
-    theme: 'light',
+    name: "inicio-oscuro",
+    route: "/",
+    theme: "dark",
+    waitForTestId: "home-hero",
+  },
+  {
+    name: "categoria-claro",
+    route: "/categorias/celulares",
+    theme: "light",
+    waitForTestId: "product-grid",
+  },
+  {
+    name: "busqueda-claro",
+    route: "/buscar?q=iphone",
+    theme: "light",
+    waitForTestId: "search-summary",
+  },
+  {
+    name: "busqueda-sin-resultados-claro",
+    route: "/buscar?q=zzzsinresultados",
+    theme: "light",
+    waitForTestId: "search-empty-state",
+  },
+  {
+    name: "producto-claro",
+    route: "/productos/iphone-15-128gb",
+    theme: "light",
+    waitForTestId: "detail-price",
+  },
+  {
+    name: "producto-oscuro",
+    route: "/productos/iphone-15-128gb",
+    theme: "dark",
+    waitForTestId: "detail-price",
+  },
+  {
+    name: "carrito-lleno-claro",
+    route: "/carrito",
+    theme: "light",
     cart: true,
-    waitForTestId: 'checkout-form',
+    waitForTestId: "cart-line",
+  },
+  {
+    name: "carrito-lleno-oscuro",
+    route: "/carrito",
+    theme: "dark",
+    cart: true,
+    waitForTestId: "cart-line",
+  },
+  {
+    name: "carrito-vacio-claro",
+    route: "/carrito",
+    theme: "light",
+    waitForTestId: "cart-empty",
+  },
+  {
+    name: "checkout-paso-2-claro",
+    route: "/checkout",
+    theme: "light",
+    cart: true,
+    waitForTestId: "checkout-form",
     prepare: async (page) => {
       await fillBuyer(page);
-      await expect(page.getByTestId('checkout-step-2')).toHaveAttribute('data-state', 'current');
+      await expect(page.getByTestId("checkout-step-2")).toHaveAttribute(
+        "data-state",
+        "current",
+      );
     },
   },
   {
-    name: 'checkout-resumen-claro',
-    route: '/checkout',
-    theme: 'light',
+    name: "checkout-resumen-claro",
+    route: "/checkout",
+    theme: "light",
     cart: true,
-    waitForTestId: 'checkout-form',
+    waitForTestId: "checkout-form",
     prepare: prepareCheckoutSummary,
   },
   {
-    name: 'checkout-resumen-oscuro',
-    route: '/checkout',
-    theme: 'dark',
+    name: "checkout-resumen-oscuro",
+    route: "/checkout",
+    theme: "dark",
     cart: true,
-    waitForTestId: 'checkout-form',
+    waitForTestId: "checkout-form",
     prepare: prepareCheckoutSummary,
   },
   {
-    name: 'pedido-no-encontrado-claro',
-    route: '/productos/slug-que-no-existe',
-    theme: 'light',
-    waitForText: 'No encontramos esta pagina',
+    name: "pedido-no-encontrado-claro",
+    route: "/productos/slug-que-no-existe",
+    theme: "light",
+    waitForText: "No encontramos esta pagina",
   },
-  { name: 'seguimiento-vacio-claro', route: '/seguimiento', theme: 'light', waitForTestId: 'tracking-empty' },
   {
-    name: 'comparador-claro',
-    route: '/comparar',
-    theme: 'light',
+    name: "seguimiento-vacio-claro",
+    route: "/seguimiento",
+    theme: "light",
+    waitForTestId: "tracking-empty",
+  },
+  {
+    name: "comparador-claro",
+    route: "/comparar",
+    theme: "light",
     compare: true,
-    waitForTestId: 'compare-table',
+    waitForTestId: "compare-table",
   },
   {
-    name: 'favoritos-claro',
-    route: '/favoritos',
-    theme: 'light',
+    name: "favoritos-claro",
+    route: "/favoritos",
+    theme: "light",
     wishlist: true,
-    waitForTestId: 'wishlist-grid',
+    waitForTestId: "wishlist-grid",
   },
 ];
 
@@ -201,75 +266,142 @@ export const VISUAL_CASES: readonly StorePageCase[] = [
  * visual **en los dos temas**, que es donde el contraste cambia.
  */
 export const AUDIT_CASES: readonly StorePageCase[] = [
-  { name: 'inicio', route: '/', theme: 'light', waitForTestId: 'home-hero' },
-  { name: 'inicio', route: '/', theme: 'dark', waitForTestId: 'home-hero' },
-  { name: 'categoria', route: '/categorias/celulares', theme: 'light', waitForTestId: 'product-grid' },
-  { name: 'categoria', route: '/categorias/celulares', theme: 'dark', waitForTestId: 'product-grid' },
-  { name: 'busqueda', route: '/buscar?q=iphone', theme: 'light', waitForTestId: 'search-summary' },
-  { name: 'busqueda', route: '/buscar?q=iphone', theme: 'dark', waitForTestId: 'search-summary' },
-  { name: 'producto', route: '/productos/iphone-15-128gb', theme: 'light', waitForTestId: 'detail-price' },
-  { name: 'producto', route: '/productos/iphone-15-128gb', theme: 'dark', waitForTestId: 'detail-price' },
-  { name: 'carrito', route: '/carrito', theme: 'light', cart: true, waitForTestId: 'cart-line' },
-  { name: 'carrito', route: '/carrito', theme: 'dark', cart: true, waitForTestId: 'cart-line' },
+  { name: "inicio", route: "/", theme: "light", waitForTestId: "home-hero" },
+  { name: "inicio", route: "/", theme: "dark", waitForTestId: "home-hero" },
   {
-    name: 'checkout-entrega-y-pago',
-    route: '/checkout',
-    theme: 'light',
+    name: "categoria",
+    route: "/categorias/celulares",
+    theme: "light",
+    waitForTestId: "product-grid",
+  },
+  {
+    name: "categoria",
+    route: "/categorias/celulares",
+    theme: "dark",
+    waitForTestId: "product-grid",
+  },
+  {
+    name: "busqueda",
+    route: "/buscar?q=iphone",
+    theme: "light",
+    waitForTestId: "search-summary",
+  },
+  {
+    name: "busqueda",
+    route: "/buscar?q=iphone",
+    theme: "dark",
+    waitForTestId: "search-summary",
+  },
+  {
+    name: "producto",
+    route: "/productos/iphone-15-128gb",
+    theme: "light",
+    waitForTestId: "detail-price",
+  },
+  {
+    name: "producto",
+    route: "/productos/iphone-15-128gb",
+    theme: "dark",
+    waitForTestId: "detail-price",
+  },
+  {
+    name: "carrito",
+    route: "/carrito",
+    theme: "light",
     cart: true,
-    waitForTestId: 'checkout-form',
+    waitForTestId: "cart-line",
+  },
+  {
+    name: "carrito",
+    route: "/carrito",
+    theme: "dark",
+    cart: true,
+    waitForTestId: "cart-line",
+  },
+  {
+    name: "checkout-entrega-y-pago",
+    route: "/checkout",
+    theme: "light",
+    cart: true,
+    waitForTestId: "checkout-form",
     prepare: async (page) => {
       await fillBuyer(page);
-      await expect(page.getByTestId('checkout-step-2')).toHaveAttribute('data-state', 'current');
+      await expect(page.getByTestId("checkout-step-2")).toHaveAttribute(
+        "data-state",
+        "current",
+      );
     },
   },
   {
-    name: 'checkout-entrega-y-pago',
-    route: '/checkout',
-    theme: 'dark',
+    name: "checkout-entrega-y-pago",
+    route: "/checkout",
+    theme: "dark",
     cart: true,
-    waitForTestId: 'checkout-form',
+    waitForTestId: "checkout-form",
     prepare: async (page) => {
       await fillBuyer(page);
-      await expect(page.getByTestId('checkout-step-2')).toHaveAttribute('data-state', 'current');
+      await expect(page.getByTestId("checkout-step-2")).toHaveAttribute(
+        "data-state",
+        "current",
+      );
     },
   },
   {
-    name: 'checkout-resumen',
-    route: '/checkout',
-    theme: 'light',
+    name: "checkout-resumen",
+    route: "/checkout",
+    theme: "light",
     cart: true,
-    waitForTestId: 'checkout-form',
+    waitForTestId: "checkout-form",
     prepare: prepareCheckoutSummary,
   },
   {
-    name: 'checkout-resumen',
-    route: '/checkout',
-    theme: 'dark',
+    name: "checkout-resumen",
+    route: "/checkout",
+    theme: "dark",
     cart: true,
-    waitForTestId: 'checkout-form',
+    waitForTestId: "checkout-form",
     prepare: prepareCheckoutSummary,
   },
   {
-    name: 'pedido-no-encontrado',
-    route: '/productos/slug-que-no-existe',
-    theme: 'light',
-    waitForText: 'No encontramos esta pagina',
+    name: "pedido-no-encontrado",
+    route: "/productos/slug-que-no-existe",
+    theme: "light",
+    waitForText: "No encontramos esta pagina",
   },
-  { name: 'seguimiento-vacio', route: '/seguimiento', theme: 'light', waitForTestId: 'tracking-empty' },
-  { name: 'carrito-vacio', route: '/carrito', theme: 'light', waitForTestId: 'cart-empty' },
   {
-    name: 'comparador',
-    route: '/comparar',
-    theme: 'light',
+    name: "seguimiento-vacio",
+    route: "/seguimiento",
+    theme: "light",
+    waitForTestId: "tracking-empty",
+  },
+  // F4: la cuenta del comprador entra en el barrido de accesibilidad. Sin sesion (el fixture no
+  // tiene cookie) la ruta responde **sin** llamar al canal y pinta el formulario, asi que el caso
+  // es determinista y no necesita datos.
+  {
+    name: "cuenta",
+    route: "/cuenta",
+    theme: "light",
+    waitForTestId: "account-form",
+  },
+  {
+    name: "carrito-vacio",
+    route: "/carrito",
+    theme: "light",
+    waitForTestId: "cart-empty",
+  },
+  {
+    name: "comparador",
+    route: "/comparar",
+    theme: "light",
     compare: true,
-    waitForTestId: 'compare-table',
+    waitForTestId: "compare-table",
   },
   {
-    name: 'favoritos',
-    route: '/favoritos',
-    theme: 'light',
+    name: "favoritos",
+    route: "/favoritos",
+    theme: "light",
     wishlist: true,
-    waitForTestId: 'wishlist-grid',
+    waitForTestId: "wishlist-grid",
   },
 ];
 
@@ -283,15 +415,21 @@ export async function openStorePage(
 ): Promise<Page> {
   await context.addInitScript(
     ({ theme, cart, compare, wishlist }) => {
-      window.localStorage.setItem('sf-theme', theme);
+      window.localStorage.setItem("sf-theme", theme);
       if (cart) {
-        window.localStorage.setItem('storefront_cart_v1', JSON.stringify(cart));
+        window.localStorage.setItem("storefront_cart_v1", JSON.stringify(cart));
       }
       if (compare) {
-        window.localStorage.setItem('storefront_compare_v1', JSON.stringify(compare));
+        window.localStorage.setItem(
+          "storefront_compare_v1",
+          JSON.stringify(compare),
+        );
       }
       if (wishlist) {
-        window.localStorage.setItem('storefront_wishlist_v1', JSON.stringify(wishlist));
+        window.localStorage.setItem(
+          "storefront_wishlist_v1",
+          JSON.stringify(wishlist),
+        );
       }
     },
     {
@@ -309,13 +447,17 @@ export async function openStorePage(
     await expect(page.getByTestId(item.waitForTestId).first()).toBeVisible();
   }
   if (item.waitForText !== undefined) {
-    await expect(page.getByRole('heading', { name: item.waitForText })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: item.waitForText }),
+    ).toBeVisible();
   }
   if (item.prepare !== undefined) {
     await item.prepare(page);
   }
   // Tipografias propias cargadas: sin esto la captura puede salir con la fuente de
   // respaldo y cada corrida seria distinta de la anterior.
-  await page.waitForFunction(() => document.fonts.status === 'loaded', null, { timeout: 15_000 });
+  await page.waitForFunction(() => document.fonts.status === "loaded", null, {
+    timeout: 15_000,
+  });
   return page;
 }

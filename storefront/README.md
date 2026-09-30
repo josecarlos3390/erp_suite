@@ -239,7 +239,7 @@ Medido en el despliegue de produccion (proyecto `erp-storefront`,
 | `npm run e2e`               | Playwright sobre `next start` en `:3100` contra la API real (43 casos)                                    |
 | `npm run e2e:visual`        | gate visual (F9.6): 15 capturas contra el **fixture grabado** del canal, `next start` en `:3200`          |
 | `npm run e2e:visual:update` | regenera las capturas; con `STORE_VISUAL_RECORD=1` **vuelve a grabar** el fixture (API del ERP en marcha) |
-| `npm run e2e:a11y`          | `axe-core` (WCAG 2.0/2.1 A y AA + best-practice) sobre 17 pantallas, claro y oscuro                       |
+| `npm run e2e:a11y`          | `axe-core` (WCAG 2.0/2.1 A y AA + best-practice) sobre las pantallas auditadas, claro y oscuro (**incluye `/cuenta`** desde F4: 0 graves, 0 suaves) |
 | `npm run e2e:perf`          | presupuesto de LCP, CLS y peso del arranque (ratchet con los numeros medidos)                             |
 | `npm run audit:contrast`    | contraste WCAG de los 34 pares de la paleta, **incluidos los degradados** que `axe` no mide               |
 

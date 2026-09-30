@@ -2685,6 +2685,15 @@ cuenta** (0 referencias a `login`/`session`/`authToken`) y el canal ya publicaba
 Suite completa **68/68** y la base de desarrollo **restaurada por el arnés** (huella idéntica). Gates:
 `tsc` **0**, `next lint` **0**, `next build` **0** (15 páginas).
 
+**Y `/cuenta` entra en los dos barridos que le faltaban** (accesibilidad y rendimiento): el de
+accesibilidad audita `AUDIT_CASES` y el de rendimiento tiene su propia lista, así que la pantalla
+nueva se había quedado fuera de los dos. **Medido**: `e2e:a11y` **20/20** con
+`cuenta (light): 0 graves, 0 suaves, 7 nodos con contraste no medible` (degradados: lo que `axe` no
+puede medir) y `e2e:perf` **6/6** con `LCP 184 ms · CLS 0 · JS 114,6 kB · CSS 10,6 kB · fuentes
+188,5 kB`, todo dentro del presupuesto (800 ms / 0,05 / 150 kB / 20 kB / 210 kB). El caso es
+determinista **sin** tocar el fixture: sin cookie, `/api/cuenta` responde **sin** llamar al canal y
+la página pinta el formulario.
+
 ### Declarado
 
 1. La **fecha** del historial se formatea con la **zona del navegador** (`toLocaleDateString('es-BO')`),
