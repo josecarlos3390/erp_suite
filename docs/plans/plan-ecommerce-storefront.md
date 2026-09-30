@@ -2585,6 +2585,69 @@ proveedor y pasa a ser trabajo de producto (registro/login, perfil, direcciones,
 punto (5) —**probar el checkout completo en producción**— sigue esperando el OK explícito del usuario
 porque crea un pedido real en la base de producción.
 
+## §31 Cuenta de cliente F4 — incremento 1: la identidad y el historial (2026-09-30)
+
+**Lo que pidió el usuario**: «F4 + avisos del retiro», con el proveedor de correo decidido (Resend).
+
+### Medido ANTES
+
+| Medición | Resultado |
+| --- | --- |
+| Modelo `WebCustomer` | **Ya existía** con `passwordHash`, `lastLoginAt`, `partnerId`, `isActive` y la relación `orders` |
+| Quién lo usa | `passwordHash`/`lastLoginAt` → **0** referencias en `src/`: nadie lee ni escribe credenciales |
+| Endpoints de cuenta en el canal | **0** (19 endpoints y ninguno de cliente) |
+| `WebOrder.customerId` | Existe en el esquema y el canal **nunca** lo escribía: el historial solo se podía reconstruir por correo |
+| Semilla | 3 clientes con `bcrypt.hashSync('tienda123', 10)` |
+
+### Entregado (backend)
+
+| Pieza | Dónde |
+| --- | --- |
+| Endpoints | `POST /storefront/customers` (alta), `POST …/login`, `GET/PATCH …/me`, `POST …/me/password`, `GET …/me/orders` |
+| Sesión | JWT con **`scope: 'storefront-customer'`** (30 días), firmado con el secreto del ERP pero **inutilizable** en sus rutas; la guarda exige además que el `tenantId` del token sea el de la **clave de la tienda** |
+| Contraseña | bcrypt **10 rondas** (el mismo coste que los usuarios del ERP); 8–72 caracteres (por encima, bcrypt **trunca**) |
+| Correo | **Normalizado a minúsculas en el DTO**: es la clave de la cuenta (`@@unique([tenantId, email])`) |
+| Enlace del pedido | `WebOrder.customerId` al crear el pedido, reutilizando la búsqueda que ya se hacía por el correo |
+| Historial | `StorefrontService.ordersForEmail()`: la **misma vista** que el seguimiento, **sin** prueba de propiedad (la sesión **es** la prueba), tope 50 |
+| Límite de credenciales | 20/min por IP en alta, login y cambio de contraseña (el resto del canal: 300/min) |
+
+### Medido DESPUÉS
+
+`storefront-customers.service.spec.ts` **10/10**: el hash **nunca** es la contraseña y **verifica**; el
+alta normaliza el correo; duplicado → **409**; el login **no enumera** (correo inexistente, contraseña
+mal y cuenta inactiva dan el **mismo** 401); una cuenta desactivada deja de operar **aunque su token
+siga vivo**; el perfil trae las direcciones del tercero enlazado o ninguna; el historial es el de **su**
+correo; el cambio de contraseña exige la actual; y el hash de la semilla (**`tienda123`**) sirve para
+entrar.
+
+**Contra la API viva** (con el arnés del §29 envolviendo la sonda, para no ensuciar la base):
+
+| Paso | Medición |
+| --- | --- |
+| Alta | `Cuenta.F4@Example.com` → guardado como **`cuenta.f4@example.com`**, token de **30d**, **sin** `passwordHash` en la respuesta |
+| Alta repetida | **409** «Ya existe una cuenta con el correo …» |
+| Login | contraseña mal → **401** «El correo o la contrasena no son correctos»; la buena → **201** |
+| `/me` | sin token → **401**; con token → nombre, correo y `linkedToPartner` |
+| Pedido + historial | un pedido del canal con ese correo (`WEB-69`) aparece en `GET /me/orders` (**1**), y **la otra cuenta ve 0** |
+| Enlace | en la base: `WEB-69 · customerId=4 · cuenta.f4@example.com` |
+| Base | restaurada por el arnés: huella `03643110…` **idéntica** y `changed: []` |
+
+### Declarado
+
+1. La **UI de la tienda** (`/cuenta`: alta, sesión y «Mis pedidos») es el incremento **siguiente**: el
+   backend queda listo y probado, pero el comprador todavía no tiene pantalla.
+2. **No** hay «he olvidado mi contraseña» por correo: el correo existe desde el §28, pero entregar a un
+   buzón real exige **verificar un dominio** en Resend, y por eso el acceso **no** se ató a la
+   deliverability (era la decisión explícita: contraseña, no enlace mágico).
+3. La sesión **no se revoca**: un JWT de 30 días vale hasta que caduca; el «logout» es borrar la cookie
+   y el cambio de contraseña **no** invalida los tokens vivos.
+4. El historial es **N+1** y **sin paginar** (tope 50).
+5. El **alta** revela que un correo ya está registrado (**409**); el **login** no enumera. Es un
+   compromiso consciente (el comprador aporta el correo al registrarse).
+6. Las **direcciones** se editan en el ERP: la cuenta publica las del **tercero enlazado** (el modelo
+   dice que no se duplican).
+
+
 
 
 
