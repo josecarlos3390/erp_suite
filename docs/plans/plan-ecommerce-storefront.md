@@ -2240,6 +2240,13 @@ host, **contenido (banners y páginas) desde el ERP** (§25) y el despliegue aut
 pantallas las exigían, pero **no se podían conceder desde la interfaz** (mismo defecto que tuvo
 «Descuentos» en la ronda 35).
 
+**Un pendiente que no estaba en esta lista y se cerró en el §27**: el **retiro en tienda**. Se
+anunciaba en el checkout con la etiqueta «· fase 2», se **podía elegir** y **no hacía nada** (medido:
+mismo envío que un domicilio y el pedido sin tienda). Desde el 2026-09-30 el comprador elige el punto,
+no paga envío, el pedido guarda la tienda y la bandeja del ERP dice dónde se prepara. La lección se
+anota aquí: un texto que promete una fase futura **no** cuenta como pendiente declarado si nadie lo
+apunta en esta tabla — el usuario lo encontró preguntando.
+
 ## §25 Ronda F5 — la entrega desde la bandeja y el contenido de la tienda (2026-09-29)
 
 **Lo que pidió el usuario**: «¿tienes la lista de pendientes?» + «entrega desde la bandeja» +
