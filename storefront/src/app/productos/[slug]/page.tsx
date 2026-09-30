@@ -144,7 +144,17 @@ export default async function ProductPage({
     <div className="flex flex-col gap-10">
       <Breadcrumbs items={crumbs} />
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start">
+      {/*
+        `grid-cols-1` + `[&>*]:min-w-0`: un grid de **una** columna (el móvil, donde la
+        plantilla `lg:` no aplica) dimensiona su pista por el **min-content** de sus ítems, y
+        el `min-width: auto` de un ítem de grid no lo deja encogerse por debajo. Medido a
+        390 px (iPhone 14, contra producción): la ficha salía con `docScrollW` = **661** y las
+        dos columnas a **645** dentro de una `main` de 390 —el navegador encogía la página y se
+        cortaban el buscador, los chips y la foto—; con `min-width: 0` en las columnas el
+        documento vuelve a **390** y cada columna mide **358**. En escritorio ya estaba
+        resuelto por el `lg:grid-cols-[minmax(0,…)]`; faltaba el móvil.
+      */}
+      <div className="grid grid-cols-1 gap-8 [&>*]:min-w-0 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start">
         <ProductGallery images={images} name={product.name} />
 
         <div className="flex flex-col gap-4 lg:sticky lg:top-32">

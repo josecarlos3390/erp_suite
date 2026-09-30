@@ -284,6 +284,17 @@ Reglas de la capa visual:
 
 ## Gate E2E
 
+### Gate móvil (`e2e/movil.spec.ts`)
+
+A **390 px** (iPhone 14) la tienda **no puede desbordar el ancho**: el caso recorre 9 rutas
+afirmando que `document.scrollWidth` no pasa de `clientWidth` **y** que el viewport no se expande,
+y reproduce el flujo del comprador (**pulsar la tarjeta** y comprobar la ficha). Nació de un
+defecto medido: la **ficha de producto** salía a **661 px** de ancho porque la pista del grid (una
+columna en móvil) se dimensionaba por el `min-content` de sus ítems —`min-width: auto`— y el
+navegador encogía la página entera; se corrige con `grid-cols-1` + `min-w-0` en las columnas.
+El caso pulsa el **enlace accesible** de la tarjeta (el del título): el centro de la tarjeta es el
+botón de compra rápida, que añade al carrito y **no** navega.
+
 `e2e/` corre con Playwright sobre `next start` en el puerto `3100` y **contra la API del ERP en
 marcha** (el seed real). Requiere que `npm run build` se haya corrido antes:
 

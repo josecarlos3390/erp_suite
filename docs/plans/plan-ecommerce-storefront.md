@@ -2287,4 +2287,67 @@ pantallas las exigían, pero **no se podían conceder desde la interfaz** (mismo
    cerrada: el canal resuelve el slot por nombre y la pantalla sugiere los dos que usa hoy.
 4. La lista del §24 es la **fuente única** de pendientes: si algo se cierra, se tacha **aquí**.
 
+## §26 Móvil: la ficha de producto de la tienda y la navegación del ERP (2026-09-30)
+
+**Lo que reportó el usuario**: «quiero que revisemos la navegación en móvil, estaba haciendo pruebas
+y no se adapta bien a la visualización móvil […] debe ajustarse muy bien» y, después, «cuando ingreso
+a ver un producto en el ecommerce, cuando doy un click en el card, ya no se ajusta el contenido al
+móvil».
+
+### Medido ANTES (Playwright contra lo desplegado, iPhone 14 = 390×664)
+
+**Tienda — la ficha de producto** (barrido de **12** rutas midiendo `document.scrollWidth` contra
+`clientWidth`):
+
+| Ruta | `docScrollW` | ¿Desborda? |
+| --- | --- | --- |
+| `/productos/iphone-13-128gb` | **661** (y `window.innerWidth` expandido a 661) | **sí** |
+| Las otras **11** (home, categorías, búsqueda, carrito, checkout, comparar, favoritos, sucursales, seguimiento, página) | 390 | no |
+
+**Causa raíz**: el grid de la ficha (`grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]`)
+en **móvil** —donde la plantilla `lg:` no aplica— deja una **pista implícita `auto`**, y un ítem de
+grid con `min-width: auto` no puede encogerse por debajo de su `min-content`: **las dos columnas
+medían 645 px dentro de una `main` de 390**, el navegador encogía la página entera y se cortaban el
+buscador, los chips de categorías y la foto (captura en mano). Con `min-width: 0` aplicado a las
+columnas en el navegador, `docScrollW` volvió a **390** y cada columna a **358** — esa prueba se hizo
+**antes** de tocar el código.
+
+**ERP — la navegación** (hit-test del toque, capas y alto de filas): cuatro defectos —
+**(1)** **dos** botones de menú superpuestos (el del header, z 1200, sobre el flotante del lateral,
+z 1100, en el mismo punto 12,12 · 44×44) ⇒ el flotante **inalcanzable** y el icono **duplicado**;
+**(2)** con el cajón abierto el **header quedaba por encima del fondo** (`.overlay` con `--z-modal`
+1200, igual que el header y anterior en el DOM) ⇒ campana/tema/usuario clicables y sin atenuar;
+**(3)** filas del menú de **36 px** frente a los 44 recomendados; **(4)** **`/` en blanco**
+(`mainTextLen` = 0 frente a 747 en `/dashboard`).
+
+### Entregado
+
+| Pieza | Cambio |
+| --- | --- |
+| Ficha de producto (tienda) | `grid-cols-1` + `[&>*]:min-w-0` en el grid de la ficha (sin tocar el DOM ni el escritorio, que ya lo tenía por el `lg:grid-cols-[minmax(0,…)]`) |
+| Navegación (ERP) | se elimina el botón **flotante** (queda el del header, el único que recibe el toque); `--z-mobile-overlay: 1280` / `--z-mobile-drawer: 1290` (encima del header/modal 1200, debajo de tooltip 1300 y toast 1400); `min-height: 44px` en las filas **solo** en ≤768 px (la densidad de escritorio no se mueve, para no romper los baselines visuales); redirect `''` → `dashboard` |
+
+### Medido DESPUÉS (gates nuevos, que es lo que impide que vuelva)
+
+- **Tienda** — `storefront/e2e/movil.spec.ts` (**10 casos**, viewport iPhone 14): **10/10**; recorre
+  9 rutas afirmando que el documento **no** desborda y que el **viewport no se expande**, y el caso
+  del usuario: pulsar la **tarjeta** y comprobar que la ficha no desborda. (El clic va al enlace
+  **accesible** del título: el centro de la tarjeta es el botón de compra rápida, que añade al
+  carrito y **no** navega —medido en la primera corrida—.)
+- **ERP** — `erp-frontend/e2e/mobile-navigation.spec.ts` (**6 casos**, `mobile-chrome`): **6/6**.
+- Suite de la tienda en la corrida completa: **59/60** con el único fallo en el caso del clic
+  (corregido y verificado en aislado con 10/10); ERP `tsc` **0/0**, **Karma 2460/2460**,
+  `ng lint` **0**, **`ng build` AOT 0**.
+
+### Declarado
+
+1. El cajón del ERP **no** se cierra con `Escape` y elegir la entrada de la ruta en la que ya se
+   está no lo cierra (no hay `NavigationEnd`): se midió, se documenta en el spec y **no** se cambió
+   sin pedirlo.
+2. El gate de la tienda mide **desbordamiento del documento**, no «todo cabe»: los carruseles de
+   chips siguen siendo más anchos que el viewport a propósito (su contenedor tiene scroll).
+3. La sesión del ERP vive en **sessionStorage**, que el `storageState` de Playwright no guarda: los
+   specs deben usar el fixture `fixtures/authenticated-test` (el gate lo documenta porque el fallo
+   se pagó una vez).
+
 
