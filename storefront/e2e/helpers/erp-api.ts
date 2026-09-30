@@ -97,6 +97,35 @@ export interface ApiCatalogPage {
   totalPages: number;
 }
 
+/**
+ * Tienda publicada por la ciudad para **retiro** (F5). El canal la identifica por su
+ * `code`: la vista del canal no expone ids internos, igual que pasa con `city.code`.
+ */
+export interface ApiCityStore {
+  code: string;
+  name: string;
+  kind: "BRANCH" | "WAREHOUSE";
+  address: string | null;
+  phone: string | null;
+  openingHours: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  mapUrl: string | null;
+  pickupEnabled: boolean;
+  branchId: number | null;
+  warehouseId: number | null;
+}
+
+/** Tienda de retiro tal como la publica **el pedido** ya creado. */
+export interface ApiPickupStore {
+  code: string;
+  name: string;
+  address: string | null;
+  openingHours: string | null;
+  phone: string | null;
+  mapUrl: string | null;
+}
+
 export interface ApiCity {
   code: string;
   name: string;
@@ -105,6 +134,8 @@ export interface ApiCity {
   freeShippingFrom: number | null;
   warehouse: { id: number; code: string; name: string } | null;
   branch: { id: number; code: string; name: string } | null;
+  /** Tiendas de la ciudad, con la herencia del maestro ya resuelta por el canal. */
+  stores?: ApiCityStore[];
 }
 
 /** Cotizacion del canal (`POST /storefront/quote`), con su desglose fiscal (T197). */
@@ -166,6 +197,8 @@ export interface ApiQuote {
   freeShippingApplied: boolean;
   /** Total a pagar: `netSubtotal + taxAmount` (el total del documento). */
   total: number;
+  /** Tienda de retiro elegida (F5); `null` en entrega a domicilio. */
+  pickupStore?: ApiPickupStore | null;
 }
 
 /** Pedido del canal (`POST /storefront/orders` y `GET /storefront/tracking`). */
@@ -206,6 +239,8 @@ export interface ApiOrder {
   /** Referencia del pago offline que anoto el comprador (null mientras no la anote). */
   paymentReference: string | null;
   paymentReferenceAt: string | null;
+  /** Tienda de retiro del pedido (F5); `null` cuando la entrega es a domicilio. */
+  pickupStore?: ApiPickupStore | null;
   /** Estado crudo del documento del ERP del que se deriva el del comprador. */
   erp: {
     status: string;
@@ -246,6 +281,8 @@ export interface ApiOrderInput {
   idempotencyKey: string;
   cityCode: string;
   deliveryType?: "HOME" | "STORE";
+  /** Tienda de retiro (obligatoria con `deliveryType: "STORE"`); es su `code`. */
+  pickupStoreCode?: string;
   paymentMethod?: "TRANSFER" | "QR" | "CASH_ON_DELIVERY" | "STORE_PICKUP";
   items: Array<{ itemId: number; quantity: number }>;
   customer?: ApiOrderCustomer;
@@ -389,8 +426,55 @@ export async function findZeroStockProduct(
 export async function quote(
   cityCode: string,
   items: Array<{ itemId: number; quantity: number }>,
+  pickup?: { deliveryType?: "HOME" | "STORE"; pickupStoreCode?: string },
 ): Promise<ApiQuote> {
-  return apiPost<ApiQuote>("/storefront/quote", { cityCode, items });
+  return apiPost<ApiQuote>("/storefront/quote", {
+    cityCode,
+    items,
+    ...(pickup?.deliveryType !== undefined ? { deliveryType: pickup.deliveryType } : {}),
+    ...(pickup?.pickupStoreCode !== undefined
+      ? { pickupStoreCode: pickup.pickupStoreCode }
+      : {}),
+  });
+}
+
+/**
+ * Una tienda de **retiro** de la ciudad, descubierta con el canal (nunca codificada a
+ * mano): el caso mide contra el mismo dato con el que el checkout ofrece elegir.
+ *
+ * El pedido sale del **almacen de esa tienda** (F5), asi que una tienda sin existencia no
+ * puede cotizar el carrito (medido: «Sin existencia suficiente … disponible 0»). Se
+ * devuelve la **primera que el canal acepta** con ese carrito, que es lo que un comprador
+ * haria al ver el error; las que fallaron se reportan si ninguna sirve.
+ */
+export async function findPickupStore(
+  cityCode: string,
+  items: Array<{ itemId: number; quantity: number }>,
+): Promise<{ code: string; name: string; cityName: string; cityCode: string }> {
+  const cities = await getCities();
+  const city = cities.find((candidate) => candidate.code === cityCode);
+  if (city === undefined) {
+    throw new Error(`El canal no publica la ciudad ${cityCode}.`);
+  }
+  const candidates = (city.stores ?? []).filter((candidate) => candidate.pickupEnabled);
+  if (candidates.length === 0) {
+    throw new Error(
+      `La ciudad ${cityCode} no publica ninguna tienda con retiro (pickupEnabled): el caso necesita una para medir.`,
+    );
+  }
+
+  const rejected: string[] = [];
+  for (const store of candidates) {
+    try {
+      await quote(cityCode, items, { deliveryType: "STORE", pickupStoreCode: store.code });
+      return { code: store.code, name: store.name, cityName: city.name, cityCode: city.code };
+    } catch (error) {
+      rejected.push(`${store.code}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  throw new Error(
+    `Ninguna tienda con retiro de ${cityCode} puede cotizar el carrito del caso:\n${rejected.join("\n")}`,
+  );
 }
 
 /** `POST /storefront/orders` — crea el pedido (idempotente por clave). */
@@ -402,6 +486,7 @@ export async function placeOrder(input: ApiOrderInput): Promise<ApiOrder> {
     paymentMethod: input.paymentMethod ?? "TRANSFER",
     items: input.items,
     customer: input.customer ?? {},
+    ...(input.pickupStoreCode !== undefined ? { pickupStoreCode: input.pickupStoreCode } : {}),
   });
 }
 

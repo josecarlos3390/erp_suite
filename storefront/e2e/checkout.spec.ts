@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import {
   findDiscountedProduct,
   findOfferProduct,
+  findPickupStore,
   findShippableProduct,
   findUnquotableProduct,
   placeOrder,
@@ -530,6 +531,75 @@ test.describe('Checkout de invitado', () => {
     await page.context().addCookies([
       { name: 'storefront_city', value: CITY, domain: '127.0.0.1', path: '/' },
     ]);
+  });
+
+  /**
+   * F5 — **retiro en tienda**. Medido **antes** de implementarlo (2026-09-30): elegir retiro
+   * pagaba el mismo envio que la entrega a domicilio (20,00 = 20,00) y el pedido no guardaba
+   * ninguna tienda. Este caso pincha lo contrario, con el canal como oraculo de cada importe.
+   */
+  test('el retiro en tienda exige tienda, no cobra envio y el pedido la registra', async ({
+    page,
+  }) => {
+    const target = await findShippableProduct(CITY);
+    const items = [{ itemId: target.itemId, quantity: 1 }];
+    const store = await findPickupStore(CITY, items);
+    const buyer = defaultBuyer('retiro');
+
+    // Las **dos caras** de la misma cotizacion: a domicilio (cobra flete) y con retiro.
+    const home = await quote(CITY, items);
+    const pickup = await quote(CITY, items, {
+      deliveryType: 'STORE',
+      pickupStoreCode: store.code,
+    });
+    expect(home.shippingCharged).toBe(true);
+    expect(pickup.shippingCharged).toBe(false);
+    expect(pickup.shipping).toBe(0);
+    expect(pickup.total).toBe(Math.round((home.total - home.shipping) * 100) / 100);
+
+    await addToCart(page, target.slug, '1');
+    await page.goto('/checkout');
+    await expect(page.getByTestId('checkout-city-name')).toContainText(store.cityName);
+    await fillBuyer(page, buyer);
+
+    // Paso 2: retiro **sin** tienda no deja avanzar (el aviso, no un pedido a medias).
+    await page.getByTestId('checkout-delivery-store').check();
+    await expect(page.getByTestId('checkout-pickup-stores')).toBeVisible();
+    await page.getByTestId('checkout-payment-store_pickup').check();
+    await page.getByTestId('checkout-next-2').click();
+    await expect(page.getByTestId('checkout-pickup-error')).toContainText('Elige');
+    await expect(page.getByTestId('checkout-step-2')).toHaveAttribute('data-state', 'current');
+
+    // Y con la tienda que publica el canal, el resumen es el del retiro.
+    await page.getByTestId(`checkout-pickup-${store.code}`).check();
+    await page.getByTestId('checkout-next-2').click();
+    await expect(page.getByTestId('checkout-step-3')).toHaveAttribute('data-state', 'current');
+    await waitForQuote(page);
+
+    expect(await readMoney(page.getByTestId('checkout-quote-shipping'))).toBe(0);
+    expect(await readMoney(page.getByTestId('checkout-quote-total'))).toBe(pickup.total);
+    // El resumen **nombra** la tienda y la direccion de retiro (no la del comprador): confirmar
+    // un pedido sin ver donde se retira seria confirmar a ciegas.
+    await expect(page.getByTestId('checkout-summary-delivery')).toContainText(store.name);
+    await expect(page.getByTestId('checkout-summary-address')).not.toContainText(buyer.street);
+
+    await page.getByTestId('checkout-confirm').click();
+    await expect(page.getByTestId('order-number')).toBeVisible();
+    const orderNumber = (await page.getByTestId('order-number').innerText()).trim();
+    const trackingCode = (await page.getByTestId('order-tracking-code').innerText()).trim();
+    expect(orderNumber.startsWith('WEB-')).toBe(true);
+
+    // El pedido del canal lo confirma: tipo de entrega, **sin** flete y con la tienda.
+    const stored = await trackOrder(orderNumber, { code: trackingCode });
+    expect(stored?.deliveryType).toBe('STORE');
+    expect(stored?.shipping).toBe(0);
+    // El canal publica el articulo de envio **configurado en la ciudad** (no el cobrado), asi
+    // que lo que se mide es que el pedido **no lleve ninguna linea** con el: el flete no viaja.
+    expect(stored?.shippingItemId).not.toBeNull();
+    expect(stored?.items.some((item) => item.itemId === stored.shippingItemId)).toBe(false);
+    expect(stored?.pickupStore?.code).toBe(store.code);
+    expect(stored?.pickupStore?.name).toBe(store.name);
+    expect(stored?.total).toBe(pickup.total);
   });
 });
 

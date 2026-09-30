@@ -273,7 +273,11 @@ export interface City {
   stores?: CityStore[];
 }
 
-/** Formas de entrega que acepta el canal (D4: domicilio; el retiro es fase 2). */
+/**
+ * Formas de entrega que acepta el canal: a domicilio o **retiro en tienda**. El retiro viaja con
+ * el **codigo** de la tienda (`pickupStoreCode`, el que publica la ciudad en `stores`), igual que
+ * la ciudad viaja por `cityCode`: el canal no expone ids internos.
+ */
 export type DeliveryType = "HOME" | "STORE";
 
 /** Metodos de pago offline del MVP. El canal **no** conoce datos de tarjeta. */

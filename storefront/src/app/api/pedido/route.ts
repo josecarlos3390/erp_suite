@@ -44,6 +44,15 @@ export async function POST(request: Request): Promise<NextResponse> {
         ...(body.customerEmail === undefined
           ? {}
           : { customerEmail: body.customerEmail }),
+        // F5 — la cotizacion del **retiro** viaja con la forma de entrega y la tienda elegida:
+        // sin ellas el canal cotiza a domicilio (cobra el envio) y el total que ve el
+        // comprador no es el de su pedido.
+        ...(body.deliveryType === undefined
+          ? {}
+          : { deliveryType: body.deliveryType }),
+        ...(body.pickupStoreCode === undefined
+          ? {}
+          : { pickupStoreCode: body.pickupStoreCode }),
       });
       return NextResponse.json({ quote });
     }
@@ -58,6 +67,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       items: body.items,
       customer: body.customer,
       ...(body.notes === undefined ? {} : { notes: body.notes }),
+      // F5 — la tienda de retiro elegida: el canal la valida contra su ciudad y de ella salen
+      // la sucursal y el almacen del pedido (y el envio deja de cobrarse).
+      ...(body.pickupStoreCode === undefined
+        ? {}
+        : { pickupStoreCode: body.pickupStoreCode }),
     });
     return NextResponse.json({ order });
   } catch (error) {

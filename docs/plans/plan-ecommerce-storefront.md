@@ -2350,4 +2350,70 @@ z 1100, en el mismo punto 12,12 · 44×44) ⇒ el flotante **inalcanzable** y el
    specs deben usar el fixture `fixtures/authenticated-test` (el gate lo documenta porque el fallo
    se pagó una vez).
 
+## §27 Retiro en tienda (2026-09-30) — el «fase 2» del checkout, implementado de punta a punta
+
+**Lo que preguntó el usuario**: «cuando estoy en el checkout en la sección Forma de entrega y método
+de pago tengo una opción que dice "Retiro en tienda · fase 2", "Pago al retirar en tienda · fase 2"
+¿esa fase 2 está pendiente? ¿o ya lo hicimos y no se actualizaron los textos?». Con la respuesta
+delante —estaba **pendiente**— eligió **implementarlo completo**: «debemos completar, no dejar huecos
+y que esté funcional».
+
+### Medido ANTES (canal real, producto por debajo del umbral de envío gratis)
+
+| Medición | Resultado |
+| --- | --- |
+| `POST /storefront/quote` con `deliveryType: "STORE"` | **Mismo envío que a domicilio** (20,00 = 20,00) y **mismo total**: el «no pagas envío» de la pantalla era falso |
+| Tienda guardada en el pedido | **ninguna**: `WebOrder` no tenía columna de tienda |
+| `deliveryType` en el pedido | Se guardaba `STORE`, pero **sin** efecto en sucursal, almacén ni flete |
+| Tienda elegible por el comprador | **No existía**: `GET /storefront/cities` ya publicaba `stores` y la tienda los pintaba, pero el checkout no ofrecía elegir |
+
+### Entregado
+
+| Pieza | Dónde |
+| --- | --- |
+| Columna del pedido | `WebOrder.pickupStoreId Int?` + relación `WebOrderPickupStore` (FK `ON DELETE SET NULL` + índice) — migración `20260930180000_weborder_pickup_store` |
+| Contrato del canal | `pickupStoreCode` (códigos, no ids internos, igual que `cityCode`) en `StorefrontQuoteDto` y `CreateWebOrderDto`; `pickupStore` **resuelto** en la vista del pedido (confirmación y `/storefront/tracking`) |
+| Resolución de la tienda | `resolvePickupStore(ctx, cityId, {deliveryType, pickupStoreCode})`: debe existir **en esa ciudad**, tener `pickupEnabled` y sucursal; de ella salen la **sucursal** y el **almacén** del pedido (el almacén cae al de la ciudad cuando el punto es `BRANCH`, medido: `warehouseId: null`) |
+| Flete | `shippingCharged` exige `pickup === null`: con retiro **no se agrega la línea de envío** |
+| Checkout | radios de tienda (`checkout-pickup-<CODE>`), aviso `Elige en qué tienda quieres retirar tu pedido.` al intentar avanzar sin tienda, y la cotización viaja con `deliveryType`/`pickupStoreCode` (la tienda entra en la **firma** del `useQuote`, así que cambiar de tienda recotiza) |
+| Textos | fuera el «· fase 2» de la forma de entrega, del método de pago y de la home: la barra de beneficios anuncia el retiro **solo** si la ciudad publica tiendas con retiro (el fixture del gate visual no trae `stores`, así que sus capturas no cambian —medido—) |
+
+### Medido DESPUÉS (A/B con el mismo carrito y la misma ciudad)
+
+| Medición | Antes | Después |
+| --- | --- | --- |
+| Envío con retiro en `SCZ-CENTRO` | 20,00 | **0,00** |
+| Total | 142,55 | **122,55** |
+| `pickupStore` en el pedido y en el seguimiento | `null` | `{code: SCZ-CENTRO, name: Sucursal Centro, address, openingHours, phone, mapUrl}` (herencia del maestro resuelta) |
+| Retiro en una tienda de **otra** ciudad | — | **400** (la tienda tiene que ser de la ciudad de entrega) |
+| Retiro en `SCZ-EQUIPETROL` (almacén propio) | — | El pedido busca existencia en **ese** almacén («Sin existencia suficiente … disponible 0») ⇒ el par (sucursal, almacén) **sí** cambia de dónde sale la mercancía |
+| Regla transitoria | — | `deliveryType: "STORE"` **sin** `pickupStoreCode` conserva el comportamiento anterior (almacén y envío de la ciudad): el checkout ya desplegado no se rompe; **400** solo si el código es inválido |
+
+### Declarado
+
+1. La tienda elegida **se ve en la bandeja del ERP**: en el listado, como segunda línea de la columna
+   Ciudad («Retiro · \<tienda\>»), y en la ficha como bloque propio con dirección, horario, teléfono y
+   el **almacén** del que sale el pedido —la vista del punto **resuelta**, la misma que ve el
+   comprador—. No hay un estado nuevo «listo para retirar»: el estado del pedido sigue siendo el
+   **derivado** del documento del ERP (D13).
+2. `deliveryType: "STORE"` **sin** código sigue siendo válido (transitorio, ver arriba): quitarlo
+   sería incompatible con clientes ya desplegados y se decide aparte.
+3. El **flete no se cobra**, pero la ciudad conserva su artículo de envío configurado: el canal lo
+   publica como `shippingItemId` (es el **configurado**, no el cobrado) y lo que se mide es que el
+   pedido **no lleve ninguna línea** con él.
+4. **Hallazgo**: el **gate visual de la tienda** llevaba **rojo** desde las rondas F7/§23 —medido con
+   el **código de HEAD** (stash del cambio y corrida del gate): fallaban **3** capturas
+   (`checkout-resumen-claro`, `checkout-resumen-oscuro`, `seguimiento-vacio-claro`) y **pasaba** la del
+   paso 2, la única que mueve este cambio—. Se re-grabaron esas **4** capturas (17/17). El **fixture**
+   **no** se re-grabó entero: el proxy en modo grabación **reenvía siempre** al ERP (medido: una
+   corrida completa movió **10** capturas y **15** entradas con datos del día, lo que habría
+   enmascarado regresiones), así que solo entró la clave nueva de la cotización —el cuerpo ahora lleva
+   `deliveryType`— y salió la que quedó muerta; el fixture queda con **33** entradas y **sin**
+   `stores`, por lo que la barra de beneficios **no** la cubre el gate visual (la cubre el E2E
+   funcional).
+5. La tienda **no** publica `pickupStore` en la **cotización** (sí en la vista del pedido): el
+   checkout ya sabe qué tienda eligió el comprador y lo que necesita de la cotización es el **flete**
+   (`shippingCharged: false`). Se midió al escribir el caso E2E: la aserción contra la cotización era
+   falsa y se corrigió en vez de ampliar el contrato sin consumidor.
+
 

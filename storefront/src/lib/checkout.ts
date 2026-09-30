@@ -485,15 +485,14 @@ export function invoicingModeLabel(mode: string | null | undefined): string {
  * La tienda no publica numeros de cuenta ni QR propios: no los tiene —el canal no
  * los expone— y inventarlos seria un dato falso. Lo que se promete es lo unico
  * cierto: la tienda confirma los datos de pago por correo/WhatsApp con el
- * comprador. El **retiro en tienda** esta declarado como **fase 2** (el ERP ya
- * tiene los campos de sucursal, pero el flujo de retiro no existe todavia).
+ * comprador. El **retiro en tienda** ya no es una promesa: el pedido se prepara desde
+ * el almacen de la tienda elegida y **no se cobra envio** (medido: 20,00 → 0,00), asi
+ * que la instruccion dice eso y nada mas.
  */
 export interface PaymentMethodInfo {
   code: CheckoutPaymentMethod;
   label: string;
   instructions: string;
-  /** `true` cuando el metodo depende de una fase aun no implementada. */
-  phaseTwo: boolean;
 }
 
 export const PAYMENT_METHOD_INFO: readonly PaymentMethodInfo[] = [
@@ -502,28 +501,24 @@ export const PAYMENT_METHOD_INFO: readonly PaymentMethodInfo[] = [
     label: PAYMENT_METHOD_LABELS['TRANSFER'] ?? 'Transferencia bancaria',
     instructions:
       'Confirmas el pedido y la tienda te envia por correo o WhatsApp los datos de la cuenta para la transferencia, junto con el numero de pedido. El pedido queda con el pago pendiente hasta que la tienda lo concilie.',
-    phaseTwo: false,
   },
   {
     code: 'QR',
     label: PAYMENT_METHOD_LABELS['QR'] ?? 'Pago con QR',
     instructions:
       'Confirmas el pedido y la tienda te envia por correo o WhatsApp el QR de cobro con el importe exacto y el numero de pedido como referencia. El pedido queda con el pago pendiente hasta que la tienda lo concilie.',
-    phaseTwo: false,
   },
   {
     code: 'CASH_ON_DELIVERY',
     label: PAYMENT_METHOD_LABELS['CASH_ON_DELIVERY'] ?? 'Pago contra entrega',
     instructions:
       'Pagas en efectivo al recibir el pedido, en la direccion que registraste. El repartidor confirma el cobro y la tienda lo concilia despues; el pedido queda con el pago pendiente hasta entonces.',
-    phaseTwo: false,
   },
   {
     code: 'STORE_PICKUP',
     label: PAYMENT_METHOD_LABELS['STORE_PICKUP'] ?? 'Pago al retirar en tienda',
     instructions:
-      'Pago y retiro en la sucursal de tu ciudad. El flujo de retiro en tienda esta declarado como fase 2: puedes elegirlo, pero la tienda te confirmara por correo o WhatsApp si el pedido se despacha o se retira mientras esa fase llega.',
-    phaseTwo: true,
+      'Pagas al retirar tu pedido en la tienda que elijas. El pedido sale del almacen de esa tienda y no se te cobra el envio; te avisamos cuando este listo para recoger.',
   },
 ];
 

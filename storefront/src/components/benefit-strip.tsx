@@ -12,8 +12,11 @@ interface BenefitStripProps {
  * de marketing inventadas):
  *   - el envio, con el costo y el umbral de envio gratis de la **ciudad elegida**;
  *   - el plazo, con los dias habiles que publica esa ciudad;
- *   - los medios de pago que acepta el checkout (transferencia, QR y contra
- *     entrega; el retiro en tienda esta declarado como fase 2 y no se anuncia aqui);
+ *   - los medios de pago que acepta el checkout (transferencia, QR, contra entrega y
+ *     **retiro en tienda**), y el retiro solo se nombra si la ciudad **publica** tiendas
+ *     con `pickupEnabled`: es el mismo dato con el que el checkout deja elegir tienda, asi
+ *     que no se anuncia una opcion que esa ciudad no tiene (el fixture visual no trae
+ *     `stores`, por eso sus capturas de referencia no cambian);
  *   - la garantia, que la publica el ERP **por articulo** (y se ve en la ficha);
  *   - la existencia, que es la del **almacen de esa ciudad**.
  */
@@ -22,6 +25,8 @@ export function BenefitStrip({ city }: BenefitStripProps): JSX.Element {
     city.freeShippingFrom > 0
       ? `Gratis desde ${formatMoney(city.freeShippingFrom)} · si no, ${formatMoney(city.shippingCost)}`
       : `${formatMoney(city.shippingCost)} a ${city.name}`;
+
+  const pickupStores = (city.stores ?? []).filter((store) => store.pickupEnabled);
 
   const benefits = [
     {
@@ -33,8 +38,12 @@ export function BenefitStrip({ city }: BenefitStripProps): JSX.Element {
     {
       icon: <CardIcon />,
       title: 'Pago',
-      detail: 'Transferencia, QR o pago contra entrega',
-      extra: 'El pedido queda con el pago pendiente hasta que la tienda lo concilie.',
+      detail: pickupStores.length
+        ? 'Transferencia, QR, contra entrega o al retirar'
+        : 'Transferencia, QR o pago contra entrega',
+      extra: pickupStores.length
+        ? `El pedido queda con el pago pendiente hasta que la tienda lo concilie. Puedes retirarlo sin costo de envio en ${pickupStores.length} ${pickupStores.length === 1 ? 'tienda' : 'tiendas'} de ${city.name}.`
+        : 'El pedido queda con el pago pendiente hasta que la tienda lo concilie.',
     },
     {
       icon: <ShieldIcon />,

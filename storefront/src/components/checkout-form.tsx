@@ -113,6 +113,8 @@ function useQuote(
   cityCode: string,
   enabled: boolean,
   customerEmail: string,
+  /** F5 — el retiro forma parte de la firma: cambiar de tienda **debe** recotizar (el envío). */
+  pickup: { deliveryType: CheckoutDeliveryType; pickupStoreCode: string },
 ): {
   state: QuoteState;
   reload: () => void;
@@ -121,14 +123,14 @@ function useQuote(
   const linesRef = useRef(lines);
   linesRef.current = lines;
 
-  // Firma estable: ciudad + articulos + cantidades (el orden no importa) + correo.
+  // Firma estable: ciudad + articulos + cantidades (el orden no importa) + correo + retiro.
   const signature = useMemo(() => {
     const items = lines
       .map((line) => `${line.itemId}x${line.quantity}`)
       .sort()
       .join(',');
-    return `${cityCode}|${items}|${customerEmail}`;
-  }, [cityCode, lines, customerEmail]);
+    return `${cityCode}|${items}|${customerEmail}|${pickup.deliveryType}|${pickup.pickupStoreCode}`;
+  }, [cityCode, lines, customerEmail, pickup.deliveryType, pickup.pickupStoreCode]);
 
   const [state, setState] = useState<QuoteState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -146,6 +148,11 @@ function useQuote(
           cityCode,
           linesRef.current.map((line) => ({ itemId: line.itemId, quantity: line.quantity })),
           customerEmail,
+          // F5 — con retiro, la cotizacion va con la tienda: el canal no cobra el envio.
+          {
+            deliveryType: pickup.deliveryType,
+            pickupStoreCode: pickup.pickupStoreCode,
+          },
         );
         if (requestRef.current === requestId) setState({ status: 'ready', quote });
       } catch (error) {
@@ -157,7 +164,10 @@ function useQuote(
         setState({ status: 'error', message });
       }
     })();
-  }, [enabled, signature, cityCode, customerEmail, attempt]);
+    // `deliveryType`/`pickupStoreCode` se leen dentro y ademas forman parte de la firma, asi
+    // que declararlos no agrega corridas: la cotizacion se vuelve a pedir exactamente cuando
+    // la firma cambia (ciudad, articulos, correo o tienda de retiro).
+  }, [enabled, signature, cityCode, customerEmail, attempt, pickup.deliveryType, pickup.pickupStoreCode]);
 
   const reload = useCallback(() => {
     setAttempt((value) => value + 1);
@@ -232,16 +242,31 @@ function TextField({
   );
 }
 
+/** F5 — una tienda de retiro, tal como la publica el canal en su ciudad. */
+interface PickupStoreOption {
+  code: string;
+  name: string;
+  address: string | null;
+  openingHours: string | null;
+}
+
 interface CheckoutFormProps {
   cityCode: string;
   cityName: string;
   cityDeliveryDays: number;
+  /**
+   * F5 — las **tiendas de retiro** publicadas en la ciudad (solo las que ofrecen retiro). El
+   * comprador elige una; el código viaja al canal, que **no cobra el envío** y emite el pedido
+   * contra la sucursal y el almacén de ese punto.
+   */
+  pickupStores: readonly PickupStoreOption[];
 }
 
 export function CheckoutForm({
   cityCode,
   cityName,
   cityDeliveryDays,
+  pickupStores = [],
 }: CheckoutFormProps): JSX.Element {
   const router = useRouter();
   const lines = useCartStore((state) => state.lines);
@@ -251,6 +276,14 @@ export function CheckoutForm({
   const [buyer, setBuyer] = useState<BuyerForm>(EMPTY_BUYER);
   const [buyerErrors, setBuyerErrors] = useState<BuyerFieldErrors>({});
   const [deliveryType, setDeliveryType] = useState<CheckoutDeliveryType>('HOME');
+  /** F5 — el código de la tienda de retiro elegida (vacío = aún no ha elegido). */
+  const [pickupStoreCode, setPickupStoreCode] = useState('');
+  const [pickupError, setPickupError] = useState<string | null>(null);
+  /**
+   * F5 — la tienda elegida, para **nombrarla** en el resumen: confirmar un pedido sin ver donde
+   * se retira seria confirmar a ciegas (el paso 2 ya se cerro).
+   */
+  const pickupStore = pickupStores.find((store) => store.code === pickupStoreCode) ?? null;
   const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>('TRANSFER');
   /**
    * F7: **cuando** quiere facturar el comprador. Con «pagar ahora» el ERP emite la factura de
@@ -311,6 +344,7 @@ export function CheckoutForm({
     cityCode,
     hydrated && step >= 3 && emailSettled,
     quoteEmail,
+    { deliveryType, pickupStoreCode },
   );
 
   const itemCount = cartItemCount(lines);
@@ -337,6 +371,12 @@ export function CheckoutForm({
   }
 
   function goToStep3(): void {
+    // F5 — con retiro, la tienda es obligatoria: el canal no la adivina (responde 400).
+    if (deliveryType === 'STORE' && pickupStoreCode === '') {
+      setPickupError('Elige en que tienda quieres retirar tu pedido.');
+      return;
+    }
+    setPickupError(null);
     setStep(3);
     reloadQuote();
   }
@@ -365,6 +405,10 @@ export function CheckoutForm({
         webInvoicingMode: invoicingMode,
         items: lines.map((line) => ({ itemId: line.itemId, quantity: line.quantity })),
         customer,
+        // F5 — la tienda de retiro viaja **solo** con el retiro (a domicilio no aplica).
+        ...(deliveryType === 'STORE' && pickupStoreCode !== ''
+          ? { pickupStoreCode }
+          : {}),
       });
       // El pedido ya existe en el ERP: se vacia el carrito y se va a la
       // confirmacion, que vuelve a leer el pedido del canal.
@@ -566,7 +610,12 @@ export function CheckoutForm({
                     name="forma-entrega"
                     value="HOME"
                     checked={deliveryType === 'HOME'}
-                    onChange={() => setDeliveryType('HOME')}
+                    onChange={() => {
+                      setDeliveryType('HOME');
+                      // A domicilio la tienda de retiro no aplica: se limpia para no mandarla.
+                      setPickupStoreCode('');
+                      setPickupError(null);
+                    }}
                     data-testid="checkout-delivery-home"
                     className="mt-0.5 accent-primary"
                   />
@@ -580,27 +629,86 @@ export function CheckoutForm({
                     </span>
                   </span>
                 </label>
-                <label htmlFor="entrega-store" className="sf-option sf-option-soft">
+                <label htmlFor="entrega-store" className="sf-option">
                   <input
                     id="entrega-store"
                     type="radio"
                     name="forma-entrega"
                     value="STORE"
                     checked={deliveryType === 'STORE'}
-                    onChange={() => setDeliveryType('STORE')}
+                    onChange={() => {
+                      setDeliveryType('STORE');
+                      setPickupError(null);
+                    }}
                     data-testid="checkout-delivery-store"
                     className="mt-0.5 accent-primary"
                   />
                   <span>
                     <span className="block font-semibold text-fg">
-                      {deliveryTypeLabel('STORE')} · fase 2
+                      {deliveryTypeLabel('STORE')}
                     </span>
                     <span className="block text-xs text-fg-secondary">
-                      El retiro en tienda todavia no esta implementado en el ERP: si lo eliges, la
-                      tienda te confirma por correo o WhatsApp como se despacha el pedido.
+                      Lo retiras en una de nuestras tiendas de {cityName} y{' '}
+                      <strong>no pagas envio</strong>. Te avisamos cuando este listo.
                     </span>
                   </span>
                 </label>
+
+                {/* F5 — con retiro, la tienda la elige el comprador: de ella salen la sucursal y
+                    el almacen del pedido, y el canal no cobra el envio. */}
+                {deliveryType === 'STORE' ? (
+                  <div
+                    className="mt-1 flex flex-col gap-2 rounded-btn border border-line bg-elevated p-3"
+                    data-testid="checkout-pickup-stores"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-fg-tertiary">
+                      En que tienda lo retiras
+                    </p>
+                    {pickupStores.length === 0 ? (
+                      <p className="text-sm text-fg-secondary" data-testid="checkout-pickup-empty">
+                        Esta ciudad todavia no tiene tiendas con retiro: elige entrega a domicilio.
+                      </p>
+                    ) : (
+                      pickupStores.map((store) => (
+                        <label
+                          key={store.code}
+                          htmlFor={`retiro-${store.code}`}
+                          className="sf-option"
+                        >
+                          <input
+                            id={`retiro-${store.code}`}
+                            type="radio"
+                            name="tienda-retiro"
+                            value={store.code}
+                            checked={pickupStoreCode === store.code}
+                            onChange={() => {
+                              setPickupStoreCode(store.code);
+                              setPickupError(null);
+                            }}
+                            data-testid={`checkout-pickup-${store.code}`}
+                            className="mt-0.5 accent-primary"
+                          />
+                          <span>
+                            <span className="block font-semibold text-fg">{store.name}</span>
+                            <span className="block text-xs text-fg-secondary">
+                              {store.address ?? 'Direccion en la pagina de sucursales'}
+                              {store.openingHours !== null ? ` · ${store.openingHours}` : ''}
+                            </span>
+                          </span>
+                        </label>
+                      ))
+                    )}
+                    {pickupError !== null ? (
+                      <p
+                        role="alert"
+                        className="text-xs text-fg-error"
+                        data-testid="checkout-pickup-error"
+                      >
+                        {pickupError}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </fieldset>
 
@@ -626,7 +734,6 @@ export function CheckoutForm({
                       <span>
                         <span className="block font-semibold text-fg">
                           {info.label}
-                          {info.phaseTwo ? ' · fase 2' : ''}
                         </span>
                         <span className="block text-xs text-fg-secondary">{info.instructions}</span>
                       </span>
@@ -941,20 +1048,27 @@ export function CheckoutForm({
               <div className="flex items-center justify-between">
                 <dt className="text-fg-secondary">Entrega</dt>
                 <dd className="font-medium text-fg" data-testid="checkout-summary-delivery">
-                  {deliveryTypeLabel(deliveryType)} · {cityName}
+                  {deliveryType === 'STORE'
+                    ? `${deliveryTypeLabel('STORE')} · ${pickupStore?.name ?? cityName}`
+                    : `${deliveryTypeLabel(deliveryType)} · ${cityName}`}
                 </dd>
               </div>
               <div className="flex items-center justify-between">
-                <dt className="text-fg-secondary">Direccion</dt>
+                <dt className="text-fg-secondary">
+                  {deliveryType === 'STORE' ? 'Retiras en' : 'Direccion'}
+                </dt>
+                {/* Con retiro, la direccion del comprador **no** es donde recibe: lo que se
+                    confirma es la direccion de la tienda (la del maestro, ya resuelta). */}
                 <dd className="text-right font-medium text-fg" data-testid="checkout-summary-address">
-                  {buyer.street.trim()} · {buyer.district.trim()}
+                  {deliveryType === 'STORE'
+                    ? (pickupStore?.address ?? cityName)
+                    : `${buyer.street.trim()} · ${buyer.district.trim()}`}
                 </dd>
               </div>
               <div className="flex items-center justify-between">
                 <dt className="text-fg-secondary">Metodo de pago</dt>
                 <dd className="font-medium text-fg" data-testid="checkout-summary-payment">
                   {paymentInfo?.label ?? paymentMethod}
-                  {paymentInfo?.phaseTwo === true ? ' · fase 2' : ''}
                 </dd>
               </div>
               <div className="flex items-center justify-between">

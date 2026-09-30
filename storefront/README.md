@@ -394,6 +394,32 @@ publican desde el back office (**Configuracion → Contenido de la tienda**, per
 **Ventana de refresco** (declarada): la tienda cachea el contenido (`banners` 120 s, `pagina`
 600 s), asi que un cambio publicado se ve en ese plazo; un borrado tambien.
 
+### Retiro en tienda (F5): el comprador elige el punto y no paga envio
+
+En el **paso 2** del checkout, «Retiro en tienda» obliga a elegir **en que tienda** se retira. Las
+tiendas salen del canal (`GET /storefront/cities` → `city.stores`, solo las que tienen
+`pickupEnabled`) y viajan por **codigo** (`pickupStoreCode`), igual que la ciudad viaja por
+`cityCode`: la vista del canal no expone ids internos.
+
+- **Sin tienda no se avanza**: pulsar «Continuar» con retiro y sin punto elegido muestra
+  `Elige en que tienda quieres retirar tu pedido.` y deja el paso abierto (no se crea un pedido a
+  medias).
+- **No se cobra envio**: el canal cotiza el carrito con la tienda y devuelve `shippingCharged:
+  false` (medido: 20,00 → **0,00** en `SCZ-CENTRO`). La tienda entra en la **firma** de la
+  cotizacion, asi que cambiar de tienda **recotiza**.
+- **El pedido guarda la tienda** (`WebOrder.pickupStoreId`) y de ella salen la **sucursal** y el
+  **almacen**: el pedido se prepara desde el almacen de ese punto (una tienda sin existencia no
+  puede cotizar el carrito). La confirmacion y el seguimiento publican `pickupStore` **resuelto**
+  (direccion y horario pueden venir heredados de su sucursal).
+- En el **resumen** (paso 3) se lee «Retiro en tienda · <tienda>» y, debajo, la **direccion del
+  punto** —no la del comprador, que con retiro no es donde recibe—.
+- En la **home**, la barra de beneficios nombra el retiro **solo** si la ciudad publica tiendas con
+  retiro (no se anuncia lo que esa ciudad no tiene).
+
+La bandeja del ERP (**Pedidos web**) muestra la tienda: en el listado como segunda linea de la
+columna Ciudad («Retiro · <tienda>») y en la ficha como bloque propio con direccion, horario,
+telefono y el **almacen** del que sale el pedido.
+
 ### Modalidad de facturacion (F7)
 
 En el **paso 2** del checkout el comprador elige **cuando** quiere su factura, y esa eleccion viaja

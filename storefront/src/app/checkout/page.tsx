@@ -48,6 +48,15 @@ export default async function CheckoutPage(): Promise<JSX.Element> {
         cityCode={city.code}
         cityName={city.name}
         cityDeliveryDays={city.deliveryDays}
+        // F5 — solo las que ofrecen **retiro**: un punto de solo venta no es una opcion.
+        pickupStores={(city.stores ?? [])
+          .filter((store) => store.pickupEnabled)
+          .map((store) => ({
+            code: store.code,
+            name: store.name,
+            address: store.address,
+            openingHours: store.openingHours,
+          }))}
       />
     </div>
   );

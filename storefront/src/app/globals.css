@@ -405,12 +405,6 @@
     opacity: 0.6;
   }
 
-  /* La opcion anunciada sin implementar (retiro en tienda, fase 2) no compite. */
-  .sf-option-soft {
-    border-style: dashed;
-    background-color: var(--bg-elevated);
-  }
-
   /* ── Enlaces ──────────────────────────────────────────────────────────── */
   .sf-link {
     color: var(--sf-brand-700);
