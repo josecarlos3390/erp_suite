@@ -246,7 +246,7 @@ export interface CityWarehouse {
 export interface CityStore {
   code: string;
   name: string;
-  kind: 'BRANCH' | 'WAREHOUSE';
+  kind: "BRANCH" | "WAREHOUSE";
   address: string | null;
   phone: string | null;
   openingHours: string | null;
@@ -582,6 +582,71 @@ async function erpGetOrNull<T>(
  * pueden servirse de una respuesta vieja. El cuerpo ya viene **saneado** por el
  * route handler; este modulo solo transporta.
  */
+/**
+ * **Llamada del canal con la sesión del cliente** (F4, 2026-09-30): la misma clave de tienda de
+ * siempre y, cuando hay sesión, el `Authorization: Bearer <token>` del comprador. Es el **único**
+ * transporte de las rutas de cuenta: la clave y el token viajan juntos porque el canal exige las
+ * dos cosas (la clave resuelve la empresa y el token, al cliente de esa empresa).
+ *
+ * La usan los route handlers de `/api/cuenta`; este módulo solo transporta y traduce el error del
+ * canal a `ErpError` con su estado, para que la ruta pueda distinguir «sin sesión» (401) de un
+ * fallo del ERP.
+ */
+export async function erpCustomer<T>(
+  method: "GET" | "POST" | "PATCH",
+  endpoint: string,
+  options: { body?: unknown; token?: string } = {},
+): Promise<T> {
+  const timeout =
+    Number.isFinite(TIMEOUT_MS) && TIMEOUT_MS > 0 ? TIMEOUT_MS : 8000;
+  const key = await apiKey();
+  const token = options.token?.trim() ?? "";
+
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${endpoint}`, {
+      method,
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "x-storefront-key": key,
+        ...(token === "" ? {} : { authorization: `Bearer ${token}` }),
+      },
+      ...(options.body === undefined
+        ? {}
+        : { body: JSON.stringify(options.body) }),
+      signal: AbortSignal.timeout(timeout),
+      cache: "no-store",
+    });
+  } catch (error) {
+    rethrowIfNextControlFlow(error);
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new ErpError(
+      `No se pudo consultar el ERP en ${endpoint} (${detail}).`,
+      0,
+      endpoint,
+    );
+  }
+
+  const raw = await response.text();
+  let parsed: unknown = null;
+  if (raw !== "") {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = null;
+    }
+  }
+  if (!response.ok) {
+    throw new ErpError(
+      readErpMessage(parsed, `El canal respondio ${response.status}.`),
+      response.status,
+      endpoint,
+    );
+  }
+  return parsed as T;
+}
+
 async function erpPost<T>(endpoint: string, body: unknown): Promise<T> {
   const timeout =
     Number.isFinite(TIMEOUT_MS) && TIMEOUT_MS > 0 ? TIMEOUT_MS : 8000;

@@ -1,6 +1,6 @@
-import Link from 'next/link';
+import Link from "next/link";
 
-import type { OrderLine, OrderView } from '@/lib/order-view';
+import type { OrderLine, OrderView } from "@/lib/order-view";
 import {
   deliveryTypeLabel,
   invoicingModeLabel,
@@ -8,9 +8,9 @@ import {
   paymentStatusLabel,
   statusLabel,
   TRACKING_NOTICE,
-} from '@/lib/checkout';
-import { describeLineSku, formatMoney } from '@/lib/format';
-import { TotalsBreakdown } from './totals-breakdown';
+} from "@/lib/checkout";
+import { describeLineSku, formatMoney } from "@/lib/format";
+import { TotalsBreakdown } from "./totals-breakdown";
 
 interface OrderSummaryProps {
   order: OrderView;
@@ -34,24 +34,24 @@ function taxRateOf(items: OrderLine[]): number | null {
 /** Progreso de la entrega del documento del ERP, en palabras del comprador. */
 function deliveryLabel(status: string): string {
   switch (status) {
-    case 'FULL':
-      return 'entrega completa';
-    case 'PARTIAL':
-      return 'entrega parcial';
+    case "FULL":
+      return "entrega completa";
+    case "PARTIAL":
+      return "entrega parcial";
     default:
-      return 'sin entregar';
+      return "sin entregar";
   }
 }
 
 /** Progreso de la facturacion del documento del ERP. */
 function invoiceLabel(status: string): string {
   switch (status) {
-    case 'FULL':
-      return 'facturado';
-    case 'PARTIAL':
-      return 'factura parcial';
+    case "FULL":
+      return "facturado";
+    case "PARTIAL":
+      return "factura parcial";
     default:
-      return 'sin facturar';
+      return "sin facturar";
   }
 }
 
@@ -66,8 +66,11 @@ function invoiceLabel(status: string): string {
  * **mismo** componente que usa el checkout, asi que las dos pantallas no pueden contar
  * cosas distintas.
  */
-export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Element {
-  const paid = order.paymentStatus.toLowerCase() === 'paid';
+export function OrderSummary({
+  order,
+  cityName,
+}: OrderSummaryProps): JSX.Element {
+  const paid = order.paymentStatus.toLowerCase() === "paid";
 
   return (
     <div className="flex flex-col gap-4" data-testid="order-summary">
@@ -87,8 +90,11 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
           <h2 className="text-xs font-semibold uppercase tracking-wide text-fg-tertiary">
             Codigo de seguimiento
           </h2>
-          <p className="font-mono text-lg font-bold text-fg" data-testid="order-tracking-code">
-            {order.trackingCode ?? '—'}
+          <p
+            className="font-mono text-lg font-bold text-fg"
+            data-testid="order-tracking-code"
+          >
+            {order.trackingCode ?? "—"}
           </p>
         </div>
         <dl className="flex flex-col gap-1 text-sm">
@@ -97,8 +103,11 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
             {statusLabel(order.status)}
           </dd>
           <dt className="mt-2 text-fg-secondary">Pago</dt>
-          <dd className="font-medium text-fg" data-testid="order-payment-status">
-            {paymentStatusLabel(order.paymentStatus)} ·{' '}
+          <dd
+            className="font-medium text-fg"
+            data-testid="order-payment-status"
+          >
+            {paymentStatusLabel(order.paymentStatus)} ·{" "}
             {paymentMethodLabel(order.paymentMethod)}
           </dd>
           {/*
@@ -107,16 +116,22 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
             cual: la tienda no deduce la modalidad del estado.
           */}
           <dt className="mt-2 text-fg-secondary">Facturacion</dt>
-          <dd className="font-medium text-fg" data-testid="order-invoicing-mode">
+          <dd
+            className="font-medium text-fg"
+            data-testid="order-invoicing-mode"
+          >
             {invoicingModeLabel(order.webInvoicingMode)}
             {order.reserveInvoiceCode !== null
               ? ` · factura ${order.reserveInvoiceCode}`
-              : ''}
+              : ""}
           </dd>
           {order.paymentReference !== null ? (
             <>
               <dt className="mt-2 text-fg-secondary">Referencia del pago</dt>
-              <dd className="font-medium text-fg" data-testid="order-payment-reference">
+              <dd
+                className="font-medium text-fg"
+                data-testid="order-payment-reference"
+              >
                 {order.paymentReference}
               </dd>
             </>
@@ -125,7 +140,7 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
             <>
               <dt className="mt-2 text-fg-secondary">Estado en el ERP</dt>
               <dd className="font-medium text-fg" data-testid="order-erp-state">
-                {deliveryLabel(order.erp.deliveryStatus)} ·{' '}
+                {deliveryLabel(order.erp.deliveryStatus)} ·{" "}
                 {invoiceLabel(order.erp.invoiceStatus)}
               </dd>
             </>
@@ -135,14 +150,14 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
           <dt className="text-fg-secondary">Entrega</dt>
           <dd className="font-medium text-fg" data-testid="order-delivery-type">
             {deliveryTypeLabel(order.deliveryType)}
-            {cityName !== undefined && cityName !== '' ? ` · ${cityName}` : ''}
+            {cityName !== undefined && cityName !== "" ? ` · ${cityName}` : ""}
           </dd>
           <dt className="mt-2 text-fg-secondary">Fecha</dt>
           <dd className="font-medium text-fg" data-testid="order-created-at">
-            {new Date(order.createdAt).toLocaleDateString('es-BO', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
+            {new Date(order.createdAt).toLocaleDateString("es-BO", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
             })}
           </dd>
           {order.salesOrderCode !== null ? (
@@ -156,7 +171,10 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
         </dl>
       </section>
 
-      <section aria-label="Productos del pedido" className="rounded-lg border border-line bg-base">
+      <section
+        aria-label="Productos del pedido"
+        className="rounded-lg border border-line bg-base"
+      >
         <h2 className="border-b border-line px-4 py-3 text-sm font-semibold text-fg">
           Productos y envio
         </h2>
@@ -166,33 +184,40 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
             // el articulo de servicio del ERP) para no pintarlo como un producto del pedido.
             const isShipping = line.itemId === order.shippingItemId;
             return (
-            <li
-              key={`${line.itemId}-${line.sku}`}
-              className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
-              data-testid={isShipping ? 'order-line-shipping' : 'order-line'}
-              data-sku={line.sku}
-            >
-              <div className="flex flex-col">
-                <span className="font-medium text-fg">
-                  {isShipping ? `Envio · ${line.name}` : line.name}
+              <li
+                key={`${line.itemId}-${line.sku}`}
+                className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
+                data-testid={isShipping ? "order-line-shipping" : "order-line"}
+                data-sku={line.sku}
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium text-fg">
+                    {isShipping ? `Envio · ${line.name}` : line.name}
+                  </span>
+                  <span className="text-xs text-fg-tertiary">
+                    {describeLineSku(line.sku)} · {line.quantity} ×{" "}
+                    {formatMoney(line.price, order.currency)}
+                    {line.discount > 0
+                      ? ` · descuento −${formatMoney(line.discount, order.currency)}`
+                      : ""}
+                  </span>
+                </div>
+                <span
+                  className="font-semibold text-fg"
+                  data-testid="order-line-total"
+                >
+                  {formatMoney(line.lineTotal, order.currency)}
                 </span>
-                <span className="text-xs text-fg-tertiary">
-                  {describeLineSku(line.sku)} · {line.quantity} × {formatMoney(line.price, order.currency)}
-                  {line.discount > 0
-                    ? ` · descuento −${formatMoney(line.discount, order.currency)}`
-                    : ''}
-                </span>
-              </div>
-              <span className="font-semibold text-fg" data-testid="order-line-total">
-                {formatMoney(line.lineTotal, order.currency)}
-              </span>
-            </li>
+              </li>
             );
           })}
         </ul>
       </section>
 
-      <section aria-label="Desglose" className="rounded-lg border border-line bg-elevated p-4">
+      <section
+        aria-label="Desglose"
+        className="rounded-lg border border-line bg-elevated p-4"
+      >
         <h2 className="text-sm font-semibold text-fg">Desglose</h2>
         <div className="mt-3">
           <TotalsBreakdown
@@ -210,7 +235,7 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
             taxRate={taxRateOf(order.items)}
             taxInclusive={order.taxInclusive}
             shipping={order.shipping}
-            shippingNote={order.shipping === 0 ? 'no se cobra' : undefined}
+            shippingNote={order.shipping === 0 ? "no se cobra" : undefined}
             total={order.total}
             prefix="order"
           />
@@ -218,20 +243,36 @@ export function OrderSummary({ order, cityName }: OrderSummaryProps): JSX.Elemen
 
         <p
           className={`mt-3 rounded-md border p-3 text-xs ${
-            paid ? 'border-ok bg-ok-soft text-fg' : 'border-warn bg-warn-soft text-fg'
+            paid
+              ? "border-ok bg-ok-soft text-fg"
+              : "border-warn bg-warn-soft text-fg"
           }`}
           data-testid="order-payment-note"
         >
           {paid
-            ? 'El ERP registro el pago de este pedido.'
-            : 'El pago aun no figura conciliado en el ERP. La tienda confirma los datos de pago (transferencia, QR o contra entrega) por correo o WhatsApp con el numero de pedido.'}
+            ? "El ERP registro el pago de este pedido."
+            : "El pago aun no figura conciliado en el ERP. La tienda confirma los datos de pago (transferencia, QR o contra entrega) por correo o WhatsApp con el numero de pedido."}
         </p>
       </section>
 
-      <p className="text-xs text-fg-secondary" data-testid="order-tracking-notice">
-        {TRACKING_NOTICE}{' '}
+      <p
+        className="text-xs text-fg-secondary"
+        data-testid="order-tracking-notice"
+      >
+        {TRACKING_NOTICE}{" "}
         <Link href="/seguimiento" className="sf-link">
           Ir al seguimiento
+        </Link>
+        .{" "}
+        {/* F4: la entrada a la cuenta desde donde el comprador acaba de comprar (la portada y la
+            cabecera se dejan intactas a proposito: son capturas del gate visual y el acceso a la
+            cuenta desde el encabezado es un incremento con su propia regrabacion). */}
+        <Link
+          href="/cuenta"
+          className="sf-link"
+          data-testid="order-account-link"
+        >
+          Ver todos mis pedidos
         </Link>
         .
       </p>

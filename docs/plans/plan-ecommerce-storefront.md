@@ -2647,6 +2647,61 @@ entrar.
 6. Las **direcciones** se editan en el ERP: la cuenta publica las del **tercero enlazado** (el modelo
    dice que no se duplican).
 
+## §32 Cuenta de cliente F4 — incremento 2: la UI de la tienda (2026-09-30)
+
+**Lo que faltaba del §31**: la pantalla. **Medido antes**: la tienda tenía **13 rutas y ninguna de
+cuenta** (0 referencias a `login`/`session`/`authToken`) y el canal ya publicaba los endpoints.
+
+### Entregado
+
+| Pieza | Dónde |
+| --- | --- |
+| Pantalla | `/cuenta` (`storefront/src/app/cuenta/page.tsx` + `components/account-panel.tsx`): entrar / crear cuenta y, con sesión, perfil, direcciones del ERP y **«Mis pedidos»** con estado del pedido y del pago, más cerrar sesión |
+| Puente | `src/app/api/cuenta/route.ts`: `GET` (perfil + pedidos) y `POST` (`registro` / `entrar` / `salir`) |
+| Sesión | `src/lib/customer-session.ts`: cookie **httpOnly** `storefront_session` (`sameSite: lax`, `secure` en producción, **30 días** = la vida del token); el navegador **nunca** habla con el canal (`erpCustomer()` añade el `Bearer` desde el servidor) |
+| Entrada | «Ver todos mis pedidos» en el **resumen del pedido** (confirmación y seguimiento) |
+
+**Dos decisiones de diseño, con su porqué**:
+
+1. **El token no toca JavaScript**: vive en una cookie `httpOnly`, así que un XSS no se lleva la
+   sesión. Y si el canal responde **401** (token caducado o revocado) la tienda **borra la cookie** y
+   vuelve al formulario: no se le muestra al comprador un error que no puede arreglar.
+2. **No se tocó la cabecera ni el pie** para poner el acceso: son las **17** capturas del gate visual
+   y cualquier entrada global las mueve todas. El acceso vive donde el comprador lo necesita (justo
+   después de comprar) y **queda declarado** que la entrada en el encabezado es un incremento con su
+   propia regrabación de capturas.
+
+### Medido DESPUÉS
+
+`storefront/e2e/cuenta.spec.ts` **4/4**:
+
+| Caso | Medición |
+| --- | --- |
+| Sin sesión | `/cuenta` ofrece entrar/crear (`account-form`, pestaña `entrar` activa) y **no** hay perfil |
+| Alta | el perfil aparece con nombre y correo; la cookie de sesión existe con **`httpOnly: true`**; el token **no** aparece en el HTML; cerrar sesión la **borra** |
+| Historial | un pedido hecho **con ese correo** (por el canal) aparece como **la única** fila, con el enlace a la confirmación `/pedido/<n>?c=…` |
+| Sesión inválida | una cookie con un token que el canal no reconoce → **vuelve al formulario** y la cookie queda borrada |
+
+Suite completa **68/68** y la base de desarrollo **restaurada por el arnés** (huella idéntica). Gates:
+`tsc` **0**, `next lint` **0**, `next build` **0** (15 páginas).
+
+### Declarado
+
+1. La **fecha** del historial se formatea con la **zona del navegador** (`toLocaleDateString('es-BO')`),
+   el mismo criterio que ya usa el resumen del pedido: el canal publica el instante, **no** la zona
+   del tenant. Es una **inconsistencia heredada**, no nueva, y arreglarla toca las dos pantallas.
+2. **No** hay recuperación ni cambio de contraseña desde la tienda (el backend sí los tiene): depende de
+   poder entregar correo de verdad (dominio verificado en Resend).
+3. El **alta** revela que un correo ya está registrado (el 409 del canal se muestra tal cual).
+4. La entrada en la **cabecera** queda pendiente por el coste medido (17 capturas del gate visual).
+5. **Hallazgo abierto (declarado, sin cerrar)**: la huella de la base cambió entre la restauración del
+   §31 (`03643110…`) y el arranque de esta ronda (`1d0c1977…`) —y el único proceso que corrió en medio
+   fue el **`pre-push` del backend** (la suite unitaria), cuyo log muestra
+   `StorefrontMaintenanceService … barrido de pedidos abandonados — anulados 1`—, lo que apunta a que
+   **la suite unitaria también escribe en la base de desarrollo** (el arnés del §29 solo envuelve al
+   E2E de la tienda). Queda para la ronda siguiente: medirlo y, si se confirma, envolverlo igual.
+
+
 
 
 
