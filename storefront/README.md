@@ -366,6 +366,23 @@ mayusculas** y la regla vive en un solo sitio del backend (`provesOrderOwnership
   consultar en publico (el alta escribe el codigo siempre, asi que solo puede venir de filas antiguas).
   Esto **no** es una cuenta de cliente (F4 sigue pendiente): sigue sin haber sesion.
 
+### Contenido de la tienda (F5): banners y paginas desde el ERP
+
+Los **banners** de la portada y las **paginas** de contenido **no** se tocan en el codigo: se
+publican desde el back office (**Configuracion → Contenido de la tienda**, permiso
+`web-content:view|edit`). La tienda los lee de la misma base (`WebBanner`/`WebPage`).
+
+- **Banners**: por **slot** —la portada pide `home-hero` y `home-strip`—, con imagen, titulo,
+  subtitulo, enlace, orden, estado y **vigencia** (`desde`/`hasta`). Un banner solo se pinta si
+  esta **activo** y dentro de su vigencia: una campana se apaga sola.
+- **Paginas**: cada una vive en su URL (`/paginas/<slug>`), con titulo y contenido de texto, y se
+  puede **despublicar** sin borrarla.
+- La imagen tiene que estar en un host permitido: si es de un CDN propio, anadelo a
+  `IMAGE_REMOTE_HOSTS`.
+
+**Ventana de refresco** (declarada): la tienda cachea el contenido (`banners` 120 s, `pagina`
+600 s), asi que un cambio publicado se ve en ese plazo; un borrado tambien.
+
 ### Modalidad de facturacion (F7)
 
 En el **paso 2** del checkout el comprador elige **cuando** quiere su factura, y esa eleccion viaja

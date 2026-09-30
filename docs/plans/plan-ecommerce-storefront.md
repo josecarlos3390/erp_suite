@@ -2205,4 +2205,86 @@ canal 1 suite / 55 tests** con **4 casos nuevos** (el número solo → 404, el c
 4. Esto **no** es una cuenta de cliente (F4 sigue pendiente): sigue sin haber sesión, y quien tenga el
    código o el correo del pedido lo ve. La diferencia es que ya no basta con contar hasta el número.
 
+## §24 Pendientes del e-commerce (lista consolidada y medida — 2026-09-29)
+
+Lista **única** de lo que queda, medida en el código y en la base (no copiada del plan). Se
+consolida aquí porque hasta ahora vivía repartida en los «Declarado» de cada ronda. Lo que ya está
+entregado no se repite: catálogo/ficha/búsqueda/carrito/ciudad, checkout de invitado con
+idempotencia, las dos modalidades de facturación, seguimiento con prueba de propiedad, bandeja de
+Pedidos Web con conciliación **y entrega** (§25), promociones del canal, reseñas moderadas,
+favoritos, comparador, servicio técnico, vendedores (filtro), identidad visual, multi-dominio por
+host, **contenido (banners y páginas) desde el ERP** (§25) y el despliegue automático en producción.
+
+| # | Pendiente | Estado medido (2026-09-29) | Bloqueo |
+| --- | --- | --- | --- |
+| 1 | **Cuenta de cliente (F4)**: registro/login, perfil, direcciones, historial y detalle de pedidos | Tienda: **13 `page.tsx`, ninguno de cuenta**; canal: **18 endpoints, ninguno de cliente**. Favoritos, comparador y carrito son **de este dispositivo** | **Credencial externa**: `nodemailer`/`sendgrid`/`resend`/`mailgun`/`createTransport(` → **0 referencias** (D16). Sin correo no hay verificación, ni recuperación de contraseña, ni aviso de pedido |
+| 2 | **Pasarela de tarjeta (F7)** | **0 referencias** (`stripe`/`paypal`/`mercadopago`/`paymentGateway`): el checkout cobra **solo offline** y el pago se concilia a mano | Decisión de proveedor del usuario |
+| 3 | **Fotos reales de producto** | Siguen siendo **marcador de posición** (D24): hace falta host propio y `IMAGE_REMOTE_HOSTS` | Trabajo de contenido/infra |
+| 4 | **Mapa de sucursales** | `/sucursales` publica dirección y datos; **0** referencias a mapas (0 `openstreetmap`/`iframe`/`leaflet`/`mapbox`) | Trabajo de UI |
+| 5 | **WhatsApp como canal** | **8** menciones, todas **texto** («te enviamos los datos por WhatsApp»): no hay integración ni enlace `wa.me` | Decisión de producto |
+| 6 | **Guías de compra («Elige Bien»)** | **0** coincidencias: no existe | Trabajo de contenido |
+| 7 | **Conciliación del cobro de punta a punta** | **Hueco de prueba** (§15): ningún E2E cierra `factura → IncomingPayment → seguimiento en paid` | Sin decisiones: solo el caso |
+| 8 | **Pantalla de claves y dominios del canal** | Sigue por **script** (`storefront:key`, `STOREFRONT_CHANNELS`); no hay pantalla | Trabajo de UI + decisión de dónde vive el mapa host→clave |
+| 9 | **Color de marca y logo por empresa** | Siguen en el **código** (D23): en el modo de N dominios son comunes | Trabajo de UI/tokens |
+| 10 | **Marketplace con liquidaciones** | **Parcial**: hay filtro por vendedor y «Vendido por»; no hay marketplace | Decisión de producto |
+| 11 | **Producción en modo B (N dominios)** | Producción corre en **modo A** (una empresa por despliegue) y **sin** `STOREFRONT_CHANNELS` | Configuración + prueba |
+| 12 | **Checkout completo probado en producción** | No se han creado pedidos reales (no se hace sin pedirlo) | Decisión del usuario |
+| 13 | **Rotar la clave de la semilla** | `tienda-dev-key-cambiar` sigue **activa** en producción (se usó solo para sondas de lectura) | Operación |
+| 14 | **El E2E de la tienda ensucia la base de desarrollo** | Escribe pedidos/documentos y **no limpia**: la base local se restauró a mano al estado de la semilla | Trabajo del arnés |
+| 15 | **El número de pedido es secuencial** | El seguimiento ya exige prueba (§23), pero el número en sí no es secreto | Por diseño (es el del documento del ERP) |
+
+**Dos huecos de la misma familia, cerrados en la ronda del §25**: el **contenido** de la tienda
+(banners/páginas) ya se publica desde el ERP, y **siete claves de permiso del canal**
+(`web-orders`, `web-promotions`, `web-stores`, `web-content`, `reviews`, `service-requests`,
+`sellers`) entraron en el catálogo de la pantalla de Permisos: existían en el backend y las
+pantallas las exigían, pero **no se podían conceder desde la interfaz** (mismo defecto que tuvo
+«Descuentos» en la ronda 35).
+
+## §25 Ronda F5 — la entrega desde la bandeja y el contenido de la tienda (2026-09-29)
+
+**Lo que pidió el usuario**: «¿tienes la lista de pendientes?» + «entrega desde la bandeja» +
+«pantalla de contenido (banners y páginas)» + «consolidar la lista como §24».
+
+### Medido ANTES
+
+- **Entrega**: la ficha del pedido web solo ofrecía **Conciliar** y **Anular** (`data-testid`
+  `web-order-detail-reconcile|cancel`) y un botón «Ver en Ventas»; la entrega se creaba **en
+  Ventas**. `GET /delivery-orders` filtraba por estado/tercero/texto/sucursal/modo de descuento
+  (**no** por pedido) y `GET /transport-guides` por estado/texto/sucursal (**no** por entrega ni
+  pedido).
+- **Contenido**: `WebBanner`/`WebPage` existían, la tienda los pintaba y la semilla los escribía,
+  pero el único endpoint era `GET /storefront/banners` (lectura pública) y **0 controladores** de
+  banners/páginas en el ERP.
+
+### Entregado
+
+| Pieza | Dónde |
+| --- | --- |
+| Filtro `salesOrderId=` en entregas y guías | `PaginatedParams` + los dos `findAll` + los dos controladores |
+| «Generar entrega» desde la bandeja | `web-order-detail`: navega al **mismo** formulario de Ventas (`/delivery-orders/new?orderId=`), que carga el borrador con lo pendiente |
+| «Documentos de entrega» en la ficha | Entregas del pedido (código, fecha, estado, enlace) y sus guías (código, transportista), pedidas por `salesOrderId` y **gateadas por permiso** (`delivery-orders:view`, `transport-guides:view`) |
+| Módulo `web-content` (backend) | Servicio + controlador + DTOs + módulo registrado, con `web-content:view|edit` |
+| Pantalla «Contenido de la tienda» | `pages/web-content`: dos pestañas (Banners/Páginas), tabla, filtros, modal de alta/edición y borrado con confirmación |
+| Catálogo de permisos | Grupo **«Ecommerce»** con las **7** claves del canal que no se podían conceder desde la pantalla |
+
+### Medido DESPUÉS
+
+| Medición | Resultado |
+| --- | --- |
+| E2E del canal: documentos por pedido | Pedido web → entrega (sesión del ERP) → guía enganchada → `?salesOrderId=` → **1** entrega y **1** guía; otro pedido → **0** y **0** (el filtro **discrimina**) |
+| Suite del canal | **56/56** |
+| `web-content.service.spec.ts` | **11 casos** (vigencia al revés → 400, PATCH contra lo guardado, `isLive` en sus tres estados, slug repetido → 409, slug propio excluido, aislamiento por empresa) |
+| `web-content.component.spec.ts` | **9 casos** (carga, sin permiso no ofrece editar, alta con el slot del filtro, fechas al campo, guardado en ISO con vacío → `null`, vigencia al revés no se envía, error del backend tal cual, borrado con y sin confirmación) |
+| `web-order-detail.component.spec.ts` | **21 casos** (7 nuevos: la puerta de la entrega, la navegación al formulario y los documentos por permiso) |
+
+### Declarado
+
+1. La **guía de transporte** se sigue **creando** en su pantalla; desde la bandeja se **ve** y se
+   enlaza.
+2. El borrado del contenido es **físico** (es contenido, no un documento) y la tienda lo refleja
+   tras su ventana de caché (`banners` 120 s, `page` 600 s): no hay purga inmediata.
+3. El **contenido es texto** (sin HTML enriquecido ni WYSIWYG) y la lista de **slots** no está
+   cerrada: el canal resuelve el slot por nombre y la pantalla sugiere los dos que usa hoy.
+4. La lista del §24 es la **fuente única** de pendientes: si algo se cierra, se tacha **aquí**.
+
 
