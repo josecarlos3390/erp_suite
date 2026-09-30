@@ -311,13 +311,28 @@ idempotencia, error de existencia), referencia del pago offline, seguimiento pub
 ciudad (SCZ vs LPZ). El articulo sin existencia en La Paz y el producto de la subcategoria **se
 descubren por la API en la propia prueba**, nunca se codifican a mano.
 
-> **El gate E2E ESCRIBE en la base de desarrollo** (medido el 2026-09-29): una corrida completa
-> (43 casos) deja **9 pedidos web (WEB-1..9), 1 entrega (DEL-1) y 1 factura de reserva (FRV-1)
-> contabilizadas** (2 asientos), ademas de 1 resena, 1 solicitud de servicio y sus clientes web.
-> No es un fallo de los casos —alta real del pedido es justo lo que miden— pero **no hay limpieza
-> automatica** (`afterAll`): la base queda sucia y deja de ser comparable con el seed. Para volver
-> al estado del seed: `cd backend-erp && npm run db:recreate` (con la API parada, porque una
-> conexion viva bloquea el reset). Pendiente declarado: que el arnés limpie lo que crea.
+> **La base de desarrollo queda como estaba** (2026-09-30: el pendiente declarado arriba, **cerrado**).
+> El gate funcional **sigue escribiendo de verdad** —el alta real del pedido es justo lo que mide—,
+> pero ahora el arnés **volca la base antes** de la corrida (`pg_dump`) y la **restaura al terminar**
+> (`psql`), comparando una **huella de contenido** de las **198** tablas del esquema `public` (número
+> de filas + `md5` del contenido de cada una) para poder **afirmarlo con una medición**: si la huella
+> no coincide, el gate **falla** y dice qué tablas cambiaron.
+>
+> **Medido en la misma corrida (64 casos)**: antes `WebOrder 68 · SalesOrder 68 · DeliveryOrder 3 ·
+> SaleInvoice 6 · JournalEntry 9 · ItemReview 3 · ServiceRequest 3 · WebCustomer 3 · IncomingPayment 0`
+> y después **exactamente los mismos**, con la huella `d1793c47…` idéntica en las 198 tablas; el
+> arnés imprime `base localhost:5432/erp_db restaurada y verificada: huella identica (…) en 198
+> tablas: la base de desarrollo quedo como estaba`.
+>
+> `e2e/harness/db-snapshot.mjs` es el **único** sitio de la lógica y también se usa a mano:
+> `npm run e2e:restore-db` (para una corrida interrumpida) y `node e2e/harness/db-snapshot.mjs
+> fingerprint` (para ver la huella). Usa las herramientas de PostgreSQL de la **misma versión mayor
+> que el servidor** —medido: `pg_dump` de la 18 volcaba un servidor 16 pero su
+> `SET transaction_timeout` **no se podía restaurar** en el 16— y la contraseña viaja por
+> `PGPASSWORD`, **nunca** en la línea de comandos. Si no hay `pg_dump`/`psql` (o se define `PG_BIN`
+> con otra carpeta), el gate **no** se rompe: avisa con el motivo y recuerda
+> `cd backend-erp && npm run db:recreate`. El volcado y su estado viven en `test-results/`, que está
+> ignorado por git.
 
 ## Gates de cierre (F9.6): visual, accesibilidad, contraste y rendimiento
 

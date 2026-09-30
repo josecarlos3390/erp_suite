@@ -2499,4 +2499,62 @@ arnés E2E de la tienda no ensucie la base de desarrollo** y **probar el checkou
 producción** (con el OK del usuario). Y el «listo para retirar» ya tiene **con qué avisarse**: es el
 siguiente incremento natural del retiro.
 
+## §29 El gate E2E de la tienda deja la base de desarrollo como la encontró (2026-09-30)
+
+**Cierre del pendiente del §24** («el E2E de la tienda ensucia la base de desarrollo»).
+
+### Medido ANTES
+
+| Medición | Resultado |
+| --- | --- |
+| Qué escribe una corrida | El gate funcional **escribe de verdad** (el alta real del pedido es lo que mide): pedidos web, pedidos de venta, entregas, facturas de reserva **contabilizadas**, asientos, reseñas, solicitudes y clientes web |
+| Limpieza | **Ninguna**: había que restaurar a mano con `cd backend-erp && npm run db:recreate` |
+| Base y herramientas | `erp_db` en PostgreSQL **16.6**; volcado de **1,49 MB**; `pg_dump`/`psql` en `C:\Program Files\PostgreSQL\<v>\bin` (no en el `PATH`) |
+
+### Entregado
+
+`e2e/harness/db-snapshot.mjs` (la **única** pieza de lógica: resolver herramientas y URL, volcar,
+restaurar, **huella** y CLI), `e2e/harness/fingerprint.sql`, `e2e/global-setup.ts`,
+`e2e/global-teardown.ts` y el registro en `playwright.config.ts`, más `npm run e2e:restore-db`.
+
+La **huella** es de **contenido**: por cada una de las **198** tablas del esquema `public`, su número
+de filas y el `md5` de su contenido ordenado. Se calcula **antes** de la corrida y **después de
+restaurar**: si no coincide, el teardown **lanza** un error que nombra las tablas distintas, así que
+«la base quedó como estaba» deja de ser una promesa y pasa a ser una aserción del gate.
+
+### Dos defectos medidos por el camino
+
+1. **`pg_dump` de 18 no restaura en un servidor 16**: el volcado incluye
+   `SET transaction_timeout = 0`, que el 16 **rechaza**. El resolutor pregunta la versión del
+   servidor (`show server_version_num`) y usa las herramientas de **esa misma versión mayor**;
+   `PG_BIN` permite forzarlas.
+2. **El helper ESM no se puede importar desde los `globalSetup`/`globalTeardown`**: Playwright
+   transpila los `.ts` a CommonJS y `import.meta` no existe ahí. El contrato entre ambos es **una
+   línea JSON por `stdout`**, y la lógica queda en un solo sitio.
+
+### Medido DESPUÉS (la misma corrida, 64 casos)
+
+| | Antes | Después |
+| --- | --- | --- |
+| `WebOrder` / `SalesOrder` | 68 / 68 | **68 / 68** |
+| `DeliveryOrder` / `SaleInvoice` | 3 / 6 | **3 / 6** |
+| `JournalEntry` / `IncomingPayment` | 9 / 0 | **9 / 0** |
+| `ItemReview` / `ServiceRequest` / `WebCustomer` | 3 / 3 / 3 | **3 / 3 / 3** |
+| Huella de las **198** tablas | `d1793c47…` | **`d1793c47…`** |
+| Suite | — | **64/64** |
+
+El arnés imprime: `base localhost:5432/erp_db restaurada y verificada: huella identica (…) en 198
+tablas: la base de desarrollo quedo como estaba`.
+
+### Declarado
+
+1. El arnés restaura **toda** la base: si alguien está trabajando contra la base de desarrollo
+   **mientras** corre el E2E, sus cambios se revierten con ella (el aviso lo dice al arrancar).
+2. Sin `pg_dump`/`psql` el gate **no** se rompe: avisa con el motivo y recuerda `npm run db:recreate`.
+3. La restauración **no** se probó con una corrida interrumpida a lo bruto: el volcado y su estado
+   quedan en `test-results/` (ignorado por git) y `npm run e2e:restore-db` los aplica a mano.
+4. Los gates **visual**, de **accesibilidad** y de **rendimiento** no necesitan volcado: miden contra
+   el fixture grabado, no contra la base.
+
+
 

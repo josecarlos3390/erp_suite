@@ -14,6 +14,7 @@
     "sync:fonts": "node scripts/sync-fonts.mjs",
     "sync:fonts:check": "node scripts/sync-fonts.mjs --check",
     "e2e": "playwright test",
+    "e2e:restore-db": "node e2e/harness/db-snapshot.mjs restore",
     "e2e:visual": "playwright test -c playwright.visual.config.ts e2e/visual/store-visual.spec.ts",
     "e2e:visual:update": "playwright test -c playwright.visual.config.ts e2e/visual/store-visual.spec.ts --update-snapshots",
     "e2e:a11y": "playwright test -c playwright.visual.config.ts e2e/visual/store-a11y.spec.ts",

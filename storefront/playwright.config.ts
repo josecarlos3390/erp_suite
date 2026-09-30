@@ -63,6 +63,16 @@ export default defineConfig({
   // viven en `e2e/visual/` con su propia configuracion (`playwright.visual.config.ts`)
   // porque miden contra un fixture grabado del canal, no contra el ERP real.
   testIgnore: ['visual/**'],
+  /**
+   * **La base de desarrollo queda como estaba** (2026-09-30): el gate funcional escribe de
+   * verdad —pedidos web, pedidos de venta, entregas, asientos, resenas y solicitudes—, asi que
+   * alrededor de la corrida se toma un **volcado** de la base y se **restaura** al terminar, con
+   * una **huella de contenido** que se compara para poder afirmarlo. El porque y las mediciones
+   * estan en `e2e/harness/db-snapshot.mjs` y en el README; sin `pg_dump`/`psql` el gate sigue
+   * funcionando y solo avisa de que la base no se restaurara sola.
+   */
+  globalSetup: './e2e/global-setup.ts',
+  globalTeardown: './e2e/global-teardown.ts',
   fullyParallel: false,
   workers: 1,
   forbidOnly: process.env.CI !== undefined,
