@@ -2906,6 +2906,24 @@ la referencia, así que no se hizo a medias; los pedidos **antiguos** conservan 
 el mismo orden (reserva y después pedido); y la atomicidad del cobro sigue siendo por **compensación**,
 con la reserva revertida como fila `CANCELLED` y no ausente.
 
+**Ejecutado el paso 3 (la bandeja del ERP):** el cobro ya se puede disparar **desde la UI**. La ficha del
+pedido web estrena el botón primario **«Cobrar»** (`data-testid="web-order-detail-collect"`, permiso
+`incoming-payments:create`) con un **diálogo** (fecha del día, **método del ERP** y referencia del
+comprobante) que avisa de que al confirmar se emiten la **factura de reserva y su pago**; con el pedido
+cobrado el botón **desaparece** y **«Generar entrega» pasa a ofrecerse solo con el pedido cobrado** (con
+el aviso que lo explica cuando falta), que es la regla del §35 llevada a la pantalla. **Medido antes**:
+el endpoint existía y estaba cubierto por el E2E del canal, pero la bandeja **no lo ofrecía** —sus únicas
+acciones eran conciliar, anular y generar entrega—, así que el circuito solo se cerraba por API.
+**Medido después**: `tsc` app/spec/e2e **0**, `ng lint` **0**, **Karma 38/38** en los dos specs tocados
+(+7 casos: permiso, pedido cobrado, anulado, payload con fecha/método/referencia, referencia omitida,
+rechazo que deja el diálogo abierto, fecha vacía que no llama, y la puerta de la entrega) y
+**`ng build` AOT 0**. **Dos hallazgos**: el **método de pago del cobro es el enum del ERP** (`TRANSFER`
+→ **500** de Prisma; el diálogo ofrece `CASH`/`BANK_TRANSFER`/…) y las opciones como `ReadonlyArray`
+**rompían el AOT** (`NG4`) sin que el JIT de Karma lo viera. **Declarado**: la auditoría de **densidad**
+reporta **1 hallazgo nuevo ajeno** a este incremento (`web-content.component.scss:22`, un archivo que no
+está en el diff): se anota y **no** se regenera la línea base para taparlo; el **paso 4a** sigue
+pendiente; y el conjunto completo de Karma lo corre el `pre-push`.
+
 
 
 
