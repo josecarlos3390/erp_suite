@@ -2988,6 +2988,20 @@ cadena de anulación no está probada. **Declarado**: el tipo de cambio de **hoy
 **12,02**) **sí** existe, así que la cadena de cobro está disponible en producción cuando la empresa
 quiera ejercitarla.
 
+**La cadena de cobro, ejecutada en producción (y deshecha).** Segunda sonda, ya con documentos
+**reales**: alta «pagar ahora» → **`WEB-8`** con `reserveInvoiceCode: null` → **cobro** (`POST
+/web-orders/8/collect`, `201`) → **factura de reserva `FRV-4`** + **pago `COB-2`**, y el comprador
+lee `pago paid · factura FULL`. Es decir: **la cadena que decidió el §35 funciona de punta a punta
+en producción**. **La marcha atrás obligó a medir su orden**: la bandeja responde **400** «No se
+puede cancelar un pedido que ya tiene facturas generadas. Cancele las facturas primero o cierre el
+pedido.» y la vista del cobro **no publica el `id` de la reserva** (solo el código), así que hubo
+que localizarla por **código** y el pago por **tercero + importe** —el `search` de
+`incoming-payments` **no** busca por número de pedido—; con eso, **cobro → reserva → pedido** quedan
+`CANCELLED` (`COB-2`, `FRV-4`, `WEB-8`) y el seguimiento del comprador lo refleja: **producción
+queda limpia**. **Anotado como mejora**: que la bandeja **diga qué falta** al anular un pedido
+cobrado (hoy solo lo dice el error) y que la vista del pedido publique el **id** de su reserva, para
+que la anulación no dependa de buscar por código.
+
 **Declarado:** una corrida intermedia de la suite funcional falló en `checkout.spec.ts` con
 `Cannot find module '.next\server\pages\_error.js'` **porque se lanzó un `npm run build` mientras la
 suite corría**; esa corrida **no cuenta** y se repitió sin builds concurrentes (la regla «no compiles
