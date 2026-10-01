@@ -326,9 +326,9 @@ export function CheckoutForm({
   const pickupMapHref = pickupStore === null ? null : buildMapLink(pickupStore);
   const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>('TRANSFER');
   /**
-   * F7: **cuando** quiere facturar el comprador. Con «pagar ahora» el ERP emite la factura de
-   * reserva al confirmar el pedido (y el cobro se registra contra ella); con «pagar al recibir»
-   * el pedido se entrega primero y la factura nace de la entrega. Es una eleccion del
+   * F7: **cuando** quiere facturar el comprador. Con «pagar ahora» el pedido se registra **sin**
+   * documento y la factura de reserva se emite al confirmar el cobro (§35); con «pagar al
+   * recibir» el pedido se entrega primero y la factura nace de la entrega. Es una eleccion del
    * comprador, no una configuracion de la tienda.
    */
   const [invoicingMode, setInvoicingMode] =
@@ -803,7 +803,7 @@ export function CheckoutForm({
                       ? {
                           title: 'Pagar ahora',
                           detail:
-                            'Confirmamos tu pedido y emitimos la factura de reserva; pagas contra ella y despues lo despachamos.',
+                            'Confirmamos tu pedido y lo reservamos; al confirmar tu pago emitimos la factura de reserva y despues lo despachamos.',
                         }
                       : {
                           title: 'Pagar al recibir',

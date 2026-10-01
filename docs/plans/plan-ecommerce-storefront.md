@@ -2882,9 +2882,29 @@ que la ejecución queda **congelada aquí** en vez de empezarla y dejarla a medi
    `lint`/`typecheck`/`build`/suite (+ gate visual si la copia mueve alguna captura); después los tres
    CHANGELOG, `AGENTS.md` y este §35/§36 con lo medido **después**.
 
-**Declarado (estado al escribir esto):** **no** se tocó una línea de código; el repositorio queda verde
-en los refs ya verificados (`backend-erp` **48f591a** = `origin` = `deploy`; raíz **d0a0df0**) y este
-apartado es la especificación ejecutable del paso que sigue, no una promesa de que esté hecho.
+**Ejecutado (2026-09-30, la misma sesión):** el paso 2 se hizo **con la medición delante** y el radio de
+impacto real fue **menor** que el estimado: en el spec cayeron **2** casos (no 6) y en el E2E del canal
+**1** (no 3), porque los demás bloques que **nombran** la reserva no dependían del alta (leen la reserva
+del barrido, de la entrega o del estado derivado). Entregado: **(1)** el alta ya no emite documento en
+ninguna modalidad y `issueReserveInvoice` se **borró** (se quedó sin llamadores); **(2)** el spec pasa el
+caso del alta a pinchar que **no** se llama a Ventas y que el pedido queda `pending` con documento `null`,
+y **retira** el caso «si la reserva falla, el pedido de venta se anula» (ese camino ya no existe);
+**(3)** el E2E del canal reescribe la **cadena A** para pasar por el **cobro real**
+(`POST /web-orders/:id/collect`): pedido sin documento → cobro → reserva + pago → entrega **desde la
+reserva** → «entregado», y deja la **cadena B** intacta; **(4)** la copia del checkout y los **cinco**
+comentarios que la repetían dicen ya el flujo real; **(5)** el paso **4a no** se hizo (declarado abajo).
+**Medido después**: backend `tsc` **0**, `storefront.service.spec.ts` **126/126** y E2E del canal
+**56/56**; tienda `lint`/`typecheck`/`build` **0**, suite funcional **68/68** con la base **restaurada y
+verificada** por el arnés (huella idéntica en las 198 tablas) y gate visual **17/17** tras re-grabar
+**una** captura (`checkout-paso-2-claro`) —y el diff, **medido con la imagen**, era **una sola línea de
+texto**: la copia nueva; **1 682** px de **1 682** en esa región—. Un defecto real lo cazó el E2E: el
+`paymentMethod` del DTO de cobro es el **enum del ERP** (`CASH`; `TRANSFER` responde 500 de Prisma).
+
+**Declarado:** el paso **4a** (ocultar el formulario de referencia con «pagar al recibir») sigue
+**pendiente**: el modo por defecto del checkout es `PAY_ON_DELIVERY` y por eso mueve los E2E que rellenan
+la referencia, así que no se hizo a medias; los pedidos **antiguos** conservan su reserva y se anulan con
+el mismo orden (reserva y después pedido); y la atomicidad del cobro sigue siendo por **compensación**,
+con la reserva revertida como fila `CANCELLED` y no ausente.
 
 
 

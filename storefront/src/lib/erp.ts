@@ -286,8 +286,9 @@ export type PaymentMethod =
 
 /**
  * F7: **modalidad de facturacion** que elige el comprador en el checkout. Define la cadena
- * del pedido: `PAY_NOW` factura (reserva) al confirmar y cobra contra esa factura; con
- * `PAY_ON_DELIVERY` el pedido se entrega primero y la factura nace de la entrega.
+ * del pedido: con `PAY_NOW` el alta **no** emite documento —la factura de reserva la emite el
+ * cobro (§35) y contra ella se paga—; con `PAY_ON_DELIVERY` el pedido se entrega primero y la
+ * factura nace de la entrega.
  */
 export type InvoicingMode = "PAY_NOW" | "PAY_ON_DELIVERY";
 
@@ -900,8 +901,8 @@ export async function createOrder(
       ? {}
       : { pickupStoreCode: request.pickupStoreCode }),
     paymentMethod: request.paymentMethod,
-    // F7: la modalidad elegida por el comprador viaja con el pedido (el canal decide con ella
-    // si emite la factura de reserva al crear o la deja para la entrega).
+    // F7: la modalidad elegida por el comprador viaja con el pedido y decide la cadena. El alta
+    // **no** emite documento en ninguna modalidad (§35): la reserva la emite el cobro.
     webInvoicingMode: request.webInvoicingMode,
     items: request.items.map((line) => ({
       itemId: Math.trunc(line.itemId),

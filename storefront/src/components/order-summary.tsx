@@ -111,9 +111,9 @@ export function OrderSummary({
             {paymentMethodLabel(order.paymentMethod)}
           </dd>
           {/*
-            F7: lo que el comprador eligio en el checkout, y con ello el documento que su
-            cadena ya emitio («pagar ahora» factura el pedido al confirmarlo). Se publica tal
-            cual: la tienda no deduce la modalidad del estado.
+            F7: lo que el comprador eligio en el checkout y, cuando ya existe, el documento que
+            su cadena emitio (lo emite el cobro, §35). Se publica tal cual: la tienda no deduce
+            la modalidad del estado ni inventa un documento que el ERP no ha emitido.
           */}
           <dt className="mt-2 text-fg-secondary">Facturacion</dt>
           <dd

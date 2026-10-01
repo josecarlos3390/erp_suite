@@ -241,11 +241,12 @@ test.describe('Checkout de invitado', () => {
   });
 
   /**
-   * F7: la **modalidad de facturacion la elige el comprador** y decide la cadena del pedido.
-   * Con «pagar ahora» el canal emite la **factura de reserva** al confirmar —es el documento
-   * contra el que el ERP registra el cobro— y la confirmacion publica su numero.
+   * F7 + §35: la **modalidad de facturacion la elige el comprador** y decide la cadena del
+   * pedido. Con «pagar ahora» el pedido nace **sin** documento fiscal: la factura de reserva la
+   * emite la tienda al confirmar el cobro (bandeja del ERP, `/web-orders/:id/collect`), no el
+   * alta, asi que la confirmacion publica la modalidad y todavia ningun numero de factura.
    */
-  test('el comprador elige «pagar ahora» y el canal emite su factura de reserva', async ({
+  test('el comprador elige «pagar ahora» y el pedido nace sin factura: la emite el cobro', async ({
     page,
   }) => {
     const target = await findShippableProduct(CITY);
@@ -273,12 +274,12 @@ test.describe('Checkout de invitado', () => {
     expect(stored).not.toBeNull();
     if (stored === null) return;
     expect(stored.webInvoicingMode).toBe('PAY_NOW');
-    // La reserva existe **de verdad** en el ERP y el comprador ve su numero.
-    expect(stored.reserveInvoiceCode).not.toBeNull();
+    // §35: el alta **no** emite documento —la reserva la emite el cobro— y el pedido queda
+    // pendiente de cobro, no facturado.
+    expect(stored.reserveInvoiceCode).toBeNull();
+    // La confirmacion publica la modalidad elegida… y ningun documento, porque no existe.
     await expect(page.getByTestId('order-invoicing-mode')).toContainText('Pagar ahora');
-    await expect(page.getByTestId('order-invoicing-mode')).toContainText(
-      stored.reserveInvoiceCode ?? '',
-    );
+    await expect(page.getByTestId('order-invoicing-mode')).not.toContainText('FRV-');
   });
 
   test('la oferta de catalogo del ERP se muestra como oferta y el descuento de la empresa aparte', async ({

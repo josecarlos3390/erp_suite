@@ -46,8 +46,9 @@ export const DELIVERY_TYPE_LABELS: Readonly<Record<string, string>> = {
 /**
  * **Modalidad de facturacion** que elige el comprador (F7): define la cadena del pedido.
  *
- * - `PAY_NOW` — «pagar ahora»: el pedido se factura (reserva) al confirmarlo, el cobro se
- *   registra contra esa factura y la entrega sale de ella.
+ * - `PAY_NOW` — «pagar ahora»: el pedido se registra **sin** documento fiscal; al confirmar el
+ *   cobro se emite la factura de reserva, el pago se registra contra ella y la entrega sale
+ *   de ella.
  * - `PAY_ON_DELIVERY` — «pagar al recibir»: el pedido se entrega primero y la factura nace
  *   de la entrega; despues se cobra contra ella.
  */

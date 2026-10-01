@@ -178,7 +178,8 @@ export interface OrderView {
   salesOrderCode: string | null;
   /**
    * F7: **modalidad de facturacion que eligio el comprador** y la factura de **reserva** que
-   * su cadena emitio (null en «pagar al recibir», donde el documento nace de la entrega).
+   * su cadena emitio: `null` mientras el cobro no la emita (§35) y en «pagar al recibir»,
+   * donde el documento nace de la entrega.
    */
   webInvoicingMode: string;
   reserveInvoiceCode: string | null;
