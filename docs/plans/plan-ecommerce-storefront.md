@@ -2944,6 +2944,42 @@ falló **una** vez en la portada (**LCP 1236 ms** vs 800) y **repetido con el mi
 292 ms** con los mismos pesos ⇒ **ruido** de la corrida que va detrás de la suite larga, no regresión.
 **El §36 queda cerrado**: los pasos 1 a 4 están entregados y medidos.
 
+---
+
+## §37 — Cierre de los pendientes declarados (el tipo de cambio del día y la entrada de cuenta)
+
+**Lo que decidió el usuario** (2026-10-01, sobre la lista de pendientes): «1. el tipo de cambio
+ingresamos manualmente cada día», «2. [el checkout en producción] hay que hacerlo», «3. estamos en
+prueba aun, estamos usando resend» y «4. [la entrada de cuenta] hay que hacerlo». El punto **3 queda
+cerrado sin trabajo**: el remitente de pruebas de Resend (`onboarding@resend.dev`) se mantiene porque
+el despliegue es de pruebas, y verificar un dominio propio se retomará cuando deje de serlo.
+
+**(1) El tipo de cambio del día: lo provisiona el gate, no una persona.** El punto 1 dice que la
+tasa se teclea **a mano cada día**, así que no es un defecto de la aplicación: es un requisito del
+**entorno** que el gate funcional estaba dando por hecho. Medido antes: `resenas.spec.ts` fallaba al
+entregar con **400** «No existe el tipo de cambio del día entre BOB y USD», y en la base el único
+tipo de cambio era del **2026-09-30** con hoy **2026-10-01**. Entregado: `ensureTodayExchangeRate()`
+en el helper del E2E (entra con la sesión de administración, mira si **hoy** existe el par y, si no,
+lo crea con el **valor del último**, que es lo que haría una persona) invocado desde el
+`globalSetup` **después** del volcado, de modo que el `teardown` lo revierte con la base: el gate
+deja de depender de la tarea manual y **sigue sin dejar configuración de más**. Medido después: el
+caso que fallaba pasa **3/3**, el arnés registra `tipo de cambio de 2026-10-01 provisionado
+(USD/BOB 6.96); se revertira con la base` y la huella de las 198 tablas queda **idéntica**.
+
+**(4) La cuenta entra en la cabecera.** Medido antes: la cuenta (F4) tenía UI, sesión y endpoints,
+pero se llegaba a ella **solo desde el resumen del pedido**; en la cabecera no había entrada, así que
+«Mis pedidos» quedaba escondido. Entregado: `AccountLink`, componente de **servidor** que lee la
+cookie `httpOnly` y pinta el enlace a `/cuenta` con el rótulo según haya sesión, siempre visible
+(**cero** JavaScript de cliente y **ninguna** llamada al canal). Medido después: `lint`/`tsc`/`build`
+**0** (las rutas siguen dinámicas), **gate visual 17/17** tras re-grabar **las 17** capturas —la
+cabecera cambia en todas las pantallas: fallaban 17 y tras re-grabar pasan 17, y los 17 ficheros
+que cambian son exactamente las capturas—, suite funcional y **a11y 20/20** y **perf 6/6**.
+
+**Declarado:** una corrida intermedia de la suite funcional falló en `checkout.spec.ts` con
+`Cannot find module '.next\server\pages\_error.js'` **porque se lanzó un `npm run build` mientras la
+suite corría**; esa corrida **no cuenta** y se repitió sin builds concurrentes (la regla «no compiles
+`src/` con un E2E en vuelo» ya estaba escrita para el gate del ERP y aquí se pagó una vez).
+
 
 
 

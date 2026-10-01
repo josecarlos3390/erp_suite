@@ -934,6 +934,77 @@ export async function setChannelPromotion(
   });
 }
 
+/** Un tipo de cambio tal como lo publica el ERP. */
+interface ApiExchangeRate {
+  id: number;
+  date: string;
+  fromCurrency: string;
+  toCurrency: string;
+  rate: number;
+}
+
+/**
+ * **Provisiona el tipo de cambio de HOY si falta** (gate funcional, §36).
+ *
+ * El ERP lo **exige** para entregar y contabilizar, y la empresa lo **teclea a mano cada día**
+ * (decisión del usuario, 2026-10-01): sin él, el gate funcional se caía por un requisito del
+ * **entorno** —«No existe el tipo de cambio del día entre BOB y USD»— y no por el código. Aquí se
+ * crea con el valor del **último tipo de cambio de ese par** (lo que haría una persona) y el
+ * `teardown` del arnés lo revierte, porque restaura la base entera: la suite no deja configuración
+ * de más.
+ */
+export async function ensureTodayExchangeRate(
+  pair: { from: string; to: string } = { from: "USD", to: "BOB" },
+): Promise<{ created: boolean; rate: number | null; date: string }> {
+  const today = new Date().toISOString().slice(0, 10);
+  const token = await erpAdminLogin();
+  const existing = await adminGet<{ data: ApiExchangeRate[]; total: number }>(
+    token,
+    `/exchange-rates?fromCurrency=${pair.from}&toCurrency=${pair.to}` +
+      `&dateFrom=${today}&dateTo=${today}&limit=1`,
+  );
+  if (Number(existing.total) > 0) {
+    return { created: false, rate: Number(existing.data[0]?.rate ?? 0), date: today };
+  }
+  const latest = await adminGet<ApiExchangeRate | null>(
+    token,
+    `/exchange-rates/latest?from=${pair.from}&to=${pair.to}`,
+  );
+  if (latest === null || !Number.isFinite(Number(latest.rate))) {
+    return { created: false, rate: null, date: today };
+  }
+  await adminPost(token, "/exchange-rates", {
+    date: today,
+    fromCurrency: pair.from,
+    toCurrency: pair.to,
+    rate: Number(latest.rate),
+  });
+  return { created: true, rate: Number(latest.rate), date: today };
+}
+
+/** `POST` autenticado contra el ERP (mismo contrato de errores que `adminPatch`). */
+async function adminPost<T>(
+  token: string,
+  path: string,
+  body: unknown,
+): Promise<T> {
+  const response = await fetch(`${ERP_API_URL}${path}`, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) {
+    const raw = await response.text();
+    throw new Error(`El ERP respondio ${response.status} en ${path}: ${raw}`);
+  }
+  return (await response.json()) as T;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Resenas (F6): el canal las acepta con un pedido **entregado**, asi que la prueba
 // tiene que **entregar** el pedido de verdad antes de escribirlas

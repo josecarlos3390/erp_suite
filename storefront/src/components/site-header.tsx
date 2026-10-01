@@ -1,14 +1,15 @@
-import { getCityContext } from '@/lib/city';
-import { getCategories } from '@/lib/erp';
+import { getCityContext } from "@/lib/city";
+import { getCategories } from "@/lib/erp";
 
-import { BrandMark } from './brand-mark';
-import { CartLink } from './cart-link';
-import { CategoryNav } from './category-nav';
-import { CitySelector } from './city-selector';
-import { CompareLink } from './compare-link';
-import { SearchBox } from './search-box';
-import { ThemeToggle } from './theme-toggle';
-import { WishlistLink } from './wishlist-link';
+import { BrandMark } from "./brand-mark";
+import { AccountLink } from "./account-link";
+import { CartLink } from "./cart-link";
+import { CategoryNav } from "./category-nav";
+import { CitySelector } from "./city-selector";
+import { CompareLink } from "./compare-link";
+import { SearchBox } from "./search-box";
+import { ThemeToggle } from "./theme-toggle";
+import { WishlistLink } from "./wishlist-link";
 
 /**
  * Encabezado de la tienda (F9.1), renderizado en el servidor.
@@ -23,12 +24,18 @@ import { WishlistLink } from './wishlist-link';
  * una segunda linea y ocupa todo el ancho.
  */
 export async function SiteHeader(): Promise<JSX.Element> {
-  const [categories, cityContext] = await Promise.all([getCategories(), getCityContext()]);
+  const [categories, cityContext] = await Promise.all([
+    getCategories(),
+    getCityContext(),
+  ]);
 
   return (
     <header
       className="sticky top-0 z-panel border-b bg-[var(--sf-header-bg)] backdrop-blur"
-      style={{ borderColor: 'var(--sf-header-border)', boxShadow: 'var(--sf-shadow-header)' }}
+      style={{
+        borderColor: "var(--sf-header-border)",
+        boxShadow: "var(--sf-shadow-header)",
+      }}
     >
       <div className="sf-container">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3 py-3">
@@ -39,12 +46,18 @@ export async function SiteHeader(): Promise<JSX.Element> {
           </div>
 
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
-            <CitySelector cities={cityContext.cities} selectedCode={cityContext.selectedCode} />
+            <CitySelector
+              cities={cityContext.cities}
+              selectedCode={cityContext.selectedCode}
+            />
             <ThemeToggle />
             {/* F6: favoritos y comparador aparecen solo cuando hay algo guardado (si no, la
                 cabecera ya lleva buscador, ciudad, tema y carrito). */}
             <WishlistLink />
             <CompareLink />
+            {/* F4: la cuenta va **siempre** (es la unica puerta a «Mis pedidos»); su rotulo dice
+                si hay sesion. */}
+            <AccountLink />
             <CartLink />
           </div>
         </div>
