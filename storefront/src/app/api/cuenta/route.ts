@@ -64,6 +64,8 @@ interface AccountActionBody {
   name?: unknown;
   lastName?: unknown;
   phone?: unknown;
+  currentPassword?: unknown;
+  newPassword?: unknown;
 }
 
 /** Recorta un campo de texto del cuerpo (el canal valida sus longitudes). */
@@ -83,6 +85,77 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (action === "salir") {
     clearCustomerSession();
     return NextResponse.json({ customer: null });
+  }
+
+  // Acciones que **exigen sesión**: editar el perfil y cambiar la contraseña. Se resuelven con el
+  // token de la cookie; un 401 del canal borra la cookie y devuelve al formulario.
+  if (action === "perfil" || action === "clave") {
+    const token = readCustomerToken();
+    if (token === null) {
+      return NextResponse.json(
+        { error: "Tu sesion ha caducado. Entra de nuevo." },
+        { status: 401 },
+      );
+    }
+    try {
+      if (action === "perfil") {
+        const fields = {
+          ...(text(body?.name) === "" ? {} : { name: text(body?.name) }),
+          ...(text(body?.lastName) === ""
+            ? {}
+            : { lastName: text(body?.lastName) }),
+          ...(text(body?.phone) === "" ? {} : { phone: text(body?.phone) }),
+        };
+        if (Object.keys(fields).length === 0) {
+          return NextResponse.json(
+            { error: "Escribe al menos tu nombre para guardar tus datos." },
+            { status: 400 },
+          );
+        }
+        const customer = await erpCustomer<unknown>(
+          "PATCH",
+          "/storefront/customers/me",
+          { token, body: fields },
+        );
+        return NextResponse.json({ customer });
+      }
+
+      const currentPassword =
+        typeof body?.currentPassword === "string" ? body.currentPassword : "";
+      const newPassword =
+        typeof body?.newPassword === "string" ? body.newPassword : "";
+      if (currentPassword === "" || newPassword === "") {
+        return NextResponse.json(
+          { error: "Escribe tu contrasena actual y la nueva." },
+          { status: 400 },
+        );
+      }
+      await erpCustomer<unknown>("POST", "/storefront/customers/me/password", {
+        token,
+        body: { currentPassword, newPassword },
+      });
+      return NextResponse.json({ ok: true });
+    } catch (error) {
+      if (error instanceof ErpError) {
+        const status =
+          error.status >= 400 && error.status <= 599 ? error.status : 502;
+        const response = NextResponse.json(
+          { error: error.message },
+          { status },
+        );
+        // El **401 de `clave`** es «la contraseña actual no es correcta», no una sesión
+        // caducada: borrar la cookie ahí echaría al comprador por equivocarse al teclearla
+        // (medido en el E2E). En `perfil` sí es la sesión, y se borra para volver al formulario.
+        if (error.status === 401 && action === "perfil") {
+          response.cookies.delete(CUSTOMER_COOKIE);
+        }
+        return response;
+      }
+      return NextResponse.json(
+        { error: "No se pudo completar la operacion con el ERP." },
+        { status: 502 },
+      );
+    }
   }
 
   if (action !== "registro" && action !== "entrar") {

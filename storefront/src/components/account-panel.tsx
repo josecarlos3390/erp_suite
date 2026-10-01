@@ -84,9 +84,65 @@ export function AccountPanel(): JSX.Element {
     }
   }, []);
 
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    lastName: "",
+    phone: "",
+  });
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+  });
+
   useEffect(() => {
     void load();
   }, [load]);
+
+  /**
+   * Manda una acción de la cuenta que **exige sesión** (`perfil`, `clave`) y refresca: un solo
+   * sitio para el error, el aviso y el estado ocupado. Un 401 lo resuelve la ruta borrando la
+   * cookie, así que aquí solo hay que decir qué pasó.
+   */
+  const send = useCallback(
+    async (
+      action: "perfil" | "clave",
+      payload: Record<string, string>,
+    ): Promise<boolean> => {
+      setBusy(true);
+      setError(null);
+      setNotice(null);
+      try {
+        const response = await fetch("/api/cuenta", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action, ...payload }),
+        });
+        const body = (await response.json()) as {
+          customer?: AccountCustomer | null;
+          error?: string;
+        };
+        if (!response.ok) {
+          setError(body.error ?? "No se pudo completar la operacion.");
+          return false;
+        }
+        if (body.customer !== undefined && body.customer !== null) {
+          setCustomer(body.customer);
+        } else {
+          await load();
+        }
+        return true;
+      } catch {
+        setError("No se pudo contactar con la tienda. Intentalo otra vez.");
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [load],
+  );
 
   const submit = useCallback(
     async (action: Mode | "salir") => {
@@ -234,6 +290,253 @@ export function AccountPanel(): JSX.Element {
             </ul>
           </div>
         ) : null}
+
+        {/*
+          Lo que el comprador puede **cambiar** de su cuenta (F4): sus datos y su contraseña.
+          Antes esta pantalla solo dejaba entrar y salir, aunque el canal ya publicaba las dos
+          operaciones (`PATCH /me` y `POST /me/password`).
+        */}
+        <div className="flex flex-col gap-3">
+          <h2 className="sf-eyebrow">Tus datos</h2>
+
+          {notice !== null ? (
+            <p
+              className="rounded-btn bg-ok-soft px-3 py-2 text-xs font-medium text-fg"
+              data-testid="account-notice"
+            >
+              {notice}
+            </p>
+          ) : null}
+
+          {error !== null ? (
+            <p
+              role="alert"
+              className="text-xs text-fg-error"
+              data-testid="account-actions-error"
+            >
+              {error}
+            </p>
+          ) : null}
+
+          {!editingProfile ? (
+            <button
+              type="button"
+              className="sf-button sf-button-ghost self-start border border-line"
+              onClick={() => {
+                setProfileForm({
+                  name: customer.name,
+                  lastName: customer.lastName ?? "",
+                  phone: customer.phone ?? "",
+                });
+                setEditingProfile(true);
+                setNotice(null);
+                setError(null);
+              }}
+              data-testid="account-edit-profile"
+            >
+              Editar mis datos
+            </button>
+          ) : (
+            <form
+              className="sf-card flex flex-col gap-3 p-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void (async () => {
+                  const ok = await send("perfil", {
+                    name: profileForm.name.trim(),
+                    lastName: profileForm.lastName.trim(),
+                    phone: profileForm.phone.trim(),
+                  });
+                  if (ok) {
+                    setEditingProfile(false);
+                    setNotice("Tus datos quedaron guardados.");
+                  }
+                })();
+              }}
+            >
+              <label
+                className="text-xs font-medium text-fg-secondary"
+                htmlFor="perfil-nombre"
+              >
+                Nombre
+              </label>
+              <input
+                id="perfil-nombre"
+                type="text"
+                required
+                autoComplete="given-name"
+                className="sf-input"
+                value={profileForm.name}
+                onChange={(event) =>
+                  setProfileForm({ ...profileForm, name: event.target.value })
+                }
+                data-testid="account-profile-name"
+              />
+              <label
+                className="text-xs font-medium text-fg-secondary"
+                htmlFor="perfil-apellido"
+              >
+                Apellido (opcional)
+              </label>
+              <input
+                id="perfil-apellido"
+                type="text"
+                autoComplete="family-name"
+                className="sf-input"
+                value={profileForm.lastName}
+                onChange={(event) =>
+                  setProfileForm({
+                    ...profileForm,
+                    lastName: event.target.value,
+                  })
+                }
+                data-testid="account-profile-lastname"
+              />
+              <label
+                className="text-xs font-medium text-fg-secondary"
+                htmlFor="perfil-telefono"
+              >
+                Telefono (opcional)
+              </label>
+              <input
+                id="perfil-telefono"
+                type="tel"
+                autoComplete="tel"
+                className="sf-input"
+                value={profileForm.phone}
+                onChange={(event) =>
+                  setProfileForm({ ...profileForm, phone: event.target.value })
+                }
+                data-testid="account-profile-phone"
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  className="sf-button sf-button-primary"
+                  disabled={busy}
+                  data-testid="account-profile-save"
+                >
+                  {busy ? "Guardando…" : "Guardar mis datos"}
+                </button>
+                <button
+                  type="button"
+                  className="sf-button sf-button-ghost"
+                  disabled={busy}
+                  onClick={() => {
+                    setEditingProfile(false);
+                    setError(null);
+                  }}
+                  data-testid="account-profile-cancel"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          )}
+
+          {!changingPassword ? (
+            <button
+              type="button"
+              className="sf-button sf-button-ghost self-start border border-line"
+              onClick={() => {
+                setPasswordForm({ currentPassword: "", newPassword: "" });
+                setChangingPassword(true);
+                setNotice(null);
+                setError(null);
+              }}
+              data-testid="account-change-password"
+            >
+              Cambiar mi contraseña
+            </button>
+          ) : (
+            <form
+              className="sf-card flex flex-col gap-3 p-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void (async () => {
+                  const ok = await send("clave", {
+                    currentPassword: passwordForm.currentPassword,
+                    newPassword: passwordForm.newPassword,
+                  });
+                  if (ok) {
+                    setChangingPassword(false);
+                    setPasswordForm({ currentPassword: "", newPassword: "" });
+                    setNotice("Tu contraseña quedó cambiada.");
+                  }
+                })();
+              }}
+            >
+              <label
+                className="text-xs font-medium text-fg-secondary"
+                htmlFor="clave-actual"
+              >
+                Contraseña actual
+              </label>
+              <input
+                id="clave-actual"
+                type="password"
+                required
+                autoComplete="current-password"
+                className="sf-input"
+                value={passwordForm.currentPassword}
+                onChange={(event) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    currentPassword: event.target.value,
+                  })
+                }
+                data-testid="account-current-password"
+              />
+              <label
+                className="text-xs font-medium text-fg-secondary"
+                htmlFor="clave-nueva"
+              >
+                Contraseña nueva
+              </label>
+              <input
+                id="clave-nueva"
+                type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+                className="sf-input"
+                value={passwordForm.newPassword}
+                onChange={(event) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    newPassword: event.target.value,
+                  })
+                }
+                data-testid="account-new-password"
+              />
+              <p className="text-2xs text-fg-tertiary">
+                Minimo 8 caracteres. Las sesiones abiertas siguen valiendo.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  className="sf-button sf-button-primary"
+                  disabled={busy}
+                  data-testid="account-password-save"
+                >
+                  {busy ? "Cambiando…" : "Cambiar mi contraseña"}
+                </button>
+                <button
+                  type="button"
+                  className="sf-button sf-button-ghost"
+                  disabled={busy}
+                  onClick={() => {
+                    setChangingPassword(false);
+                    setError(null);
+                  }}
+                  data-testid="account-password-cancel"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
 
         <div>
           <h2 className="sf-eyebrow">Mis pedidos</h2>

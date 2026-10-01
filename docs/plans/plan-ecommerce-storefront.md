@@ -3025,9 +3025,17 @@ fuera de la tarjeta, **chips** de estado y de pago en cada pedido (el cobrado en
 fecha en línea secundaria, y el vacío con **«Ver el catalogo»**; los `data-testid` no cambian, así que
 los gates siguen midiendo lo mismo. Medido: `lint`/`tsc`/`build` **0**, spec de la cuenta **5/5**,
 **a11y 20/20**, **perf 6/6** (`/cuenta`: LCP 224 ms · CLS 0,022 · JS 115,3 kB) y **visual 17/17** (la
-cuenta **no** tiene captura en el fixture). **Declarado como siguiente incremento de esta vista**: el
-**cambio de contraseña** dentro de la cuenta (el endpoint `POST /storefront/customers/me/password`
-existe y está probado) y la **edición del perfil** (`PATCH /me`).
+cuenta **no** tiene captura en el fixture). **Declarado como siguiente incremento de esta vista** —y **cerrado el mismo día**, cuando el usuario
+pidió «cierra lo que debas cerrar para no dejar pendientes»—: la cuenta **edita los datos**
+(`PATCH /me`) y **cambia la contraseña** (`POST /me/password`) desde la pantalla, con las acciones
+`perfil` y `clave` del puente; el E2E (**6/6**) edita, comprueba que un intento con la contraseña
+equivocada **no** cierra la sesión, cambia la clave y **entra con la nueva**. **Dos hallazgos**: el
+**401 de «contraseña actual incorrecta» se confundía con «sesión caducada»** y **borraba la cookie**
+(expulsaba al comprador por teclearla mal) —corregido: `clave` conserva la sesión y solo `perfil` la
+cierra—; y el E2E de la tienda sirve el **build**, así que un cambio en `src/` **exige reconstruir**
+antes de correrlo (el primer intento midió el código viejo y dio un falso rojo). Gates: `lint`/`tsc`/
+`build` **0**, cuenta **6/6**, a11y **20/20**, perf **6/6** (`/cuenta`: LCP 260 ms · CLS 0,022 · JS
+116 kB) y visual **17/17**.
 
 **Declarado:** una corrida intermedia de la suite funcional falló en `checkout.spec.ts` con
 `Cannot find module '.next\server\pages\_error.js'` **porque se lanzó un `npm run build` mientras la

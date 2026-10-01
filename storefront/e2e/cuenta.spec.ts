@@ -105,6 +105,73 @@ test.describe("Cuenta de cliente (F4)", () => {
     ).toBeUndefined();
   });
 
+  test("la cuenta deja cambiar los datos y la contraseña, y la nueva sirve para entrar", async ({
+    page,
+  }) => {
+    // F4 — lo que le faltaba a la pantalla, que solo dejaba entrar y salir aunque el canal ya
+    // publicaba `PATCH /me` y `POST /me/password`.
+    const email = uniqueEmail("cambios");
+
+    await page.goto("/cuenta");
+    await page.getByTestId("account-tab-registro").click();
+    await page.getByTestId("account-email-input").fill(email);
+    await page.getByTestId("account-name-input").fill("Nombre Viejo");
+    await page.getByTestId("account-password-input").fill("clave-vieja-2026");
+    await page.getByTestId("account-submit").click();
+    await expect(page.getByTestId("account-profile")).toBeVisible();
+
+    // (1) Editar los datos.
+    await page.getByTestId("account-edit-profile").click();
+    await page.getByTestId("account-profile-name").fill("Nombre Nuevo");
+    await page.getByTestId("account-profile-lastname").fill("Apellido Nuevo");
+    await page.getByTestId("account-profile-phone").fill("70012345");
+    await page.getByTestId("account-profile-save").click();
+    await expect(page.getByTestId("account-notice")).toContainText(
+      "Tus datos quedaron guardados",
+    );
+    await expect(page.getByTestId("account-name")).toHaveText(
+      "Nombre Nuevo Apellido Nuevo",
+    );
+
+    // Quedaron guardados en el canal de verdad: se comprueba al volver a entrar (paso 3), que
+    // devuelve el tercero desde el ERP y no lo que la pantalla tenía en memoria.
+
+    // (2) Cambiar la contraseña **exige la actual**: con una inventada, el canal la rechaza.
+    await page.getByTestId("account-change-password").click();
+    await page.getByTestId("account-current-password").fill("no-es-la-mia");
+    await page.getByTestId("account-new-password").fill("clave-nueva-2026");
+    await page.getByTestId("account-password-save").click();
+    await expect(page.getByTestId("account-actions-error")).toBeVisible();
+    // Y **no** cierra la sesión: el 401 de «contraseña actual incorrecta» no es una sesión
+    // caducada (confundirlos echaba al comprador por teclearla mal; se midió aquí).
+    await expect(page.getByTestId("account-actions-error")).not.toContainText(
+      "caducado",
+    );
+    await expect(page.getByTestId("account-profile")).toBeVisible();
+
+    // Con la de verdad, cambia.
+    await page.getByTestId("account-current-password").fill("clave-vieja-2026");
+    await page.getByTestId("account-password-save").click();
+    await expect(page.getByTestId("account-notice")).toContainText(
+      "Tu contraseña quedó cambiada",
+    );
+
+    // (3) La nueva es la que entra… y la vieja ya no.
+    await page.getByTestId("account-logout").click();
+    await page.getByTestId("account-tab-entrar").click();
+    await page.getByTestId("account-email-input").fill(email);
+    await page.getByTestId("account-password-input").fill("clave-vieja-2026");
+    await page.getByTestId("account-submit").click();
+    await expect(page.getByTestId("account-error")).toBeVisible();
+
+    await page.getByTestId("account-password-input").fill("clave-nueva-2026");
+    await page.getByTestId("account-submit").click();
+    await expect(page.getByTestId("account-profile")).toBeVisible();
+    await expect(page.getByTestId("account-name")).toHaveText(
+      "Nombre Nuevo Apellido Nuevo",
+    );
+  });
+
   test("el historial muestra el pedido hecho con ese correo y solo ese", async ({
     page,
   }) => {
