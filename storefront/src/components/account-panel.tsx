@@ -262,6 +262,34 @@ export function AccountPanel(): JSX.Element {
         ))}
       </div>
 
+      {/* F4 — el comprador que hizo un pedido **sin cuenta** no tiene contraseña: se le dice y se
+          le lleva al alta con el correo ya escrito (antes solo veia «Entrar» y no sabia que
+          contrasena poner). */}
+      {mode === "entrar" ? (
+        <div
+          className="sf-card flex flex-col gap-2 p-3"
+          data-testid="account-guest-hint"
+        >
+          <p className="text-sm text-fg-secondary">
+            <strong className="text-fg">¿Compraste como invitado?</strong> Si
+            hiciste un pedido sin crear una cuenta,{" "}
+            <strong>todavia no tienes contraseña</strong>: creala aqui con el
+            mismo correo con el que compraste y veras tus pedidos.
+          </p>
+          <button
+            type="button"
+            className="sf-button sf-button-ghost self-start"
+            onClick={() => {
+              setMode("registro");
+              setError(null);
+            }}
+            data-testid="account-create-password"
+          >
+            Crear mi contraseña con el correo de mi pedido
+          </button>
+        </div>
+      ) : null}
+
       <form
         className="sf-card flex flex-col gap-3 p-4"
         onSubmit={(event) => {

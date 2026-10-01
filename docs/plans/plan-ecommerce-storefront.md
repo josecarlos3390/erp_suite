@@ -3002,6 +3002,20 @@ queda limpia**. **Anotado como mejora**: que la bandeja **diga qué falta** al a
 cobrado (hoy solo lo dice el error) y que la vista del pedido publique el **id** de su reserva, para
 que la anulación no dependa de buscar por código.
 
+**(3) «Olvidé mi contraseña», o por qué el comprador invitado no tenía ninguna.** Lo que reportó el
+usuario: «me pide ingresar con el correo que hice el pedido, pero nunca supe cuál fue mi contraseña».
+Medido antes: `/cuenta` arranca en la pestaña «Entrar» y ofrece «Crear cuenta» al lado, pero **no
+decía** que quien compró **sin cuenta** no tiene contraseña todavía: había que adivinar que el camino
+era **crear** una con el mismo correo del pedido (y que así aparecen sus pedidos). Entregado: el
+aviso que lo explica y el botón **«Crear mi contraseña con el correo de mi pedido»**, que cambia al
+alta **conservando el correo**; el aviso desaparece en el alta. Medido después: caso E2E nuevo (aviso
+visible con ese texto, alta seleccionada, correo intacto, campos del alta a la vista y aviso fuera),
+spec de la cuenta **5/5** con la base restaurada, y `lint`/`tsc`/`build` **0**. **Declarado**: **no**
+es un restablecimiento por correo; el enlace mágico exige **entregar en un buzón real** y Resend
+sigue en **modo de pruebas** por decisión del usuario (punto 3), así que lo cubierto es justo su
+caso —**crear** la contraseña con el correo del pedido— y el cambio de contraseña **con sesión** ya
+existía.
+
 **Declarado:** una corrida intermedia de la suite funcional falló en `checkout.spec.ts` con
 `Cannot find module '.next\server\pages\_error.js'` **porque se lanzó un `npm run build` mientras la
 suite corría**; esa corrida **no cuenta** y se repitió sin builds concurrentes (la regla «no compiles

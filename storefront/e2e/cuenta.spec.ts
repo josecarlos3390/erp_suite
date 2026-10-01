@@ -38,6 +38,32 @@ test.describe("Cuenta de cliente (F4)", () => {
     await expect(page.getByTestId("account-profile")).toHaveCount(0);
   });
 
+  test("el que compro como invitado ve que no tiene contraseña y va al alta con su correo", async ({
+    page,
+  }) => {
+    // Lo que le paso al usuario: `/cuenta` pedia «Entrar» y quien hizo un pedido **sin cuenta**
+    // no tenia —ni sabia que necesitaba— una contraseña. El aviso lo dice y lleva al alta
+    // **conservando el correo** ya escrito.
+    const email = uniqueEmail("invitado");
+    await page.goto("/cuenta");
+    await page.getByTestId("account-email-input").fill(email);
+
+    const hint = page.getByTestId("account-guest-hint");
+    await expect(hint).toBeVisible();
+    await expect(hint).toContainText("todavia no tienes contraseña");
+
+    await page.getByTestId("account-create-password").click();
+
+    await expect(page.getByTestId("account-tab-registro")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByTestId("account-email-input")).toHaveValue(email);
+    await expect(page.getByTestId("account-name-input")).toBeVisible();
+    // El aviso es de «Entrar»: en el alta ya no aplica.
+    await expect(page.getByTestId("account-guest-hint")).toHaveCount(0);
+  });
+
   test("crear la cuenta deja la sesion en una cookie httpOnly y se puede cerrar", async ({
     page,
     context,
