@@ -3016,6 +3016,19 @@ sigue en **modo de pruebas** por decisión del usuario (punto 3), así que lo cu
 caso —**crear** la contraseña con el correo del pedido— y el cambio de contraseña **con sesión** ya
 existía.
 
+**Repaso de UX/UI de «Mi cuenta» (lo que reportó el usuario).** Su queja era concreta —«el boton de
+cerrar sesion no se diferencia»— y la medición la confirmó: era un botón **fantasma** debajo del
+párrafo, sin borde ni icono, y los pedidos metían estado, pago, fecha y artículos en **una línea
+corrida**, con un estado vacío que no ofrecía nada. Entregado: **cabecera de cuenta** (iniciales,
+nombre y correo, y **«Cerrar sesión» al otro lado con borde e icono**), la nota de vinculación al ERP
+fuera de la tarjeta, **chips** de estado y de pago en cada pedido (el cobrado en verde suave) con la
+fecha en línea secundaria, y el vacío con **«Ver el catalogo»**; los `data-testid` no cambian, así que
+los gates siguen midiendo lo mismo. Medido: `lint`/`tsc`/`build` **0**, spec de la cuenta **5/5**,
+**a11y 20/20**, **perf 6/6** (`/cuenta`: LCP 224 ms · CLS 0,022 · JS 115,3 kB) y **visual 17/17** (la
+cuenta **no** tiene captura en el fixture). **Declarado como siguiente incremento de esta vista**: el
+**cambio de contraseña** dentro de la cuenta (el endpoint `POST /storefront/customers/me/password`
+existe y está probado) y la **edición del perfil** (`PATCH /me`).
+
 **Declarado:** una corrida intermedia de la suite funcional falló en `checkout.spec.ts` con
 `Cannot find module '.next\server\pages\_error.js'` **porque se lanzó un `npm run build` mientras la
 suite corría**; esa corrida **no cuenta** y se repitió sin builds concurrentes (la regla «no compiles

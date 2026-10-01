@@ -138,34 +138,80 @@ export function AccountPanel(): JSX.Element {
   }
 
   if (customer !== null) {
+    const fullName = `${customer.name}${
+      customer.lastName === null ? "" : ` ${customer.lastName}`
+    }`;
+    const initials = fullName
+      .split(/\s+/)
+      .filter((part) => part !== "")
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("");
+
     return (
       <div className="flex flex-col gap-6" data-testid="account-profile">
-        <div className="sf-card p-4">
-          <p
-            className="text-sm font-semibold text-fg"
-            data-testid="account-name"
-          >
-            {customer.name}
-            {customer.lastName === null ? "" : ` ${customer.lastName}`}
-          </p>
-          <p className="text-xs text-fg-secondary" data-testid="account-email">
-            {customer.email}
-          </p>
-          <p className="mt-2 text-xs text-fg-tertiary">
-            {customer.linkedToPartner
-              ? "Tu cuenta esta enlazada a tu ficha de cliente del ERP: tus direcciones se editan alli."
-              : "Tus pedidos quedan ligados a este correo. Para guardar direcciones, la tienda las enlaza a tu ficha del ERP."}
-          </p>
+        {/*
+          Cabecera de la cuenta: **quien eres** (con su marca) y **la salida**, en la misma linea
+          y separadas de los datos. Antes «Cerrar sesion» era un boton fantasma debajo del texto,
+          indistinguible del resto: ahora es un boton **con borde y su icono**, al otro lado de la
+          cabecera, que es donde el comprador lo busca.
+        */}
+        <header className="sf-card flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="flex items-center gap-3">
+            <span
+              aria-hidden="true"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-md font-bold text-fg-accent"
+            >
+              {initials}
+            </span>
+            <div className="flex min-w-0 flex-col">
+              <p
+                className="truncate text-sm font-semibold text-fg"
+                data-testid="account-name"
+              >
+                {fullName}
+              </p>
+              <p
+                className="truncate text-xs text-fg-secondary"
+                data-testid="account-email"
+              >
+                {customer.email}
+              </p>
+            </div>
+          </div>
+
           <button
             type="button"
-            className="sf-button sf-button-ghost mt-3"
+            className="sf-button sf-button-ghost inline-flex items-center gap-2 border border-line"
             onClick={() => void submit("salir")}
             disabled={busy}
             data-testid="account-logout"
           >
-            Cerrar sesion
+            <span aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                focusable="false"
+              >
+                <path d="M15 12H4" />
+                <path d="m8 8-4 4 4 4" />
+                <path d="M11 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" />
+              </svg>
+            </span>
+            {busy ? "Cerrando…" : "Cerrar sesión"}
           </button>
-        </div>
+        </header>
+
+        <p className="text-xs text-fg-tertiary">
+          {customer.linkedToPartner
+            ? "Tu cuenta esta enlazada a tu ficha de cliente del ERP: tus direcciones se editan alli."
+            : "Tus pedidos quedan ligados a este correo. Para guardar direcciones, la tienda las enlaza a tu ficha del ERP."}
+        </p>
 
         {customer.addresses.length > 0 ? (
           <div className="sf-card p-4">
@@ -192,12 +238,17 @@ export function AccountPanel(): JSX.Element {
         <div>
           <h2 className="sf-eyebrow">Mis pedidos</h2>
           {orders.length === 0 ? (
-            <p
-              className="mt-2 text-sm text-fg-secondary"
+            <div
+              className="sf-card mt-2 flex flex-col items-start gap-2 p-4"
               data-testid="account-orders-empty"
             >
-              Todavia no hay pedidos con este correo.
-            </p>
+              <p className="text-sm text-fg-secondary">
+                Todavia no hay pedidos con este correo.
+              </p>
+              <a className="sf-button sf-button-primary" href="/categorias">
+                Ver el catalogo
+              </a>
+            </div>
           ) : (
             <ul
               className="mt-2 flex flex-col gap-2"
@@ -221,17 +272,31 @@ export function AccountPanel(): JSX.Element {
                       {formatMoney(order.total, order.currency)}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-fg-secondary">
-                    {statusLabel(order.status)} ·{" "}
-                    {paymentStatusLabel(order.paymentStatus)} ·{" "}
-                    {new Date(order.createdAt).toLocaleDateString("es-BO", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    })}{" "}
-                    · {order.items.length}{" "}
-                    {order.items.length === 1 ? "articulo" : "articulos"}
-                  </p>
+                  {/* Estado y pago como **chips**: antes eran una linea corrida de texto y no se
+                      distinguia de un vistazo si el pedido estaba pagado. */}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-elevated px-2 py-0.5 text-2xs font-semibold text-fg-secondary">
+                      {statusLabel(order.status)}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${
+                        order.paymentStatus === "paid"
+                          ? "bg-ok-soft text-fg"
+                          : "bg-elevated text-fg-secondary"
+                      }`}
+                    >
+                      {paymentStatusLabel(order.paymentStatus)}
+                    </span>
+                    <span className="text-xs text-fg-tertiary">
+                      {new Date(order.createdAt).toLocaleDateString("es-BO", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}{" "}
+                      · {order.items.length}{" "}
+                      {order.items.length === 1 ? "articulo" : "articulos"}
+                    </span>
+                  </div>
                 </li>
               ))}
             </ul>
