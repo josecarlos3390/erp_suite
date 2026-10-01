@@ -2838,6 +2838,54 @@ que la suite unitaria también escribe en la base de desarrollo». **Era una hip
    también los ~7 pedidos que el usuario creó probando** ⇒ es una decisión **suya**, no mía; queda
    declarada aquí con los números. Desde el §29, cualquier corrida nueva **no** añade basura.
 
+---
+
+## §36 — Ejecución MEDIDA del paso 2/4 (la reserva deja de nacer con el pedido)
+
+**Por qué este apartado existe.** El §35 decidió el flujo (el pedido nace **sin** documento fiscal;
+la reserva se emite **al confirmar el cobro**, y solo entonces la entrega) y el **paso 1 ya está
+entregado** (`POST /web-orders/:id/collect`). Antes de tocar el paso 2 se **midió** su radio de
+impacto con el código de HEAD y el resultado obliga a mover **nueve bloques de test** a la vez, así
+que la ejecución queda **congelada aquí** en vez de empezarla y dejarla a medias con los gates rojos.
+
+**Medición (HEAD, `Select-String` sobre el árbol limpio):**
+
+| Pieza | Qué arrastra |
+| --- | --- |
+| `backend-erp/src/storefront/storefront.service.ts` (**~1893-1896**) | el bloque `let reserveInvoice: … \| null = null; if (webInvoicingMode === WebInvoicingMode.PAY_NOW) { reserveInvoice = await this.issueReserveInvoice(…) }` y, en el `catch`, `cancelReserveThenOrder(tenantId, salesOrder.id, reserveInvoice?.id)`. Dependientes: **28** líneas de `storefront.service.spec.ts` y **50** de `backend-erp/test/storefront-channel.e2e-spec.ts` |
+| Bloques `it()` que **nombran** la reserva | **6** en `storefront.service.spec.ts` + **3** en `storefront-channel.e2e-spec.ts` (207 bloques entre los dos archivos) |
+| `storefront/src/lib/checkout.ts` (**49**) | la firma pública describe el flujo viejo («el pedido se factura (reserva) al confirmarlo») |
+| Paso 4a (`PaymentReferenceForm`) | **2** puntos de render (`src/app/pedido/[orderNumber]/page.tsx:72`, `src/app/seguimiento/page.tsx:180`), ambos con la guarda `paymentReference === null && status !== 'CANCELLED'`; el modo **por defecto** es `PAY_ON_DELIVERY` (`storefront.service.ts:737`), así que **los E2E que rellenan la referencia** caen con él |
+
+**Ejecución ordenada (una sola pasada):**
+
+1. **Servicio**: dejar `reserveInvoice` en `null` (no llamar a `issueReserveInvoice` en el alta, en
+   ninguna modalidad) conservando `cancelReserveThenOrder(…, null)` como camino válido; comprobar con
+   `grep` si `issueReserveInvoice` queda **sin llamadores** y, si es así, borrarlo con su rama.
+2. **Spec del canal**: reescribir «pagar ahora» emite la factura de RESERVA → «no emite **ningún**
+   documento fiscal»; **retirar** «si la reserva falla, el pedido de venta se ANULA» (ese camino ya no
+   existe en el alta: el mismo escenario pasa a cubrirlo `collect()`); conservar los casos T218
+   (reserva sin entrega no publica entregado; reserva pagada sin entrega se rechaza) y el de la
+   reserva **ya anulada**; el caso «anula la RESERVA antes del pedido» pasa a «anular un pedido **sin**
+   reserva no falla».
+3. **E2E del canal**: «la modalidad decide la cadena» pasa a afirmar que **las dos** modalidades nacen
+   **sin** reserva (y que la reserva aparece **solo** por `POST /sale-reserve-invoices/from-order/:orderId`
+   o por `/web-orders/:id/collect`); «cadena reserva → cobro → entrega» y «la entrega maneja el
+   SERVICIO…» **no** se tocan (crean la reserva por el endpoint del ERP).
+4. **Copia de la tienda**: `checkout.ts` (49 y las etiquetas de modalidad) y el resumen del pedido
+   pasan a decir que el pedido se **registra** sin documento y que la tienda emite la factura de
+   reserva **al confirmar el cobro**.
+5. **Paso 4a**: en los dos puntos de render, exigir además que el pedido sea **prepagado**
+   (`webInvoicingMode === 'PAY_NOW'`) y, para «pagar al recibir», un aviso que explique que no hay
+   referencia que anotar; los E2E que rellenan el formulario deben crear el pedido con `PAY_NOW`.
+6. **Gates**: backend `tsc`/`eslint`, los dos archivos de test y la suite completa; tienda
+   `lint`/`typecheck`/`build`/suite (+ gate visual si la copia mueve alguna captura); después los tres
+   CHANGELOG, `AGENTS.md` y este §35/§36 con lo medido **después**.
+
+**Declarado (estado al escribir esto):** **no** se tocó una línea de código; el repositorio queda verde
+en los refs ya verificados (`backend-erp` **48f591a** = `origin` = `deploy`; raíz **d0a0df0**) y este
+apartado es la especificación ejecutable del paso que sigue, no una promesa de que esté hecho.
+
 
 
 
