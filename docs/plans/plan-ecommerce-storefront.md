@@ -2975,6 +2975,19 @@ cookie `httpOnly` y pinta el enlace a `/cuenta` con el rótulo según haya sesi�
 cabecera cambia en todas las pantallas: fallaban 17 y tras re-grabar pasan 17, y los 17 ficheros
 que cambian son exactamente las capturas—, suite funcional y **a11y 20/20** y **perf 6/6**.
 
+**(2) El checkout completo, medido en PRODUCCIÓN.** Sonda contra el backend de Railway
+(`backend-erp-production-5c3b`) y la tienda de Vercel (`erp-storefront-inky`), **después** de
+comprobar que Vercel ya servía el código nuevo (el HTML de producción trae `account-link` y un
+`buildId` nuevo): catálogo del canal **48 artículos** → cotización **201 / total 142,55** (envío
+**20**) → alta **201 / `WEB-7`** con **`reserveInvoiceCode: null`** y `paymentStatus: pending` —es
+decir, **el §35 verificado en producción: el alta ya no emite documento**— → seguimiento con el
+código `200 · pago pending · factura PENDING · estado PENDING` → el pedido **aparece en la bandeja
+del ERP** (`id 7`) → **anulación 201 → `CANCELLED`**, y el seguimiento lo refleja. Producción queda
+**como estaba** y **no** se disparó el cobro: crearía una factura de reserva y un pago reales cuya
+cadena de anulación no está probada. **Declarado**: el tipo de cambio de **hoy** (2026-10-01 →
+**12,02**) **sí** existe, así que la cadena de cobro está disponible en producción cuando la empresa
+quiera ejercitarla.
+
 **Declarado:** una corrida intermedia de la suite funcional falló en `checkout.spec.ts` con
 `Cannot find module '.next\server\pages\_error.js'` **porque se lanzó un `npm run build` mientras la
 suite corría**; esa corrida **no cuenta** y se repitió sin builds concurrentes (la regla «no compiles
