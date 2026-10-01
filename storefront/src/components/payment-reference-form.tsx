@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
 import {
   PAYMENT_REFERENCE_HINT,
@@ -9,10 +9,34 @@ import {
   referenceErrorsAreClear,
   validatePaymentReference,
   type PaymentReferenceErrors,
-} from '@/lib/payment-reference';
+} from "@/lib/payment-reference";
 
 interface PaymentReferenceFormProps {
   orderNumber: string;
+}
+
+/**
+ * §35 — **aviso** para el comprador que eligio «pagar al recibir»: no hay ninguna referencia
+ * que anotar, porque paga cuando recibe (o retira) el pedido y el cobro lo registra la tienda;
+ * la factura se emite con la entrega. Sustituye al formulario en ese caso.
+ */
+export function PaymentReferencePayOnDelivery(): JSX.Element {
+  return (
+    <section
+      aria-label="Pago al recibir"
+      className="rounded-lg border border-line bg-base p-4"
+      data-testid="payment-reference-pay-on-delivery"
+    >
+      <h2 className="text-sm font-semibold text-fg">
+        Pago al recibir tu pedido
+      </h2>
+      <p className="mt-1 text-xs text-fg-secondary">
+        Elegiste <strong>pagar al recibir</strong>, asi que no hay ninguna
+        referencia que anotar: pagas cuando recibas (o retires) tu pedido y la
+        tienda registra el cobro. La factura se emite con la entrega.
+      </p>
+    </section>
+  );
 }
 
 /**
@@ -27,42 +51,48 @@ interface PaymentReferenceFormProps {
 export function PaymentReferenceForm({
   orderNumber,
 }: PaymentReferenceFormProps): JSX.Element {
-  const [email, setEmail] = useState('');
-  const [reference, setReference] = useState('');
+  const [email, setEmail] = useState("");
+  const [reference, setReference] = useState("");
   const [errors, setErrors] = useState<PaymentReferenceErrors>({});
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
-  async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+  async function submit(
+    event: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> {
     event.preventDefault();
-    const found = validatePaymentReference({ order: orderNumber, email, reference });
+    const found = validatePaymentReference({
+      order: orderNumber,
+      email,
+      reference,
+    });
     setErrors(found);
     setFailure(null);
     if (!referenceErrorsAreClear(found)) return;
 
     setSending(true);
     try {
-      const response = await fetch('/api/referencia', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
+      const response = await fetch("/api/referencia", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ order: orderNumber, email, reference }),
       });
       const payload: unknown = await response.json().catch(() => null);
       if (!response.ok) {
         const message =
-          typeof payload === 'object' && payload !== null
-            ? (payload as Record<string, unknown>)['error']
+          typeof payload === "object" && payload !== null
+            ? (payload as Record<string, unknown>)["error"]
             : null;
         setFailure(
-          typeof message === 'string' && message !== ''
+          typeof message === "string" && message !== ""
             ? message
             : `No se pudo registrar la referencia (HTTP ${response.status}).`,
         );
         return;
       }
       setSaved(reference.trim());
-      setReference('');
+      setReference("");
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       setFailure(`No se pudo contactar con la tienda (${detail}).`);
@@ -78,12 +108,17 @@ export function PaymentReferenceForm({
         className="rounded-lg border border-ok bg-ok-soft p-4"
         data-testid="payment-reference-saved"
       >
-        <h2 className="text-sm font-semibold text-fg">Referencia de pago anotada</h2>
+        <h2 className="text-sm font-semibold text-fg">
+          Referencia de pago anotada
+        </h2>
         <p className="mt-1 text-sm text-fg-secondary">
-          Guardamos <strong data-testid="payment-reference-value">{saved}</strong> con tu pedido{' '}
-          {orderNumber}. La tienda la usa para conciliar el pago.
+          Guardamos{" "}
+          <strong data-testid="payment-reference-value">{saved}</strong> con tu
+          pedido {orderNumber}. La tienda la usa para conciliar el pago.
         </p>
-        <p className="mt-2 text-xs text-fg-tertiary">{PAYMENT_REFERENCE_NOTICE}</p>
+        <p className="mt-2 text-xs text-fg-tertiary">
+          {PAYMENT_REFERENCE_NOTICE}
+        </p>
       </section>
     );
   }
@@ -94,12 +129,20 @@ export function PaymentReferenceForm({
       className="rounded-lg border border-line bg-base p-4"
       data-testid="payment-reference-form"
     >
-      <h2 className="text-sm font-semibold text-fg">¿Ya pagaste? Anota tu referencia</h2>
+      <h2 className="text-sm font-semibold text-fg">
+        ¿Ya pagaste? Anota tu referencia
+      </h2>
       <p className="mt-1 text-xs text-fg-secondary">{PAYMENT_REFERENCE_HINT}</p>
 
-      <form className="mt-3 flex flex-col gap-3" onSubmit={(event) => void submit(event)}>
+      <form
+        className="mt-3 flex flex-col gap-3"
+        onSubmit={(event) => void submit(event)}
+      >
         <div className="flex flex-col gap-1">
-          <label htmlFor="reference-email" className="text-xs font-medium text-fg-secondary">
+          <label
+            htmlFor="reference-email"
+            className="text-xs font-medium text-fg-secondary"
+          >
             Correo del pedido <span aria-hidden="true">*</span>
           </label>
           <input
@@ -110,7 +153,7 @@ export function PaymentReferenceForm({
             maxLength={PAYMENT_REFERENCE_LIMITS.email}
             autoComplete="email"
             aria-invalid={errors.email !== undefined}
-            className={`sf-field ${errors.email !== undefined ? 'border-line-error' : ''}`}
+            className={`sf-field ${errors.email !== undefined ? "border-line-error" : ""}`}
             data-testid="payment-reference-email"
             onChange={(event) => setEmail(event.target.value)}
           />
@@ -122,7 +165,10 @@ export function PaymentReferenceForm({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="reference-value" className="text-xs font-medium text-fg-secondary">
+          <label
+            htmlFor="reference-value"
+            className="text-xs font-medium text-fg-secondary"
+          >
             Referencia del pago <span aria-hidden="true">*</span>
           </label>
           <input
@@ -133,7 +179,7 @@ export function PaymentReferenceForm({
             maxLength={PAYMENT_REFERENCE_LIMITS.reference}
             placeholder="Ej.: TRANSF-884422"
             aria-invalid={errors.reference !== undefined}
-            className={`sf-field ${errors.reference !== undefined ? 'border-line-error' : ''}`}
+            className={`sf-field ${errors.reference !== undefined ? "border-line-error" : ""}`}
             data-testid="payment-reference-input"
             onChange={(event) => setReference(event.target.value)}
           />
@@ -145,7 +191,11 @@ export function PaymentReferenceForm({
         </div>
 
         {failure !== null ? (
-          <p role="alert" className="text-sm font-medium text-fg-error" data-testid="payment-reference-error">
+          <p
+            role="alert"
+            className="text-sm font-medium text-fg-error"
+            data-testid="payment-reference-error"
+          >
             {failure}
           </p>
         ) : null}
@@ -156,11 +206,13 @@ export function PaymentReferenceForm({
           disabled={sending}
           data-testid="payment-reference-submit"
         >
-          {sending ? 'Guardando...' : 'Guardar referencia'}
+          {sending ? "Guardando..." : "Guardar referencia"}
         </button>
       </form>
 
-      <p className="mt-3 text-xs text-fg-tertiary">{PAYMENT_REFERENCE_NOTICE}</p>
+      <p className="mt-3 text-xs text-fg-tertiary">
+        {PAYMENT_REFERENCE_NOTICE}
+      </p>
     </section>
   );
 }

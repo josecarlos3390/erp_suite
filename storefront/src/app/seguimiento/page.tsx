@@ -1,23 +1,27 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
+import type { Metadata } from "next";
+import Link from "next/link";
 
-import { Breadcrumbs } from '@/components/breadcrumbs';
-import { OrderSummary } from '@/components/order-summary';
-import { PaymentReferenceForm } from '@/components/payment-reference-form';
-import { CHECKOUT_LIMITS } from '@/lib/checkout';
-import { ErpError, getTracking } from '@/lib/erp';
-import type { OrderView } from '@/lib/order-view';
-import { readParam, type SearchParams } from '@/lib/query';
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { OrderSummary } from "@/components/order-summary";
+import {
+  PaymentReferenceForm,
+  PaymentReferencePayOnDelivery,
+} from "@/components/payment-reference-form";
+import { CHECKOUT_LIMITS } from "@/lib/checkout";
+import { ErpError, getTracking } from "@/lib/erp";
+import { referenceBoxFor } from "@/lib/payment-reference";
+import type { OrderView } from "@/lib/order-view";
+import { readParam, type SearchParams } from "@/lib/query";
 
 export const metadata: Metadata = {
-  title: 'Seguimiento de pedido',
+  title: "Seguimiento de pedido",
   description:
-    'Consulta publica del estado de un pedido de la tienda con el numero de pedido y, opcionalmente, el correo.',
-  alternates: { canonical: '/seguimiento' },
+    "Consulta publica del estado de un pedido de la tienda con el numero de pedido y, opcionalmente, el correo.",
+  alternates: { canonical: "/seguimiento" },
   robots: { index: false, follow: true },
 };
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface TrackingPageProps {
   searchParams: SearchParams;
@@ -30,13 +34,19 @@ interface Lookup {
 }
 
 /** Un correo se reconoce por la arroba; lo demas se trata como codigo de seguimiento. */
-function proofParts(proof: string | undefined): { email?: string; code?: string } {
+function proofParts(proof: string | undefined): {
+  email?: string;
+  code?: string;
+} {
   if (proof === undefined) return {};
-  return proof.includes('@') ? { email: proof } : { code: proof };
+  return proof.includes("@") ? { email: proof } : { code: proof };
 }
 
 /** Consulta el pedido en el canal; el 404 se devuelve como estado vacio honesto. */
-async function lookup(orderNumber: string, proof: string | undefined): Promise<Lookup> {
+async function lookup(
+  orderNumber: string,
+  proof: string | undefined,
+): Promise<Lookup> {
   try {
     const parts = proofParts(proof);
     const order = await getTracking(orderNumber, parts.email, parts.code);
@@ -47,7 +57,8 @@ async function lookup(orderNumber: string, proof: string | undefined): Promise<L
     }
     return {
       order: null,
-      error: 'No se pudo consultar el pedido en el ERP. Revisa la conexion e intentalo otra vez.',
+      error:
+        "No se pudo consultar el pedido en el ERP. Revisa la conexion e intentalo otra vez.",
     };
   }
 }
@@ -66,30 +77,48 @@ async function lookup(orderNumber: string, proof: string | undefined): Promise<L
  *  - pedido inexistente, correo ajeno o codigo ajeno -> el 404 del canal se muestra como
  *    «no encontramos ese pedido», **sin** confirmar si el numero existe.
  */
-export default async function TrackingPage({ searchParams }: TrackingPageProps): Promise<JSX.Element> {
-  const orderNumber = readParam(searchParams['order'])?.slice(0, CHECKOUT_LIMITS.idempotencyKey);
-  const proof = readParam(searchParams['proof'])?.slice(0, CHECKOUT_LIMITS.email);
+export default async function TrackingPage({
+  searchParams,
+}: TrackingPageProps): Promise<JSX.Element> {
+  const orderNumber = readParam(searchParams["order"])?.slice(
+    0,
+    CHECKOUT_LIMITS.idempotencyKey,
+  );
+  const proof = readParam(searchParams["proof"])?.slice(
+    0,
+    CHECKOUT_LIMITS.email,
+  );
   const lookupResult =
     orderNumber === undefined ? null : await lookup(orderNumber, proof);
 
   return (
     <div className="flex flex-col gap-6">
-      <Breadcrumbs items={[{ label: 'Inicio', href: '/' }, { label: 'Seguimiento' }]} />
+      <Breadcrumbs
+        items={[{ label: "Inicio", href: "/" }, { label: "Seguimiento" }]}
+      />
 
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-fg">Seguimiento de pedido</h1>
         <p className="text-sm text-fg-secondary">
-          Consulta el estado de tu pedido con el numero que te dio la tienda <strong>y</strong> el
-          correo con el que compraste o el codigo de seguimiento (por ejemplo
-          <span className="font-mono"> WEB-1A2B3C4D</span>). Las dos cosas salen en tu
-          confirmacion.
+          Consulta el estado de tu pedido con el numero que te dio la tienda{" "}
+          <strong>y</strong> el correo con el que compraste o el codigo de
+          seguimiento (por ejemplo
+          <span className="font-mono"> WEB-1A2B3C4D</span>). Las dos cosas salen
+          en tu confirmacion.
         </p>
       </header>
 
-      <form method="get" action="/seguimiento" className="sf-card flex flex-col gap-3 p-4">
+      <form
+        method="get"
+        action="/seguimiento"
+        className="sf-card flex flex-col gap-3 p-4"
+      >
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
-            <label htmlFor="seguimiento-order" className="text-xs font-medium text-fg-secondary">
+            <label
+              htmlFor="seguimiento-order"
+              className="text-xs font-medium text-fg-secondary"
+            >
               Numero de pedido <span aria-hidden="true">*</span>
             </label>
             <input
@@ -97,7 +126,7 @@ export default async function TrackingPage({ searchParams }: TrackingPageProps):
               name="order"
               type="text"
               required
-              defaultValue={orderNumber ?? ''}
+              defaultValue={orderNumber ?? ""}
               maxLength={CHECKOUT_LIMITS.idempotencyKey}
               placeholder="PED-000001"
               autoComplete="off"
@@ -106,7 +135,10 @@ export default async function TrackingPage({ searchParams }: TrackingPageProps):
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label htmlFor="seguimiento-proof" className="text-xs font-medium text-fg-secondary">
+            <label
+              htmlFor="seguimiento-proof"
+              className="text-xs font-medium text-fg-secondary"
+            >
               Correo o codigo de seguimiento <span aria-hidden="true">*</span>
             </label>
             <input
@@ -114,7 +146,7 @@ export default async function TrackingPage({ searchParams }: TrackingPageProps):
               name="proof"
               type="text"
               required
-              defaultValue={proof ?? ''}
+              defaultValue={proof ?? ""}
               maxLength={CHECKOUT_LIMITS.email}
               placeholder="nombre@dominio.com o WEB-1A2B3C4D"
               autoComplete="off"
@@ -124,7 +156,11 @@ export default async function TrackingPage({ searchParams }: TrackingPageProps):
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="submit" className="sf-btn sf-btn-primary" data-testid="tracking-submit">
+          <button
+            type="submit"
+            className="sf-btn sf-btn-primary"
+            data-testid="tracking-submit"
+          >
             Consultar pedido
           </button>
           {orderNumber !== undefined ? (
@@ -140,10 +176,13 @@ export default async function TrackingPage({ searchParams }: TrackingPageProps):
           className="rounded-lg border border-dashed border-line bg-elevated p-6"
           data-testid="tracking-empty"
         >
-          <h2 className="text-sm font-semibold text-fg">Todavia no consultaste ningun pedido</h2>
+          <h2 className="text-sm font-semibold text-fg">
+            Todavia no consultaste ningun pedido
+          </h2>
           <p className="mt-1 text-sm text-fg-secondary">
-            Escribe el numero de pedido (por ejemplo `PED-000001`) para ver su estado y su desglose.
-            Lo encuentras en la confirmacion de la compra y en el correo o WhatsApp de la tienda.
+            Escribe el numero de pedido (por ejemplo `PED-000001`) para ver su
+            estado y su desglose. Lo encuentras en la confirmacion de la compra
+            y en el correo o WhatsApp de la tienda.
           </p>
         </section>
       ) : null}
@@ -158,13 +197,13 @@ export default async function TrackingPage({ searchParams }: TrackingPageProps):
             No encontramos el pedido {orderNumber}
           </h2>
           <p className="mt-1 text-sm text-fg-secondary">
-            {lookupResult.error ??
-              'El pedido no existe en la tienda.'}{' '}
-            Revisa el numero (no deben faltar ni sobrar caracteres) y, si escribiste un correo,
-            comprueba que sea el mismo con el que hiciste la compra.
+            {lookupResult.error ?? "El pedido no existe en la tienda."} Revisa
+            el numero (no deben faltar ni sobrar caracteres) y, si escribiste un
+            correo, comprueba que sea el mismo con el que hiciste la compra.
           </p>
           <p className="mt-2 text-xs text-fg-tertiary">
-            Por seguridad no confirmamos si un numero de pedido existe cuando el correo no coincide.
+            Por seguridad no confirmamos si un numero de pedido existe cuando el
+            correo no coincide.
           </p>
         </section>
       ) : null}
@@ -175,9 +214,14 @@ export default async function TrackingPage({ searchParams }: TrackingPageProps):
 
       {lookupResult?.order !== null &&
       lookupResult?.order !== undefined &&
-      lookupResult.order.paymentReference === null &&
-      lookupResult.order.status !== 'CANCELLED' ? (
+      referenceBoxFor(lookupResult.order) === "reference" ? (
         <PaymentReferenceForm orderNumber={lookupResult.order.orderNumber} />
+      ) : null}
+
+      {lookupResult?.order !== null &&
+      lookupResult?.order !== undefined &&
+      referenceBoxFor(lookupResult.order) === "pay-on-delivery" ? (
+        <PaymentReferencePayOnDelivery />
       ) : null}
     </div>
   );

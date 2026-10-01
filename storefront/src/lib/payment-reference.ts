@@ -32,15 +32,16 @@ export interface PaymentReferenceErrors {
 
 /** Ayuda del campo: que se espera que escriba el comprador. */
 export const PAYMENT_REFERENCE_HINT =
-  'El numero de operacion de tu transferencia o de tu QR (o los ultimos digitos). Si pagas contra entrega, dejalo para cuando el repartidor te cobre.';
+  "El numero de operacion de tu transferencia o de tu QR (o los ultimos digitos). Si pagas contra entrega, dejalo para cuando el repartidor te cobre.";
 
 /** Aviso de lo que la referencia **no** hace (honestidad del flujo offline). */
 export const PAYMENT_REFERENCE_NOTICE =
-  'Anotar la referencia no marca el pedido como pagado: la tienda lo concilia con el banco y el ERP lo registra. El estado del pago se ve arriba.';
+  "Anotar la referencia no marca el pedido como pagado: la tienda lo concilia con el banco y el ERP lo registra. El estado del pago se ve arriba.";
 
 function isDeliverableEmail(value: string): boolean {
   const trimmed = value.trim();
-  if (trimmed.length === 0 || trimmed.length > PAYMENT_REFERENCE_LIMITS.email) return false;
+  if (trimmed.length === 0 || trimmed.length > PAYMENT_REFERENCE_LIMITS.email)
+    return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmed);
 }
 
@@ -50,10 +51,10 @@ export function validatePaymentReference(
 ): PaymentReferenceErrors {
   const errors: PaymentReferenceErrors = {};
   const email = input.email.trim();
-  if (email === '') {
-    errors.email = 'Escribe el correo con el que hiciste el pedido.';
+  if (email === "") {
+    errors.email = "Escribe el correo con el que hiciste el pedido.";
   } else if (!isDeliverableEmail(email)) {
-    errors.email = 'El correo no parece valido (ejemplo: nombre@dominio.com).';
+    errors.email = "El correo no parece valido (ejemplo: nombre@dominio.com).";
   }
   const reference = input.reference.trim();
   if (reference.length < PAYMENT_REFERENCE_LIMITS.referenceMin) {
@@ -65,6 +66,31 @@ export function validatePaymentReference(
 }
 
 /** `true` si no hay ningun error de campo. */
-export function referenceErrorsAreClear(errors: PaymentReferenceErrors): boolean {
+export function referenceErrorsAreClear(
+  errors: PaymentReferenceErrors,
+): boolean {
   return Object.values(errors).every((value) => value === undefined);
+}
+
+/**
+ * Que bloque le toca al pedido **debajo del resumen** (D15 + §35), en un solo sitio para que la
+ * confirmacion y el seguimiento no puedan contar cosas distintas:
+ *
+ * - `none` — el pedido ya tiene referencia, o esta anulado: no hay nada que ofrecer.
+ * - `pay-on-delivery` — el comprador eligio **pagar al recibir**: no hay ninguna referencia que
+ *   anotar (paga al recibir o retirar y el cobro lo registra la tienda), asi que en vez del
+ *   formulario se le **explica**.
+ * - `reference` — «pagar ahora» (transferencia/QR): anotar la referencia sigue teniendo sentido
+ *   para que la tienda la concilie con el cobro.
+ */
+export function referenceBoxFor(order: {
+  paymentReference: string | null;
+  status: string;
+  webInvoicingMode: string;
+}): "none" | "pay-on-delivery" | "reference" {
+  if (order.paymentReference !== null || order.status === "CANCELLED")
+    return "none";
+  return order.webInvoicingMode === "PAY_ON_DELIVERY"
+    ? "pay-on-delivery"
+    : "reference";
 }

@@ -2924,6 +2924,26 @@ reporta **1 hallazgo nuevo ajeno** a este incremento (`web-content.component.scs
 está en el diff): se anota y **no** se regenera la línea base para taparlo; el **paso 4a** sigue
 pendiente; y el conjunto completo de Karma lo corre el `pre-push`.
 
+**Ejecutado el paso 4a (la tienda, cierre del §36):** con «pagar al recibir» —el **defecto** del
+checkout— la confirmación y el seguimiento ya **no** piden una referencia de pago: piden un dato que no
+cierra nada, porque el comprador paga al recibir o retirar y el cobro lo registra la tienda. La decisión
+vive en **una** función pura (`referenceBoxFor`, en `src/lib/payment-reference.ts`: `none` /
+`pay-on-delivery` / `reference`) que usan **las dos** páginas, y el aviso lo pinta
+`PaymentReferencePayOnDelivery`; con «pagar ahora» (transferencia/QR) el formulario **sigue**, que es
+cuando anotar la referencia sirve para conciliar. **Medido después**: caso E2E nuevo (aviso visible,
+formulario ausente, `paymentStatus: pending` y `paymentReference: null` en el canal, y **el mismo bloque
+en el seguimiento**), el caso de la referencia **crea ya el pedido con «pagar ahora»** (el helper E2E no
+reenviaba `webInvoicingMode`: se añadió), suite funcional **68 pasan** con la base **restaurada y
+verificada**, `lint`/`tsc`/`build` **0**, **visual 17/17** (sin mover ninguna captura), **a11y 20/20** y
+**perf 6/6**. **Dos cosas declaradas, medidas y no tapadas**: **(a)** queda **1 caso rojo ajeno** en la
+suite funcional (`resenas.spec.ts`: el ERP responde **400** «No existe el tipo de cambio del día entre
+BOB y USD»; **medido**: el único tipo de cambio de la base es del **2026-09-30** y hoy es **2026-10-01**,
+porque la semilla registra **un día** y no un rango) ⇒ **el gate funcional depende del tipo de cambio del
+día**: es el siguiente hueco, y no se arregla inventando una fila a mano; **(b)** el gate de rendimiento
+falló **una** vez en la portada (**LCP 1236 ms** vs 800) y **repetido con el mismo código da 308 y
+292 ms** con los mismos pesos ⇒ **ruido** de la corrida que va detrás de la suite larga, no regresión.
+**El §36 queda cerrado**: los pasos 1 a 4 están entregados y medidos.
+
 
 
 

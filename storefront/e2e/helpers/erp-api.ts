@@ -299,6 +299,8 @@ export interface ApiOrderInput {
   /** Tienda de retiro (obligatoria con `deliveryType: "STORE"`); es su `code`. */
   pickupStoreCode?: string;
   paymentMethod?: "TRANSFER" | "QR" | "CASH_ON_DELIVERY" | "STORE_PICKUP";
+  /** F7: modalidad de facturacion que elige el comprador (el canal por defecto: al recibir). */
+  webInvoicingMode?: "PAY_NOW" | "PAY_ON_DELIVERY";
   items: Array<{ itemId: number; quantity: number }>;
   customer?: ApiOrderCustomer;
   notes?: string;
@@ -446,7 +448,9 @@ export async function quote(
   return apiPost<ApiQuote>("/storefront/quote", {
     cityCode,
     items,
-    ...(pickup?.deliveryType !== undefined ? { deliveryType: pickup.deliveryType } : {}),
+    ...(pickup?.deliveryType !== undefined
+      ? { deliveryType: pickup.deliveryType }
+      : {}),
     ...(pickup?.pickupStoreCode !== undefined
       ? { pickupStoreCode: pickup.pickupStoreCode }
       : {}),
@@ -471,7 +475,9 @@ export async function findPickupStore(
   if (city === undefined) {
     throw new Error(`El canal no publica la ciudad ${cityCode}.`);
   }
-  const candidates = (city.stores ?? []).filter((candidate) => candidate.pickupEnabled);
+  const candidates = (city.stores ?? []).filter(
+    (candidate) => candidate.pickupEnabled,
+  );
   if (candidates.length === 0) {
     throw new Error(
       `La ciudad ${cityCode} no publica ninguna tienda con retiro (pickupEnabled): el caso necesita una para medir.`,
@@ -481,10 +487,20 @@ export async function findPickupStore(
   const rejected: string[] = [];
   for (const store of candidates) {
     try {
-      await quote(cityCode, items, { deliveryType: "STORE", pickupStoreCode: store.code });
-      return { code: store.code, name: store.name, cityName: city.name, cityCode: city.code };
+      await quote(cityCode, items, {
+        deliveryType: "STORE",
+        pickupStoreCode: store.code,
+      });
+      return {
+        code: store.code,
+        name: store.name,
+        cityName: city.name,
+        cityCode: city.code,
+      };
     } catch (error) {
-      rejected.push(`${store.code}: ${error instanceof Error ? error.message : String(error)}`);
+      rejected.push(
+        `${store.code}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
   throw new Error(
@@ -501,7 +517,12 @@ export async function placeOrder(input: ApiOrderInput): Promise<ApiOrder> {
     paymentMethod: input.paymentMethod ?? "TRANSFER",
     items: input.items,
     customer: input.customer ?? {},
-    ...(input.pickupStoreCode !== undefined ? { pickupStoreCode: input.pickupStoreCode } : {}),
+    ...(input.pickupStoreCode !== undefined
+      ? { pickupStoreCode: input.pickupStoreCode }
+      : {}),
+    ...(input.webInvoicingMode !== undefined
+      ? { webInvoicingMode: input.webInvoicingMode }
+      : {}),
   });
 }
 
