@@ -78,13 +78,25 @@ start` **si** carga— entraria en el build que sirven los gates. Al leerla en e
 peticion basta **reiniciar** en local y **volver a desplegar** en Vercel (el entorno del despliegue
 se fija al crearlo).
 
-**Estado de cada entorno** (medido, 2026-10-01):
+**Estado de cada entorno** (medido, 2026-10-02):
 
 | Entorno | Valor | Como se cambia |
 | ------- | ----- | -------------- |
 | Local (`.env.local`, ignorado por git) | `true` (encendido, por decision del usuario) | editar `.env.local` y reiniciar `npm run dev` |
-| **Produccion (Vercel, proyecto `erp-storefront`)** | `true` (**encendido**, por decision del usuario) | cambiar la variable en el proyecto y **volver a desplegar**; para apagarlo, `false` (o borrarla) y redesplegar |
+| **Produccion (Vercel, proyecto `erp-storefront`)** | `true` (**encendido**, por decision del usuario) | cambiar la variable en el proyecto (entorno `production`) y **volver a desplegar**; para apagarlo, `false` (o borrarla) y redesplegar |
 | Gates (funcional, visual, a11y, perf) | `false` — **fijado en las dos configuraciones de Playwright** | los gates miden el **defecto** (D24); `STOREFRONT_SHOW_PLACEHOLDERS=true npm run e2e` mide la demo a proposito |
+
+**El apagado, paso a paso**: `npx vercel env rm STOREFRONT_SHOW_PLACEHOLDERS production` (o ponerla a
+`false`) y **volver a desplegar** produccion. El redespliegue hace falta **no** porque la variable se
+incruste en el build —se lee en el servidor en cada peticion—, sino porque **cada despliegue de
+Vercel fija su entorno al crearse**: un despliegue ya existente no ve la variable nueva.
+
+**Medido en produccion** (`dpl_Fnvr22UrdARz77jGZMLwLM1bBmM3`, `Ready`, alias
+`erp-storefront-inky.vercel.app`, 2026-10-02): la ficha de `smartphone-galaxy-a15-128gb` responde
+**200** con **103** URLs `/_next/image?url=https%3A%2F%2Fpicsum.photos…` en el HTML y **0**
+`data-placeholder`; el optimizador de esa imagen responde **200** `image/jpeg` **87 795** bytes y el
+`<img>` de la galeria mide **naturalWidth 576** (la foto cargo de verdad). Control negativo en local
+(misma ficha, `STOREFRONT_SHOW_PLACEHOLDERS=false`): **4** `data-placeholder`, **0** `<img>`.
 
 
 ### Regla «server-only» (decision D10)
