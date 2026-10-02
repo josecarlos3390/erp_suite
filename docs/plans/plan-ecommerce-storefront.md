@@ -3042,6 +3042,97 @@ antes de correrlo (el primer intento midió el código viejo y dio un falso rojo
 suite corría**; esa corrida **no cuenta** y se repitió sin builds concurrentes (la regla «no compiles
 `src/` con un E2E en vuelo» ya estaba escrita para el gate del ERP y aquí se pagó una vez).
 
+---
+
+## §38 — Biblioteca de medios del e-commerce: dónde se cargan las imágenes (2026-10-02)
+
+**Lo que preguntó el usuario**: «¿dónde se deben cargar las imágenes? ¿existe alguna pestaña o algún
+lugar donde proveer imágenes para los artículos de nuestro ecommerce?», sobre la regla de arquitectura
+que él mismo había fijado: «siempre tratemos de preservar la alta disponibilidad del ERP ya que es el
+motor central, y no quisiera cargarle trabajo, si es que podemos externalizar algunas cosas».
+
+**Decisión (D25): por el ERP cruzan datos y permisos; los bytes y el CPU pesado se quedan fuera.** El
+almacén es **Cloudflare R2** (bucket `erp-media`, host público
+`pub-43d22e70fe3e40b88de89bac6537eaa9.r2.dev`), que **no cobra la salida** y cuya cuenta gratuita da
+10 GB-mes, 1 M de operaciones de escritura y 10 M de lectura al mes. El ERP **firma** la subida (SigV4
+con `node:crypto`, **sin dependencias nuevas**: solo se firma `host`, `UNSIGNED-PAYLOAD`, región
+`auto`) y el **navegador hace el `PUT` directo al bucket**. Medido en Chromium con un PNG de
+4 001 006 B: **1 `PUT` a R2 y 0 peticiones al ERP desde la página**, con el progreso real
+(`upload.onprogress`) en [11,24,32,55,64,65,71,77,86,92,100,100] y 26,9 s de reloj.
+
+**Los seis incrementos, cada uno medido antes y después:**
+
+1. **La firma** (`POST /media/upload-target`, permiso `items:edit`): clave
+   `tenant/<empresa>/item/<id>/<uuid>.<ext>`, tipos `image/jpeg|png|webp|avif` y tope de **5 MB**; sin
+   configuración responde **503** nombrando **solo los nombres** de las variables que faltan.
+2. **La galería del artículo** (`ItemImage`): `GET/POST /items/:id/images`, `PATCH …/images/order`,
+   `POST …/images/:imageId/primary` y `DELETE …/images/:imageId`; la **primera** imagen nace
+   **principal**, el `sortOrder` es `max+1` —no el número de filas, que se repetiría tras un
+   borrado— y la galería se publica **con la principal delante**.
+3. **La biblioteca de la empresa** (`MediaAsset` + `POST/GET /media/assets`, `DELETE /media/assets/:id`)
+   con **comprobación del objeto antes de registrar** (`HEAD` firmado: **685 ms** en frío / **317 ms**
+   en caliente) y `upsert` por `(empresa, clave)`, así que repetir el alta no duplica.
+4. **La carga masiva por SKU** (`npm run media:import-images`): **simulación por defecto**, emparejado
+   fichero → artículo por una **pieza pura** (25 casos) e **idempotencia por `alt`+`url`** —la clave
+   lleva `uuid`, así que no sirve como identidad estable: medido—.
+5. **El ciclo cerrado**: borrar la foto **borra el objeto y después la fila**; si el bucket falla, la
+   fila **se conserva** (**502** medido). El navegador **no** puede firmar un `DELETE` —medido: el
+   preflight del bucket responde **204** para `PUT/GET/HEAD` y **403** para `DELETE`—, así que la
+   compensación no depende de tocar el CORS del bucket.
+6. **Las tarjetas de ejemplo** (`npm run media:item-cards`): una imagen **propia por artículo**
+   —900×1200 PNG de **35,5–54,0 kB** (el **1,06 %** del tope), con el nombre, el código, la categoría
+   y su **color** (paleta de 12 elegida con un hash **FNV-1a** del código de la categoría, tinta con
+   contraste **WCAG ≥ 4,5:1**) y la etiqueta visible **«IMAGEN DE EJEMPLO»**—, renderizadas en
+   **Chromium** (Playwright resuelto del `node_modules` hermano, sin añadir dependencias): **137 en
+   13,6 s**, **reproducibles byte a byte**, cargadas con la herramienta del punto 4.
+
+**El modo demostración (D24, con el defecto intacto)**: `STOREFRONT_SHOW_PLACEHOLDERS`, **sin** prefijo
+`NEXT_PUBLIC_` —medido en `next@14.2.32`: el plugin `define-env` **incrusta** `NEXT_PUBLIC_*` en el
+build, así que con el prefijo el interruptor quedaría cocido en `.next` y el `true` de `.env.local`
+entraría en el build que sirven los gates—; el defecto sigue **apagado** (monograma de D24) y los
+gates lo **fijan a `false`** porque con `true` el mismo gate visual mueve **7 de 17** capturas.
+
+**Cargado en PRODUCCIÓN (2026-10-02).** Lo pidió el usuario: «las fotos las tienes? porque aun no las
+veo en el ecommerce» → «hay que hacerlo en vercel» → «carga las tarjetas». El generador **solo habla
+con la API** (leer artículos, firmar y registrar; **nunca** Prisma), así que apuntarlo a producción es
+**una variable**, no la base remota:
+`ERP_API_URL=https://backend-erp-production-5c3b.up.railway.app npm run media:item-cards -- --apply --replace --primary`.
+Medido: **137** subidas a R2, **137** registradas, **324** filas de relleno (`picsum.photos`) borradas,
+**0** fallidas, **127,1 s** (100,6 s subiendo y 42,1 s pidiendo firmas). Auditoría por API de los
+**137** artículos: `filas=137 · picsum=0 · r2=137 · principales=137`. La ficha pública
+(`/productos/smartphone-galaxy-a15-128gb`) sirve ya `/_next/image?url=https://pub-…r2.dev/…` y
+`/buscar` queda con **0** marcadores; el PNG del host público se descargó (**45 321 B**, `HEAD` 200
+`image/png`) y se **miró**: 900×1200 con «IMAGEN DE EJEMPLO», el nombre, la categoría y el código.
+**Un dato que parece un fallo y no lo es**: el resumen de la herramienta informa `principales: 0`
+porque **el alta ya deja principal la primera imagen del artículo** (`POST /items/:id/images`) y el
+script solo promueve cuando no lo es; la auditoría lo confirma con **137 principales**.
+
+**Lo que sigue con relleno, y no es la galería.** `/` y `/categorias` conservan **18** y **15** URLs de
+relleno **distintas**, y son los **banners** (`banner-tech`, `banner-linea`, `banner-retiro`) y las
+**tarjetas de categoría** (`cat-*`) del sembrado: contenido del CMS y del maestro de grupos, **no**
+fotos de artículo. La biblioteca de medios ya permite sustituirlos desde el ERP.
+
+**Caché medida.** El ERP **no** cachea el catálogo (0 coincidencias de memo/caché en
+`storefront.service.ts`); la tienda sí, por endpoint (`revalidate`: producto **60 s**, catálogo **60 s**,
+banners **120 s**, categorías **300 s**, marcas **600 s**) y con *stale-while-revalidate* —medido: la
+ficha necesitó un par de peticiones para refrescar y `/buscar` quedó limpia, mientras `/` y
+`/categorias` mantenían **estable** su relleno, que es el de banners y categorías—.
+
+**Disco (medido y liberado el mismo día, a petición del usuario).** `erp-frontend/.angular/cache`
+ocupaba **62,46 GB** (más de 30 paquetes de webpack de ~800 MB acumulados por `ng build`/`ng test`; la
+carpeta está en el `.gitignore`): `npx ng cache clean` deja `D:` en **67,82 GB** libres desde **5,35**
+(**62,47 GB** recuperados). Ese solo hallazgo explica el **96,6 %** de ocupación que había hecho
+fallar `/health` una vez.
+
+**Declarado:** (a) las tarjetas son **ejemplos honestos**, **no** fotos del producto; (b) el **dominio
+propio** se retoma cuando el usuario compre uno —añadirlo al bucket, cambiar `R2_PUBLIC_BASE` e
+`IMAGE_REMOTE_HOSTS` en local, Railway y Vercel, redesplegar y verificar por HTTP—; (c) el CMS de
+**páginas** sigue **sin** campo de imagen (`WebPage` no tiene columna y la tienda las pinta como
+texto); (d) `placehold.co` está en la lista de marcadores del **código** pero **no** en los
+`remotePatterns` de `next.config.mjs` (si apareciera, el `onError` cae al monograma); (e) el modo
+demostración queda **encendido** en producción por decisión del usuario y es **inerte** para los
+artículos, porque su galería ya no tiene marcadores.
+
 
 
 
