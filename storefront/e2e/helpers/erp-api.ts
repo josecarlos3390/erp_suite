@@ -952,34 +952,67 @@ interface ApiExchangeRate {
  * crea con el valor del **último tipo de cambio de ese par** (lo que haría una persona) y el
  * `teardown` del arnés lo revierte, porque restaura la base entera: la suite no deja configuración
  * de más.
+ *
+ * **El día es el del TENANT, no el de UTC** (medido el 2026-10-01 a las 20:28 de Bolivia, con UTC ya
+ * en el 2026-10-02): el ERP resuelve el día con `Tenant.timeZone` (`America/La_Paz`) y el helper
+ * usaba `new Date().toISOString()`, así que provisionaba el tipo de cambio del **día siguiente** y
+ * el caso de las reseñas volvía a caer con el mismo 400 por la noche. La zona se pregunta al ERP
+ * (`GET /settings`), no se codifica.
  */
 export async function ensureTodayExchangeRate(
   pair: { from: string; to: string } = { from: "USD", to: "BOB" },
 ): Promise<{ created: boolean; rate: number | null; date: string }> {
-  const today = new Date().toISOString().slice(0, 10);
   const token = await erpAdminLogin();
+  const tenantDay = await tenantToday(token);
   const existing = await adminGet<{ data: ApiExchangeRate[]; total: number }>(
     token,
     `/exchange-rates?fromCurrency=${pair.from}&toCurrency=${pair.to}` +
-      `&dateFrom=${today}&dateTo=${today}&limit=1`,
+      `&dateFrom=${tenantDay}&dateTo=${tenantDay}&limit=1`,
   );
   if (Number(existing.total) > 0) {
-    return { created: false, rate: Number(existing.data[0]?.rate ?? 0), date: today };
+    return { created: false, rate: Number(existing.data[0]?.rate ?? 0), date: tenantDay };
   }
   const latest = await adminGet<ApiExchangeRate | null>(
     token,
     `/exchange-rates/latest?from=${pair.from}&to=${pair.to}`,
   );
   if (latest === null || !Number.isFinite(Number(latest.rate))) {
-    return { created: false, rate: null, date: today };
+    return { created: false, rate: null, date: tenantDay };
   }
   await adminPost(token, "/exchange-rates", {
-    date: today,
+    date: tenantDay,
     fromCurrency: pair.from,
     toCurrency: pair.to,
     rate: Number(latest.rate),
   });
-  return { created: true, rate: Number(latest.rate), date: today };
+  return { created: true, rate: Number(latest.rate), date: tenantDay };
+}
+
+/** Zona horaria del tenant tal como la publica el ERP (default declarado del backend). */
+const DEFAULT_TENANT_TIME_ZONE = "America/La_Paz";
+
+/**
+ * **El día del tenant** (`YYYY-MM-DD`): el mismo criterio con el que el ERP resuelve la fecha del
+ * documento (`Tenant.timeZone`), porque el tipo de cambio y los correlativos se evalúan contra él.
+ * Si el ERP no publica la zona se usa la del default del backend y se avisa, en vez de caer a UTC.
+ */
+async function tenantToday(token: string): Promise<string> {
+  let timeZone = DEFAULT_TENANT_TIME_ZONE;
+  try {
+    const settings = await adminGet<{ timeZone?: string }>(token, "/settings");
+    if (typeof settings.timeZone === "string" && settings.timeZone.trim() !== "") {
+      timeZone = settings.timeZone.trim();
+    }
+  } catch {
+    // Sin `/settings` el gate no se rompe: se usa la zona por defecto del backend.
+  }
+  // `en-CA` formatea como `YYYY-MM-DD`, que es el formato que espera `dateFrom`/`date`.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 /** `POST` autenticado contra el ERP (mismo contrato de errores que `adminPatch`). */

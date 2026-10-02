@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { getAllProducts, getProduct, type ApiProduct } from "./helpers/erp-api";
 import { expectAvailability } from "./helpers/freshness";
+import { isPlaceholderImage } from "../src/lib/media";
 
 const DEFAULT_CITY = "SCZ";
 const DEFAULT_CITY_NAME = "Santa Cruz de la Sierra";
@@ -136,6 +137,37 @@ test.describe("Ficha de producto", () => {
       await expect(thumbs).toHaveCount(detail.images.length);
     } else {
       await expect(thumbs).toHaveCount(0);
+    }
+
+    // **La foto principal de la ficha es la principal del canal** (biblioteca de medios,
+    // 2026-10-01). El canal la publica aparte (`image`, de `ItemImage.isPrimary`) y la galeria por
+    // `sortOrder`, asi que una foto subida y marcada principal nace con el `sortOrder` **mayor**:
+    // sin ponerla delante, la ficha pintaba el marcador y dejaba la foto del usuario de ultima
+    // miniatura (medido con una foto real subida a R2: `naturalWidth` 288 una vez corregido). El
+    // oraculo es lo que publica el canal, no la app: `productGallery(images, image)`.
+    const gallery = page.getByTestId("product-gallery");
+    if (detail.images.length > 0) {
+      const expected = detail.image ?? detail.images[0] ?? null;
+      const head = expected === null ? [] : [expected, ...detail.images.filter((url) => url !== expected)];
+      const main = gallery.locator("img").first();
+      if (isPlaceholderImage(head[0])) {
+        // Un marcador de posicion del seed no se pinta como foto (D24): la caja es el monograma.
+        await expect(main).toHaveCount(0);
+        await expect(gallery.locator('[data-placeholder="true"]').first()).toBeVisible();
+      } else {
+        // Foto real: se pinta y **carga bytes de verdad** (no un placeholder local).
+        await expect(main).toBeVisible();
+        const src = await main.getAttribute("src");
+        const ofuscado = decodeURIComponent(src ?? "");
+        expect(ofuscado).toContain(head[0] ?? "");
+        await expect
+          .poll(
+            async () =>
+              main.evaluate((node) => (node as HTMLImageElement).naturalWidth),
+            { timeout: 15_000 },
+          )
+          .toBeGreaterThan(1);
+      }
     }
 
     // El boton de compra respeta la existencia de la ciudad.

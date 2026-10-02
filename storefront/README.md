@@ -51,7 +51,7 @@ tienda cargado.
 | `NEXT_PUBLIC_SITE_URL` | no (default `http://localhost:3000`) | Canonicos, Open Graph, sitemap y JSON-LD **del modo de una empresa por despliegue**; con `STOREFRONT_CHANNELS` cada host deriva la suya. |
 | `NEXT_PUBLIC_SITE_NAME` | no (default `Tienda ERP`)           | Nombre por defecto (el de cada host sale de `STOREFRONT_CHANNELS`).           |
 | `NEXT_PUBLIC_SITE_DESCRIPTION` | no (default del codigo)      | Descripcion por defecto para buscadores y redes.                              |
-| `IMAGE_REMOTE_HOSTS`   | no (default: solo marcadores)        | Hosts **ajenos** de las fotos reales, separados por comas. Con varios dominios en un despliegue es la **union** de los hosts de todas las empresas. |
+| `IMAGE_REMOTE_HOSTS`   | no (default: solo marcadores)        | Hosts **ajenos** de las fotos reales, separados por comas y **sin** esquema ni barra final (`pub-xxxx.r2.dev`, no `https://pub-xxxx.r2.dev/`). Con varios dominios en un despliegue es la **union** de los hosts de todas las empresas. |
 
 ### Regla «server-only» (decision D10)
 
@@ -143,7 +143,9 @@ railway ssh -s backend-erp 'cd /app && NODE_OPTIONS=--max-old-space-size=768 \
 1. **New Project** → el repositorio **raíz** (`erp_suite`) → **Root Directory: `storefront`**.
 2. **Environment Variables**: `ERP_API_URL`, `STOREFRONT_API_KEY` (la de esa empresa),
    `STOREFRONT_CITY`, `NEXT_PUBLIC_SITE_URL=https://tienda-a.com`, `NEXT_PUBLIC_SITE_NAME`, y
-   `IMAGE_REMOTE_HOSTS` si tiene fotos propias.
+   `IMAGE_REMOTE_HOSTS` con el **host** del bucket de la biblioteca de medios (el
+   `R2_PUBLIC_BASE` del backend **sin** `https://`): sin el, la tienda no optimiza las fotos
+   subidas y pinta su monograma (ver «Fotos reales: la biblioteca de medios»).
 3. **Dominio**: el de esa empresa.
 
 **Modo B** — un proyecto, N dominios:
@@ -218,7 +220,8 @@ Medido en el despliegue de produccion (proyecto `erp-storefront`,
    marca** (`--sf-*` de `src/styles/brand.css`) y el **logo** siguen en el código: en el modo A se
    cambian en la hoja de marca de ese despliegue, en el modo B son comunes (D23 pendiente).
 3. **Las fotos reales** necesitan su host en `IMAGE_REMOTE_HOSTS` (y dejar de ser un marcador de
-   posición para que la tienda no dibuje su placeholder, D24).
+   posición para que la tienda no dibuje su placeholder, D24). La biblioteca de medios (§ «Fotos
+   reales») sube a Cloudflare R2: ese host tiene que estar declarado.
 4. **Un cambio de `STOREFRONT_CHANNELS` exige redesplegar** (Vercel congela la configuración del
    despliegue). El middleware lee la variable en runtime —medido con `next start`—, pero un
    despliegue nuevo la toma en su build.
@@ -304,7 +307,10 @@ npm run e2e
 ```
 
 El puerto y el entorno se pueden ajustar con `E2E_PORT`, `ERP_API_URL`, `STOREFRONT_API_KEY` y
-`STOREFRONT_CITY`. Los casos cubren: home con productos y ofertas vigentes, categoria padre con
+`STOREFRONT_CITY`. `IMAGE_REMOTE_HOSTS` (**el host del bucket de la biblioteca de medios**) lo pasa
+el propio `playwright.config.ts` al `webServer` con el valor de desarrollo por defecto: `next start`
+en modo produccion **no** lee `.env.local`, asi que sin ese paso la suite mediria la tienda sin el
+host declarado. Los casos cubren: home con productos y ofertas vigentes, categoria padre con
 productos de sus subcategorias, ficha con precio/disponibilidad/JSON-LD, busqueda, carrito
 (contador + linea + cantidades), checkout de invitado (cotizacion, alta real del pedido,
 idempotencia, error de existencia), referencia del pago offline, seguimiento publico y cambio de
@@ -408,6 +414,48 @@ publican desde el back office (**Configuracion → Contenido de la tienda**, per
 
 **Ventana de refresco** (declarada): la tienda cachea el contenido (`banners` 120 s, `pagina`
 600 s), asi que un cambio publicado se ve en ese plazo; un borrado tambien.
+
+### Fotos reales: la biblioteca de medios (Cloudflare R2)
+
+La tienda pinta la **foto que se sube al ERP**, no solo el monograma. El camino completo:
+
+1. **El ERP firma la subida** (`POST /media/upload-target`, permiso `items:edit`): devuelve una URL
+   firmada (PUT, 10 minutos) y la **URL publica** del objeto. Los bytes van del navegador a R2:
+   **nunca** pasan por la API.
+2. **La galeria se registra en el articulo** (`/items/:id/images`, con `url` = esa URL publica); el
+   objeto vive bajo un prefijo por empresa y articulo (`tenant/<id>/item/<id>/<uuid>.<ext>`).
+3. **El canal publica la galeria** (`images[]`, por `sortOrder`) y la **principal** aparte (`image`,
+   de `ItemImage.isPrimary`; si el articulo no tiene galeria cae a `Item.imageUrl`).
+4. **La tienda pinta**: `productGallery()` pone la **principal delante** (es el arreglo del
+   2026-10-01: subir la foto y marcarla principal la dejaba de **ultima** miniatura, con el canal
+   publicando por `sortOrder`, y la ficha seguia ensenando el marcador) y `ProductImage` dibuja la
+   foto con `next/image`; solo cuando la URL es un **marcador de posicion** (`picsum.photos`,
+   `fastly.picsum.photos`, `placehold.co`) o esta vacia se sustituye por el **monograma** (D24).
+
+**La variable que hace falta**: `IMAGE_REMOTE_HOSTS` con el **host** de `R2_PUBLIC_BASE` (el de
+`backend-erp/.env`) sin `https://` ni barra final:
+
+```
+IMAGE_REMOTE_HOSTS=pub-43d22e70fe3e40b88de89bac6537eaa9.r2.dev
+```
+
+- **Local**: va en `storefront/.env.local` (ignorado por git); el valor de desarrollo es el bucket
+  del backend local y esta documentado en `.env.example`.
+- **Produccion**: variable de entorno del proyecto de Vercel. Es un host, no una URL: `next/image`
+  solo optimiza los hosts declarados, y **no** es una allow-list de seguridad —el canal y la
+  galeria del ERP ya validan que la URL sea de la biblioteca—.
+- **Varios dominios en un despliegue**: es la **union** de los hosts de todas las empresas.
+- **Medido** (2026-10-01, `next.config.mjs` importado con y sin la variable): sin ella los patrones
+  son `["picsum.photos","fastly.picsum.photos"]`; con ella se anade `pub-…r2.dev`; con dos hosts
+  entran los dos. Y en el navegador, con el host declarado la ficha carga la foto real
+  (`naturalWidth` **288**, `src` = `/_next/image?url=https%3A%2F%2Fpub-…r2.dev%2F…`); sin el, la
+  imagen de la galeria **no** se pinta (el `src` no supera la validacion del optimizador) y el
+  hueco queda como placeholder.
+
+**Declarado**: la biblioteca de medios cubre hoy la **galeria del articulo**; los **banners y las
+paginas** del CMS siguen subiendose por URL (si su host es distinto hay que declararlo tambien). El
+arnes del gate funcional pasa `IMAGE_REMOTE_HOSTS` al servidor de la suite: `next start` en modo
+produccion **no** lee `.env.local` (ver `playwright.config.ts`).
 
 ### Retiro en tienda (F5): el comprador elige el punto y no paga envio
 

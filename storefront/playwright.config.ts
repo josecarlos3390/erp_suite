@@ -17,6 +17,18 @@ const STOREFRONT_API_KEY = process.env.STOREFRONT_API_KEY ?? 'tienda-dev-key-cam
 const STOREFRONT_CITY = process.env.STOREFRONT_CITY ?? 'SCZ';
 
 /**
+ * **Host de la biblioteca de medios (Cloudflare R2)** con el que corre el gate, para que
+ * `next/image` pueda optimizar las fotos reales: el servidor de la suite es `next start` en modo
+ * produccion y **no** lee `.env.local` (que es donde vive la variable en desarrollo), asi que la
+ * variable se pasa explicita al `webServer`. El valor es el host publico del bucket de desarrollo
+ * (el mismo `R2_PUBLIC_BASE` de `backend-erp/.env`, sin esquema); un despliegue pone el suyo por
+ * variable de entorno, igual que en produccion. Con `IMAGE_REMOTE_HOSTS` definida en el entorno,
+ * esa manda.
+ */
+const IMAGE_REMOTE_HOSTS =
+  process.env.IMAGE_REMOTE_HOSTS ?? 'pub-43d22e70fe3e40b88de89bac6537eaa9.r2.dev';
+
+/**
  * **Canales por host (T216-ter)**: el gate arranca la tienda con un mapa de **dos** dominios de
  * prueba (más el comodín `"*"` para los casos que navegan a `127.0.0.1`) para pinchar que la
  * resolución es por host: identidad, `robots.txt`, `sitemap.xml` y el **404** de un dominio no
@@ -108,6 +120,7 @@ export default defineConfig({
       STOREFRONT_CITY,
       STOREFRONT_CHANNELS,
       NEXT_PUBLIC_SITE_URL: BASE_URL,
+      IMAGE_REMOTE_HOSTS,
     },
   },
 });

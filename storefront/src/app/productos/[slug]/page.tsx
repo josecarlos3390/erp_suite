@@ -15,7 +15,7 @@ import { ServiceRequestForm } from "@/components/service-request-form";
 import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
 import { getCityContext } from "@/lib/city";
-import { getProduct, getRelated, type ProductSpec } from "@/lib/erp";
+import { getProduct, getRelated, type Product, type ProductSpec } from "@/lib/erp";
 import {
   describeShipping,
   formatDiscount,
@@ -23,6 +23,7 @@ import {
   formatMonths,
 } from "@/lib/format";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/jsonld";
+import { productGallery } from "@/lib/media";
 
 interface ProductPageProps {
   params: { slug: string };
@@ -44,12 +45,7 @@ export async function generateMetadata({
   const description =
     product.shortDescription ??
     `${product.name} disponible en la tienda en linea, con precio publicado por el ERP.`;
-  const images =
-    product.images.length > 0
-      ? product.images
-      : product.image !== null
-        ? [product.image]
-        : [];
+  const images = galleryImages(product);
   return {
     title,
     description,
@@ -61,6 +57,19 @@ export async function generateMetadata({
       ...(images.length > 0 ? { images } : {}),
     },
   };
+}
+
+/**
+ * Imagenes de la ficha, con la **principal delante** (`productGallery`, D24/2026-10-01): el canal
+ * publica la galeria por `sortOrder` y la principal aparte, asi que la foto que el usuario sube y
+ * marca como principal quedaria de ultima miniatura y la ficha seguiria pintando el marcador.
+ */
+function galleryImages(product: Product): string[] {
+  const gallery = productGallery(
+    product.images,
+    product.image ?? product.images[0] ?? null,
+  );
+  return gallery.length > 0 ? gallery : product.image !== null ? [product.image] : [];
 }
 
 function groupSpecs(
@@ -102,12 +111,7 @@ export default async function ProductPage({
   }
 
   const related = await getRelated(product.slug, city.code);
-  const images =
-    product.images.length > 0
-      ? product.images
-      : product.image !== null
-        ? [product.image]
-        : [];
+  const images = galleryImages(product);
   const discount = formatDiscount(product.discountPct);
   const hasOffer = product.salePrice !== null;
   // Promo del canal (D21): descuento **solo de la tienda**. Se rotula aparte de la oferta

@@ -39,7 +39,7 @@ export function ProductGallery({ images, name }: ProductGalleryProps): JSX.Eleme
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" data-testid="product-gallery">
       <div
         className="relative overflow-hidden rounded-card border border-line bg-base shadow-card"
         onMouseEnter={() => setZoom(true)}
