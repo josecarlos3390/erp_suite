@@ -322,5 +322,89 @@ VPS, restaurar el volcado del VPS sobre la base de Railway **antes** de devolver
 
 ---
 
+## 13. Alternativas evaluadas: Dokploy vs OpenShip (verificado 2026-10-02)
+
+**Por qué esta sección existe:** antes de contratar nada hay que decidir **la plataforma**, y esa
+decisión se toma con datos del repositorio, no con impresiones. El usuario preguntó por OpenShip.
+
+### OpenShip — qué es (medido hoy)
+
+| Dato | Valor |
+|---|---|
+| Repositorio | `oblien/openship` — «Self-hosted deployment platform» ([GitHub](https://github.com/oblien/openship)) |
+| Licencia | **Apache-2.0**, con un matiz que ellos mismos documentan: el motor de correo (**iRedMail**) es **GPL** y viaja en varias distribuciones del panel **aunque no uses el correo** |
+| Antigüedad | Creado el **2026-03-05** ⇒ **~7 meses** |
+| Actividad | Último push **2026-10-02** (hoy); **14 341** estrellas, **1 280** forks, **141** issues abiertas |
+| Cómo corre | Linux con Docker ⇒ **modo Compose**: Postgres + Redis + API + panel + **borde OpenResty en :80/:443**. El contenedor de la API **monta el socket de Docker del host** (su documentación avisa: solo en un host de confianza) |
+| Interfaces | App de escritorio, panel web, CLI, SDK y **endpoint MCP** |
+
+**Lo que trae y a nosotros nos sirve:** backups con políticas y **restauración** (retención por
+defecto **7**, incrementales por bloques de 8 MiB, verificación por checksum, restauración de
+Postgres **transaccional**) · **monitorización con coste medido** (~1,4 µs por petición, fuera del
+camino de respuesta, IP con hash salado diario y **nunca persistida**) · **correo propio** (SMTP con
+DKIM/SPF/DMARC) · **CDN** (HTTP/3, Brotli, purga) · **dominio gratis `*.opsh.io`** · despliegue de un
+`docker-compose` **tal cual**.
+
+**Lo que hay que mirar con lupa — y no lo digo por prejuicio, lo dicen sus documentos:**
+
+1. **Su gate de release no está verde por su propia cuenta.** La auditoría de backups del
+   2026-09-25 declara **cuatro errores de tipos preexistentes** en el SDK de Cloud y concluye
+   literalmente que el gate completo **no puede considerarse verde** hasta resolverlos.
+2. **El destino S3 no está probado contra un proveedor real:** su E2E de Docker «*does not exercise
+   … a live S3 provider*». Es decir: **no verifiqué que sus backups puedan ir a nuestro R2**, y ellos
+   tampoco lo garantizan por prueba.
+3. **El respaldo pasa por su worker**, no va directo origen→destino: si el worker se cae a mitad, el
+   backup no termina.
+4. **Sin cifrado a nivel de aplicación** en reposo (hay que ponerlo en el destino).
+5. **El dominio gratis `*.opsh.io` se sirve por su nube y llega a la caja por `:80` plano** (el TLS lo
+   termina su borde) ⇒ tráfico **sin cifrar** entre su borde y el VPS. Para un ERP con login: **solo
+   para el ensayo**, nunca con datos de cliente.
+6. **Correo propio:** tienta para resolver de una vez el bloqueo de Resend, pero el servidor SMTP no
+   es la parte difícil — lo difícil es la **reputación de la IP** (muchos proveedores bloquean el
+   puerto 25 saliente, hace falta PTR y calentar la IP para que Gmail/Outlook no lo manden a spam).
+
+### Comparación en los ejes que deciden **para nosotros**
+
+| Eje | Dokploy | OpenShip |
+|---|---|---|
+| Madurez | Más recorrido y mucha más superficie de respuestas de terceros | **7 meses**, muy activo, documentación «en construcción» por su propio aviso |
+| Encaje con nuestro repo | Compose + Dockerfile: directo | Compose + Dockerfile: **igual de directo** |
+| Backups a nuestro R2 | **Verificado en su documentación** (destino S3-compatible) | Políticas mejores (incrementales), pero **S3 sin verificar** por su E2E |
+| Monitorización | Métricas de contenedor | **Mejor**: analítica por petición, con coste medido y privacidad por diseño |
+| Correo | No trae | **Sí** (con el coste de reputación y la licencia GPL del motor) |
+| CDN | No trae (se pone Cloudflare delante) | **Integrado** |
+| Dominio sin comprar | No | **`*.opsh.io`** (solo válido para el ensayo) |
+| Superficie de seguridad | Panel + Docker del host | Panel + **socket de Docker montado**: host-privilegiado por diseño |
+
+### Veredicto
+
+- **Para producción del ERP de un cliente, hoy: Dokploy.** No porque sea mejor en funciones —en
+  monitorización, correo y CDN OpenShip va por delante— sino porque es **más viejo, más probado y con
+  más gente que ya se chocó con lo mismo**. Y porque el criterio que **no** se negocia en nuestro caso
+  es *«el backup restaura»*: ahí Dokploy tiene la pieza verificada (destino S3-compatible → nuestro
+  R2) y OpenShip la tiene **sin verificar**.
+- **OpenShip merece una prueba, y su sitio natural es la Fase 0**, porque toca de frente tres de
+  nuestros problemas abiertos: **dominio sin comprar** (`*.opsh.io` para el ensayo), **correo sin
+  Resend** y **CDN sin Vercel**.
+- **La decisión no es irreversible, y eso es lo importante:** el activo real son los
+  **`docker-compose` y los Dockerfile del repositorio**, no el panel. Las dos plataformas despliegan
+  un compose tal cual, así que cambiar de panel es **un día de trabajo, no un proyecto**. Regla que se
+  fija aquí: **el compose del repositorio es la fuente de verdad** y ninguna plataforma se lleva nada
+  propio dentro.
+- **Coolify** pertenece a la misma familia y se evaluaría con **esta misma lista de comprobación**;
+  no lo he medido hoy y no opinaré de memoria.
+
+### Qué añadir a la Fase 0 si se prueba OpenShip
+
+1. Instalarlo en **el mismo VPS** (o en un segundo VPS pequeño) y desplegar **el mismo compose**.
+2. **Probar el backup contra nuestro R2 de verdad** —es el punto débil que ellos declaran— y
+   **restaurarlo**, con la huella de las **199 tablas**.
+3. Medir el coste real de la monitorización con **nuestro** tráfico (su cifra de 1,4 µs está medida
+   en **su** imagen y su hardware, y ellos mismos la califican de orden de magnitud).
+4. Confirmar el modo de correo **sin** encenderlo para producción hasta tener PTR y reputación.
+5. **No** usar `*.opsh.io` con datos de cliente (llega por `:80` plano).
+
+---
+
 *Este plan se ejecuta por fases y se actualiza con cada una. El procedimiento operativo vigente sigue
 en `docs/plans/runbook-go-live.md`; la versión canónica de restricciones, en `AGENTS.md`.*
