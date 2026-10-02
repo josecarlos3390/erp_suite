@@ -35,6 +35,19 @@ const FIXTURE_URL = `http://127.0.0.1:${FIXTURE_PORT}`;
 const ERP_API_URL = process.env.ERP_API_URL ?? "http://localhost:3001";
 const RECORD = process.env.STORE_VISUAL_RECORD === "1";
 
+/**
+ * **Modo demostracion de imagenes apagado a proposito en este gate** (`STOREFRONT_SHOW_PLACEHOLDERS`).
+ *
+ * Medido antes de decidir: el **fixture grabado si trae imagenes de relleno** (16 coincidencias de
+ * `picsum.photos`: galerias de producto, banners de la home y las tarjetas de categoria), asi que
+ * con la bandera encendida las **17 capturas** y el presupuesto de rendimiento medirian fotos
+ * aleatorias descargadas de internet en vez del defecto del producto. El gate mide el **defecto**
+ * (D24) y por eso la apaga; `next start` carga `.env.local` (medido), de ahi el valor explicito
+ * —`@next/env` no pisa lo que ya viene en el entorno del proceso—. Para medir la demo:
+ * `STOREFRONT_SHOW_PLACEHOLDERS=true npm run e2e:visual`.
+ */
+const SHOW_PLACEHOLDERS = process.env.STOREFRONT_SHOW_PLACEHOLDERS ?? "false";
+
 export default defineConfig({
   testDir: "./e2e/visual",
   fullyParallel: false,
@@ -91,6 +104,7 @@ export default defineConfig({
         STOREFRONT_API_KEY: "fixture-visual",
         STOREFRONT_CITY: "SCZ",
         NEXT_PUBLIC_SITE_URL: BASE_URL,
+        STOREFRONT_SHOW_PLACEHOLDERS: SHOW_PLACEHOLDERS,
       },
     },
   ],

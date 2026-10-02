@@ -29,6 +29,20 @@ const IMAGE_REMOTE_HOSTS =
   process.env.IMAGE_REMOTE_HOSTS ?? 'pub-43d22e70fe3e40b88de89bac6537eaa9.r2.dev';
 
 /**
+ * **Modo demostracion de imagenes apagado a proposito en el gate** (`STOREFRONT_SHOW_PLACEHOLDERS`).
+ *
+ * El gate mide el comportamiento **por defecto** de la tienda (D24: un marcador de posicion no es
+ * una foto del producto). Medido al implementar el modo: `next start` **si** carga `.env.local`
+ * (`@next/env` lo incluye para `production` y `NextServer` llama `loadEnvConfig({ dev: false })`),
+ * asi que sin este pin la bandera de la demo local encenderia la tienda para toda la suite y los
+ * casos que pinchan el monograma (`e2e/producto.spec.ts`, `data-placeholder`) medirian otra cosa.
+ * El valor explicito gana a `.env.local` porque `@next/env` **no** pisa lo que ya viene en el
+ * entorno del proceso (medido con el mismo cargador). Con el entorno limpio —como corre el gate—
+ * el pin deja `false`; para medir la demo por la suite: `STOREFRONT_SHOW_PLACEHOLDERS=true`.
+ */
+const SHOW_PLACEHOLDERS = process.env.STOREFRONT_SHOW_PLACEHOLDERS ?? 'false';
+
+/**
  * **Canales por host (T216-ter)**: el gate arranca la tienda con un mapa de **dos** dominios de
  * prueba (más el comodín `"*"` para los casos que navegan a `127.0.0.1`) para pinchar que la
  * resolución es por host: identidad, `robots.txt`, `sitemap.xml` y el **404** de un dominio no
@@ -121,6 +135,7 @@ export default defineConfig({
       STOREFRONT_CHANNELS,
       NEXT_PUBLIC_SITE_URL: BASE_URL,
       IMAGE_REMOTE_HOSTS,
+      STOREFRONT_SHOW_PLACEHOLDERS: SHOW_PLACEHOLDERS,
     },
   },
 });

@@ -6,6 +6,7 @@ import { useState, type CSSProperties } from 'react';
 import { isPlaceholderImage } from '@/lib/media';
 
 import { ProductPlaceholder } from './product-placeholder';
+import { useShowPlaceholders } from './show-placeholders';
 
 interface ProductImageProps {
   src: string | null;
@@ -42,6 +43,10 @@ interface ProductImageProps {
  *   2. Con foto real → `next/image` optimizada, encuadre `object-contain` (la
  *      fotografia de producto con fondo blanco se ve consistente) y zoom sutil al
  *      pasar por la tarjeta.
+ *
+ * **Modo demostracion** (`STOREFRONT_SHOW_PLACEHOLDERS=true`, solo para enseñar la tienda de
+ * prueba): los hosts de relleno se pintan como fotos reales. El respaldo no cambia: **sin** URL o
+ * con la imagen **rota** (`onError`) se sigue pintando el monograma.
  */
 export function ProductImage({
   src,
@@ -57,7 +62,8 @@ export function ProductImage({
   allowStockHost = false,
 }: ProductImageProps): JSX.Element {
   const [failed, setFailed] = useState(false);
-  const usePlaceholder = failed || (!allowStockHost && isPlaceholderImage(src));
+  const showPlaceholders = useShowPlaceholders();
+  const usePlaceholder = failed || (!allowStockHost && isPlaceholderImage(src, showPlaceholders));
   const source = src !== null && src.trim() !== '' ? src : null;
 
   return (

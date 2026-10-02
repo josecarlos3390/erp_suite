@@ -5,6 +5,7 @@ import { useState, type MouseEvent } from 'react';
 import { isPlaceholderImage } from '@/lib/media';
 
 import { ProductImage } from './product-image';
+import { useShowPlaceholders } from './show-placeholders';
 
 interface ProductGalleryProps {
   images: readonly string[];
@@ -27,8 +28,11 @@ export function ProductGallery({ images, name }: ProductGalleryProps): JSX.Eleme
   const [selected, setSelected] = useState(0);
   const [zoom, setZoom] = useState(false);
   const [origin, setOrigin] = useState('50% 50%');
+  // Con el modo demostracion encendido, la foto de relleno **es** la foto que se pinta: ampliarla
+  // tiene el mismo sentido que con una real (el respaldo —sin URL— sigue sin ofrecer zoom).
+  const showPlaceholders = useShowPlaceholders();
   const current = sources[Math.min(selected, sources.length - 1)] ?? '';
-  const canZoom = !isPlaceholderImage(current);
+  const canZoom = !isPlaceholderImage(current, showPlaceholders);
 
   function handleMove(event: MouseEvent<HTMLDivElement>): void {
     if (!canZoom) return;

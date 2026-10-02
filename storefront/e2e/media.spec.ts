@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
-import { isPlaceholderImage, productGallery, productMonogram } from '../src/lib/media';
+import { isPlaceholderImage, productGallery, productMonogram, showPlaceholdersFrom } from '../src/lib/media';
 
 /**
  * **Reglas de medios de la tienda** (D24): que se pinta como foto real y que como placeholder.
@@ -107,5 +107,46 @@ test.describe('Reglas de medios: foto real contra marcador de posicion', () => {
     // Un nombre sin dos palabras utiles no puede dejar el placeholder en blanco.
     expect(productMonogram('A')).toBe('·');
     expect(productMonogram('   ')).toBe('·');
+  });
+
+  test('el modo demostracion pinta el relleno como foto y deja el monograma de respaldo', () => {
+    // Encendido: los hosts de relleno dejan de ser marcadores (se pintan como fotos reales).
+    expect(isPlaceholderImage('https://picsum.photos/seed/WEB-0026-1/800/800', true)).toBe(false);
+    expect(isPlaceholderImage('https://fastly.picsum.photos/id/1/800/800', true)).toBe(false);
+    expect(isPlaceholderImage('https://placehold.co/800x800', true)).toBe(false);
+    // El respaldo **no** cambia: sin URL no hay foto, se pinte lo que se pinte.
+    expect(isPlaceholderImage(null, true)).toBe(true);
+    expect(isPlaceholderImage(undefined, true)).toBe(true);
+    expect(isPlaceholderImage('', true)).toBe(true);
+    expect(isPlaceholderImage('   ', true)).toBe(true);
+    // Y una foto real sigue siendo foto real, con la bandera en los dos estados.
+    expect(isPlaceholderImage('https://pub-ejemplo.r2.dev/foto.png', true)).toBe(false);
+    expect(isPlaceholderImage('https://pub-ejemplo.r2.dev/foto.png', false)).toBe(false);
+    // El defecto (sin segundo argumento) es el de siempre: D24 intacto.
+    expect(isPlaceholderImage('https://picsum.photos/seed/WEB-0026-1/800/800')).toBe(true);
+  });
+
+  test('la bandera del modo demostracion solo se enciende con `true`', () => {
+    expect(showPlaceholdersFrom('true')).toBe(true);
+    expect(showPlaceholdersFrom(' TRUE ')).toBe(true);
+    expect(showPlaceholdersFrom('True')).toBe(true);
+    // Cualquier otro valor —incluida la variable ausente o vacia— deja el defecto.
+    expect(showPlaceholdersFrom('false')).toBe(false);
+    expect(showPlaceholdersFrom('1')).toBe(false);
+    expect(showPlaceholdersFrom('yes')).toBe(false);
+    expect(showPlaceholdersFrom('')).toBe(false);
+    expect(showPlaceholdersFrom('   ')).toBe(false);
+    expect(showPlaceholdersFrom(undefined)).toBe(false);
+    expect(showPlaceholdersFrom(null)).toBe(false);
+  });
+
+  test('el gate arranca la tienda con el modo demostracion apagado', () => {
+    // La suite mide el **defecto** (D24): las dos configuraciones de Playwright fijan
+    // `STOREFRONT_SHOW_PLACEHOLDERS` a `false` porque `next start` **si** carga `.env.local` —donde
+    // vive encendida la demo local—. El efecto de ese pin lo pincha `e2e/producto.spec.ts`, que exige
+    // el monograma (`data-placeholder`) en la ficha de un articulo con URLs de relleno; quien la
+    // encienda a proposito (`STOREFRONT_SHOW_PLACEHOLDERS=true npm run e2e`) ya sabe que entonces mide
+    // la demo y no el defecto.
+    expect(showPlaceholdersFrom('false')).toBe(false);
   });
 });

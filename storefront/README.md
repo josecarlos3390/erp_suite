@@ -52,6 +52,40 @@ tienda cargado.
 | `NEXT_PUBLIC_SITE_NAME` | no (default `Tienda ERP`)           | Nombre por defecto (el de cada host sale de `STOREFRONT_CHANNELS`).           |
 | `NEXT_PUBLIC_SITE_DESCRIPTION` | no (default del codigo)      | Descripcion por defecto para buscadores y redes.                              |
 | `IMAGE_REMOTE_HOSTS`   | no (default: solo marcadores)        | Hosts **ajenos** de las fotos reales, separados por comas y **sin** esquema ni barra final (`pub-xxxx.r2.dev`, no `https://pub-xxxx.r2.dev/`). Con varios dominios en un despliegue es la **union** de los hosts de todas las empresas. |
+| `STOREFRONT_SHOW_PLACEHOLDERS` | no (default: apagado)        | **Modo demostracion de imagenes**: con `true`, las fotos de relleno del seed (`picsum.photos`, `fastly.picsum.photos`, `placehold.co`) se pintan **como fotos reales**. **Solo demostracion**: son aleatorias y **no representan el producto**. Cualquier otro valor (o la variable ausente) deja el comportamiento por defecto (monograma, D24). **Solo servidor** (sin `NEXT_PUBLIC_`, ver abajo). |
+
+### Modo demostracion de imagenes (`STOREFRONT_SHOW_PLACEHOLDERS`)
+
+La decision **D24** sigue en pie por defecto: el seed publica fotos de relleno de `picsum.photos`
+que **no representan el articulo**, y la tienda las trata como «sin foto» y pinta su monograma.
+Mientras la tienda es de prueba, quien la enseña puede pedir lo contrario **por configuracion**:
+
+| Valor | Que se ve |
+| ----- | --------- |
+| ausente, vacio, `false`, cualquier otro | **Defecto**: monograma en las fotos de relleno (y en las que no existen) |
+| `true` | Las fotos de relleno se pintan como fotos reales; **sin** URL o con la imagen **rota** sigue el monograma |
+
+**Aviso**: en modo demostracion las fotos son **aleatorias** (vienen de `picsum.photos`) y **no**
+representan el producto. Es una demo, no un catalogo real.
+
+**Por que la variable no lleva el prefijo `NEXT_PUBLIC_`** (medido, `next@14.2.32`): los
+componentes que deciden el monograma son de cliente, pero su HTML lo pinta el **servidor** en cada
+peticion, asi que la bandera viaja al navegador **por el payload** (`ShowPlaceholdersProvider` en el
+layout) con el mismo valor en los dos lados. `NEXT_PUBLIC_*` se **incrusta en el build** —cliente y
+servidor— (`build/webpack/plugins/define-env-plugin.js`), de modo que con el prefijo el interruptor
+quedaria cocido en `.next`: apagarlo exigiria reconstruir y el `true` de `.env.local` —que `next
+start` **si** carga— entraria en el build que sirven los gates. Al leerla en el servidor en cada
+peticion basta **reiniciar** en local y **volver a desplegar** en Vercel (el entorno del despliegue
+se fija al crearlo).
+
+**Estado de cada entorno** (medido, 2026-10-01):
+
+| Entorno | Valor | Como se cambia |
+| ------- | ----- | -------------- |
+| Local (`.env.local`, ignorado por git) | `true` (encendido, por decision del usuario) | editar `.env.local` y reiniciar `npm run dev` |
+| **Produccion (Vercel, proyecto `erp-storefront`)** | `true` (**encendido**, por decision del usuario) | cambiar la variable en el proyecto y **volver a desplegar**; para apagarlo, `false` (o borrarla) y redesplegar |
+| Gates (funcional, visual, a11y, perf) | `false` — **fijado en las dos configuraciones de Playwright** | los gates miden el **defecto** (D24); `STOREFRONT_SHOW_PLACEHOLDERS=true npm run e2e` mide la demo a proposito |
+
 
 ### Regla «server-only» (decision D10)
 
