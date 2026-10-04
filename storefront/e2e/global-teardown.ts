@@ -18,6 +18,10 @@ interface HarnessPayload {
   tables?: number;
   sha256?: string;
   changed?: string[];
+  /** El helper **no pudo trabajar** por entorno (sin `pg_dump`/`psql`, `DATABASE_URL` inesperada). */
+  unavailable?: boolean;
+  /** No había volcado pendiente: nada que restaurar ni que verificar. */
+  skipped?: boolean;
 }
 
 export default async function globalTeardown(): Promise<void> {
@@ -36,6 +40,30 @@ export default async function globalTeardown(): Promise<void> {
       `[arnes] base ${result.database} restaurada y verificada: huella identica ` +
         `(${String(result.sha256).slice(0, 12)}) en ${result.tables} tablas: la base de desarrollo ` +
         'quedo como estaba.',
+    );
+    return;
+  }
+
+  // «No pude trabajar» **no** es «la base quedó sucia»: se avisa y **no** se tumba el gate. Sin
+  // esta rama, la frase de arriba («si el volcado no se pudo tomar solo se avisa») se cumplía en el
+  // `globalSetup` pero **no** aquí: el helper respondía `ok:false` por entorno (por ejemplo una
+  // `DATABASE_URL` inesperada o una máquina sin `pg_dump`) y el teardown **lanzaba**, dejando el
+  // gate en rojo por un problema del entorno en vez de por la base (medido el 2026-10-04).
+  if (result.unavailable === true) {
+    console.warn(
+      `[arnes] no se pudo verificar la base de desarrollo (${String(result.reason)}). ` +
+        'La corrida fue sin arnes: si escribio en la base, restáurala con ' +
+        '"cd backend-erp && npm run db:recreate".',
+    );
+    return;
+  }
+
+  // Sin volcado pendiente no hay nada que restaurar **ni que verificar**: no es un fallo. (Antes
+  // esto caía en «no existe el volcado» y lanzaba, tumbando corridas que no ensuciaron nada.)
+  if (result.skipped === true) {
+    console.log(
+      `[arnes] no habia volcado pendiente: nada que verificar (huella actual de ` +
+        `${result.tables} tablas: ${String(result.sha256).slice(0, 12)}).`,
     );
     return;
   }

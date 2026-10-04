@@ -142,6 +142,9 @@ export function resolveContext() {
   if (candidates.length === 0) {
     return {
       ok: false,
+      // `unavailable` distingue «no puedo trabajar aquí» (entorno) de «la base quedó distinta»
+      // (fallo del gate): el teardown avisa en el primer caso y **lanza** solo en el segundo.
+      unavailable: true,
       reason:
         'no se encontro pg_dump/psql (instala PostgreSQL o define PG_BIN con su carpeta bin)',
     };
@@ -150,12 +153,17 @@ export function resolveContext() {
   if (url === null) {
     return {
       ok: false,
+      unavailable: true,
       reason: 'no se encontro DATABASE_URL ni el .env del backend',
     };
   }
   const connection = parseDatabaseUrl(url);
   if (connection === null) {
-    return { ok: false, reason: 'DATABASE_URL no tiene el formato esperado' };
+    return {
+      ok: false,
+      unavailable: true,
+      reason: 'DATABASE_URL no tiene el formato esperado',
+    };
   }
 
   // 1) Se pregunta la version del servidor con el primer candidato que conecte.
@@ -354,7 +362,7 @@ if (invokedDirectly) {
   const context = resolveContext();
   if (!context.ok) {
     console.error(`[arnes] no se puede trabajar con la base: ${context.reason}`);
-    emit({ ok: false, reason: context.reason }, 1);
+    emit({ ok: false, unavailable: true, reason: context.reason }, 1);
   }
 
   if (command === 'snapshot') {
@@ -395,6 +403,30 @@ if (invokedDirectly) {
 
   if (command === 'restore') {
     const state = readState();
+    // Sin volcado pendiente no hay nada que restaurar **ni que verificar**: es «no aplica», no un
+    // fallo. Antes esto caía en `restoreDatabase` → «no existe el volcado» → el teardown LANZABA y
+    // tumbaba el gate de una corrida que no había ensuciado nada (medido el 2026-10-04).
+    if (state === null || !existsSync(state.dump)) {
+      const current = fingerprint(context);
+      if (!current.ok) {
+        console.error(`[arnes] no se pudo calcular la huella: ${current.error}`);
+        emit({ ok: false, unavailable: true, reason: current.error }, 1);
+      }
+      console.error(
+        '[arnes] no habia volcado pendiente: nada que restaurar ni que verificar ' +
+          `(huella actual de ${current.tables} tablas: ${current.sha256.slice(0, 12)})`,
+      );
+      emit(
+        {
+          ok: true,
+          skipped: true,
+          database: context.database,
+          tables: current.tables,
+          sha256: current.sha256,
+        },
+        0,
+      );
+    }
     const restored = restoreDatabase(context);
     if (!restored.ok) {
       console.error(`[arnes] la restauracion fallo: ${restored.error}`);
