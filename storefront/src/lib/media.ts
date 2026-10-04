@@ -14,8 +14,24 @@
  * cualquier otro valor— es el de siempre: el marcador no es una foto del producto (D24).
  */
 
-/** Hosts de marcador de posicion conocidos (dato de desarrollo). */
-const PLACEHOLDER_HOSTS = new Set(['picsum.photos', 'fastly.picsum.photos', 'placehold.co']);
+/**
+ * Hosts de marcador de posicion conocidos (dato de desarrollo), en **una sola lista**.
+ *
+ * Se **exporta** para que el gate pueda comprobarla contra la otra mitad de la regla: `next/image`
+ * solo optimiza los hosts declarados en `images.remotePatterns` de `next.config.mjs`, asi que un
+ * host de relleno que este aqui y **no** alli se pinta (con el modo demostracion encendido) y el
+ * optimizador lo rechaza: imagen rota. Ese defecto existio con `placehold.co` (medido el
+ * 2026-10-02: el codigo listaba **3** hosts y el config declaraba **2**) y lo sujeta el caso
+ * «todo host de relleno esta declarado» de `e2e/media.spec.ts`.
+ */
+export const PLACEHOLDER_HOSTS: readonly string[] = [
+  'picsum.photos',
+  'fastly.picsum.photos',
+  'placehold.co',
+];
+
+/** La misma lista como `Set` para consultar por host (la lectura caliente no recorre el array). */
+const PLACEHOLDER_HOST_SET = new Set(PLACEHOLDER_HOSTS);
 
 /**
  * Variable que enciende el modo demostracion. **Sin** prefijo `NEXT_PUBLIC_` a proposito: la lee
@@ -49,11 +65,38 @@ export function isPlaceholderImage(
   if (showPlaceholders) return false;
   try {
     const url = new URL(src);
-    return PLACEHOLDER_HOSTS.has(url.hostname);
+    return PLACEHOLDER_HOST_SET.has(url.hostname);
   } catch {
     // Una URL relativa o invalida no es un marcador: la decide el navegador.
     return false;
   }
+}
+
+/**
+ * Imagen de una **pagina del CMS**: o es una foto que se pinta, o **no hay nada que pintar**.
+ *
+ * Por que no reutiliza el respaldo del articulo: una pagina de texto sin imagen no tiene monograma
+ * que dibujar (el monograma dice «aqui iria la foto de **este articulo**»; en una pagina de
+ * «Envios y devoluciones» seria un cuadro con letras sin sentido). La regla es la misma que D24
+ * —por **host**, y el modo demostracion la levanta—, pero el respaldo es el **silencio**:
+ *
+ *   - sin URL (o en blanco) → `null` (no se pinta nada);
+ *   - host de relleno del seed → `null` por defecto; con `showPlaceholders` (modo demostracion) se
+ *     pinta **como foto**, que es justo lo que exige que su host este en los `remotePatterns`;
+ *   - foto real → vuelve la URL tal cual (se pinta con `next/image`).
+ *
+ * Es una funcion **pura** a proposito: el gate la prueba sin navegador ni API (`e2e/media.spec.ts`),
+ * porque la medida del **render** depende de dos cosas que el gate no puede dar por hechas —que el
+ * canal publique el campo (el canal de HEAD todavia no lo hace) y que la API este en marcha—, y la
+ * regla no debe esperar a ninguna de las dos para estar sujeta.
+ */
+export function pageImageSource(
+  src: string | null | undefined,
+  showPlaceholders = false,
+): string | null {
+  const url = typeof src === 'string' ? src.trim() : '';
+  if (url === '') return null;
+  return isPlaceholderImage(url, showPlaceholders) ? null : url;
 }
 
 /** Monograma de dos letras para el placeholder (`Aceite Sintetico` → `AS`). */

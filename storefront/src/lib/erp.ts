@@ -205,6 +205,16 @@ export interface StorePage {
   slug: string;
   title: string;
   content: string;
+  /**
+   * Imagen de la pagina del CMS (`imageUrl`), o `null` si no tiene.
+   *
+   * El canal la publica con ese contrato (`{ slug, title, content, imageUrl, updatedAt }`, con
+   * `imageUrl: string | null`); `null` es «no hay imagen» y la tienda **no pinta nada** (una pagina
+   * de texto no lleva monograma). Como el canal puede ser anterior a este campo —el fixture
+   * grabado o un ERP sin desplegar—, el null-check del render cubre tambien el `undefined`:
+   * `pageImageSource()` trata la URL ausente como «sin imagen».
+   */
+  imageUrl: string | null;
   updatedAt: string;
 }
 

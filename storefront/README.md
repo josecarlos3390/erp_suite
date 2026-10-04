@@ -329,7 +329,8 @@ Reglas de la capa visual:
    comprador y no viaja al ERP.
 5. **Imagenes (D24)**: sin foto real, la tienda **no** pinta marcadores de posicion: dibuja su
    placeholder (fondo neutro + monograma + marca). El arte de campana del CMS si se pinta tal cual
-   (`allowStockHost`).
+   (`allowStockHost`). En una **pagina de contenido** no hay monograma que dibujar: sin foto (o con
+   una de relleno y la demo apagada) la pagina **no pinta nada** (`pageImageSource`).
 
 ## Gate E2E
 
@@ -453,10 +454,16 @@ publican desde el back office (**Configuracion → Contenido de la tienda**, per
 - **Banners**: por **slot** —la portada pide `home-hero` y `home-strip`—, con imagen, titulo,
   subtitulo, enlace, orden, estado y **vigencia** (`desde`/`hasta`). Un banner solo se pinta si
   esta **activo** y dentro de su vigencia: una campana se apaga sola.
-- **Paginas**: cada una vive en su URL (`/paginas/<slug>`), con titulo y contenido de texto, y se
-  puede **despublicar** sin borrarla.
+- **Paginas**: cada una vive en su URL (`/paginas/<slug>`), con titulo, contenido de texto e
+  **imagen** (`imageUrl`, `null` si no tiene). La imagen la pinta `PageImage`
+  (`src/components/page-image.tsx`) con las mismas reglas que las fotos de articulo: una URL de
+  **marcador de posicion** no se pinta (D24) salvo con el modo demostracion encendido, y una pagina
+  **sin** imagen no pinta **nada** (no hay monograma en una pagina de texto). Si la imagen falla al
+  cargar se retira en vez de dejar el icono de imagen rota.
 - La imagen tiene que estar en un host permitido: si es de un CDN propio, anadelo a
-  `IMAGE_REMOTE_HOSTS`.
+  `IMAGE_REMOTE_HOSTS`; los hosts de relleno (`picsum.photos`, `fastly.picsum.photos`,
+  `placehold.co`) ya estan declarados en `next.config.mjs` y el gate comprueba que las **dos** listas
+  no divergan (`e2e/media.spec.ts`).
 
 **Ventana de refresco** (declarada): la tienda cachea el contenido (`banners` 120 s, `pagina`
 600 s), asi que un cambio publicado se ve en ese plazo; un borrado tambien.
@@ -497,11 +504,20 @@ IMAGE_REMOTE_HOSTS=pub-43d22e70fe3e40b88de89bac6537eaa9.r2.dev
   (`naturalWidth` **288**, `src` = `/_next/image?url=https%3A%2F%2Fpub-…r2.dev%2F…`); sin el, la
   imagen de la galeria **no** se pinta (el `src` no supera la validacion del optimizador) y el
   hueco queda como placeholder.
+- **Medido** (2026-10-02, `placehold.co`): el codigo listaba **3** hosts de relleno y
+  `next.config.mjs` declaraba **2** —faltaba `placehold.co`—, y con el modo demostracion encendido
+  (que es como corre produccion) el optimizador respondia **400** `"url" parameter is not allowed`
+  a esa URL; declarado el host, `https://placehold.co/800x800.png` responde **200** `image/png`
+  (**2 194 B**). **Declarado**: `https://placehold.co/800x800` (sin extension) sirve **SVG** y el
+  optimizador lo sigue rechazando (**400** `"url" parameter is valid but image type is not
+  allowed`): servir SVG exigiria `dangerouslyAllowSVG` + `contentSecurityPolicy`, que **no** se
+  activa aqui; hoy nada publica ese host (el relleno del seed es `picsum.photos`).
 
-**Declarado**: la biblioteca de medios cubre hoy la **galeria del articulo**; los **banners y las
-paginas** del CMS siguen subiendose por URL (si su host es distinto hay que declararlo tambien). El
-arnes del gate funcional pasa `IMAGE_REMOTE_HOSTS` al servidor de la suite: `next start` en modo
-produccion **no** lee `.env.local` (ver `playwright.config.ts`).
+**Declarado**: la biblioteca de medios cubre la **galeria del articulo** y, desde el contrato
+`imageUrl` de las paginas, tambien su imagen; los **banners** del CMS siguen subiendose por URL (si
+su host es distinto hay que declararlo tambien). El arnes del gate funcional pasa
+`IMAGE_REMOTE_HOSTS` al servidor de la suite: `next start` en modo produccion **no** lee
+`.env.local` (ver `playwright.config.ts`).
 
 ### Retiro en tienda (F5): el comprador elige el punto y no paga envio
 

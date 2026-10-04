@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { JsonLd } from '@/components/json-ld';
+import { PageImage } from '@/components/page-image';
 import { getPage } from '@/lib/erp';
 import { breadcrumbJsonLd } from '@/lib/jsonld';
 
@@ -48,6 +49,14 @@ export default async function StorePage({ params }: StorePageProps): Promise<JSX
           <time dateTime={page.updatedAt}>{new Date(page.updatedAt).toLocaleDateString('es-BO')}</time>
         </p>
       </header>
+
+      {/*
+        La imagen del CMS (`imageUrl`, contrato del canal). `PageImage` decide **todo**: una pagina
+        sin imagen —o con una URL de relleno del seed y el modo demostracion apagado— no pinta
+        **nada** (no hay monograma en una pagina de texto), asi que no deja hueco en el `gap` del
+        articulo. El `?? null` cubre a un canal anterior al campo (`undefined` en runtime).
+      */}
+      <PageImage src={page.imageUrl ?? null} alt={`Imagen de la pagina: ${page.title}`} />
 
       <div className="flex max-w-3xl flex-col gap-3 text-sm text-fg-secondary">
         {paragraphs.map((paragraph, index) => (
