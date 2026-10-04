@@ -3264,6 +3264,37 @@ páginas, así que **no hay un permiso nuevo** que conceder; y (e) la pieza pura
 con **sustitución idempotente**: volver a correrlo sobre lo ya sustituido no cambia nada (no hay
 marcador que reemplazar).
 
+---
+
+## §41 — Decisión: las credenciales del canal se mantienen (2026-10-03)
+
+**Lo que se decidió**: **no** rotar ahora la pareja S3 de R2, ni la clave de Resend, ni la clave de la
+tienda de la semilla. Primero que todo funcione; la rotación queda para más adelante.
+
+**Por qué es defendible hoy (medido, no supuesto)**:
+
+- **R2 (S3)**: lo único que hay en el bucket son las **137** tarjetas de artículo y las **23** de
+  banners y categorías, y **las dos tandas son regenerables** con `media:item-cards` y
+  `media:store-cards`, que son deterministas. El peor caso es volver a correr **dos comandos**, no una
+  pérdida de contenido.
+- **Resend**: la clave es de **solo envío** —`GET /domains` responde **401 `restricted_api_key`**,
+  medido— y la cuenta está en **modo de pruebas**, que solo entrega **a la dirección de la cuenta**:
+  el envío de prueba a `josecarlos3390@gmail.com` llegó **por eso** (id `01a106d9-4bbc-…`).
+- **Clave de la tienda de la semilla**: solo **lee el catálogo público**, y el catálogo es público de
+  todas formas (la restricción por `allowedOrigins` protege al navegador, no a un cliente propio).
+
+**El disparador para revisitarlo no es una fecha, es un hecho**: cuando se suban **fotos reales** (el
+bucket deja de ser reproducible) o cuando se **verifique un dominio propio en Resend** (deja de
+limitar los destinatarios al buzón de la cuenta). En ese momento el orden seguro está medido y
+probado: crear la credencial **nueva** en el panel → aplicarla en `.env` y en Railway con
+`railway variable set KEY --stdin` (el valor **no** pasa por la línea de comandos) → **verificar** con
+una subida real al bucket y su **descarte** → y solo entonces borrar la vieja.
+
+**Queda declarado, y no es una credencial de la aplicación**: el token de administración de Cloudflare
+(`cfat_…`) que se compartió por chat. **Ningún** `.env` ni variable de Railway lo usa —no aparece en
+el código— y es el único con alcance de **cuenta**, así que borrarlo no rompe nada y es lo primero que
+se hará cuando se retome esta decisión.
+
 
 
 
