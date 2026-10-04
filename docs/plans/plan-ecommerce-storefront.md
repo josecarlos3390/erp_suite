@@ -3295,6 +3295,46 @@ una subida real al bucket y su **descarte** → y solo entonces borrar la vieja.
 el código— y es el único con alcance de **cuenta**, así que borrarlo no rompe nada y es lo primero que
 se hará cuando se retome esta decisión.
 
+## §42 — La factura de reserva ES la factura fiscal: estado MEDIDO de la facturación electrónica (2026-10-04)
+
+**Lo que aclaró el usuario** (y que corrige un marco **mío**, no del plan): **la factura de reserva es la
+factura fiscal** del canal; lo que falta es **integrar el servicio de facturación electrónica**. El plan
+ya lo tenía así —el §F7 incluye «**factura electrónica del canal**» y el §15/T217 fija «factura de
+reserva como documento fiscal del canal y serie `WEB-`»—. Lo que **no** estaba medido es **cuánto hay
+de esa integración**; eso es lo que mide este apartado.
+
+### Lo medido
+
+| Capa | Estado | Evidencia |
+|---|---|---|
+| **Integración con el servicio** | **No existe** | `SIAT`, `FEL`, `CUF`, «facturación electrónica», «dosificación» → **0 coincidencias** en `backend-erp/src` |
+| **Gancho en el dominio** | **Existe** | `SaleInvoice.fiscalIssuedAt` («sello de EMISIÓN FISCAL») y el **perfil fiscal de la empresa** en `Tenant` (NIT, dirección, actividad económica) |
+| **Para qué se usa hoy el sello** | **Plazos legales** | Es la fecha de partida del **plazo de la nota de crédito** y del **plazo de anulación** (`credit-note-date.util`, `invoice-annulment.util`, `settings.service`): `fiscalIssuedAt ?? date`. El ERP ya sabe **cuándo** se emitió fiscalmente, pero **nadie lo escribe desde un servicio fiscal** |
+| **Sistema de FEL aparte** | **Esqueleto, no sistema** | Base `fel_bolivia` (app .NET con migraciones EF): `companies`, `branches`, `points_of_sale`, `clients`, `products` **a 0 filas**, **2** `invoices` **sin** detalle, y su modelo de factura es `id`, `branch_id`, `customer_id`, `document_type_id`, `point_of_sale_id`, `number`, `total_amount`, `created_at` ⇒ **sin CUF, sin CUFD, sin dosificación, sin QR, sin XML y sin estado**: no pasaría una revisión del SIN |
+| **Otra base** | **Vacía** | `siat_facturacion`: **0 tablas** |
+
+### Qué necesita la integración (y qué decide el usuario)
+
+1. **La decisión de fondo**: **SIAT directo** (el sistema del contribuyente contra los servicios del SIN:
+   CUIS/CUFD, dosificación, CUF, QR, contingencia) **o a través de un proveedor autorizado de FEL** (se
+   le envía la factura y devuelve CUF/QR/XML/PDF). La segunda es la ruta corta; la primera exige
+   homologación.
+2. **Datos y credenciales del emisor** (los tiene el usuario, no el repo): NIT, razón social, actividad
+   económica, **dosificación** por sucursal/punto de venta, **CUIS/CUFD**, certificado/firma y el
+   **ambiente de pruebas** del SIN. Hoy `Tenant` guarda NIT, dirección y actividad, pero **no** hay
+   dosificación, punto de venta ni CUFD en el modelo.
+3. **El punto de emisión en el ERP**: la **FRV** —y sus hermanas, la factura de venta y las notas de
+   crédito/débito— tendría que llamar al servicio **después** de quedar contabilizada, guardar
+   **CUF/QR** y la **representación** (XML/PDF) y **sellar** `fiscalIssuedAt`; y la **anulación**
+   tendría que comunicar la anulación **fiscal**, no solo la contable.
+4. **Contingencia**: qué hace el ERP si el SIN o el proveedor no responde (¿CUF de contingencia?,
+   ¿cola?, ¿bloqueo?). Es una **decisión de negocio** (normativa), no técnica.
+
+**Declarado**: **no** se ha medido el contrato de ningún proveedor ni su coste, ni los requisitos de
+homologación del SIN; y esto **no** cambia nada del flujo actual —el ecommerce emite su FRV como
+documento fiscal—: la integración es un incremento posterior, dentro del tramo **F7** del plan.
+
+
 
 
 
