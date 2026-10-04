@@ -1187,3 +1187,43 @@ export async function deliverOrderFully(
     );
   }
 }
+
+/** Una pagina del CMS tal como la publica el back office (`GET /web-content/pages`). */
+export interface ApiWebPage {
+  id: number;
+  slug: string;
+  title: string;
+  content: string;
+  imageUrl: string | null;
+  isPublished: boolean;
+}
+
+/**
+ * Paginas del CMS de la empresa. Hace falta el `id` (el `slug` es la URL publica): el gate que
+ * mide si la pagina pinta su imagen tiene que **fijarla** primero.
+ */
+export async function listPages(token: string): Promise<ApiWebPage[]> {
+  const body = await adminGet<{ data?: ApiWebPage[] }>(
+    token,
+    "/web-content/pages?limit=100",
+  );
+  return Array.isArray(body?.data) ? body.data : [];
+}
+
+/**
+ * Fija la imagen de cabecera de una pagina del CMS; `null` la **quita**. Es la unica forma de
+ * borrarla: por HTTP el vacio (`""`) responde 400 (la validacion del campo exige 3 caracteres) y
+ * `null` es lo que guarda el servicio.
+ *
+ * Los gates de la tienda **no** dejan el dato cambiado: el arnes vuelca y restaura la base entera,
+ * y ademas el propio spec la devuelve a `null` al terminar.
+ */
+export async function setPageImage(
+  token: string,
+  pageId: number,
+  imageUrl: string | null,
+): Promise<ApiWebPage> {
+  return adminPatch<ApiWebPage>(token, `/web-content/pages/${pageId}`, {
+    imageUrl,
+  });
+}

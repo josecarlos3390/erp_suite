@@ -3133,6 +3133,137 @@ texto); (d) `placehold.co` está en la lista de marcadores del **código** pero 
 demostración queda **encendido** en producción por decisión del usuario y es **inerte** para los
 artículos, porque su galería ya no tiene marcadores.
 
+---
+
+## §39 — El CMS estrena imagen y las dos listas de marcadores quedan atadas (2026-10-03)
+
+**Lo que se cerró aquí**: dos de los tres pendientes que **no** dependían de ninguna decisión del
+usuario —la **imagen de las páginas del CMS** y **`placehold.co` en los `remotePatterns` con un gate
+que ate las dos listas**—; el tercero (imágenes de ejemplo de banners y categorías) va en el §40.
+Los tres salieron de la lista del §24 que se repasó al cerrar la biblioteca de medios.
+
+### (10) La página del CMS tiene imagen, en las tres capas
+
+**Medido antes**: `WebPage` tenía **8 columnas y ninguna de imagen**; el canal publicaba **4** campos
+(`slug`, `title`, `content`, `updatedAt`) y la tienda pintaba la página como texto. Medido en
+**producción** antes de tocar nada: `/paginas/quienes-somos` y `/paginas/envios-y-devoluciones`
+respondían **200 con 0 imágenes**.
+
+Entregado en **tres incrementos**, cada uno con su push, sus gates y su medición:
+
+| Capa | Commit | Qué trae | Medición |
+|---|---|---|---|
+| **Backend** | `bef1713` | `WebPage.imageUrl String?`, migración **idempotente** `20261002150000_webpage_image` **aplicada y registrada**; DTOs con la **misma validación del banner**; normalización (recorta; vacío ⇒ `null`); `WebPageView.imageUrl` y `StorefrontPageView.imageUrl`; `imageUrl: true` en el `select` de `getPage` | **229 suites / 2963** casos (5 nuevos); canal: **4 → 5** campos |
+| **ERP** | `23d54efe` | El formulario de página estrena el campo con el **mismo selector de la biblioteca** que el banner, **opcional** y **borrable** (vacío viaja como `null`), más columna en la tabla | `pageForm` **4 → 5** controles; plantilla **4 → 5** campos; banner **9 → 9** (intacto); Karma **2565/2565**; `ng build` AOT **0** |
+| **Tienda** | `ea26e809` | `StorePage.imageUrl`, la regla pura `pageImageSource()` y el componente `PageImage` (contexto del modo demostración, `alt` descriptivo, **se retira si la imagen falla**) | A/B real cambiando **solo** `page.tsx`: **0 → 1** nodo `page-image` con su `srcSet` |
+
+**Regla de diseño que se respetó**: una página **sin** imagen **no pinta nada** —no reutiliza
+`ProductImage`—, porque el monograma de un artículo significa «aquí iría su foto» y el de una página
+de texto no significa nada.
+
+**Verificado en PRODUCCIÓN por mí**: `/health` **ok** con `prisma=up` (el contenedor aplicó la
+migración al desplegar, **sin** bucle de reinicios) y `GET /web-content/pages` devuelve ya **8 campos
+con `imageUrl`**. Las dos páginas quedan **sin imagen**: es contenido del usuario y no se siembra nada.
+
+**Dos cosas declaradas del (10)**: (a) `"imageUrl": ""` por HTTP responde **400** —el `@MinLength(3)`
+que se copió del banner lo rechaza—, así que el vaciado por HTTP es **`null`**, que es exactamente lo
+que envía la pantalla; (b) el **Open Graph** de la página sigue sin imagen: una foto de relleno en el
+OG es justo lo que D24 evita.
+
+### (11) Las dos listas de marcadores, atadas por un gate
+
+**Medido antes**: `src/lib/media.ts` listaba **3** hosts de relleno y `next.config.mjs` declaraba
+**2**; el que faltaba era `placehold.co`, y el efecto no era cosmético: con el **modo demostración**
+encendido —que es el estado de producción— el optimizador respondía **400** `"url" parameter is not
+allowed` y la imagen salía rota.
+
+**Entregado**: el host se declara, la lista se **exporta** (era un `const` privado, así que era
+imposible de comprobar desde fuera) y el gate **importa el `next.config.mjs` de verdad** —no copia la
+lista al spec— y falla **nombrando** el host que falte. **Falsificado**: con el host comentado, el
+caso falla.
+
+**Medido después**: **3 = 3** hosts, ninguno sin declarar; el optimizador pasa de **400** a **200**
+`image/png` (2 194 B en local). **Verificado en producción por mí**:
+`/_next/image?url=…placehold.co/800x800.png` → **200 `image/png` 2 210 B** (control con `picsum` →
+200 `image/jpeg`). Suite de medios **9/9** (eran 7), con el arnés restaurando la base **verificada
+idéntica en 199 tablas**.
+
+**Declarado del (11)**: `placehold.co` **sin extensión** sirve SVG y el optimizador lo **sigue
+rechazando** (`400 image type is not allowed`); cerrarlo exigiría `dangerouslyAllowSVG` con su CSP,
+una decisión de **seguridad** que no se toma por un marcador de ejemplo. Hoy **nada** publica ese host.
+
+### El hueco que se declaró y se cerró el mismo día (del §39)
+
+El caso **de navegador** de la página **con** imagen no quedó automatizado en el incremento de la
+tienda: el spec se escribió y **no se commiteó porque nunca se vio en verde** —la API local se cayó a
+mitad de la verificación—. Se cerró después, con el backend ya desplegado y la base libre:
+**`storefront/e2e/paginas.spec.ts`** (**2/2**), que fija la imagen de una página por la **API del back
+office**, carga **su** URL y comprueba el **HTML del servidor**. Tres decisiones que están escritas en
+el propio spec: (a) se mide el HTML del servidor, **no** el DOM hidratado, porque si la foto no existe
+el `onError` del componente la retira **a propósito** y eso no es lo que se mide; (b) **una carga por
+URL**, porque `getPage` se cachea **600 s** y recargar la misma página leería la copia vieja —por eso
+los dos casos usan las **dos** páginas de la semilla—; y (c) el spec deja las páginas a `null` al
+terminar, sin apoyarse en el arnés. Medido: **2 passed**, con el arnés volcando (1608 kB) y
+**restaurando la base verificada idéntica en 199 tablas** (`ab92533c0b7f`).
+
+---
+
+## §40 — Banners y categorías: imágenes de ejemplo por API (2026-10-03)
+
+**El tercer pendiente** de la tanda (los otros dos, en el §39). La tienda seguía enseñando **fotos
+aleatorias** en dos sitios que **no** son la galería de artículos. **Medido antes**, en la base y por
+HTTP: **3 banners** (`home-hero` ×2 de 1600×500 y `home-strip` de 800×200) y **20 categorías**
+(600×400), los **23** con `picsum.photos`; en la home pública, **18** y **15** URLs de relleno
+distintas.
+
+**El bloqueo que cambió el diseño**: `WebCategory.imageUrl` **existía** pero **no había endpoint ni
+pantalla** que la escribiera (solo la semilla), y en producción **la base no es accesible** desde
+fuera (vive en la red privada de Railway). Un script con Prisma habría funcionado en local y **no** en
+producción, así que la salida es la que ya sigue el resto del proyecto: **que la API sea la única que
+escribe**.
+
+**Entregado** (commit `3b2cf50`, empujado a `origin` **y** `deploy`):
+
+- `GET /web-content/categories` (`web-content:view`), paginado y en el **orden en que pinta la
+  tienda** (`sortOrder`, `name`); y `PATCH /web-content/categories/:id` (`web-content:edit`) **solo con
+  `imageUrl`** —recorta, vacío ⇒ `null`, **404** entre empresas—, con la validación que ya usaban
+  banners y páginas. **No** es una pantalla de categorías: es lo que la biblioteca necesita para
+  colgarles una imagen.
+- `src/common/store-card.util.ts` (**397** líneas + **325** de spec): la pieza **pura** de las tres
+  piezas, **reutilizando** `wrapText`, `escapeHtml`, la paleta y la tinta de `item-card.util` —sin
+  duplicar el troceado ni el color—, con los tamaños de la semilla, color **determinista** (categoría:
+  su `slug`; banner: su `title`) y la etiqueta de honestidad en el **modelo**.
+- `scripts/generate-store-cards.ts` (`npm run media:store-cards`, **1007** líneas): renderiza en
+  Chromium con Playwright, **simulación por defecto** y **100 % por API** (firma, `PUT` directo a R2,
+  alta en la biblioteca y `PATCH` de la pieza). `--replace` sustituye **solo** marcadores
+  (`picsum.photos`, `placehold.co` o vacío): **jamás** una imagen real.
+
+**Medido después, verificado por mí**:
+
+| Medición | Antes | Después |
+|---|---|---|
+| `MediaAsset` (base local) | 0 | **23** |
+| Banners con URL del bucket (local) | 0 de 3 | **3 de 3** |
+| Categorías con URL del bucket (local) | 0 de 20 | **20 de 20** |
+| Banners / categorías con `picsum` (local) | 3 / 20 | **0 / 0** |
+| **Producción**, por API | 0 de 3 y 0 de 20 | **3 de 3** y **20 de 20** |
+| Home pública: del bucket / de relleno | 278 / **235** | **449 / 0** |
+| `/categorias`: del bucket / de relleno | 0 / **195** | **195 / 0** |
+| Ficha de producto: de relleno | 0 | 0 (ya estaba) |
+
+El despliegue del endpoint se siguió **en vivo** —`404` → `n=20`— y la carga se sondeó hasta que las
+dos cifras cuadraron; los recuentos de la home y de `/categorias` son de **después** de la ventana de
+caché de la tienda (**banners 120 s**, **categorías 300 s**).
+
+**Declarado**: (a) las 23 imágenes son **ejemplos honestos** —llevan el nombre del banner o de la
+categoría y la etiqueta «Imagen de ejemplo»—, **no** fotos; (b) la **pantalla** de categorías **no**
+existe: se editan por API, y una pestaña en «Contenido de la tienda» sería el incremento siguiente
+(con su sitio natural ya preparado); (c) el cargador sustituye relleno y **no toca** nada que no sea
+marcador; (d) el endpoint entra en el **mismo** módulo y los **mismos** permisos que banners y
+páginas, así que **no hay un permiso nuevo** que conceder; y (e) la pieza pura y el cargador quedan
+con **sustitución idempotente**: volver a correrlo sobre lo ya sustituido no cambia nada (no hay
+marcador que reemplazar).
+
 
 
 
