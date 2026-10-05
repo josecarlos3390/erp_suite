@@ -49,3 +49,16 @@ P5 es una **idea derivada** de la referencia, no una regla que el material impon
 1. **Nada se importa tal cual**: el material está en inglés y nuestra fuente de verdad es `FRONTEND_GUIDE.md` (español). Se traduce y se aterriza, o no entra.
 2. **Cada adopción necesita gate**: si no se puede medir, no se adopta. (La lección de esta misma sesión: `FRONTEND_GUIDE.md:465` pedía `toSignal()` desde hace rondas y **0 usos** — una regla sin gate es un deseo.)
 3. **Los conflictos son decisiones ya tomadas**, no olvidos: Luna, tokens/densidad y Karma+zone se quedan. Lo que se adopte **no** puede romper `audit:tokens`, `audit:density`, `audit:contrast`, `audit:ng-deep`, `audit:important` ni el gate visual.
+
+## 5. Estado y correcciones (2026-10-04)
+
+Al ejecutar la lista, **medir cambió tres de las propuestas** —y una de ellas estaba directamente **mal**—. Queda escrito aquí porque el plan se leyó como recomendación y ya no lo es del todo:
+
+| # | Lo que decía el plan | Lo que se midió al ejecutarlo | Estado |
+|---|---|---|---|
+| **P5** | «implementar `canDeactivate` en formularios de documento» | **YA ESTABA HECHO**: `dirtyCheckGuard` (`core/guards/dirty-check.guard.ts`, funcional, con el `ConfirmDialog` del ERP) cableado en **135** rutas. Lo que faltaba era **comprobar la cobertura**: una sonda por los ficheros de rutas encontró **128 de 131** rutas de formulario con el guard, y las **3** sin él eran el formulario de **roles** — que además **no** era «dirty-checkable» (`hasChanges`/`isDirty` no existían), así que añadirlo a secas habría sido **decorativo** | **CERRADO**: `RolesFormComponent` expone `hasChanges` (campos **y** permisos), el guard va en sus 3 rutas y la medición da **131/131**; spec nuevo **3/3** |
+| **P2** | «`input()`/`output()` en primitivos Luna **nuevos**» | **NO HACE FALTA UN PRIMITIVO NUEVO**: el design system ya tiene `luna-button-group` (usado en **25+** pantallas) y `luna-button` documenta `@Input() active` como «segmented control / toggle». Lo que había era una **migración a medias**: `_tables.scss:613` ya estilizaba `luna-button` dentro del grupo del descuento mientras la **plantilla** seguía con `<button>` hechos a mano | **REENFOCADO**: terminar esa migración (no escribir un primitivo). P2 sigue pendiente para el **próximo** primitivo que se cree |
+| **P4** | «`title:` en las rutas» con una aserción E2E | Cierto y **real**: **274** cargas de ruta, **0** con `title:` y un `<title>ERP Suite</title>` estático ⇒ las **233** pantallas se titulaban igual y **WCAG 2.4.2** no se cumplía. Pero editar 274 rutas no era la única vía: el menú lateral ya tiene la **etiqueta de cada pantalla** | **HECHO por la fuente única**: `page-title.util.ts` + `PageTitleService` (una pieza, cubre las 233 pantallas y **no puede desincronizarse** del menú), spec unitario **6/6** y gate E2E del cableado |
+
+**P3 (MCP del CLI)** y **P6 (hidratación)** siguen **sin empezar**, con su motivo: P3 es el más difícil de **verificar** de la lista (levantar un servidor MCP y comprobar que expone herramientas no se mide bien desde aquí) y P6 es un **riesgo alto** que exige medir antes (zonado + 343 `OnPush` + `localStorage` + branding pre-render ⇒ *hydration mismatch*) y saber **deshacerlo**.
+

@@ -1457,3 +1457,31 @@ Estos documentos complementan a esta guía canónica. No son obligatorios para t
 | `docs/plans/plan-consistencia-visual-v2.md` | Plan validado de remediación visual frontend (7 fases). | Al planificar mejoras visuales o migraciones de tokens/spacing. |
 | `docs/plans/plan-mejoras-ux-ui-frontend.md` | Recomendaciones UX/UI activas: accesibilidad, copy, limpieza de estilos. | Al atender deuda técnica de UX/UI fuera del scope de una feature. |
 | `docs/archive/` | Informes históricos de frentes completados y cierres de fase. | Solo si se necesita trazabilidad histórica de una migración ya cerrada. |
+
+---
+
+## 14. Lo que los gates NO ven (medido)
+
+Los gates del proyecto —`tsc`, `ng lint`, Karma, `npx ng build` (AOT), las auditorías `audit:*` y Playwright— son rápidos y cubren mucho, pero **hay defectos que ninguno ve**. Van aquí los que ya nos costaron una investigación, con su medición, para no repetirlos.
+
+### 14.1 El arranque de la aplicación: solo lo ve un navegador
+
+**2026-10-04** — una factory de `APP_INITIALIZER` devolvía `void`:
+
+```typescript
+export function initializePageTitleFactory(): void {
+  inject(PageTitleService).start(); // ✗ devuelve undefined
+}
+```
+
+`APP_INITIALIZER` ejecuta **el valor devuelto** dentro del contexto de inyección (`runInInjectionContext(injector, fn)`), así que devolver `undefined` lanza `fn is not a function` y **el bootstrap muere**: la aplicación queda **en blanco**. Medido: `app-root` con **0** caracteres de HTML, **0** tarjetas de empresa y `app-root` vacío — con **`tsc`, `lint` y Karma en verde**, porque Karma monta componentes sueltos y **no arranca la aplicación**.
+
+**Regla**: las factories de `APP_INITIALIZER` **devuelven la función** (patrón de las otras dos de `app.config.ts`), y el arranque se verifica **en un navegador** —un `page.goto` y comprobar que `app-root` tiene contenido—, no solo con la suite unitaria.
+
+### 14.2 La geometría, en los estados que no se ven
+
+**2026-10-04** — el «Descuento aplicado» del descuento de cabecera caía **36 px** por debajo de sus vecinos y **ningún gate lo medía**: el de cabeceras buscaba `luna-form-field` en cada fila y **`luna-input` no renderiza uno**. Dos consecuencias que valen para cualquier gate nuevo:
+
+- **Lo que no está en el DOM no se mide**: una pestaña inactiva, un modo sin seleccionar o un diálogo cerrado **no existen** hasta que alguien los abre ⇒ los gates de geometría tienen que **recorrer los estados**, no solo la pantalla por defecto.
+- **La causa, no el síntoma**: el defecto no era un número mal elegido sino **imitar un primitivo** (`div.readonly-value` copiando a mano el padding, la altura y el borde). Eso se audita **estáticamente** (`npm run audit:ui-fields`), antes de que llegue a la pantalla.
+
