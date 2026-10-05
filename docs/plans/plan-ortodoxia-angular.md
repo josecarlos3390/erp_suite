@@ -1,8 +1,8 @@
 # Plan — Ortodoxia Angular: qué copiamos de las _skills_ oficiales y qué no
 
-> **Fecha:** 2026-10-04 · **Estado:** evaluación hecha, adopciones priorizadas, **nada aplicado aún**
+> **Fecha:** 2026-10-04 · **Actualizado:** 2026-10-05 · **Estado:** P6 (hidratación) **adoptada** con instrumento propio y **migración Angular 19 → 22 hecha y verde** (§§6-8): aterrizada en `main` **en local**, pendiente de la decisión del usuario de empujar (despliegue en Vercel).
 > **Fuente externa:** `github.com/angular/skills` (`main` @ `cfb0e360`), leída de verdad (2 skills, 43 ficheros).
-> **Nuestro stack medido:** `erp-frontend` con Angular **19.2.25** (`package.json:73`), Karma + Jasmine + `zone.js`, design system propio (Luna) y docs en español.
+> **Nuestro stack medido:** `erp-frontend` con Angular **22.2.1** —era **19.2.25** al escribir el plan; el camino está en los §§6-8—, TypeScript **6.0.3**, Karma + Jasmine + `zone.js`, design system propio (Luna) y docs en español.
 
 ## 1. Por qué este documento
 
@@ -171,3 +171,19 @@ Los **dos** quedan con el **porqué escrito en el código**. **A/B mental descar
 - **Migración a Vitest**: el CLI 21 la ofrece; **no se hace** en un salto de major.
 - **`--force` / `--no-verify` / `xit` / `@ts-ignore` / `eslint-disable`**: **0** usos. Los **5** errores de AOT se **arreglaron**.
 - **`main` y `git push`**: **no se tocaron**.
+
+## 8. Etapa 21 → 22 (2026-10-05) — **limpia**, y el aterrizaje
+
+**Veredicto: limpio.** Rama `spike/angular-20`, commits por etapa (`eda39f12` 19→20, `1bd802da` 20→21, `331f6fd7` 21→22 + el de `engines`), **empujada como respaldo**. Aterrizada en `main` **en local** (merge fast-forward): **`main` de `erp-frontend` queda en Angular 22.2.1 y sin empujar** hasta que el usuario lo decida (empujar `main` **despliega en Vercel**).
+
+**Versiones**: los 16 paquetes `@angular/*` a **22.2.1** · **TypeScript 5.7.2 → 6.0.3** · `@angular/cdk` **20.2.14 → 22.2.1** (su peer era `^20 || ^21`: **no admitía 22** y se usa de verdad en el *drag-drop* de columnas de `luna-data-table`) · `@storybook/angular` 10.6.1 (peer TS `^6`) · **`@angular/animations` RETIRADA** · **`openapi-typescript` RETIRADA** · `istanbul-lib-instrument` añadida (schematic).
+
+**Schematics (ninguno saltado)**: `Eager` 31 ficheros (bit a bit igual que el `Default` deprecado) · **`withXhr()` 283** en **specs** (el `app.config.ts` **conserva `withFetch()`**: la aplicación **no** cambió de backend HTTP, medido) · `withNoIncrementalHydration()` 1 (preserva la hidratación completa que adoptamos) · `$safeNavigationMigration()` 49 · **`extendedDiagnostics: suppress` 2** (relajación **impuesta por el schematic oficial**, declarada) · `baseUrl` fuera y **7 alias a relativos** (TS 6: `TS5101` + `TS5090`).
+
+**Las dos retiradas, con motivo medido**: **`@angular/animations`** (0 imports y 0 usos reales del DSL; deprecada en 22.2.1 con intención de quitarla en v23) — arrastró **`NoopAnimationsModule` de 13 specs**, que **el AOT no veía y Karma sí** (`Can't resolve '@angular/animations/browser'`); y **`openapi-typescript`** (peer `typescript ^5.x` frente al `>=6.0 <6.1` obligatorio de `compiler-cli@22` ⇒ **ERESOLVE**: sin quitarla un `npm ci` limpio **falla**) — su coste es **cero**, porque su salida (`api-types.ts`) tiene **0 imports**: lo que usan los 21 ficheros son los `prisma-types`, **copia manual** del backend.
+
+**Un muro de ENTORNO, no de código**: el **CLI 22 exige Node ≥ v24.15.0** y el sistema tenía **v24.14.0** ⇒ todo se midió con el **v24.21.0** ya presente (runtime del arnés). El repo lo **declara** (`engines` + `.nvmrc`) y queda anotado que **cualquier CI o terminal con 24.14.0 muere en el `ng update`/build**, y que Vercel toma la versión de `engines` (por eso el valor es `24.x`, no un rango).
+
+**Gates con 22** (árbol **commiteado**, y re-medidos tras el `pre-commit`): `tsc` app/spec/e2e **0/0/0** · `lint` **0** · **AOT 0 errores/0 avisos** (bundle inicial **1,33 MB**, límite 1,40) · `audit:ci` **12/12** · **Karma 2581/2581** · cobertura **50,25/38,77/44,50/52,08 %** (pisos 36/23/27/37) · **funcional 259/0/6** · **móvil 86/0/5** · arranque+títulos+geometría **15/15** · `e2e:ssr` **3/3** · **visual 53/53 sin mover un píxel y sin re-sellar** (los **87** PNG byte a byte iguales, coherente con **0** ficheros de estilo en el diff) · arnés con huella **idéntica en 199 tablas** en las 6 corridas. **0** `--force`/`--no-verify`/`xit`/`@ts-ignore`/`eslint-disable`.
+
+**Declarado y pendiente de incremento aparte**: `APP_INITIALIZER` (**3 factories**, deprecado pero presente en 22, devuelven la función y el gate de arranque las cubre) · `@schematics/angular` pineado en `^19.2.27` (redundante) · el builder de **Karma avisa de deprecación** (`@angular/build:karma`) pero funciona · **Storybook** roto **desde antes** y `storybook-static/` **versionado** · y las opciones **no** adoptadas: Vitest y la migración al `application` builder (ya hecha desde `a278c1e5`).
