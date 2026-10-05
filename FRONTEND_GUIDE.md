@@ -464,6 +464,32 @@ onLineTaxChange(index: number): void {
 
 **Regla:** en componentes **nuevos** (no refactorizar existentes), preferir `toSignal()` sobre suscripciones manuales.
 
+> **Recarga bajo demanda — el patrón que faltaba.** `toSignal` suscribe **una** vez, así que una lista que debe recargarse (al buscar, paginar o guardar) necesita una fuente que se pueda disparar: un `Subject` con `switchMap`, y **un solo** estado del que salgan la lista **y** el «cargando» —derivarlos de dos suscripciones serían **dos** llamadas HTTP—. El `startWith` hace la carga inicial, así que `ngOnInit` **no** debe volver a llamar a `load()`:
+>
+> ```typescript
+> private readonly recargar$ = new Subject<void>();
+> private readonly estado = toSignal(
+>   this.recargar$.pipe(
+>     startWith(undefined),
+>     switchMap(() =>
+>       this.svc.listar(this.page, this.limit).pipe(
+>         map((res) => ({ filas: res.data, total: res.total, cargando: false })),
+>         startWith({ filas: [], total: 0, cargando: true }),
+>         catchError(() => of({ filas: [], total: 0, cargando: false })),
+>       ),
+>     ),
+>   ),
+>   { initialValue: { filas: [], total: 0, cargando: true } },
+> );
+> protected readonly filas = computed(() => this.estado().filas);
+> protected readonly cargando = computed(() => this.estado().cargando);
+> load(): void { this.recargar$.next(); }
+> ```
+>
+> Con señales leídas en la plantilla (`[data]="filas()"`) desaparece el `cdr.detectChanges()`/`markForCheck()` que hace falta con `withFetch()` (la respuesta HTTP **no** dispara la detección de cambios de Zone): era el pie de foto que empujaba a escribir suscripciones a mano.
+>
+> **Piloto medido** (`pages/item-groups/item-groups.component.ts`, 2026-10-04): el único cambio de comportamiento aparente es que la carga inicial la dispara el `startWith` en vez de `ngOnInit`; se retira el `ChangeDetectorRef` y no se toca nada más. Los componentes **existentes** no se migran: el siguiente que se escriba, así.
+
 ### Ejemplo: antes vs. después
 
 **ANTES** (suscripción manual + `markForCheck`):
