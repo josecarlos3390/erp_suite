@@ -76,3 +76,27 @@ Se activó `provideClientHydration()`, **se revirtió** por no poder demostrar n
 
 Dejó de ser «difícil de verificar»: el CLI **19.2.27** lista **17** comandos y **`mcp` no está entre ellos** ⇒ el servidor MCP oficial de Angular **no existe** en v19 y la propuesta queda **bloqueada por la versión**, no por la falta de un instrumento. Es, además, una de las razones **concretas** para subir de major (el material oficial lo asume).
 
+## 6. *Spike* Angular 19 → 20 (2026-10-05) — medido, **sin muro**
+
+Rama **`spike/angular-20`** (1 commit `eda39f12`, **sin empujar**) desde `09f6e15c`; `main` intacto y limpio. **Veredicto: sale con trabajo acotado** — y el único trabajo de código que quedaba **ya está cerrado en `main`**.
+
+| | Antes | Después |
+|---|---|---|
+| core / common / forms / router | 19.2.25 | **20.3.33** |
+| CLI / devkit / ssr | 19.2.27 | **20.3.38** |
+| cdk | 19.2.19 | 20.2.14 |
+| TypeScript / typescript-eslint | 5.7.2 / 8.33.1 | 5.9.3 / 8.71.0 |
+
+**El `ng update` falló dos veces y ninguna por Angular**: (1) `typescript-eslint@8.33.1` no admite TS 5.9 (el CLI 20 exige `>=5.8`) y (2) el repo tenía que estar limpio para actualizar. Resuelto con esos dos bumps mínimos.
+**Schematics que corrieron**: solo `provideServerRendering(withRoutes(serverRoutes))` (**5** líneas) y defaults en `angular.json` (**+26**). La migración **opcional** al `application` builder **no** se hizo (el builder de Karma sigue existiendo en devkit 20).
+**Código propio tocado: 0** (`git diff --shortstat`: 4 ficheros, y casi todo es `package-lock.json`).
+**Gates**: `tsc` **0/0/0** · `lint` **0** · **AOT 0 errores y 0 avisos de plantilla** · Karma **2580/2581** · `audit:ci` **12/12** · Playwright **15/15** · `e2e:ssr` **3/3** · **visual 53/53 SIN MOVER UN PÍXEL** (comparación estricta con `CI=1`, sin re-grabar ninguna baseline).
+
+**El único rojo, con causa medida y A/B**: un spec leía `getAttribute('ng-reflect-loading')`, un atributo de **depuración** que **Angular 20 hace *opt-in*** (`provideNgReflectAttributes()`, API nueva de v20; la cadena `ng-reflect` no aparece en el bundle de core 20). Aislado en un *worktree* limpio: **5/5 con 19** y **4/5 con 20**. **Cerrado en `main`** comprobando el **input del hijo** (`By.directive(...).componentInstance.loading`) ⇒ el salto queda en **cambio de dependencias**.
+
+**Trampa del schematic**: `ng update` escribe **CRLF dentro de ficheros LF** (`package.json`, `app.config.server.ts`) ⇒ el ratchet de prettier (`format:check:touched`) **se pone rojo**; hay que normalizar a LF.
+
+**Hallazgo colateral**: `patches/angular-core-patch.js` es **huérfano** —102 B, **0** referencias, **sin** `postinstall` y con un nombre que **no** encaja con la convención que lee `patch-package` (`patches/<pkg>+<version>.patch`)— ⇒ candidato a borrar (declarado, no tocado).
+
+**Pendiente antes de un merge real** (declarado por el *spike*): correr la **funcional completa (259)** y el **móvil (86)**; verificar el **piso de cobertura** de `karma.conf.js` (36/23/27/37, que el `pre-push` sí aplica) con 20; cross-browser, `e2e:perf` y Storybook; y decidir la migración **opcional** al `application` builder. **No** se probó **21** ni **22** (un major por vez).
+
