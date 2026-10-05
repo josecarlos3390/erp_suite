@@ -60,23 +60,19 @@ Al ejecutar la lista, **medir cambió tres de las propuestas** —y una de ellas
 | **P2** | «`input()`/`output()` en primitivos Luna **nuevos**» | **NO HACE FALTA UN PRIMITIVO NUEVO**: el design system ya tiene `luna-button-group` (usado en **25+** pantallas) y `luna-button` documenta `@Input() active` como «segmented control / toggle». Lo que había era una **migración a medias**: `_tables.scss:613` ya estilizaba `luna-button` dentro del grupo del descuento mientras la **plantilla** seguía con `<button>` hechos a mano | **REENFOCADO**: terminar esa migración (no escribir un primitivo). P2 sigue pendiente para el **próximo** primitivo que se cree |
 | **P4** | «`title:` en las rutas» con una aserción E2E | Cierto y **real**: **274** cargas de ruta, **0** con `title:` y un `<title>ERP Suite</title>` estático ⇒ las **233** pantallas se titulaban igual y **WCAG 2.4.2** no se cumplía. Pero editar 274 rutas no era la única vía: el menú lateral ya tiene la **etiqueta de cada pantalla** | **HECHO por la fuente única**: `page-title.util.ts` + `PageTitleService` (una pieza, cubre las 233 pantallas y **no puede desincronizarse** del menú), spec unitario **6/6** y gate E2E del cableado |
 
-### P6 — hidratación: **medida y NO adoptada** (2026-10-05)
+### P6 — hidratación: **adoptada** con el instrumento que faltaba (2026-10-05)
 
-Se activó `provideClientHydration()` (una línea en `app.config.ts`), se midió y **se revirtió**. Lo que queda escrito es la medición, porque el plan la pedía «antes de proponerlo en serio»:
+Se activó `provideClientHydration()`, **se revirtió** por no poder demostrar nada, y **se volvió a adoptar** cuando se construyó el instrumento correcto. La historia importa porque el bloqueo era de **medición**, no de la función:
 
-| Instrumento (contra el **servidor SSR** de producción, en un navegador) | Sin hidratación | Con hidratación | ¿Discrimina? |
-|---|---|---|---|
-| Nodos de elemento que el cliente **quita** (`MutationObserver` antes de los scripts) | **4** | **4** | **No** |
-| Llamadas del cliente a la API (`/tenants/active`) | **1** | **1** | **No** |
-| `<script id="ng-state">` en el DOM del cliente | **presente** | **presente** | **No** |
-| `[ng-server-context]` en el DOM del cliente | **presente** | **presente** | **No** |
-| Errores en consola · tarjetas de empresa · gate `npm run e2e:ssr` | 0 · 1 · **3/3** | 0 · 1 · **3/3** | — |
+| Intento | Instrumento | Resultado |
+|---|---|---|
+| 1 | Build SSR de **producción** + 4 sondas (nodos quitados, llamadas a la API, `script#ng-state`, `ng-server-context`) | **Ninguna distingue** con hidratación de sin ella ⇒ **revertida** |
+| 2 | Build SSR en **modo desarrollo** (`--optimization=false`) | **Rompe el presupuesto** (`4,00 MB` vs `2,00 MB`) ⇒ no hay servidor que medir |
+| 3 | **`smoke-dev`** (configuración nueva: modo desarrollo + SSR + presupuestos holgados) | **0 desajustes** (`NG05xx`) y **0 errores**: el cliente **reutiliza** el DOM del servidor ⇒ **adoptada** |
 
-Es decir: **la aplicación funciona igual de las dos maneras** y **ningún instrumento que probé distingue** la hidratación de su ausencia. Mis dos hipótesis sobre señales observables (que la hidratación consume el `ng-state` y retira `ng-server-context`) resultaron **falsas al medirlas**. Sin un beneficio demostrable y con el arranque siendo justo el sitio que ese mismo día dejó la aplicación **en blanco**, se aplica la regla del plan —*si no se puede medir, no se adopta*—: **P6 no entra**.
+**Medido además**: el **dev server** (SSR apagado) pasa el gate de arranque **3/3** sin un solo `NG0xx`, y el gate de SSR de producción sigue **3/3**. **Corroboración débil declarada**: en el intento 1 el cliente creaba **87** nodos con hidratación y **100** sin ella (conteos sucios: incluyen el parseo del HTML). **No se mide** el tamaño de la ganancia: el ERP no tiene harness de rendimiento.
 
-**Lo que haría falta para decidirlo** (el bloqueo es el instrumento, no la función): los diagnósticos de desajuste de Angular son **solo de modo desarrollo** (`NG05xx`) y un build SSR en desarrollo **rompe el presupuesto del bundle** (medido: `--optimization=false` → **4,00 MB** frente al límite de error de **2,00 MB**, así que la generación **falla** y no hay servidor que medir). Desbloquearlo exige una configuración de build **con los presupuestos relajados para medir**, que es una decisión del usuario y no algo que se cuele de tapadillo.
+### P3 — MCP del CLI: **no disponible en nuestra versión** (2026-10-05)
 
-### P3 — MCP del CLI: sigue **sin empezar**
-
-Es el más difícil de **verificar** de la lista —levantar un servidor MCP por stdio y comprobar que expone herramientas no se mide bien desde aquí— y por eso, con la misma regla, está **congelado** hasta poder demostrar que funciona.
+Dejó de ser «difícil de verificar»: el CLI **19.2.27** lista **17** comandos y **`mcp` no está entre ellos** ⇒ el servidor MCP oficial de Angular **no existe** en v19 y la propuesta queda **bloqueada por la versión**, no por la falta de un instrumento. Es, además, una de las razones **concretas** para subir de major (el material oficial lo asume).
 
