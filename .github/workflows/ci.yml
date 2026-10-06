@@ -1,0 +1,66 @@
+name: Storefront CI
+
+# La tienda es el tercer proyecto y era el único **sin** CI: el backend y el ERP tenían uno,
+# pero obsoleto (Node 22, `npm run lint` con `--fix` —que pasa aunque haya errores— y
+# `prisma db push --skip-generate`, flag que Prisma 7 elimina). Arreglados los dos el
+# 2026-10-06; este es el que faltaba.
+#
+# Vive en el repo raíz, así que el workflow **filtra por ruta**: un cambio de documentación o
+# del backend no tiene por qué construir la tienda.
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'storefront/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'storefront/**'
+      - '.github/workflows/ci.yml'
+
+jobs:
+  typecheck-lint-build:
+    runs-on: ubuntu-latest
+
+    # En el CI no existe el `.env.local` que sí hay en local. Las páginas de la tienda son
+    # **dinámicas** (`force-dynamic`), así que el build no llama a la API y estos valores no se
+    # usan para nada: están para que el build no dependa de que falte o no una variable. El
+    # artefacto del CI **no se despliega** (Vercel construye el suyo), así que un
+    # `NEXT_PUBLIC_*` de relleno aquí no puede filtrarse a producción.
+    env:
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      STOREFRONT_API_KEY: ci-placeholder-no-se-usa
+      STOREFRONT_CITY: La Paz
+      ERP_API_URL: http://localhost:3001
+      ERP_TIMEOUT_MS: '8000'
+
+    defaults:
+      run:
+        working-directory: storefront
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          # La tienda no tiene `.nvmrc` propio **a propósito**: Vercel lee el del directorio
+          # raíz del proyecto (`storefront/`) para elegir su Node, así que añadirlo cambiaría
+          # la versión de producción. Se fija aquí la misma con la que se mide en local.
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: storefront/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint (con --max-warnings=0)
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
