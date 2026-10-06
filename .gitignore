@@ -61,6 +61,7 @@ erp-frontend/playwright/.cache/
 !tsconfig.*.json
 !angular.json
 !eslint.config.js
+!storefront/.eslintrc.json
 !jest.config.js
 !jest-e2e.json
 !playwright.config.ts
