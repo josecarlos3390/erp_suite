@@ -389,12 +389,24 @@ export interface CatalogPage {
 export class ErpError extends Error {
   readonly status: number;
   readonly endpoint: string;
+  /** Categoria estable del error del ERP (`code` del contrato, 2026-10-05). */
+  readonly code?: string;
+  /** Identificador de la ocurrencia en el ERP: el mismo que sale en su traza. */
+  readonly requestId?: string;
 
-  constructor(message: string, status: number, endpoint: string) {
+  constructor(
+    message: string,
+    status: number,
+    endpoint: string,
+    code?: string,
+    requestId?: string,
+  ) {
     super(message);
     this.name = "ErpError";
     this.status = status;
     this.endpoint = endpoint;
+    this.code = code;
+    this.requestId = requestId;
   }
 
   get isNotFound(): boolean {
@@ -497,6 +509,68 @@ function readErpMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
+/** Categoria e identificador de ocurrencia que publica el contrato de error del ERP. */
+function readErpMeta(body: unknown): { code?: string; requestId?: string } {
+  if (typeof body !== "object" || body === null) return {};
+  const record = body as Record<string, unknown>;
+  const code = record["code"];
+  const requestId = record["requestId"];
+  return {
+    code: typeof code === "string" && code !== "" ? code : undefined,
+    requestId:
+      typeof requestId === "string" && requestId !== "" ? requestId : undefined,
+  };
+}
+
+/**
+ * Construye el error del canal **y deja la traza** (2026-10-06).
+ *
+ * Antes, una llamada fallida al ERP se propagaba a la ruta, la ruta respondia el
+ * error… y **en el servidor no quedaba nada**: depurar un checkout fallido en
+ * produccion era a ciegas. Ahora cada fallo deja **una** linea con el endpoint, el
+ * estado y —desde el contrato del 2026-10-05— el `code` y el `requestId` que el ERP
+ * registra en su propia traza, asi que la incidencia se puede seguir en los dos lados.
+ *
+ * El 404 **no** se registra: es el camino documentado de «no existe o esta en
+ * borrador» (`erpGetOrNull` lo convierte en `null`), no un fallo.
+ */
+function erpFailure(
+  response: Response,
+  body: unknown,
+  endpoint: string,
+  fallback: string,
+): ErpError {
+  const message = readErpMessage(body, fallback);
+  const { code, requestId } = readErpMeta(body);
+  if (response.status !== 404) {
+    console.error(
+      `[erp] ${response.status} ${endpoint}` +
+        `${code ? ` · code=${code}` : ""}` +
+        `${requestId ? ` · requestId=${requestId}` : ""}` +
+        ` · ${message}`,
+    );
+  }
+  return new ErpError(message, response.status, endpoint, code, requestId);
+}
+
+/**
+ * Fallo de **transporte** contra el ERP (red caida o tiempo agotado).
+ *
+ * Deja traza por el mismo motivo que `erpFailure`: sin ella, un timeout del ERP en
+ * produccion no se ve en ningun sitio. `rethrowIfNextControlFlow` se llama **antes** que
+ * esto en los tres puntos de llamada: las senales de control de Next (`DYNAMIC_SERVER_USAGE`,
+ * `NEXT_*`) no son fallos del ERP y convertirlas en `ErpError` rompe el render.
+ */
+function erpTransportFailure(endpoint: string, error: unknown): ErpError {
+  const detail = error instanceof Error ? error.message : String(error);
+  console.error(`[erp] sin respuesta de ${endpoint} · ${detail}`);
+  return new ErpError(
+    `No se pudo consultar el ERP en ${endpoint} (${detail}).`,
+    0,
+    endpoint,
+  );
+}
+
 /** GET tipado al canal: URL con querystring, cabecera de clave, tope y cache. */
 async function erpGet<T>(
   endpoint: string,
@@ -537,12 +611,7 @@ async function erpGet<T>(
     });
   } catch (error) {
     rethrowIfNextControlFlow(error);
-    const detail = error instanceof Error ? error.message : String(error);
-    throw new ErpError(
-      `No se pudo consultar el ERP en ${endpoint} (${detail}).`,
-      0,
-      endpoint,
-    );
+    throw erpTransportFailure(endpoint, error);
   }
 
   const raw = await response.text();
@@ -556,13 +625,11 @@ async function erpGet<T>(
   }
 
   if (!response.ok) {
-    throw new ErpError(
-      readErpMessage(
-        body,
-        `El ERP respondio ${response.status} en ${endpoint}.`,
-      ),
-      response.status,
+    throw erpFailure(
+      response,
+      body,
       endpoint,
+      `El ERP respondio ${response.status} en ${endpoint}.`,
     );
   }
 
@@ -631,12 +698,7 @@ export async function erpCustomer<T>(
     });
   } catch (error) {
     rethrowIfNextControlFlow(error);
-    const detail = error instanceof Error ? error.message : String(error);
-    throw new ErpError(
-      `No se pudo consultar el ERP en ${endpoint} (${detail}).`,
-      0,
-      endpoint,
-    );
+    throw erpTransportFailure(endpoint, error);
   }
 
   const raw = await response.text();
@@ -649,10 +711,11 @@ export async function erpCustomer<T>(
     }
   }
   if (!response.ok) {
-    throw new ErpError(
-      readErpMessage(parsed, `El canal respondio ${response.status}.`),
-      response.status,
+    throw erpFailure(
+      response,
+      parsed,
       endpoint,
+      `El canal respondio ${response.status}.`,
     );
   }
   return parsed as T;
@@ -681,12 +744,7 @@ async function erpPost<T>(endpoint: string, body: unknown): Promise<T> {
     });
   } catch (error) {
     rethrowIfNextControlFlow(error);
-    const detail = error instanceof Error ? error.message : String(error);
-    throw new ErpError(
-      `No se pudo consultar el ERP en ${endpoint} (${detail}).`,
-      0,
-      endpoint,
-    );
+    throw erpTransportFailure(endpoint, error);
   }
 
   const raw = await response.text();
@@ -700,13 +758,11 @@ async function erpPost<T>(endpoint: string, body: unknown): Promise<T> {
   }
 
   if (!response.ok) {
-    throw new ErpError(
-      readErpMessage(
-        parsed,
-        `El ERP respondio ${response.status} en ${endpoint}.`,
-      ),
-      response.status,
+    throw erpFailure(
+      response,
+      parsed,
       endpoint,
+      `El ERP respondio ${response.status} en ${endpoint}.`,
     );
   }
 
