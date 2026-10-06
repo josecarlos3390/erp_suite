@@ -57,9 +57,44 @@ Los volcados de la migración quedan en `%USERPROFILE%\pg-backup-16-pre-migracio
 
 ---
 
-## 3. E3 — NestJS 11.1.23 → 12.1.2 (EN RAMA `spike/nestjs-12`, **bloqueado a medias**)
+## 3. E3 — NestJS 11.1.23 → 12.1.2 (**HECHO y verificado**, 2026-10-06)
 
-### 3.1 Hecho en la rama
+> **Resultado**: los **seis** criterios de aceptación en verde, y la app **sigue en CJS**: solo el
+> pipeline de **test** pasa a ESM. Rama local `feat/nestjs-12` (nunca empujada), por delante de `main`.
+>
+> | Criterio | Medición |
+> |---|---|
+> | `npm run typecheck` | **0 errores** (63,3 s) — eran **401** `TS2349` |
+> | `npm run lint:ci` | **0 errores / 7 avisos** (el baseline de `main`, sin avisos nuevos) |
+> | `npm test` | **234 suites / 3048 casos, 0 fallos** (8,2 min, pipeline **ESM**) — antes 233/3038 |
+> | `npm run build` | **0 errores**, `dist/main.js` 4,3 KB |
+> | Integración | `/health` **200**, **contrato de error vivo** (`code: UNAUTHORIZED` + `requestId`) y humo del frontend **15/15** (2,1 min) con la huella de la base **idéntica** |
+> | OpenAPI | **IDÉNTICO** a la línea base: **645 rutas / 869 operaciones / 402 esquemas / 8 610 propiedades** ⇒ el plugin de Swagger del CLI sobrevive al salto |
+>
+> **Cómo se resolvió cada bloqueo** (los dos que el examen no podía ver):
+> 1. **Jest + paquetes ESM-only** ⇒ el pipeline de test pasa a ESM: `tsconfig.spec.json` con
+>    `module: esnext` + `moduleResolution: bundler`, los scripts `test`/`test:watch`/`test:cov` con
+>    `node --experimental-vm-modules --max-old-space-size=6144`, más una **infraestructura de test nueva**
+>    (`src/testing/esm-globals.setup.ts`, `esm-paths.ts`, `jest-globals.ts`, `jest.d.ts`) que aporta los
+>    globals de Jest y la resolución de rutas que en ESM ya no vienen puestos.
+> 2. **Los 401 `TS2349`** (llamar a un `import * as`) ⇒ migración mecánica de los imports de supertest a
+>    forma por defecto en **226 ficheros de specs** (+1 481 / −2 032 líneas).
+>
+> **Declarado:**
+> - `--experimental-vm-modules` es una bandera **experimental** de Node y ahora viaja en **cada**
+>   ejecución de tests: hay que vigilar que siga viva en las próximas versiones.
+> - La suite unitaria tarda **8,2 min** (antes ~3,4): es el precio medido del pipeline ESM.
+> - **Corte de luz a mitad de faena**: el trabajo quedó **sin commitear** (226 ficheros) y con
+>   `node_modules` a medias (`@nestjs/core` sin instalar). Se recuperó **commiteando el checkpoint antes
+>   de tocar nada**, borrando su carpeta temporal `.tmp-spike/`, añadiendo su infraestructura ESM y
+>   reinstalando; después se midieron los seis criterios **otra vez y por mí**.
+> - **Falso negativo de medición** (mío): `require('@nestjs/core/package.json')` falla con los paquetes
+>   ESM porque su mapa de `exports` no publica `./package.json`; leído del disco, las versiones 12
+>   estaban correctas.
+> - **E2E del backend** (41 suites / 398): lanzado como último criterio deseable; su resultado se
+>   reporta en la sesión.
+
+### 3.1 Historia: lo que se hizo antes del cierre
 
 - Familia a 12 en un solo movimiento (equivalente a `nest upgrade`, con las versiones a la vista):
   `@nestjs/core|common|platform-express|testing@^12.1.2`, `config@^12.0.1`, `jwt@^12.0.2`,
@@ -122,7 +157,72 @@ experimento se revirtió; el árbol no lo conserva.)
 
 ---
 
-## 4. E5 — Prisma 6.19.3 → 7.10.0 (no empezar hasta cerrar E3)
+## 4. E5 — Prisma 6.19.3 → 7.10.0 (**spike HECHO**: mecánico y acotado, 2,5–4 días)
+
+> **Spike medido el 2026-10-06** en una carpeta aparte (`C:\Users\jdiaz\prisma7-spike`, con su
+> `INFORME.md` y `evidence/`, y una baseline v6 en `C:\Users\jdiaz\prisma6-baseline`). El repo **no** se
+> tocó y a la base solo se le hicieron `SELECT`.
+
+### 4.1 La pregunta que decidía todo: **SÍ funciona desde CommonJS**
+
+**No hay que migrar la app a ESM.** `@prisma/client@7.10.0` y `@prisma/adapter-pg@7.10.0` son **dobles**
+(`require` → CJS, `import` → `.mjs`) y el cliente **generado no contiene `import.meta` ni `__dirname`**
+(0 coincidencias). Medido: un `probe.cjs` con `require` y el cliente compilado con **nuestro**
+`tsconfig.json` (commonjs) lee la base real — `SELECT 1`, `item.count() = 137`, `partner.count() = 14`,
+PostgreSQL 18.3, `Prisma.Decimal` OK — con `tsc` **0 errores**. La premisa «v7 obliga a ESM» es
+**configuración, no runtime**.
+
+### 4.2 La trampa que no hay que pisar
+
+La pareja «prudente» `moduleFormat="cjs"` + `importFileExtension="js"` compila a CJS y el `probe.cjs`
+funciona… **pero rompe la suite ESM** (`Cannot find module './internal/class.js'`: `jest-resolve` no mapea
+`.js` → `.ts`). **La única configuración que pasa las dos tuberías es dejar el `generator` con SOLO
+`provider` + `output`** (la inferencia lee `tsconfig.json` y emite imports sin extensión): build CJS
+**0 errores** y `jest` ESM **3/3** con el mismo directorio generado. Sin `tsconfig.json`, la inferencia
+cae a ESM y **no compila** en CJS.
+
+### 4.3 El pool: una regresión silenciosa que hay que compensar
+
+El adapter **no añade defaults** (delega en `pg.Pool`). Medido con `pg_stat_activity` como observador
+externo sobre la misma URL: v6 con `connection_limit=50` → **50** · v6 sin él → **21** · **v7 con
+`connection_limit=50` → 10** · v7 `max:50` → **50** · v7 `max:5` → 5. O sea: **el `connection_limit`
+deja de aplicar y el pool cae a 10 sin avisar**; además `idleTimeoutMillis` pasa de 300 s a **10 s** y
+`connectionTimeoutMillis` se queda **sin timeout** (v6: 5 s). Equivalente exacto:
+`new PrismaPg({ connectionString, max: 50, connectionTimeoutMillis: 5000, idleTimeoutMillis: 300000 })`.
+
+### 4.4 Lo demás, medido
+
+- **363 líneas de import en 362 ficheros** son **obligatorias** (`require('@prisma/client')` →
+  `MODULE_NOT_FOUND`: v7 no genera en `node_modules`). `new PrismaClient(` **71** — **0** en `src/`: el
+  producto solo tiene `src/prisma/prisma.service.ts:13 extends PrismaClient`—, **40** `datasources:`,
+  `Prisma.Decimal` **2 170**, `$queryRaw` 201, `$executeRaw` 80, `$transaction` 284, `Prisma.sql` 128.
+- **Dónde va el generado no es cosmético**: son **205 ficheros / 79,2 MB de TypeScript** que compila la
+  app. En `src/generated/prisma` compila con el tsconfig **sin tocarlo** (+22-24 s de build, +17 s de
+  typecheck); en la colocación que hoy insinúa el repo (`/generated/prisma` en `.gitignore` y
+  `tsconfig.build.json` excluyendo `generated`) **el cliente no se compila nunca** y `dist` sale sin él.
+- **Tres flags eliminados** (no uno): `db push --skip-generate` (`scripts/prepare-test-db.mjs:32`) **y**
+  `migrate reset --skip-seed` ⇒ **`db:recreate` y `reset:core` rompen tal cual** ⇒ hay que quitarlos.
+- `prisma.config.ts` **necesita** el bloque `datasource` (sin él, `db push` falla directamente); **no**
+  hace falta `"type": "module"` para que el CLI lo cargue y `process.env` **gana** sobre el `.env`.
+- **`npx prisma migrate status` con el CLI 7 contra `erp_db`**: `84 migrations found` /
+  `Database schema is up to date!` ✓.
+- **Pin confirmado**: `latest = 8.0.0-rc.20` (un RC) y `prev = 7.10.0` ⇒ instalar **`prisma@7.10.0`
+  exacto**.
+
+### 4.5 Veredicto, esfuerzo y lo que queda sin medir
+
+**Mecánico y acotado: 2,5–4 días** (0,5 andamiaje/scripts · 0,5–1 imports · 0,5–1 adapter · 0,5 tuberías
+· 1 gates y despliegue). Lo que se paga es **volumen repetido**, más las tuberías que ahora ven 205
+ficheros nuevos (cobertura —medido: el generado entra en la tabla y la corrida pasa de 13 s a 62-68 s—,
+`eslint`, `prettier`, `lint-staged`, `.gitignore`, Docker +78 MB).
+
+**No medible sin el OK del usuario** (declarado, no inventado): el **SSL contra Railway** (v7 delega el
+TLS en `node-pg`, que valida el certificado ⇒ riesgo `P1010`/self-signed; se prueba **en producción**), la
+`DATABASE_URL` de producción, y el coste de `tsc` sobre las 1 141 fuentes con el generado dentro.
+
+---
+
+## 4bis. Lo que decía el plan antes del spike (histórico)
 
 Lo medido por el examen, que sigue vigente: es un **salto de plataforma** con **363 imports** que
 cambian de ruta, `provider`/`output` obligatorios, *driver adapter* (`@prisma/adapter-pg` + `pg`)
