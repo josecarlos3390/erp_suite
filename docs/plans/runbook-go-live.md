@@ -395,6 +395,82 @@ alineación en producción → `npm run backup:db` y guardar el archivo.
 
 ---
 
+## 10. Subir PostgreSQL de versión mayor (medido 2026-10-05: 16.6 → 18.3)
+
+**No hay actualización «en el sitio».** Los binarios nuevos contra el directorio de datos
+viejo no arrancan (`PG_VERSION` no coincide: *database files are incompatible with server*),
+así que el camino es **crear el cluster nuevo y mover los datos**: volcado con las
+herramientas de la versión nueva y restauración en la nueva. Este es el orden que se
+ejecutó y verificó en local; en Railway es el mismo con dos piezas propias de la plataforma
+(§10.3).
+
+### 10.1 Las trampas, medidas
+
+| Trampa | Medición |
+|---|---|
+| **La collation no viaja con el volcado** | El cluster del 18 de esta máquina se creó con `Spanish_Mexico.1252` y el del 16 con `Spanish_Spain.1252`. Hay que **crear cada base con la collation del origen** (`CREATE DATABASE … LC_COLLATE 'Spanish_Spain.1252' LC_CTYPE '…' TEMPLATE template0`) o cambia el orden de los textos. Verificado que el 18 la acepta. |
+| **Las herramientas deben ser ≥ la versión del servidor** | `pg_dump` **se niega** a volcar un servidor más nuevo que él. `backend-erp/scripts/db-utils.js` ya pregunta `server_version_num` y elige las herramientas de esa misma mayor (antes ordenaba las carpetas por nombre y **acertaba por suerte**); si todas son más viejas, **falla nombrando el desajuste** en vez de intentarlo. Gate: `npm run audit:pg-tools:self-test`, en el `pre-push`. |
+| **Volcar y restaurar con las herramientas nuevas** | `pg_dump`/`pg_restore` 18 leyendo el 16 y escribiendo en el 18. La dirección que rompe es la contraria (herramientas viejas contra servidor nuevo). |
+| **Extensiones y roles** | En este proyecto: un solo rol (`postgres`) y `plpgsql` (más `adminpack` en el cluster). Nada que migrar aparte. |
+| **No basta contar tablas** | La verificación fue la **huella de contenido** del arnés (`erp-frontend/e2e/harness/fingerprint.sql`): **199 tablas** con **el mismo número de filas** (3 072 en total) y `_prisma_migrations` con **md5 idéntico**. |
+| **Ojo con el «OK» falso** | Comparar dos **errores** también da «iguales»: una primera comparación por tabla marcó OK porque la consulta fallaba en los dos lados. La huella se calcula con SQL que no puede fallar en silencio. |
+
+### 10.2 Procedimiento en local (el que se ejecutó)
+
+```powershell
+$pg18 = 'C:\Program Files\PostgreSQL\18\bin'
+# 1) La base que ya exista en el destino NO se borra: se renombra
+& "$pg18\psql.exe" -p 5433 -U postgres -d postgres -c "ALTER DATABASE erp_db RENAME TO erp_db_18_previo"
+# 2) Crear la base con la collation del ORIGEN (no con la del cluster nuevo)
+& "$pg18\psql.exe" -p 5433 -U postgres -d postgres -c "CREATE DATABASE erp_db LC_COLLATE 'Spanish_Spain.1252' LC_CTYPE 'Spanish_Spain.1252' TEMPLATE template0 OWNER postgres"
+# 3) Volcar del viejo (5432) con las herramientas del NUEVO y restaurar en el nuevo (5433)
+& "$pg18\pg_dump.exe"    --format=custom --file=erp_db.dump -h localhost -p 5432 -U postgres -d erp_db
+& "$pg18\pg_restore.exe" --no-owner --no-privileges -h localhost -p 5433 -U postgres -d erp_db erp_db.dump
+# 4) Verificar la huella de contenido (tabla por tabla) antes de apuntar la app al nuevo
+# 5) Pasar el nuevo al 5432 y apartar el viejo (necesita Administrador):
+#    ALTER SYSTEM SET port = 5432  ·  Stop-Service postgresql-x64-16  ·  Restart-Service postgresql-x64-18
+#    Los volcados de la migración quedan en %USERPROFILE%\pg-backup-16-pre-migracion
+```
+
+`npm run backup:db` / `restore:db` (**la vía de rollback**) quedan intactos: siguen eligiendo
+las herramientas correctas solos.
+
+### 10.3 En Railway (pendiente: lo decide el usuario)
+
+**Estado medido (2026-10-05)**: la **versión de PostgreSQL de producción no está medida**
+(el host privado `postgres.railway.internal` solo resuelve dentro del proyecto) y **no hay
+evidencia de un backup de producción verificado** —el runbook lo declara como criterio
+(retención 7 diarios + 4 semanales y restore de prueba mensual), pero `npm run backup:db`
+dumpea lo que haya en `DATABASE_URL`, y `railway run` **no** conecta al host privado—.
+Por eso el paso 0 no es opcional.
+
+0. **Medir y asegurar (antes de tocar nada)**
+   1. Habilitar el **TCP Proxy** del servicio Postgres (Railway → servicio → *Settings* → *Networking*).
+   2. `psql "postgresql://postgres:<PASS>@<proxy-host>:<proxy-port>/railway" -c "select version()"` → apuntar la versión.
+   3. `pg_dump` de producción y **restaurarlo en una base local**, verificando la huella
+      (§10.1). Un volcado que nunca se ha restaurado **no** es un backup verificado.
+1. **Crear el servicio nuevo en la 18** (no se puede actualizar en el sitio): *+ New* → servicio
+   con la imagen `ghcr.io/railwayapp-templates/postgres-ssl:18` (el tag que corresponda) **y su
+   volumen**. **No** cambiar el tag de imagen del servicio viejo: los binarios nuevos contra el
+   directorio de datos viejo no arrancan (falla segura, pero es una caída).
+2. **Ventana**: escalar el backend a **0 réplicas**. Si algo escribe entre el volcado y la
+   restauración, se pierde.
+3. **Mover los datos**: volcar del viejo y restaurar en el nuevo con las herramientas de la 18
+   (por la red privada o con `railway ssh` dentro del proyecto).
+4. **Verificar en el destino** con la huella de contenido (las **199** tablas del ERP y las
+   **84** migraciones de `_prisma_migrations`).
+5. **Repuntar** la variable del backend (`DATABASE_URL`; si es una referencia tipo
+   `${{Postgres.DATABASE_URL}}`, hay que actualizarla al nombre del servicio nuevo) y
+   **escalar de nuevo**. El arranque corre `prisma migrate deploy` más los SQL manuales **en
+   cada boot**: con el esquema ya restaurado es un no-op, y si algo faltara, lo aplica.
+6. **Verificar** `/health` (`prisma: up`), el login y una operación real. El servicio viejo se
+   deja **parado** unos días antes de borrarlo (y su volumen con él).
+
+**Irreversible**: la subida de major del **servidor** (solo se vuelve restaurando el backup) y
+cualquier cambio de esquema aplicado en producción (no hay *down-migrations*).
+
+---
+
 *Este runbook se actualiza con cada cambio de despliegue. La versión canónica de
 restricciones vive en `AGENTS.md`; el estado de QA en `AUDIT.md`; las features en
 `ROADMAP.md`.*
