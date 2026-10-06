@@ -70,6 +70,7 @@ Los volcados de la migración quedan en `%USERPROFILE%\pg-backup-16-pre-migracio
 > | `npm run build` | **0 errores**, `dist/main.js` 4,3 KB |
 > | Integración | `/health` **200**, **contrato de error vivo** (`code: UNAUTHORIZED` + `requestId`) y humo del frontend **15/15** (2,1 min) con la huella de la base **idéntica** |
 > | OpenAPI | **IDÉNTICO** a la línea base: **645 rutas / 869 operaciones / 402 esquemas / 8 610 propiedades** ⇒ el plugin de Swagger del CLI sobrevive al salto |
+> | **E2E del backend** | **41 suites / 398 casos, 0 fallos** (29,5 min) |
 >
 > **Cómo se resolvió cada bloqueo** (los dos que el examen no podía ver):
 > 1. **Jest + paquetes ESM-only** ⇒ el pipeline de test pasa a ESM: `tsconfig.spec.json` con
@@ -91,8 +92,16 @@ Los volcados de la migración quedan en `%USERPROFILE%\pg-backup-16-pre-migracio
 > - **Falso negativo de medición** (mío): `require('@nestjs/core/package.json')` falla con los paquetes
 >   ESM porque su mapa de `exports` no publica `./package.json`; leído del disco, las versiones 12
 >   estaban correctas.
-> - **E2E del backend** (41 suites / 398): lanzado como último criterio deseable; su resultado se
->   reporta en la sesión.
+> - **E2E del backend**: **41 suites / 398 casos, 0 fallos** (29,5 min) ⇒ el séptimo criterio también en
+>   verde. **No salió a la primera**, y los dos motivos merecen quedar escritos: **(1)** el pipeline E2E
+>   (`test/jest-e2e.json`) se había quedado sin el tratamiento ESM (40 de 41 suites **no arrancaban**) ⇒ se
+>   trasladó lo mismo del unitario (`extensionsToTreatAsEsm`, `useESM: true`, `tsconfig.e2e.json` en
+>   `esnext`, `--experimental-vm-modules`); **(2)** un bloqueo **de terceros** que el plan no podía prever:
+>   `@nestjs/throttler` **no tiene versión 12** —6.7.1 es la última y sus *peers* ya aceptan `^12`— y su
+>   `dist` es **CommonJS** (`"use strict"` + `require("@nestjs/common")`) mientras el resto de la familia es
+>   ESM ⇒ `Cannot require() ES Module … being loaded by a concurrent import()`. Se cierra con un
+>   `setupFiles` que **precarga** `@nestjs/common` y `@nestjs/core`
+>   (`test/setup-e2e-preload.ts`, con el porqué y la nota de que sobra el día que el throttler publique ESM).
 
 ### 3.1 Historia: lo que se hizo antes del cierre
 
