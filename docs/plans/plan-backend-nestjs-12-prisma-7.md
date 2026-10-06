@@ -225,9 +225,91 @@ deja de aplicar y el pool cae a 10 sin avisar**; además `idleTimeoutMillis` pas
 ficheros nuevos (cobertura —medido: el generado entra en la tabla y la corrida pasa de 13 s a 62-68 s—,
 `eslint`, `prettier`, `lint-staged`, `.gitignore`, Docker +78 MB).
 
-**No medible sin el OK del usuario** (declarado, no inventado): el **SSL contra Railway** (v7 delega el
-TLS en `node-pg`, que valida el certificado ⇒ riesgo `P1010`/self-signed; se prueba **en producción**), la
-`DATABASE_URL` de producción, y el coste de `tsc` sobre las 1 141 fuentes con el generado dentro.
+**Lo que quedaba como «no medible» y ya está medido** (2026-10-06): el **SSL contra Railway** y el
+**arranque del contenedor con la `DATABASE_URL` real**, los dos con la credencial de producción y **en
+solo lectura**; y el **coste de `tsc`** con el generado dentro. Ver el **§4.6**.
+
+---
+
+### 4.6 E5 — EJECUTADO y verificado (rama `spike/prisma-7`, sin empujar, `main` intacto)
+
+**Los 10 criterios, medidos dos veces** (por el agente y por mí sobre el árbol final):
+
+| Criterio | Medición |
+|---|---|
+| `npm run typecheck` | **0** (140,5 s; eran 63,3 s en E3) |
+| `npm run lint:ci` | **0 errores / 0 avisos** (298,6 s; eran 55,7 s) |
+| `npm test` | **237 suites / 3 078 casos, 0 fallos** (36,8 min; eran 236/3 068 en 8,2 min) |
+| `npm run build` | **0** (239,2 s) · `dist/generated/prisma` **615 ficheros / 78,3 MB** |
+| **`docker build`** | **exit 0** (679,7 s) con el `Dockerfile` tal cual · imagen **1,44 GB** · `dist/generated/prisma/client.js` **presente** |
+| `test/app.e2e-spec.ts` · **E2E completo** | **3/3** · **41 suites / 398 casos, 0 fallos** (38,6 min) |
+| OpenAPI local (`/api-json`) | **647 / 871 / 402 / 8 610** · el diff contra la línea base ve **solo** `GET /health/live` y `GET /health/ready`; **0** esquemas con propiedades distintas |
+| Lectura real (cliente v7 + adapter) | `SELECT 1` · **item 137** · **partner 14** · **84 migraciones** · `Prisma.Decimal` OK · `/health` **200** con `prisma: up` |
+| `npx prisma migrate status` | **84 / `Database schema is up to date!`** |
+| Falsificación del pool | `max: 50` ⇒ **pico 50 / retenidas 50**; control **sin `max`** ⇒ **10 / 10** |
+
+**El punto que estaba declarado como «no medible», medido.** El certificado de Railway es **autofirmado
+`CN=localhost`** (cadena de 2, `Verify return code: 19`, ninguna de las **121** raíces de Node): con la
+validación por defecto la conexión **falla** (`SELF_SIGNED_CERT_IN_CHAIN`), y con `rejectUnauthorized:
+false` —que es lo que **ya hace** Prisma 6, porque `sslmode=require` en libpq significa **cifrar sin
+verificar**— **funciona**. Y no basta con eso: en `pg-connection-string` v2 `sslmode=require` es **alias de
+`verify-full`** y `pg` **re-parsea la URL después** de fusionar el config
+(`pg/lib/connection-parameters.js:60`), así que un `sslmode` en la URL **pisa** el `ssl` explícito ⇒ la URL
+remota se limpia de `sslmode` y `sslmode=disable` se respeta. **Verificado dentro de la imagen**, con el
+`sslmode=require` real y **sin arrancar la aplicación** (para que ningún `@Cron` pudiera escribir en
+producción): `SELECT 1 -> [{"ok":1}]`, **PostgreSQL 18.6**, **84** migraciones, **236** tablas, **137**
+artículos.
+
+**Lo que impuso la ejecución (nada de esto estaba en el plan)**:
+
+1. **`Prisma.dmmf` ya no existe en v7** y el `?? []` de `tenant-isolation.extension.ts` habría dejado el
+   **aislamiento por empresa desactivado en silencio** (una fuga entre empresas, no un fallo ruidoso).
+   Sustituido por un lector de `prisma/schema.prisma` (`src/prisma/schema-model-meta.ts`, que **falla
+   ruidosamente** y nunca degrada a «sin filtro»), verificado **contra el DMMF real de la baseline
+   6.19.3**: **197 modelos** y las cuatro estructuras que consume la extensión, idénticas campo a campo.
+   Dos ajustes que impuso el oráculo: `isRequired` es `!optional` **también en listas**, y los campos
+   `@ignore` (**12**) no existen en el DMMF. El E2E de aislamiento pasa.
+2. **El cliente de v7 ya no carga el `.env`** (en v6 sí, y de ahí dependía `validateEnv(process.env)`, que
+   corre antes de `ConfigModule`) ⇒ `loadDotEnvOnce()` en `main.ts`.
+3. Dos errores de tipos del salto: `Prisma.Decimal.Value` (**TS2713**, el miembro era redundante) y
+   `@prisma/client/runtime/library` (**TS2307**), arreglados sin debilitar tipos.
+4. **El `package-lock` de npm 11 es solo-para-Windows** (win32 1 / linux 0) y **sin `webpack`** (peer
+   opcional de `@nestjs/cli` y `ts-loader`) ⇒ el `npm ci` de la imagen falla: **el mismo fallo de E3**, y
+   la lección se **corrige y se amplía**: no basta con usar el npm del contenedor, **importa la
+   plataforma**. El lock se genera **dentro** de `node:22-slim` y sale multi-plataforma (**963** entradas;
+   `win32 linux darwin android freebsd`, 9 arquitecturas).
+5. `process.loadEnvFile('.env')` **no propaga** al `process.env` del sandbox de Jest ⇒ el spec de
+   `PrismaService` sirve la URL por el doble de `ConfigService`.
+6. El `ignores: ['generated']` de ESLint **no casa** con `src/generated` ⇒ ruta explícita (igual en
+   prettier, cobertura y lint-staged).
+7. El método del spike para el pool (60 consultas en paralelo) **no se puede medir aquí** con
+   `connectionTimeoutMillis: 5 s` (`Connection terminated due to connection timeout`) ⇒ se sustituye por
+   una **rampa** 10→50, que discrimina igual y además mide lo que el pool **retiene**.
+8. Un **huérfano** que el censo del codemod no vio por su extensión: `src/partners/partners.controller.ts.test`
+   (ni `*.spec.ts` ni `*.test.ts`, y el `testRegex` del proyecto es `.*\.spec\.ts$` ⇒ Jest **nunca lo
+   ejecutaba**) seguía importando `@prisma/client`. Medido: **0 referencias**, no es un test sino un
+   **duplicado viejo del controlador** (7 rutas frente a las 9 del real, ninguna propia) ⇒ **borrado**
+   (`6cc2c45d`).
+9. `prisma/seed.js` (artefacto compilado de 29 líneas del primer commit, **0 referencias**, con el import
+   viejo) **se borra**.
+
+**Censo del salto (medido, más fino que el del spike)**: **402 referencias** al cliente viejo en **401
+ficheros** (365 `from`, 30 `require`, 7 `import()`) + **1 mención en un comentario**, y **107**
+`new PrismaClient` (66 vacíos + 41 con `datasources`, que ya no existe) ⇒ **0** referencias (salvo el
+huérfano del punto 8). El spike decía **363/362** y **71**: contaba solo `from` y no veía
+`scripts/qa-battery/**`.
+
+**Coste a presupuestar (medido)**: la suite unitaria pasa de **8,2 a 36,8 min** y el `lint:ci` de **55,7 a
+298,6 s**, porque las dos tuberías ahora **transforman los 205 ficheros / 79 MB del generado** (`ts-jest`
+los compila en cada suite; `typescript-eslint` los mete en el programa tipo-aware). El `typecheck` sube de
+63,3 a **140,5 s** y el `build` +22-24 s. **Mitigación propuesta y no aplicada**: `isolatedModules: true`
+en `ts-jest` (los errores de tipos ya los cubre `npm run typecheck`, que está en el `pre-push`).
+
+**Declarado**: el `node_modules` **local** sigue siendo el que dejó npm 11 (el contenedor instala del lock
+reparado, medido con `docker build` **y con sonda dentro de la imagen**); ampliar el `typecheck` a
+`scripts/`, `prisma/`, `perf/` y `test/` da **4 errores preexistentes** y **ninguno del salto** —uno de
+ellos **real**: `perf/db-setup.ts` escribe `inTransitAccountId`, que **no existe en el schema**—; y la
+cobertura del generado queda excluida, sin medir en una corrida completa.
 
 ---
 
