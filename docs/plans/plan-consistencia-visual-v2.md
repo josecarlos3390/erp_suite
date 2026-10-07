@@ -41,7 +41,7 @@
    ```
 4. **Commits:** el frontend es su propio repo Git. Commit por fase:
    ```bash
-   cd erp-frontend && git add -A && git commit -m "fix(ui): <fase> — <descripción>" --no-verify && git push --no-verify
+   cd erp-frontend && git add -A && git commit -m "fix(ui): <fase> — <descripción>" && git push
    ```
 5. **Rutas:** todas las rutas de este documento son relativas a `erp-frontend/src/app`, salvo las que empiezan con `styles/` (que son `erp-frontend/src/styles`).
 

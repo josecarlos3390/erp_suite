@@ -37,7 +37,7 @@ Lo que **ya cumple** y NO se toca (salvo integración):
    ```
 3. **Schema:** cada cambio de schema requiere `npx prisma db push` (con el workaround del generador `typescript-interfaces` si aplica) + `npm run generate-types` en el frontend. Todo modelo nuevo lleva `tenantId` + `@@index([tenantId])`.
 4. **Zero `as any`** en código de producción. DTOs con `class-validator`.
-5. **Commits por fase** en el repo correspondiente (`--no-verify` desde el entorno del agente).
+5. **Commits por fase** en el repo correspondiente, con el **hook completo en verde** (nunca `--no-verify`: el hook se arregla, no se salta — ver `AGENTS.md`, *Reglas de proceso*).
 6. **Norma de referencia:** citar el artículo exacto de la Ley 843 (T.O. 31/07/2026) en el comentario del código que lo implementa (mismo criterio que DT.32–DT.35).
 
 ---
