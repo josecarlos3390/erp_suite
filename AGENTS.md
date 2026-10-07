@@ -233,6 +233,22 @@ npm run audit:contrast       # contraste WCAG de la paleta
   poder ejecutarse, y el CI moría antes de llamarlos. Regla: **ejecute el script, no lo parsee** — y
   si un `--self-test` no existe de verdad (hay scripts que **ignoran** los flags y corren la
   auditoría completa), **no invente el alias**: sería un gate que pasa por casualidad.
+- **Después de empujar, compruebe LOS DOS espejos** (`git ls-remote origin refs/heads/main` y
+  `git ls-remote deploy refs/heads/main`). El 2026-10-07 el push «salió bien» y el espejo `deploy` se
+  quedó **2 commits atrás** (`origin` en `0417acd`, `deploy` en `4948689`) sin que el resultado global
+  lo gritara: el hook corre la suite **una vez por `pushurl`** y el segundo falló. Un desfase de espejo
+  es un despliegue que no ocurrió.
+- **No empuje con otro proceso trabajando en el mismo árbol** (un agente, otra sesión, un E2E). Medido
+  el 2026-10-07: tres pushes seguidos con un agente con el árbol sucio (41 ficheros) y corriendo
+  suites ⇒ `husky - pre-push script failed` y espejo atrasado. El hook corre la suite entera por cada
+  remoto y dos suites compitiendo por las mismas bases fallan (ver *Reglas de entorno medidas*).
+- **Ninguna credencial en el código, tampoco en las specs.** Medido el 2026-10-07: **39 de 42** specs
+  E2E construían su propio `PrismaClient` con el literal
+  `postgresql://postgres:<password-local>@localhost:5432/erp_test` — la contraseña del `.env` local, que
+  **no está versionado**. El CI usa `postgres`, así que `prepare-test-db.mjs` (que sí lee
+  `E2E_DATABASE_URL`) conectaba y **las specs no**: 392 casos caídos por `Authentication failed`. Regla:
+  las specs leen `process.env.DATABASE_URL` y **nunca** un literal con credenciales. Y como esa
+  contraseña **sigue en la historia de git**, hay que **rotarla** (no basta con limpiar el código).
 - **Declarar lo que no se midió** y los límites (flakes, datos ausentes, decisiones pendientes del
   usuario) en vez de taparlos. **Un entorno que nadie prueba es un gate que no existe.**
 ## 6. Variables de entorno críticas
