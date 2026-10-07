@@ -202,7 +202,9 @@ npm run audit:contrast       # contraste WCAG de la paleta
   del usuario** cuando el cambio es de producto.
 - **Backend, dos remotos:** `git push origin main` y `git push deploy main` (`origin` =
   `josecarlos3390/backend-erp`; `deploy` → `josekilla3390/backend-erp`). El frontend y la raíz tienen
-  uno solo. **No** hay que empujar `deploy` aparte «para asegurar»: lo cubre el sello.
+  uno solo. **Los dos espejos se empujan y se verifican siempre** (ver *Disciplina de medición y
+  declaración*): el sello cubre la **verificación**, no el envío. El 2026-10-07 `deploy` se quedó
+  **2 commits atrás** (`origin` en `0417acd`) porque su hook falló y el resultado global no lo dijo.
 - **Verificar el despliegue por medición, nunca por suposición:** `/health` **200** con `prisma: up`,
   contrato de error vivo (`code` + `requestId`), **OpenAPI idéntico** a la línea base, **huella del
   bundle** servido igual a la del build local del mismo commit y sonda de navegador con **0 errores de
