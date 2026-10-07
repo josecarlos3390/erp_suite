@@ -1,7 +1,7 @@
 # Historial de sesiones — erp_suite
 
-> **Qué es.** El **registro histórico completo** del monorepo: las 133 entradas de sesión fechadas
-> entre el **2026-09-18** y el **2026-10-06** (la más reciente primero), más los **bloques retirados de
+> **Qué es.** El **registro histórico completo** del monorepo: las 134 entradas de sesión fechadas
+> entre el **2026-09-18** y el **2026-10-07** (la más reciente primero), más los **bloques retirados de
 > `AGENTS.md`** el **2026-10-06** cuando ese archivo se partió en «instrucciones vivas» + «histórico».
 >
 > **De dónde salió.** De `AGENTS.md`, que pesaba **579 985 B** (LF, como lo guarda git; **580 748 B** en
@@ -51,8 +51,9 @@
 
 ## Índice
 
-**Parte 1 — Registro de sesiones** (2026-09-18 → 2026-10-06, la más reciente primero):
+**Parte 1 — Registro de sesiones** (2026-09-18 → 2026-10-07, la más reciente primero):
 
+- **2026-10-07** — EL CI SE CIERRA DE PUNTA A PUNTA: `e2e` 42/42 Y 403/403 SIN EL PASSWORD LOCAL, `load-tests` CON SUS TRES CAUSAS, EL INVARIANTE DE LAS 687 COTAS BLINDADO Y LAS TRES REGLAS NUEVAS DE `AGENTS.md`
 - **2026-10-06** — EL CI EMPIEZA A MEDIR: APAGÓN DE 1 H 40 (`SHADOW_DATABASE_URL`), PRISMA 7 EN PRODUCCIÓN, 238/238 SUITES, 687 COTAS Y `AGENTS.md` DE 580 KB A 19,7 KB…
 - **2026-10-05** — EL GATE E2E DEL ERP ES REPRODUCIBLE Y QUEDA SIN ROJOS —251 pasan, 0 fallan, 6 omitidos, antes 241 y 5—: se portó el arnés de volcado/restauración con…
 - **2026-10-04** — Barrido — backend unitario 230 suites / 2987 casos · E2E del backend 41 suites / 398 · tienda funcional 82/82 (arnés restaurando la base: huella idén…
@@ -204,9 +205,90 @@ Y al final: **Verificación del corte** y **Pendiente de revisar**.
 
 # Parte 1 — Registro de sesiones
 
-> **133 entradas**, la más reciente primero (**2026-10-06** → **2026-09-18**). El encabezado
+> **134 entradas**, la más reciente primero (**2026-10-07** → **2026-09-18**). El encabezado
 > `## fecha — titular` es añadido; el cuerpo de cada entrada **conserva el marcador original**
 > (`· **TANDA ANTERIOR (fecha)**`, `**LA ÚLTIMA TANDA (fecha)**:` o `) y fecha`).
+
+## 2026-10-07 — EL CI SE CIERRA DE PUNTA A PUNTA: `e2e` 42/42 Y 403/403 SIN EL PASSWORD LOCAL, `load-tests` CON SUS TRES CAUSAS, EL INVARIANTE DE LAS 687 COTAS BLINDADO Y LAS TRES REGLAS NUEVAS DE `AGENTS.md`
+
+**LA TANDA DEL 2026-10-07**: el día en que la cadena del CI del backend se cerró —los jobs `e2e` y `load-tests`, que llevaban meses saliendo `skipped`, corrieron y la suite E2E quedó en **42/42 suites y 403/403 casos**—, en el
+que el invariante de las cotas de colección quedó **blindado** y en el que `AGENTS.md` ganó las **tres reglas** nacidas de los fallos de hoy: comprobar **los dos espejos** al empujar, **no empujar con otro proceso en el árbol** y
+**ninguna credencial en el código, tampoco en las specs**.
+Los eslabones de la primera mitad de la cadena (`npm ci`, el `lint:ci` con el `--fix`, el pin de `prettier` **3.8.3**, `typecheck:all`, el `audit` del dinero y los **7 shebangs**) están en la entrada del **2026-10-06**, con su
+medición; aquí va lo que faltaba: los **dos jobs que salían `skipped`**.
+
+**(1) LA CADENA DEL CI, ESLABÓN A ESLABÓN.**
+**(a) El job `e2e`.** El relleno que desbloqueó `npm ci` **rompió** su primer run —el commit `d3fbce3a` lo atribuye al relleno—: los specs caían **392 casos** con `Authentication failed … for postgres`, así que el job pasa a llevar
+la **`DATABASE_URL` real** (`erp_test`) y el relleno queda **solo** en `lint-and-test`, para `prisma generate`.
+Y el E2E **seguía sin autenticarse**: `prepare-test-db.mjs` conectaba y su `db push` salía **0**, pero **todas** las suites morían en `prisma.tenant.create()` (`test/test-utils.ts:156`) con
+`Authentication failed … the provided database credentials for «(not available)» are not valid`, y en local el E2E **pasaba**.
+**La causa, medida**: el cliente de la **app** sale de `ConfigService.get('DATABASE_URL')` (que `test/setup-e2e.ts` fija desde `E2E_DATABASE_URL` ⇒ estaba bien), pero **39 de las 42** specs construían su **propio** `PrismaClient`
+con el literal `postgresql://postgres:HoN3390@localhost:5432/erp_test?schema=public` —`HoN3390` es el password del `.env` local, que **no está versionado**; el servicio del job es `POSTGRES_PASSWORD: postgres`—.
+**Falsificación, con el par falla/pasa**: (a) capa driver (`pg` 8.23.1, el mismo servidor): `postgres` ⇒ `OK`, `HoN3390` ⇒ **`code=28P01`**; (b) capa Jest con el `env:` del job y sin `.env`: **9/9 fallos** con **el mismo texto y la
+misma traza** del CI (`test-utils.ts:156` ← `incoming-payments.e2e-spec.ts:43`); (c) **suite completa con el arreglo y sin `.env`**: `Test Suites: 42 passed, 42 total` · `Tests: 403 passed, 403 total` (**1540 s**) y **0** ocurrencias
+de `Authentication failed`.
+**Entregado**: los **39** literales pasan a `process.env.DATABASE_URL` (**39 ficheros, +1/−3** cada uno —el literal ocupaba tres líneas—; `grep` de `HoN3390` en `test/` ⇒ **0**) y
+`scripts/check-k6-env.mjs` cruza `PORT` con `K6_BASE_URL` (con `--require`, **exit 1** si
+no cuadran). Los **42** ficheros `*.e2e-spec.ts` que hay en el árbol son los **42** de la corrida.
+
+**(b) El job `load-tests`: TRES corridas y TRES causas distintas.**
+**Corrida 1 — los SQL manuales.** Moría en `Setup database` (`An error occurred while running the seed command … ts-node prisma/seed.ts`). **Reproducido sobre una base aparte** (`erp_loadtest_check`, sin tocar `erp_db` ni `erp_test`):
+`migrate deploy` **0** y `db seed` **1** en `prisma.item.upsert` (`prisma/seed.ts:1411`) con **`P2022`** —el hueco **no es adivinado**: el diff del modelo `Item` contra las columnas reales da **una sola** columna escalar ausente,
+**`uomGroupId`** (los otros **86** nombres son relaciones)—. Con `node scripts/apply-manual-migrations.mjs --best-effort` (los **18** `.sql` de `prisma/manual/`, orden alfabético) el seed sale **0**; y **`--best-effort` es el flag
+medido**, no una comodidad: `migrate deploy` ya creó **3** de esas columnas (`Currency.isIndexUnit`, `BankAccount.itfRate`, `SalesDebitNote.paidAmount`) y esas **3** sentencias —los **3 únicos** fallos de los 18—
+salen con **`42701 duplicate_column`**. El **mismo agujero** estaba en `load-tests-large.yml`, el semanal.
+**Corrida 2 — el OOM.** El arranque del backend moría con `Ineffective mark-compacts near heap limit` a **~2 GB en 4 minutos** ⇒ `NODE_OPTIONS: --max-old-space-size=6144` en el job, el mismo OOM ya arreglado en `lint-and-test`
+(commit `0417acd8`).
+**Corrida 3 — el puerto.** k6 moría con `TypeError: fetch failed` / `ECONNREFUSED`, y **no** era falta de espera: `main.ts` hace `config.get('PORT') ?? 3001` y el job **no definía `PORT`**, mientras `perf/config.ts` apunta a **3000**;
+medido **3 veces** sobre `dist/main.js` con el `env:` del job: `[Bootstrap] API corriendo en http://localhost:3001` y **0** escuchas en 3000, así que el `login()` de `perf/auth.ts` —que **solo** reintenta ante **429**, no ante
+`ECONNREFUSED`— muere en el primer intento; con `PORT=3000` el mismo binario registra «API corriendo en http://localhost:3000» y `/health/live` responde **200**. **Y el bucle de arranque (`30 × sleep 2`) no podía fallar el paso**:
+se agotaba en silencio y k6 salía igual contra un puerto muerto —que es por lo que varias corridas se leyeron como un fallo de k6—; ahora es una **espera con tope** (`120 × 2 s` = **240 s**) sobre `/health/live` que **falla el paso**
+y vuelca `backend.log`. `PORT: 3000` + `PERF_BASE_URL` entran en **los dos** workflows (commit `42b302b3`); medido para el arranque: `npm run build` en frío **147,9 s** y `node dist/main.js` ya construido **7,1 s** hasta «API
+corriendo».
+**`lint-and-test` verde por primera vez, con la suite completa dentro** —esa mitad de la cadena, con sus cifras, está en la entrada del 2026-10-06—.
+**Declarado**: los **5** escenarios de k6 **no** se corrieron en local (k6 no está instalado aquí; el runner lo descarga) y la corrida completa del job en la nube queda **sin verificar desde el árbol**; y el semanal
+`load-tests-large` (`0 3 * * 0`, domingos) lleva el mismo arreglo pero **no corre hasta el domingo**, con su NOTA declarada: a diferencia de `ci.yml` **no define `NODE_OPTIONS`** y fija **Node 22** a mano en vez de leer `.nvmrc`
+(24.21.0).
+
+**(2) EL INVARIANTE DE LAS 687 COTAS: LA PARTICIÓN CUADRA O EL INFORME LO DICE.**
+Las cinco clases de consumo son **exhaustivas y disjuntas**, así que su suma **tiene** que dar `produccionSinCota`: hoy **72 + 29 + 113 + 383 + 90 = 687**. Hasta hoy era una **promesa sin guardián**.
+**Entregado** (commit `4d26d32b`, rama `fix/ratchet-particion-cuadra`): el informe publica la comprobación en su **propia línea** (suma, total y `CUADRA`/`DESCUADRA`); **`--update-baseline` ABORTA** (exit 1) si no cuadra y muestra el
+desglose —no se fija como referencia un número que no describe lo que el informe publica—; **`--check` sale 1** con `INFORME INCONSISTENTE`; y el invariante es del **banco entero** (el modo `--file` **no** lo evalúa: sería
+comparar el recuento de un fichero con el total). El guardián va **antes** de la autoprueba **a propósito**: con la autoprueba delante, un detector roto tapaba esta línea.
+**El fallo real que destapó la falsificación**: los cinco recuentos de `countsOf` salían de una **lista paralela** y podían **divergir** de la que comprueba el invariante —tocar una y no la otra dejaba un informe que decía una cosa
+en la tabla y otra en la suma—, medido mutando `countsOf`: **`--check` salía 0** y **`--update-baseline` escribía el baseline**. Se quita la duplicación: los cinco recuentos salen del **mismo** reparto que comprueba el invariante.
+**Falsificado** (mutando `partitionClassOf` para que `LISTADO` no se reparta): `--check` **exit 1** con `SUMA 615 / total 687 / diferencia = 72 · 72 hallazgo(s) sin clase repartida`; `--update-baseline` **exit 1** con el mismo
+desglose y el baseline **INTACTO** (hash idéntico); restaurado, **14** casos de autoprueba OK (eran **10**) y `--check` **exit 0** con `72+29+113+383+90=687`. *(El «686» que circuló fue un **error de reporte**, no un descuadre: ya
+está en la nota posterior de la entrada del 2026-10-06.)*
+
+**(3) LOS DOS ESPEJOS: EL PUSH «SALIÓ BIEN» Y `deploy` SE QUEDÓ 2 COMMITS ATRÁS.**
+`origin` recibió los commits y **`deploy` se quedó atrás** (**`origin` en `0417acd`, `deploy` en `4948689`**) **sin que el resultado global lo dijera**: el hook corre la suite **una vez por cada `pushurl`** y el segundo falló. **Un
+desfase de espejo es un despliegue que no ocurrió.**
+**Y la contención, medida**: **tres** pushes seguidos con **otro agente** con el árbol sucio (**41 ficheros**) y corriendo suites ⇒ `husky - pre-push script failed`; dos suites compitiendo por las **mismas bases** fallan (las dos
+suites E2E completas del backend comparten `erp_test`).
+
+**(4) LAS TRES REGLAS NUEVAS DE `AGENTS.md` Y LA CONTRADICCIÓN CORREGIDA.**
+Nacidas de los fallos de hoy, al final de *Reglas de proceso* (commit `6d40d49`): **(1)** después de empujar, **comprobar LOS DOS espejos** (`git ls-remote origin refs/heads/main` y `git ls-remote deploy refs/heads/main`); **(2)**
+**no empujar con otro proceso trabajando en el mismo árbol** (un agente, otra sesión, un E2E); **(3)** **ninguna credencial en el código, tampoco en las specs**: las specs leen `process.env.DATABASE_URL` y **nunca** un literal con
+credenciales, y —como esa contraseña **sigue en la historia de git**— hay que **rotarla**, que limpiar el código **no basta**.
+**Y la contradicción, fuera** (commit `25e79d7`): la sección de *Despliegue* decía que **no** hacía falta empujar `deploy` porque «**lo cubre el sello**», y hoy se midió lo contrario ⇒ **el sello cubre la verificación, no el envío**;
+los dos espejos se empujan y se verifican **siempre**.
+*(Las dos lecciones escritas de madrugada —la **huella de versión** para verificar un despliegue y «**un script que no arranca es un gate que no existe**»— ya están en la entrada del 2026-10-06;
+`AGENTS.md` mide hoy **22 848 B / 355 líneas**, con el corte de 580 KB → 19 402 B también allí.)*
+
+**(5) LO DECLARADO Y LO PENDIENTE.**
+- **Los E2E funcionales**: el de la **tienda** sigue sin correrse (declarado el 2026-10-06: su arnés restaura `erp_db`, que estaba en uso por la migración a Prisma 7) y el del **frontend** tiene job propio (`Functional E2E Tests`,
+  `erp-frontend/.github/workflows/ci.yml:236`) pero cuelga del `Checkout backend`, que clona `backend-erp` con `secrets.GH_PAT` (`:206-211`, `:296-301`, `:390-395` y `update-baselines.yml:48-50`); **el estado de ese secreto no se
+  mide desde este árbol** (aquí no hay `gh` ni credenciales de la API de GitHub).
+- **`prettier` 3.9.9**: sigue como **alternativa declarada** (hoy manda el pin **3.8.3**, `backend-erp/package.json:121`) y reformatear los **32** ficheros es **decisión del dueño**.
+- **La rotación de la contraseña de Postgres**: ahora con **motivo medido** —está en la **historia de git**—; la regla pide rotarla, no solo limpiar el código.
+- **Los 72 listados de cara al usuario sin cota y los 113 agregados internos**: **no se tocan** (decisión de producto; el ratchet solo impide empeorar).
+- **`audit-flow-links`** (el gate `audit:flows`) **no tiene autoprueba de detector de verdad** (ignora el flag y corre la auditoría completa) ⇒ no entra al `pre-push` y **no se le inventó un alias**.
+- **El residuo del propio historial**: **4 110** finales CRLF y **1** línea con LF suelto (la línea en blanco entre la nota posterior y el cuerpo del 2026-10-06); esa nota es **una sola línea de 566 caracteres** (el
+  registro declara **240** como máximo) y lleva un **`0x0C`** (form feed) donde debería leerse `fiscal-years`. **Declarado, no tocado** (esta entrada no reescribe lo anterior).
+
+Todo el detalle, con cada medición, en `backend-erp/CHANGELOG.md` (entradas del **2026-10-06** y del **2026-10-07**), `backend-erp/.github/workflows/ci.yml` y `load-tests-large.yml`, `backend-erp/package.json` y los commits
+**`d3fbce3a`**, **`0417acd8`**, **`4d26d32b`**, **`769c00f7`**, **`42b302b3`**, **`6d40d49`** y **`25e79d7`**.
 
 ## 2026-10-06 — EL CI EMPIEZA A MEDIR: APAGÓN DE 1 H 40 (`SHADOW_DATABASE_URL`), PRISMA 7 EN PRODUCCIÓN, 238/238 SUITES, 687 COTAS Y `AGENTS.md` DE 580 KB A 19,7 KB…
 > **Nota posterior (2026-10-07):** la partición por consumo **sí suma** el total —**72 + 29 + 113 + 383 + 90 = 687**— y el «686» que circuló fue un **error de reporte** (mezclar el 30 de *antes* con el 383 de *después*): el arreglo de iscal-years **estrechó** una consulta en vez de eliminarla, así que ese sitio cambió de clase LOOKUP→BULK y el total no bajó. El invariante quedó **blindado** el mismo día (ix/ratchet-particion-cuadra): --check y --update-baseline **abortan** si la partición no cuadra, con su caso de autoprueba (14 en total) y su falsificación.
