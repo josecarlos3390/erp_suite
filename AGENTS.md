@@ -3,8 +3,8 @@
 > **Instrucciones VIVAS del monorepo.** Aquí está solo lo que un agente necesita para trabajar:
 > protocolo de lectura, convenciones, **gates y cómo se corren**, reglas de proceso y despliegue.
 > **El registro histórico no vive aquí**: está íntegro y navegable en
-> [`docs/plans/historial-sesiones.md`](docs/plans/historial-sesiones.md) (133 entradas fechadas
-> 2026-09-18 → 2026-10-06, los bloques retirados de este archivo y una sección de «pendiente de
+> [`docs/plans/historial-sesiones.md`](docs/plans/historial-sesiones.md) (134 entradas fechadas
+> 2026-09-18 → 2026-10-07, los bloques retirados de este archivo y una sección de «pendiente de
 > revisar»).
 >
 > **Motivo del corte.** Este archivo pesaba **579 985 B** (580 748 B con finales CRLF) y **440 336 B**
@@ -341,7 +341,7 @@ reforma solo inserta saltos de línea y encabezados: **no** se reescribió ni se
 
 | Parte del histórico | Qué contiene |
 |---|---|
-| **Parte 1 — Registro** | **133 entradas** fechadas, la más reciente primero (2026-10-06 → 2026-09-18), con índice |
+| **Parte 1 — Registro** | **134 entradas** fechadas, la más reciente primero (2026-10-07 → 2026-09-18), con índice |
 | **Anexo A** | Estado real del proyecto (2026-09-12): la evidencia medida de cada comando |
 | **Anexo B** | Sistema ShortName: cuentas asociadas y trazabilidad en asientos |
 | **Anexo C** | Próximos pasos recomendados (2026-09-08), lista fechada |
