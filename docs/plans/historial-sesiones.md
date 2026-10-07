@@ -208,7 +208,9 @@ Y al final: **Verificación del corte** y **Pendiente de revisar**.
 > `## fecha — titular` es añadido; el cuerpo de cada entrada **conserva el marcador original**
 > (`· **TANDA ANTERIOR (fecha)**`, `**LA ÚLTIMA TANDA (fecha)**:` o `) y fecha`).
 
-## 2026-10-06 — EL CI EMPIEZA A MEDIR: APAGÓN DE 1 H 40 (`SHADOW_DATABASE_URL`), PRISMA 7 EN PRODUCCIÓN, 238/238 SUITES, 687 COTAS Y `AGENTS.md` DE 580 KB A 19,7 KB…
+## 2026-10-06 — EL CI EMPIEZA A MEDIR: APAGÓN DE 1 H 40 (`SHADOW_DATABASE_URL`), PRISMA 7 EN PRODUCCIÓN, 238/238 SUITES, 687 COTAS Y `AGENTS.md` DE 580 KB A 19,7 KB…
+> **Nota posterior (2026-10-07):** la partición por consumo **sí suma** el total —**72 + 29 + 113 + 383 + 90 = 687**— y el «686» que circuló fue un **error de reporte** (mezclar el 30 de *antes* con el 383 de *después*): el arreglo de iscal-years **estrechó** una consulta en vez de eliminarla, así que ese sitio cambió de clase LOOKUP→BULK y el total no bajó. El invariante quedó **blindado** el mismo día (ix/ratchet-particion-cuadra): --check y --update-baseline **abortan** si la partición no cuadra, con su caso de autoprueba (14 en total) y su falsificación.
+
 
 **LA TANDA DEL 2026-10-06 (cerrada en la madrugada del 2026-10-07)**: el día en que el **CI empezó a medir** —dejó de morir en `npm ci` y destapó, uno tras otro, defectos que llevaban meses invisibles— y en el que **Prisma 7 llegó a
 producción** con un **apagón de 1 h 40** por el camino.
