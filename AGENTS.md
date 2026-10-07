@@ -3,8 +3,8 @@
 > **Instrucciones VIVAS del monorepo.** Aquí está solo lo que un agente necesita para trabajar:
 > protocolo de lectura, convenciones, **gates y cómo se corren**, reglas de proceso y despliegue.
 > **El registro histórico no vive aquí**: está íntegro y navegable en
-> [`docs/plans/historial-sesiones.md`](docs/plans/historial-sesiones.md) (132 entradas fechadas
-> 2026-09-18 → 2026-10-05, los bloques retirados de este archivo y una sección de «pendiente de
+> [`docs/plans/historial-sesiones.md`](docs/plans/historial-sesiones.md) (133 entradas fechadas
+> 2026-09-18 → 2026-10-06, los bloques retirados de este archivo y una sección de «pendiente de
 > revisar»).
 >
 > **Motivo del corte.** Este archivo pesaba **579 985 B** (580 748 B con finales CRLF) y **440 336 B**
@@ -184,8 +184,9 @@ npm run audit:contrast       # contraste WCAG de la paleta
   compartidas y sin `amend`/`rebase` de historia publicada. Si algo salió mal, se **añade** un commit
   que lo corrige y, si aplica, se despliega la reversión.
 - **Antes de commitear, comprobar la rama** (`git rev-parse --abbrev-ref HEAD`); los cambios no
-  triviales van en una rama. Los tres repos anidados tienen su propio Husky: **un commit por repo
-  tocado**.
+  triviales van en una rama. Solo **dos** repos están anidados (`backend-erp`, `erp-frontend`) y cada uno tiene su Husky:**un
+  commit por repo tocado**. `storefront/` **vive en el repo raíz** (no tiene `.git` propio: sus 218
+  ficheros los trackea la raíz, y con ellos su CHANGELOG y su CI).
 - **El costo está en el `pre-push`** (suite completa, **una vez por cada `pushurl`**). Un commit nuevo
   o un `amend` lo invalidan; si el sello por contenido (`.git/pre-push-verified`) no puede calcular la
   clave, la suite **corre igual** —degrada al comportamiento de siempre, nunca salta la verificación
@@ -322,7 +323,7 @@ reforma solo inserta saltos de línea y encabezados: **no** se reescribió ni se
 
 | Parte del histórico | Qué contiene |
 |---|---|
-| **Parte 1 — Registro** | **132 entradas** fechadas, la más reciente primero (2026-10-05 → 2026-09-18), con índice |
+| **Parte 1 — Registro** | **133 entradas** fechadas, la más reciente primero (2026-10-06 → 2026-09-18), con índice |
 | **Anexo A** | Estado real del proyecto (2026-09-12): la evidencia medida de cada comando |
 | **Anexo B** | Sistema ShortName: cuentas asociadas y trazabilidad en asientos |
 | **Anexo C** | Próximos pasos recomendados (2026-09-08), lista fechada |
