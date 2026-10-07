@@ -220,6 +220,18 @@ npm run audit:contrast       # contraste WCAG de la paleta
   se declara como tal con su evidencia, y se repite en aislamiento antes de atribuirlo al producto.
 - **Si un diagnóstico se corrige, se escribe**: la corrección va al CHANGELOG o al plan; el diagnóstico
   anterior **no se borra**.
+- **Una verificación de despliegue empieza esperando una HUELLA DE VERSIÓN**, nunca asumiendo que el
+  despliegue ya ocurrió. `curl /health` devolviendo 200 **no** distingue builds: el 2026-10-06 el
+  contenedor nuevo tardó ~11 min en estar servido y una verificación «200 y sano» dos minutos después
+  del push midió el **build viejo** (medido: el 200 sin `X-Request-Id` seis veces y con él en el
+  séptimo). La huella es algo que **solo** existe en el build nuevo (un endpoint, una cabecera, un
+  hash de bundle); si no lo hay, **declare** que la identidad del build se confirma en el panel.
+- **Un script que no arranca es un gate que no existe.** Siete `scripts/*.mjs` tenían el `import` en la
+  línea 1 y el **shebang en la 2** (Node solo lo acepta como primeros bytes) ⇒ `SyntaxError` siempre:
+  `audit-tracking`, `audit-reconcile` y `audit-flow-links` eran **tres gates** que llevaban meses sin
+  poder ejecutarse, y el CI moría antes de llamarlos. Regla: **ejecute el script, no lo parsee** — y
+  si un `--self-test` no existe de verdad (hay scripts que **ignoran** los flags y corren la
+  auditoría completa), **no invente el alias**: sería un gate que pasa por casualidad.
 - **Declarar lo que no se midió** y los límites (flakes, datos ausentes, decisiones pendientes del
   usuario) en vez de taparlos. **Un entorno que nadie prueba es un gate que no existe.**
 ## 6. Variables de entorno críticas
