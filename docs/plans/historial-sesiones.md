@@ -1,7 +1,7 @@
 # Historial de sesiones — erp_suite
 
-> **Qué es.** El **registro histórico completo** del monorepo: las 132 entradas de sesión fechadas
-> entre el **2026-09-18** y el **2026-10-05** (la más reciente primero), más los **bloques retirados de
+> **Qué es.** El **registro histórico completo** del monorepo: las 133 entradas de sesión fechadas
+> entre el **2026-09-18** y el **2026-10-06** (la más reciente primero), más los **bloques retirados de
 > `AGENTS.md`** el **2026-10-06** cuando ese archivo se partió en «instrucciones vivas» + «histórico».
 >
 > **De dónde salió.** De `AGENTS.md`, que pesaba **579 985 B** (LF, como lo guarda git; **580 748 B** en
@@ -51,8 +51,9 @@
 
 ## Índice
 
-**Parte 1 — Registro de sesiones** (2026-09-18 → 2026-10-05, la más reciente primero):
+**Parte 1 — Registro de sesiones** (2026-09-18 → 2026-10-06, la más reciente primero):
 
+- **2026-10-06** — EL CI EMPIEZA A MEDIR: APAGÓN DE 1 H 40 (`SHADOW_DATABASE_URL`), PRISMA 7 EN PRODUCCIÓN, 238/238 SUITES, 687 COTAS Y `AGENTS.md` DE 580 KB A 19,7 KB…
 - **2026-10-05** — EL GATE E2E DEL ERP ES REPRODUCIBLE Y QUEDA SIN ROJOS —251 pasan, 0 fallan, 6 omitidos, antes 241 y 5—: se portó el arnés de volcado/restauración con…
 - **2026-10-04** — Barrido — backend unitario 230 suites / 2987 casos · E2E del backend 41 suites / 398 · tienda funcional 82/82 (arnés restaurando la base: huella idén…
 - **2026-10-03** — EL CMS ESTRENA IMAGEN Y LOS MARCADORES QUEDAN ATADOS: la página del CMS tiene `WebPage.imageUrl` en las tres capas —migración aplicada Y registrada,…
@@ -203,9 +204,206 @@ Y al final: **Verificación del corte** y **Pendiente de revisar**.
 
 # Parte 1 — Registro de sesiones
 
-> **132 entradas**, la más reciente primero (**2026-10-05** → **2026-09-18**). El encabezado
+> **133 entradas**, la más reciente primero (**2026-10-06** → **2026-09-18**). El encabezado
 > `## fecha — titular` es añadido; el cuerpo de cada entrada **conserva el marcador original**
 > (`· **TANDA ANTERIOR (fecha)**`, `**LA ÚLTIMA TANDA (fecha)**:` o `) y fecha`).
+
+## 2026-10-06 — EL CI EMPIEZA A MEDIR: APAGÓN DE 1 H 40 (`SHADOW_DATABASE_URL`), PRISMA 7 EN PRODUCCIÓN, 238/238 SUITES, 687 COTAS Y `AGENTS.md` DE 580 KB A 19,7 KB…
+
+**LA TANDA DEL 2026-10-06 (cerrada en la madrugada del 2026-10-07)**: el día en que el **CI empezó a medir** —dejó de morir en `npm ci` y destapó, uno tras otro, defectos que llevaban meses invisibles— y en el que **Prisma 7 llegó a
+producción** con un **apagón de 1 h 40** por el camino.
+El cuerpo va en el orden de los hechos: el apagón (1), E5/Prisma 7 (2), la cadena del CI (3), los dos defectos preexistentes que el CI destapó (4), la correlación de petición y las cotas de colección (5), el corte de `AGENTS.md` y las dos
+lecciones (6), el cerrojo de los `@Cron` (7) y lo declarado/pendiente (8).
+
+**(1) APAGÓN DE PRODUCCIÓN: 502 en bucle durante 1 h 40 (12:50 → 14:23), causa raíz `SHADOW_DATABASE_URL`.**
+`prisma migrate deploy` es el **primer** paso de `start-prod.sh` y ese script lleva **`set -euo pipefail`**, así que el contenedor moría **antes** de arrancar la API.
+Los **dos estados** de la misma variable, cada uno con su traza: **ausente** ⇒ `Failed to load config file "/app" … PrismaConfigEnvError: Cannot resolve environment variable: SHADOW_DATABASE_URL`; **vacía** ⇒ `P1013:
+datasource.shadowDatabaseUrl … must not be an empty string`.
+**El arreglo cubre los tres estados** (ausente, vacía y con valor) con `shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL?.trim() || undefined`, con el porqué escrito en `prisma.config.ts`.
+**Por qué no se vio antes, declarado**: (a) en local **no se reproduce** quitando la variable del proceso, porque `prisma.config.ts` llama a `loadEnvFile()` y el `.env` la **reponía** ⇒ la medición previa («`migrate status` la tolera») era
+**inválida**; y (b) el CI llevaba **roto** y su job de E2E corre `migrate deploy` **sin** esa variable ⇒ lo habría cazado antes de desplegar.
+**Medido**: el **entrypoint completo** dentro del contenedor con la variable **ausente** (`migrate deploy` sin pendientes + SQL manuales al día + `Nest application successfully started` + `/health` **200** con `prisma: up`) y con la
+**vacía** el config ya no falla.
+**Corrección del propio consejo**: poner la sombra = `DATABASE_URL` **no sirve** (Prisma: «the shadow database … appears to be the same as the main database»); lo correcto es **borrarla**.
+**Verificado en producción tras el arreglo**: `/health` **200** con `prisma: up`, `/health/live` y `/health/ready` **200**, el **contrato de error** vivo (`code=UNAUTHORIZED` + `requestId`) y la **tienda** leyendo el ERP (15 categorías
+raíz, 108 productos, imágenes del bucket) ⇒ **E5 con Prisma 7 está en producción**.
+**Y un error de coordinación, declarado**: lancé un subagente en el **mismo árbol de trabajo** y **no comprobé la rama** antes de commitear ⇒ el arreglo acabó en `feat/cron-locks` y el primer «reintento del despliegue» empujó `main` sin
+cambios (**no desplegó nada**).
+
+**(2) E5 — Prisma 6.19.3 → 7.10.0, completo y verificado.**
+Superficie medida: **402 referencias** al cliente viejo en **401 ficheros** y **107** `new PrismaClient`; en v7 hay **driver adapter obligatorio** (`@prisma/adapter-pg` + `pg`) y el **pool cambia de dueño** (`connection_limit` de la URL
+**deja de aplicar**).
+**El hallazgo que más importa**: **`Prisma.dmmf` ya no existe en v7** y el `?? []` de `tenant-isolation.extension.ts` habría dejado el **aislamiento por empresa desactivado EN SILENCIO** —una fuga entre empresas, no un fallo ruidoso—; se
+sustituye por `src/prisma/schema-model-meta.ts`, un lector de `prisma/schema.prisma` que **falla ruidosamente** y nunca degrada a «sin filtro», **verificado contra el DMMF real de la baseline 6.19.3** (**197 modelos** y las cuatro
+estructuras que consume la extensión, idénticas campo a campo).
+**El adapter con el pool y el TLS en un solo dueño** (`src/prisma/prisma-client.factory.ts`): `max: 50` / 5 s / 300 s, el equivalente **medido** de v6, porque en v7 el pool cae a **10** sin avisar —**falsificado** con un observador externo
+(`pg_stat_activity`): `max: 50` ⇒ **pico 50 / retenidas 50**; control **sin `max`** ⇒ **10 / 10**—.
+**La decisión de `prisma.config.ts`**: el bloque `datasource` es **obligatorio** (sin él `db push` falla directamente), `process.env` **gana** sobre el `.env` y **no** hace falta `"type": "module"`; pin **exacto** `prisma@7.10.0`, porque el
+dist-tag `latest` apunta a un **release candidate 8.0.0-rc**.
+**Dos regresiones silenciosas más, medidas**: el cliente de v7 **ya no carga el `.env`** (de ahí dependía `validateEnv`, que corre antes de `ConfigModule`) ⇒ `loadDotEnvOnce()`; y el **`sslmode` de la URL pisa el `ssl` explícito**, porque
+`pg` **re-parsea** la URL después de fusionar el config (`pg-connection-string` v2: `require` = `verify-full`) ⇒ la URL remota se limpia de `sslmode`, y sin eso el arreglo del TLS **no habría funcionado** con la URL de producción.
+**TLS medido, no supuesto**: el certificado de Railway es **autofirmado `CN=localhost`** (`Verify return code: 19`; ninguna de las **121** raíces de Node) ⇒ `rejectUnauthorized: false`, que es **exactamente lo que ya hacía Prisma 6**
+(`sslmode=require` = cifrar sin verificar): **no es una regresión**.
+**Medido después**: `typecheck` **0** (140,5 s) · `lint:ci` **0 errores / 0 avisos** (298,6 s) · **237 suites / 3 078 casos, 0 fallos** (36,8 min) · `build` **0** · **`docker build` exit 0** (679,7 s, imagen **1,44 GB**, con el cliente
+generado dentro: **615 ficheros / 78,3 MB**) · `app.e2e-spec` **3/3** y **E2E completo 41 suites / 398 casos** · OpenAPI **647 / 871 / 402 / 8 610** (el diff contra la línea base ve **solo** `GET /health/live` y `GET /health/ready`) ·
+`migrate status` **84 / up to date**; y el **contenedor con la `DATABASE_URL` real de Railway y su `sslmode=require`**, **sin arrancar la aplicación** para que ningún `@Cron` pudiera escribir: `SELECT 1`, **PostgreSQL 18.6**, **84**
+migraciones, **236** tablas y **137** artículos.
+**Coste**: la suite pasa de **8,2 a 36,8 min** y el `lint:ci` de **55,7 a 298,6 s** porque las dos tuberías transforman los **205 ficheros / 79 MB** del generado; **`@swc/jest` se midió y NO entra** (**17,7×** más rápido —103,8 s— pero
+**76/238 suites caídas** y 2 087 casos: swc no distingue un tipo de un valor y conserva `import`s de tipo que el enlace ESM revienta; **revertido**), y la mitigación propuesta y **no aplicada** es `isolatedModules: true` en `ts-jest`
+(falsificada antes: 1,6 min pero las suites no arrancan).
+**El `package-lock`**: el de npm 11 era **solo-para-Windows** y sin `webpack` ⇒ el `npm ci` de la imagen fallaba; la lección de E3 se **corrige y amplía**: no basta con usar el npm del contenedor, **importa la plataforma** ⇒ el lock se
+genera **dentro** de `node:22-slim` (**963** entradas, 5 plataformas).
+**Declarado**: `src/partners/partners.controller.ts.test` —huérfano que el censo no vio por su extensión y que el `testRegex` (`.*\.spec\.ts$`) nunca ejecutaba— queda **borrado** (0 referencias, 7 rutas frente a las 9 del real) y
+`prisma/seed.js` (artefacto compilado, 0 referencias) también.
+
+**(3) LA CADENA DEL CI, ESLABÓN A ESLABÓN.**
+El CI llevaba **roto y era decorativo** (medido con la API de GitHub: `Backend CI` fallando en sus **4 últimos runs** de `main` y `Frontend CI` en los 4 suyos; **un CI rojo permanente es peor que no tenerlo** porque normaliza el fallo).
+Las causas y los arreglos, en el orden en que se destaparon:
+**(a) `npm ci` moría siempre en `Install dependencies`.** `npm ci` corre el `postinstall` (`prisma generate`) y `prisma.config.ts` lee `DATABASE_URL` con `env()`, que **LANZA** si falta: el job `lint-and-test` no la tenía, así que los jobs
+**`e2e` y `load-tests` salían `skipped`** y **el E2E de 41 suites nunca llegó a ejecutarse**. Se añade un `DATABASE_URL` de relleno (el `Dockerfile` ya pasa placeholders por este mismo motivo).
+**(b) `lint:ci`, no `npm run lint`.** El workflow corría `lint`, que lleva **`--fix`** ⇒ **pasaba aunque hubiera errores**; no corría `typecheck`, pedía **Node 22** (el proyecto exige 24.x) y **postgres 16**, y su paso `Lint` moría con
+`FATAL ERROR: Ineffective mark-compacts near heap limit — JavaScript heap out of memory` (**exit 134**) porque el job fijaba `NODE_OPTIONS=4096` y el script `lint` **no lleva heap propio**.
+Ahora: Node por `.nvmrc`, **postgres 18**, heap **6144**, `lint:ci` y `typecheck`.
+**(c) El pin de `prettier` 3.8.3.** Tras `npm ci` —que es lo que hacen el CI y la imagen— `lint:ci` daba **99 errores / 0 avisos en 32 ficheros**, **los 99 de `prettier/prettier`** y ninguno de otra regla (ni `local/no-raw-without-tenant`,
+que sigue en `error`). **Causa, con la traza**: la regeneración del lock de E5 subió `prettier` **3.8.3 → 3.9.9** sin quererlo y **3.9.x reflowa las uniones de tipos** (`| 'ITEM'⏎ | 'ITEM_GROUP'` → `'ITEM' | 'ITEM_GROUP'`); falsificado
+versión a versión con el mismo ajuste del lint (`--end-of-line auto`). **Entregado**: pin **`3.8.3`** (el lock cambia **4 líneas**: restricción, versión, `resolved`, `integrity`; `npm ci --dry-run` **0** dentro de `node:22-slim`) ⇒
+`lint:ci` vuelve a **0 errores / 0 avisos** en **109,5 s**. **Alternativa declarada y decisión del dueño**: adoptar 3.9.9 y reformatear esos **32** ficheros en su propio incremento.
+**(d) `typecheck:all`.** El `typecheck` cubría **238** specs y **207** ficheros del generado pero **0** de `scripts/` (**21**), `prisma/` (**6** + 1 `.d.ts`), `perf/` (**14**), `load-tests/` (**1**) ni `prisma.config.ts`: **esos ficheros no
+los compilaba nadie**, y con la cobertura ampliada salen **4 errores preexistentes** de los que **uno es un DEFECTO REAL**: `perf/db-setup.ts:310` escribía `inTransitAccountId`, un campo que la migración
+`20260925233000_drop_unused_account_fields` (**T246**) borró del schema ⇒ el arnés de carga **no podía funcionar desde el 2026-09-25** (se quita la línea y el objeto creado es idéntico: la cuenta `1.1.3.02.001` es el **default de
+`allocation`**). Los otros tres: `readR2Env` pide un `ConfigReader` (se pasa `{ get: env }`, la misma lectura) y `JournalSourceType` tipado con el enum del cliente generado (el cuarto error cae **en cascada**).
+**Dos proyectos y no uno**, porque el repo tiene **dos** sistemas de módulos de verdad: con `module: commonjs` los **17** specs que usan `import.meta` dan **46 errores** (`17 × TS1343` + `29 × TS1378`) y con `module: esnext` los **8**
+escenarios de `perf/` dan **6 × TS1202** (`import autocannon = require(...)`). **Medido después**: `typecheck:all` **exit 0 / 0 errores** en **90,2 s** (93,4 s y 98,8 s en dos corridas más del mismo árbol), frente a los **77,5 s** del
+`typecheck` de `src`+`test`.
+**(e) El audit del dinero: el redondeo unificado, DECISIÓN DEL USUARIO.** Con `npm ci` funcionando, el CI llegó a `audit:money:check` y falló con **`R2b: 0 → 2`**: las dos estrategias de impuesto (`standard` y `bolivia-sin`) redondeaban con
+`Math.round(v * 100) / 100`, el patrón que el gate marca como deuda —**deuda preexistente que nadie veía porque el CI moría antes de llegar a ese paso**—.
+Ahora las dos usan **`roundMoney`** (`src/common/money.util.ts`, `ROUND_HALF_UP` sobre el valor decimal).
+**No son equivalentes, y está medido**: de **21** casos límite difieren **6** —`1.005` (viejo `1,00` / nuevo `1,01`), `1.015` (`1,01`/`1,02`), `0.575` (`0,57`/`0,58`), `-0.005` (el viejo devolvía **`-0`**), `-1.005` (`-1`/`-1,01`), `-2.675`
+(`-2,67`/`-2,68`) y `-12345678.905`— y de **68 592** líneas realistas difieren **161 (0,235 %)**, siempre **un céntimo** (unas hacia arriba y otras hacia abajo); la causa es doble: el producto por **100** en coma flotante (`1.005 * 100 =
+100.49999999999999`) y el `Math.round` del motor, que en los empates va hacia **+∞** en vez de en valor absoluto.
+**Por qué se acepta**: era la regla que **ya** usaba el resto del ERP (el mismo importe podía diferir en un céntimo entre un servicio de factura y la estrategia ⇒ eran **dos** reglas de redondeo en el mismo documento), quita la **asimetría
+de los negativos** (una nota de crédito no espejaba su factura) y **no** rompe ninguna identidad interna (`neto + IVA = total` sale de las mismas llamadas).
+**Lo que NO arregla**: el subtotal se calcula **en coma flotante** y solo se redondea **al final**; cerrarlo exige pasar toda la cadena de precios a **`Decimal`** (incremento aparte).
+**Medido**: `audit:money:check` **exit 0** con `R1 0 · R2a 0 · R2b 0 · R2c 0 · TOTAL 0` y la **autoprueba del detector 41/41**; `tax-rounding.spec.ts` **10/10** (las estrategias **no** tenían ningún spec propio: este es el primero) y
+`money.util` + `pricing.util` + `tax-rounding` **84/84**.
+**(f) Los 7 shebangs.** Siete `scripts/*.mjs` tenían el **shebang en la línea 2** (la 1 era `import { createRequire } from 'node:module'`) y Node solo lo acepta como **primeros bytes** ⇒ `SyntaxError: Invalid or unexpected token` en
+cualquier plataforma. Los siete: `audit-flow-links`, `audit-reconcile`, `audit-tracking`, `e2e-residue-report`, `flow-sweep`, `recalc-order-progress` y `repair-annulment-reversals` (los otros **15** `.mjs` de `scripts/` ya lo tenían bien:
+15 en línea 1 y 7 sin shebang). **El CI lo destapó** al fallar en `npm run audit:tracking:self-test`: **`audit-tracking`, `audit-reconcile` y `audit-flow-links` eran tres gates que llevaban meses sin poder ejecutarse**.
+Comprobado uno a uno que **ARRANCAN** (no que parseen): `audit-tracking` y `audit-reconcile` pasan su autoprueba (**14/14** y **11/11**) y los otros cinco llegan a su primera consulta y fallan por la BD/API que no existe en esa prueba
+(`ECONNREFUSED` / «Can't reach database server»), no por el fichero; `flow-sweep`, que además llamaba `await main()` sin captura, declara ahora el fallo de entorno (**exit 2**) en vez de morir como `[TypeError: fetch failed]` sin decir qué
+URL ni qué hacer. **Y las autopruebas de tracking y cuadre entran en el `pre-push`** (son puras —corren con la BD inalcanzable, medido— y suman **23,1 s**: 12,7 s + 10,4 s, frente a los 14,0 s del `pg-tools` que ya estaba); `audit:flows`
+**NO** entra: su script **no tiene `--self-test` de verdad** (ignora el flag y corre la auditoría completa, comprobado) y necesita la BD viva ⇒ **no se le inventó un alias** («habría sido un gate que pasa por casualidad»).
+**(g) `lint-and-test` pasa verde por primera vez**, y el `pre-push` local queda con `pg-tools:self-test`, las dos autopruebas nuevas, el ratchet de cotas, `typecheck:all`, `lint:ci` y `npm test`.
+De la tienda, en la misma tanda: **estrena CI** (era el tercer proyecto y el **único sin ninguno**; `typecheck` + `lint --max-warnings=0` + `build`, filtrado por ruta) y ese workflow fallaba en `next lint` porque
+**`storefront/.eslintrc.json` nunca estuvo versionado** —la regla `*.json` del `.gitignore` se lo comía y la única excepción era `!eslint.config.js`, el formato nuevo del ERP—: en local existe y el lint pasa, y en el CI no existe y `next
+lint` abre el menú interactivo `How would you like to configure ESLint?` y sale 1 ⇒ versionado y con su excepción, la tienda queda con el **primer CI verde** de los cuatro (7/7 pasos).
+
+**(4) LOS DOS DEFECTOS PREEXISTENTES QUE EL CI DESTAPÓ.**
+**(a) La suite unitaria no arrancaba 2 de sus 238 suites.** **Medido antes**: `npm test` daba **236/238** suites y **3 090** casos; `src/auth/auth.controller.spec.ts` y `src/throttling/tenant-throttler.guard.spec.ts` **morían sin ejecutar
+un solo caso** con `Cannot require() ES Module @nestjs/common/index.js in a cycle (from @nestjs/throttler/dist/throttler.decorator.js)`, y fallaban **también en aislamiento** (2 suites / 0 casos en 17,25 s), así que no era carga ni azar.
+**Causa**: `@nestjs/throttler` **no tiene versión 12** y su `dist` es **CommonJS** (`require('@nestjs/common')`) mientras el resto de la familia 12 es **ESM**; el remedio —precargar `@nestjs/common` y `@nestjs/core` en un `setupFiles`—
+**existía solo en el pipeline E2E** (`test/setup-e2e-preload.ts`) y el **unitario nunca lo tuvo**. **Entregado**: un **solo dueño** para los dos pipelines, `src/testing/nestjs-esm-preload.setup.ts` (referenciado **primero** por
+`package.json` y por `test/jest-e2e.json`; `test/setup-e2e-preload.ts` **borrado**). **Medido después**: los dos specs **2/2 suites y 10/10 casos**, y la suite completa **238/238 suites y 3 100/3 100 casos, 0 fallos** (34,7 min de reloj; la
+línea base limpia de `ts-jest` medida en el mismo árbol es **30,6 min**).
+**(b) `lint:ci` era rojo para quien instalara del lock**: los **99 errores** de `prettier` por el 3.9.9 que el lock regenerado dejó sin querer ⇒ pin **3.8.3** (el detalle, en (3)(c)).
+
+**(5) LA CORRELACIÓN DE PETICIÓN Y LAS COTAS DE COLECCIÓN.**
+**(a) El `requestId` viaja a TODOS los logs.** **El hueco, medido**: el contrato de error publicaba un `requestId` (cuerpo, cabecera `X-Request-Id` y **una** traza del fallo desconocido), pero ese id **no existía** en los logs normales ni
+en las respuestas correctas —**0** referencias a un id de petición fuera del filtro—: soporte tenía el id de la pantalla y **no podía buscar nada en el log** salvo esa única línea.
+**Entregado**: **(1)** `src/common/request-context.ts` con el id en un **`AsyncLocalStorage`** (lo que lo hace disponible en **toda** la cadena asíncrona de la petición: guardias, interceptores, servicios, transacciones de Prisma) **sin**
+tocar los **63** sitios que hoy loguean, con `requestIdFor`/`isAcceptableRequestId` puros (rechaza separadores de línea —inyectarían líneas falsas en el log— y longitudes desmesuradas); **(2)** `src/common/request-context.middleware.ts`,
+**un solo dueño del id**: reutiliza el `X-Request-Id` del cliente si es aceptable y si no genera un UUID, abre el contexto y devuelve la cabecera **también cuando la petición funciona** (antes solo lo hacía el filtro, así que un 200 no
+dejaba forma de saber qué id le tocó); se registra en **`AppModule.configure()`** y **no** en `main.ts` por una razón medida: los middlewares de un módulo se aplican **antes** de los que añade `app.use(...)`, y eso es lo que hace que el id
+exista **antes de las guardias globales** ⇒ un **401/403/429 del throttler también lleva id**; **(3)** `src/common/request-context-logger.ts` (`RequestContextLogger` extiende `ConsoleLogger` y envuelve **un solo punto**, `formatMessage`,
+para antefijar `[corr:<id>]`) instalado con `Logger.overrideLogger(...)` en la **primera línea ejecutable** de `main.ts` (el estado es global y estático: instalarlo después dejaría sin id lo escrito entre medias); **(4)** el filtro de
+excepciones **lee** el id del contexto en vez de decidirlo. **El contrato público NO cambia** (mismos campos, misma cabecera, mismo `requestId`).
+**Y una decisión argumentada**: el id **no** entra como etiqueta de Prometheus (sería una serie temporal **por petición**: alta cardinalidad que destruye la herramienta); las métricas siguen con `method`/`status`/`tenant` y el id va a
+**logs y respuesta**, y la vía que **sí** enlazaría métrica y traza son los *exemplars* de Prometheus/OpenTelemetry, identificada y descartada como incremento aparte.
+**Falsificación**: `request-correlation-concurrency.spec.ts` —dos peticiones concurrentes por el **middleware real** escriben **9** líneas cada una con `await` entre medias (18 líneas entrelazadas de verdad), **ninguna** se queda sin id y
+cada secuencia lleva **su** id; y el **control del instrumento** (el mismo logger leyendo una variable **compartida**) **sí detecta** la mezcla ⇒ la prueba vale; detalle honesto: no se puede exigir que fallen **las dos** tareas, el
+invariante robusto es «al menos una deja de cumplirse». **Medido después, sobre el árbol final**: suite **242 suites / 3 130 casos, 0 fallos** (línea base **238 / 3 100**; esta pieza aporta **+3 suites y +20 casos**), `typecheck:all` **0**
+y `lint:ci` **0/0**; **y contra la API en vivo** (`dist/main.js`, puerto 3199): `/health/live` **200** con `X-Request-Id`, `/partners` sin token **401** con `code=UNAUTHORIZED` y el id en cabecera **y** cuerpo, el **mismo** id cuando el
+cliente manda el suyo, ruta inexistente **404**, `POST /auth/login` inválido **400 `VALIDATION_ERROR`** con el array del `ValidationPipe` íntegro y **429** con `TOO_MANY_REQUESTS`.
+**Declarado**: las **consultas de Prisma** quedan fuera (con `NODE_ENV=development` el driver escribe su propio `prisma:query SELECT 1` por `stdout`, sin pasar por el logger de Nest) y los **`@Cron`** también **por diseño** (corren fuera de
+una petición ⇒ `RequestContext.current()` es `undefined` y la línea sale exactamente como salía antes); el arranque sale sin prefijo (no hay petición) y el prefijo es `[corr:<id>]`, **distinto** del `[<id>]` que ya escribía la traza del
+filtro (que **no** se toca, para no romper las búsquedas ya hechas); y la mitad de los logs **no** se pudo medir **en vivo** porque **ningún endpoint público escribe una línea de log** (medido: 17 peticiones a `/health/live`, `/partners`,
+`/auth/login` y una ruta inexistente ⇒ **0** líneas de log de aplicación).
+**(b) Cotas de colección: 687 medidas y clasificadas, ratchet en el `pre-push`, 3 arregladas y 72 que NO se tocan (decisión de producto).** La evaluación externa contaba **698** `findMany` sin cota visible, pero el número no decide nada:
+una colección que crece sin tope es una fuga **solo si alguien la serializa**, así que la auditoría **clasifica antes de contar** y mide por **AST** (los comentarios y los mocks de los specs no cuentan).
+**Medido**: **777** `findMany` de producción en **1 150** ficheros, **90 con cota** y **687 sin cota**; por consumo, **72 visible al usuario**, **113 agregado interno**, **29** lookup/predicado (eran **30** antes del arreglo), **382** lote
+interno y **90** indeterminado. La entidad se deduce **por schema**, no por nombre (DOCUMENTO / LÍNEA / MAESTRO / MOVIMIENTO / CONFIG), y existe la marca `// collection-caps-ok: <razón>` para declarar en el código el caso que el AST no ve.
+**Entregado**: `scripts/audit-collection-caps.mjs` (con `--self-test` de **10** casos y negativos: el agregado interno no es un listado, la consulta con `take` no está libre, el spec no es producción) +
+`scripts/collection-caps-baseline.json` (que declara los **687** sitios con **fichero:línea**, para que un fallo **nombre** el hallazgo nuevo en vez de imprimir la lista entera) y el **ratchet en el `pre-push`** —y **no** en el workflow del
+CI, que otra sesión acababa de estabilizar—: **falla solo si EMPEORA** (mismo criterio que `audit:money:check`) y **antes de comparar corre la autoprueba del detector** («una cifra verde con un clasificador roto es peor que una cifra
+alta»).
+**Falsificado**: con un `findMany` nuevo en `src/sonda-cotas/sonda.service.ts` el gate sale **1** con `produccionSinCota: 687 -> 688 (+1)` y `Hallazgo(s) NUEVO(s): src/sonda-cotas/sonda.service.ts:12`.
+**3 consultas acotadas** (rama `feat/cotas-colecciones`): `accounting-settings.util.ts` (busca **2** códigos y traía el plan de cuentas entero), `master-accounts.util.ts` (**26**) y `fiscal-years.service.ts` (el arrastre de saldos resuelve
+por `byId` y con `findFirst` la cuenta de Utilidad Acumulada), **sin cambiar la respuesta** porque `(tenantId, code)` es `@@unique`: los candidatos pasan de todo el catálogo a **2**/**26** filas, y el único cambio de spec es que el mock de
+`account` gana `findFirst` (**ninguna expectativa cambia**, 25/25). **Y los 72 listados de cara al usuario sin cota NO se tocan**: ponerles `take` devolvería menos filas sin que nadie lo pida ⇒ es **decisión de producto**, declarada con su
+cifra. **Trampa cerrada el mismo día**: `--check --file` salía **0 en silencio** diciendo «mejoró: 687 → 32» (los recuentos de un fichero no son comparables con la línea base del banco entero) ⇒ ahora **informa y no evalúa** el ratchet; el
+gate real no usa `--file`.
+
+**(6) `AGENTS.md` PARTIDO, Y LAS DOS LECCIONES NUEVAS.**
+**Medido antes**: `AGENTS.md` pesaba **579 985 B** (LF; **580 748 B** en el árbol de trabajo con CRLF) y **440 336 B** (el **76 %**) eran **una sola línea** (**432 023** caracteres) con el registro; el arnés solo lee los **primeros 65 536
+B** de las instrucciones de workspace, así que el registro se había vuelto **write-only** —estaba escrito y **no llegaba nunca al modelo**— y, al estar en una sola línea, `read` lo truncaba a 2 000 caracteres y no se podía inspeccionar.
+**Corte**: instrucciones vivas (`AGENTS.md`, **19 402 B** / **324** líneas) + `docs/plans/historial-sesiones.md` (**635 711 B**, **132** entradas + **6** anexos), total **655 113 B** ⇒ **+75 128 B** de encabezados, índice y anexos nuevos,
+**sin un carácter del texto reescrito ni borrado**.
+**La prueba es mecánica**: quitando los **132** encabezados insertados y devolviendo los **2 914** saltos de línea a espacios se recupera la línea original **carácter a carácter** (432 023 caracteres), y los **13** bloques restantes se
+buscaron **literalmente** y por su **`sha256`** (579 972 + 13 = 579 985 B).
+La línea más larga del registro son **240** caracteres (antes: 432 023 en una sola línea); los dos ficheros nuevos quedaron **solo con LF** (**0** `\r`) y con `core.autocrlf=true` el árbol de trabajo de `AGENTS.md` vuelve a **19 726 B**,
+por debajo del objetivo de **20 KB** (el fichero vivo mide hoy **20 928 B**, con las dos lecciones nuevas dentro).
+**Las dos lecciones nuevas, al final de *Reglas de proceso***: **(1) una verificación de despliegue empieza esperando una HUELLA DE VERSIÓN**, nunca asumiendo que el despliegue ya ocurrió: `curl /health` devolviendo **200** **no** distingue
+builds —el contenedor nuevo tardó **~11 min** en estar servido y una verificación «200 y sano» dos minutos después del `push` midió el **build viejo** (medido: el 200 **sin** `X-Request-Id` **seis** veces y **con** él en la **séptima**)—;
+la huella es algo que **solo** existe en el build nuevo (un endpoint, una cabecera, un hash de bundle) y, si no lo hay, **se declara** que la identidad del build se confirma en el panel.
+**(2) Un script que no arranca es un gate que no existe**: **ejecute el script, no lo parsee**, y si un `--self-test` no existe de verdad (hay scripts que **ignoran** los flags y corren la auditoría completa), **no invente el alias**: sería
+un gate que pasa por casualidad.
+En la misma tanda se quita el `--no-verify` de los **dos** planes que lo instruían (uno era un comando **copiable**: `git commit … --no-verify && git push --no-verify`), que contradecía la regla del proyecto y su propia medición de **0**
+usos.
+
+**(7) EL CERROJO DE LOS `@Cron` (dos réplicas sin duplicar el trabajo).**
+Hoy hay **una** réplica, así que la duplicación es **latente**, pero **cinco** tareas programadas escriben documentos o avisos que **no** son idempotentes por naturaleza —medido: el `grep` de `@Cron(` en `src/` da **5**, sin ninguna otra
+tarea—: `billing.service.ts:247` (01:00, emisión recurrente/expiraciones), `fixed-assets.service.ts:1017` (04:30 del día 1, depreciación mensual), `alerts.service.ts:498` (08:00, avisos), `admin/tenant-metrics.service.ts:53` (00:05,
+métricas) y `storefront-maintenance.service.ts:71` (03:30, barrido de pedidos abandonados); **con dos réplicas cada una correría una vez por réplica**.
+El `pg_try_advisory_lock` que ya existía para los **SQL manuales del arranque** **no sirve** aquí: un advisory de **sesión** hay que sostenerlo en la **misma conexión** durante **todo** el barrido ⇒ o se retiene una transacción larga
+(bloqueos y bloat) o se depende de que el pool no devuelva esa conexión al medio.
+**Entregado**: **(1)** el modelo `CronRun` con clave única **`(name, slot)`** —que **es** el cerrojo— más `status`, `startedAt`, `finishedAt` y `error`, de modo que la fila es **también el historial** de ejecuciones, e índice por
+`startedAt` para la retención; **sin `tenantId` a propósito** (la tarea es del **despliegue**, no de una empresa, así que queda fuera del aislamiento por empresa, que se deriva del schema); la migración **idempotente**
+`20261006140000_cron_runs` se aplicó con `db execute` + `migrate resolve --applied` (la base tiene drift) y `migrate status` queda «Database schema is up to date!» con **85** migraciones; **(2)** `src/common/cron-lock.util.ts` con
+`cronSlot(now)` (el **minuto** del reloj truncado **en UTC**, calculado de la hora para que dos réplicas coincidan **sin hablarse**), el mapa `CRON_JOBS` con los cinco nombres estables y `runOnce(prisma, name, work, { now, slot })`, que
+reclama con **`createMany({ skipDuplicates: true })`** (`INSERT … ON CONFLICT DO NOTHING`): `count === 1` ⇒ **esta** réplica ejecuta y cierra su fila (`SUCCEEDED`, o `FAILED` con el motivo, y el error **se propaga**: no cambia quién lo veía
+antes), `count === 0` ⇒ **se retira** con **una** línea de log y devuelve `undefined` sin ejecutar nada; **(3)** los **cinco** puntos de entrada envuelven su cuerpo en `runOnce` **sin cambiar el trabajo**.
+**Falsificado**: `src/common/cron-lock.util.spec.ts` (**22** casos) mide con un doble de Prisma que inserta **sin ceder el hilo** (atómico, como el índice único) que **cinco ejecuciones concurrentes de la misma ranura ⇒ el trabajo se llama
+UNA vez**, una sola fila y **cuatro** `undefined`; que **ranuras distintas ⇒ las dos ejecutan** (2 llamadas, 2 filas); y el **control del instrumento** (el mismo contador llamando al trabajo a pelo cinco veces) marca **5**.
+*(También de la tanda, y ya registrado en el cuerpo del 2026-10-04: el `pre-push` del backend sin un solo aviso de lint con la regla propia `local/no-raw-without-tenant` en `error`; `/health/live` y `/health/ready` con `/health` intacto y
+el cerrojo `pg_try_advisory_lock` entre réplicas para los SQL manuales; y la configuración centralizada a `ConfigService` con `validateEnv()` exigiendo además `DATABASE_URL`.)*
+
+**(8) LO DECLARADO Y LO PENDIENTE.**
+- **El E2E del ERP en el CI (41 suites / 398 casos) corre por primera vez.** Con el `DATABASE_URL` de relleno los specs caían **392 casos** con «Authentication failed … for postgres», porque el arnés **reescribe `DATABASE_URL` solo dentro
+  de `prepare-test-db.mjs`**, no en el proceso de Jest ⇒ el job `e2e` usa ya la **`DATABASE_URL` real** y el relleno queda **solo** en `lint-and-test`, para `prisma generate`. La corrida verde del job queda **por confirmar**.
+- **El job `load-tests` del CI no sembraba** (2026-10-07, rama `fix/loadtests-setup-db`): moría en `Setup database` con `An error occurred while running the seed command: … ts-node prisma/seed.ts`.
+  **Causa, reproducida sobre una base aparte** (`erp_loadtest_check`, sin tocar `erp_db` ni `erp_test`): el job creaba su base con `migrate deploy` + `db seed` y **nunca** aplicaba los SQL de `prisma/manual/`, que sí aplican `start-prod.sh`
+  (producción) y `db:recreate` (local) ⇒ `db seed` salía **1** en `prisma.item.upsert` (`prisma/seed.ts:1411`) con `P2022` («The column `(not available)` does not exist in the current database»); **y el hueco no es adivinado**: el diff del
+  modelo `Item` contra las columnas reales da **una sola** columna escalar ausente, **`uomGroupId`** (los otros **86** nombres del diff son campos de relación).
+  Con `node scripts/apply-manual-migrations.mjs --best-effort` (los **18** `.sql` de `prisma/manual/`, en orden **alfabético**, el mismo que usa `db:recreate`) el seed sale **0** y la secuencia completa queda **`migrate deploy 0 / SQL
+  manuales 0 / db seed 0 / audit:flows 0`** (`0 error(es), 1 aviso(s), 1 justificado(s)`; el aviso R9 es preexistente).
+  **Entregado**: los jobs `load-tests` y `load-tests-large` (el programado tenía **el mismo** agujero) intercalan ese paso entre `migrate deploy` y `db seed`, y `load-tests/k6/README.md` deja de declarar la preparación incompleta.
+  **`--best-effort` es el flag medido como equivalente**, no una comodidad: `migrate deploy` ya creó **3** de las columnas que **3** de los 18 ficheros vuelven a añadir (`Currency.isIndexUnit`, `BankAccount.itfRate`,
+  `SalesDebitNote.paidAmount`) y esas sentencias fallan con **`42701 duplicate_column`** —los **3 únicos** fallos de los 18—, que es justo lo que el flag tolera y registra.
+  **Declarado**: ese flag **también** toleraría un fallo real de otra clase en un `.sql` manual (lo mitiga que `db seed` y `audit:flows` corren después y sí salen con 1); y **sin verificar**: los **5** escenarios de k6 y el arranque del
+  backend en background **no** se corrieron en local (k6 no está instalado aquí; el runner lo descarga) ⇒ lo único que queda por confirmar es que el job llegue al final **en verde**.
+- **El E2E funcional de la tienda sigue sin correrse**: el incremento de hoy en la tienda («Cada fallo del ERP deja traza, con su `code` y su `requestId`») vive **solo en los caminos de error** y su arnés **restaura `erp_db`**, que estaba
+  en uso por la migración a Prisma 7 ⇒ queda **pendiente** de correr después de esa migración. Medido de ese incremento: `tsc --noEmit` **0**, `next lint --max-warnings=0` **0** («No ESLint warnings or errors») y `next build` «Compiled
+  successfully»; los **seis** puntos de fallo (tres de respuesta y tres de red/timeout, que eran idénticos) pasan por un helper que deja **una** línea `[erp]` con el estado, el endpoint, el `code` y el `requestId`, y el cambio **acorta** el
+  fichero (**+91 / −35**). **Dos decisiones explícitas**: el **404** —camino documentado de «no existe o está en borrador»— y la **clave ausente** (saltaría en **cada** petición) **no** se registran.
+- **`prettier` 3.9.9**: queda como **alternativa declarada** (adoptar 3.9.9 y reformatear los **32** ficheros de `backend-erp` en su propio incremento); es **decisión del dueño** y hoy manda el pin **3.8.3**.
+- **Los 72 listados de cara al usuario sin cota** y los **113 agregados internos** sin regla de negocio que los acote: **no se tocan** (decisión de producto); el ratchet solo impide **empeorar**.
+- **La rotación de la clave de la tienda**: `tienda-dev-key-cambiar` (la clave de la semilla) sigue **activa** en producción y se usó solo para sondas de lectura; el procedimiento —sin cortar la tienda— está en `storefront/README.md`
+  §«Rotación de la clave» (crear la nueva, cambiarla en el despliegue y redesplegar, y `storefront:key --deactivate <prefijoDelHashViejo>` para apagar la vieja) y el pendiente, en el **§13** del plan del e-commerce.
+- **`GH_PAT`**: los tres jobs del CI del ERP clonan el backend con `secrets.GH_PAT` (`erp-frontend/.github/workflows/ci.yml:211`, `:301`, `:395` y `update-baselines.yml:50`); sin ese secreto ese `checkout` no puede clonar.
+  El **estado del secreto no se midió** en esta tanda.
+
+Todo el detalle, con cada medición y cada declaración, en `backend-erp/CHANGELOG.md` (entradas del **2026-10-06** y del **2026-10-07**), `storefront/CHANGELOG.md` (2026-10-06), `docs/plans/plan-backend-nestjs-12-prisma-7.md` **§4.6** y
+`backend-erp/.husky/pre-push`.
 
 ## 2026-10-05 — EL GATE E2E DEL ERP ES REPRODUCIBLE Y QUEDA SIN ROJOS —251 pasan, 0 fallan, 6 omitidos, antes 241 y 5—: se portó el arnés de volcado/restauración con…
 
