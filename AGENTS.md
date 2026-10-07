@@ -269,7 +269,7 @@ JWT_SECRET=...
 FRONTEND_URL=...            # requerido en producción
 
 # Puertos / entorno
-PORT=3000
+PORT=3001                  # el API escucha en 3001: .env no define PORT y main.ts cae a 3001
 NODE_ENV=development|production|test
 
 # Rate limiting
