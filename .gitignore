@@ -105,3 +105,14 @@ memory/
 
 # ZCode CLI session files
 .zcode/
+
+# ── Gates de los workflows de la raíz (`scripts/`) ──
+# El patrón `scripts/` de arriba ignora el directorio ENTERO (y el `*.json` de arriba, el
+# fichero de declaraciones del gate): un gate que no se versiona no vigila nada —el mismo
+# criterio que `storefront/scripts/` y `mcp-erp/scripts/`, y la lección medida el 2026-10-08—.
+# Se re-incluye el directorio y su `.json`; el sondeo suelto `_probe-*` sigue ignorado a
+# propósito (es un fichero vacío de una sesión vieja). Si nace otro gate aquí, necesita su
+# propia línea `!scripts/…`.
+!scripts/
+!scripts/*.json
+scripts/_probe-*

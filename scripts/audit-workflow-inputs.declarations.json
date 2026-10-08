@@ -1,0 +1,21 @@
+{
+  "$comment": "Exenciones declaradas de scripts/audit-workflow-inputs.mjs. Cada entrada necesita rule+workflow+reason+fix+owner+declaredIn: una exencion sin razon (o sin arreglo, o sin dueno) hace fallar el gate. Si la entrada deja de corresponder a un hallazgo real, el gate la marca como OBSOLETA: en modo normal avisa, con --strict falla. Objetivo: cero entradas.",
+  "declared": [
+    {
+      "rule": "missing-workflow_dispatch",
+      "workflow": "backend-erp/.github/workflows/ci.yml",
+      "reason": "El workflow SI se ejecuta (tiene push y pull_request sobre main), pero no tiene `workflow_dispatch`, asi que no se puede lanzar a mano: es el mismo defecto que `1d7b0e03` corrigio en `erp-frontend/.github/workflows/ci.yml`. Esta sesion tiene PROHIBIDO tocar `backend-erp/` (hay un agente hermano trabajando en ese repo: solo lectura), asi que el arreglo de una linea no se aplica aqui.",
+      "fix": "Anadir `workflow_dispatch:` al bloque `on:` de backend-erp/.github/workflows/ci.yml (una linea, junto a push/pull_request).",
+      "owner": "backend-erp (agente de ese repo); la raiz solo puede declararlo",
+      "declaredIn": "Informe de la sesion chore/gates-e-higiene (AGENTS.md, «Un workflow que nunca se ejecuta es un workflow que nadie sabe si funciona»)"
+    },
+    {
+      "rule": "manual-only-sin-marca",
+      "workflow": "erp-frontend/.github/workflows/update-baselines.yml",
+      "reason": "Es `solo workflow_dispatch` A PROPOSITO: regenera los baselines visuales de Linux a mano y ocasionalmente (dos corridas de Playwright, ~2x el arranque), y su primer run real fue el del 2026-10-08 (`424d7746`). Lo que le falta es la MARCA en el propio fichero: un comentario `# manual-only-ok: <razon>` que lo declare ahi mismo. Esta sesion tiene PROHIBIDO tocar `erp-frontend/` (agente hermano trabajando: solo lectura).",
+      "fix": "Anadir en erp-frontend/.github/workflows/update-baselines.yml el comentario `# manual-only-ok: solo workflow_dispatch a proposito: regenera baselines de Linux a mano (dos corridas de Playwright)`; el gate lo acepta y esta exencion se borra.",
+      "owner": "erp-frontend (agente de ese repo); la raiz solo puede declararlo",
+      "declaredIn": "AGENTS.md, «Un workflow que nunca se ejecuta...» (declara que es solo workflow_dispatch); informe de la sesion chore/gates-e-higiene"
+    }
+  ]
+}

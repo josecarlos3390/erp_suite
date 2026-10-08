@@ -4,7 +4,10 @@
   "private": true,
   "description": "ERP suite monorepo — backend (NestJS) + frontend (Angular)",
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "audit:workflow-inputs": "node scripts/audit-workflow-inputs.mjs",
+    "audit:workflow-inputs:strict": "node scripts/audit-workflow-inputs.mjs --strict",
+    "audit:workflow-inputs:self-test": "node scripts/audit-workflow-inputs.mjs --self-test"
   },
   "devDependencies": {
     "husky": "^9.1.7",
