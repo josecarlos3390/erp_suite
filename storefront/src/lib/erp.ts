@@ -18,7 +18,7 @@ import { currentChannel } from "./channels";
  * inventan campos: si el ERP no lo devuelve, no existe aqui.
  */
 
-const RAW_BASE_URL = process.env.ERP_API_URL ?? "http://localhost:3001";
+const RAW_BASE_URL = process.env.ERP_API_URL ?? "http://localhost:3000";
 const BASE_URL = RAW_BASE_URL.replace(/\/+$/, "");
 const TIMEOUT_MS = Number.parseInt(process.env.ERP_TIMEOUT_MS ?? "8000", 10);
 

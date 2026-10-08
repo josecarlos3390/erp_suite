@@ -36,14 +36,14 @@ npm run sync:tokens            # genera src/styles/tokens.css desde erp-frontend
 npm run dev                    # http://localhost:3000
 ```
 
-La API del ERP debe estar escuchando (por defecto `http://localhost:3001`) con el seed de la
+La API del ERP debe estar escuchando (por defecto `http://localhost:3000`) con el seed de la
 tienda cargado.
 
 ## Variables de entorno
 
 | Variable               | Obligatoria                          | Para que                                                                      |
 | ---------------------- | ------------------------------------ | ----------------------------------------------------------------------------- |
-| `ERP_API_URL`          | si (default `http://localhost:3001`) | URL base del ERP. El canal vive en `/storefront/...`, **sin** prefijo `/api`. |
+| `ERP_API_URL`          | si (default `http://localhost:3000`) | URL base del ERP. El canal vive en `/storefront/...`, **sin** prefijo `/api`. |
 | `STOREFRONT_API_KEY`   | si (o `STOREFRONT_CHANNELS`)         | Clave del canal (`x-storefront-key`). **Solo servidor.** Una clave = una empresa. Respaldo del modo de una empresa por despliegue. |
 | `STOREFRONT_CHANNELS`  | no                                   | **Varios dominios en un despliegue**: JSON `host → { key, name, description, city, url }`. La clave de cada empresa, su identidad y su ciudad por defecto. **Solo servidor.** |
 | `STOREFRONT_CITY`      | si (default `SCZ`)                   | Ciudad por defecto cuando el cliente todavia no eligio. Cada canal puede pisarla con su `city`. |

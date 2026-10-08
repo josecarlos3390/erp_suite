@@ -21,7 +21,7 @@
           # así el overlay funciona en cualquier checkout.
           - !!js process.getBuiltinModule('node:path').join(process.cwd(), 'mcp-erp', 'dist', 'index.js')
         env:
-          ERP_API_URL: http://localhost:3001
+          ERP_API_URL: http://localhost:3000
           ERP_TENANT_SLUG: default
           ERP_USERNAME: admin
           ERP_PASSWORD: admin123

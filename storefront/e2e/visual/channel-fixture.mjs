@@ -29,7 +29,7 @@ import { createServer } from 'node:http';
 import { join } from 'node:path';
 
 const PORT = Number.parseInt(process.env.FIXTURE_PORT ?? '3299', 10);
-const UPSTREAM = process.env.ERP_UPSTREAM ?? 'http://localhost:3001';
+const UPSTREAM = process.env.ERP_UPSTREAM ?? 'http://localhost:3000';
 const RECORD = process.argv.includes('--record');
 const DIR = join(process.cwd(), 'e2e', 'visual', 'fixtures');
 /**

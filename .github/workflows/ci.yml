@@ -32,7 +32,7 @@ jobs:
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
       STOREFRONT_API_KEY: ci-placeholder-no-se-usa
       STOREFRONT_CITY: La Paz
-      ERP_API_URL: http://localhost:3001
+      ERP_API_URL: http://localhost:3000
       ERP_TIMEOUT_MS: '8000'
 
     defaults:

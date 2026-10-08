@@ -89,7 +89,7 @@ async function callTool(
 
 test('loadConfig aplica defaults y limita los valores numéricos', () => {
   const cfg = loadConfig({});
-  assert.equal(cfg.baseUrl, 'http://localhost:3001');
+  assert.equal(cfg.baseUrl, 'http://localhost:3000');
   assert.equal(cfg.tenantSlug, 'default');
   assert.equal(cfg.timeoutMs, 20_000);
   assert.equal(cfg.maxRows, 25);

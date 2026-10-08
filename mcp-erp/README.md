@@ -36,7 +36,7 @@ Variables de entorno:
 
 | Variable | Default | Para qué |
 |---|---|---|
-| `ERP_API_URL` | `http://localhost:3001` | URL base de la API del ERP |
+| `ERP_API_URL` | `http://localhost:3000` | URL base de la API del ERP |
 | `ERP_TENANT_SLUG` | `default` | Tenant con el que se autentica |
 | `ERP_USERNAME` / `ERP_PASSWORD` | — | Credenciales de la API (**sin ellas solo funciona `erp_project_docs`**) |
 | `ERP_TIMEOUT_MS` | `20000` | Timeout por petición |
@@ -92,7 +92,7 @@ Cualquier cliente que acepte servidores MCP por stdio sirve; el formato es el ha
       "command": "node",
       "args": ["D:/ProyectosPython/erp_suite/mcp-erp/dist/index.js"],
       "env": {
-        "ERP_API_URL": "http://localhost:3001",
+        "ERP_API_URL": "http://localhost:3000",
         "ERP_TENANT_SLUG": "default",
         "ERP_USERNAME": "admin",
         "ERP_PASSWORD": "…"

@@ -3,7 +3,7 @@
  *
  * Todo se toma de variables de entorno para que el servidor no guarde secretos:
  *
- *  - `ERP_API_URL`       URL base de la API (default `http://localhost:3001`)
+ *  - `ERP_API_URL`       URL base de la API (default `http://localhost:3000`)
  *  - `ERP_TENANT_SLUG`   slug del tenant (default `default`)
  *  - `ERP_USERNAME`      usuario (obligatorio para las herramientas de negocio)
  *  - `ERP_PASSWORD`      contraseña (obligatorio para las herramientas de negocio)
@@ -35,7 +35,7 @@ function parsePositiveInt(
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ErpConfig {
-  const baseUrl = (env.ERP_API_URL ?? 'http://localhost:3001').replace(
+  const baseUrl = (env.ERP_API_URL ?? 'http://localhost:3000').replace(
     /\/+$/,
     '',
   );

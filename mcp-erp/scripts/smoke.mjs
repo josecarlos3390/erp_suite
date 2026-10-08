@@ -6,7 +6,7 @@
  * las herramientas aisladas (eso lo cubre `npm test`).
  *
  * Uso:
- *   ERP_USERNAME=admin ERP_PASSWORD=… node scripts/smoke.mjs [--api http://localhost:3001]
+ *   ERP_USERNAME=admin ERP_PASSWORD=… node scripts/smoke.mjs [--api http://localhost:3000]
  *
  * Salida: una línea por comprobación. Sale con código 1 si alguna falla.
  */
@@ -107,7 +107,7 @@ async function callTool(name, args = {}) {
 }
 
 async function main() {
-  console.log(`erp-mcp smoke — API ${env.ERP_API_URL ?? 'http://localhost:3001'}`);
+  console.log(`erp-mcp smoke — API ${env.ERP_API_URL ?? 'http://localhost:3000'}`);
 
   const init = await send('initialize', {
     protocolVersion: '2024-11-05',

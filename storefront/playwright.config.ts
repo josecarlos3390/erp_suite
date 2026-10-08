@@ -12,7 +12,7 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = Number.parseInt(process.env.E2E_PORT ?? '3100', 10);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
-const ERP_API_URL = process.env.ERP_API_URL ?? 'http://localhost:3001';
+const ERP_API_URL = process.env.ERP_API_URL ?? 'http://localhost:3000';
 const STOREFRONT_API_KEY = process.env.STOREFRONT_API_KEY ?? 'tienda-dev-key-cambiar';
 const STOREFRONT_CITY = process.env.STOREFRONT_CITY ?? 'SCZ';
 

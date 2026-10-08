@@ -7,7 +7,7 @@
  */
 
 const ERP_API_URL = (
-  process.env.ERP_API_URL ?? "http://localhost:3001"
+  process.env.ERP_API_URL ?? "http://localhost:3000"
 ).replace(/\/+$/, "");
 const STOREFRONT_API_KEY =
   process.env.STOREFRONT_API_KEY ?? "tienda-dev-key-cambiar";

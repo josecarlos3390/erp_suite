@@ -32,7 +32,7 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 const FIXTURE_PORT = Number.parseInt(process.env.FIXTURE_PORT ?? "3299", 10);
 const FIXTURE_URL = `http://127.0.0.1:${FIXTURE_PORT}`;
 
-const ERP_API_URL = process.env.ERP_API_URL ?? "http://localhost:3001";
+const ERP_API_URL = process.env.ERP_API_URL ?? "http://localhost:3000";
 const RECORD = process.env.STORE_VISUAL_RECORD === "1";
 
 /**

@@ -38,7 +38,7 @@ cliente HTTPS
    │    · sirve /browser (estático) + render server-side
    │    · headers: CSP, nosniff, X-Frame-Options DENY, Referrer-Policy, HSTS (prod)
    │
-   └─ backend-erp (NestJS 11, puerto 3000/3001)
+   └─ backend-erp (NestJS 11, puerto 3000)
         node dist/main.js   (start:prod)
         · API REST + Swagger /api
         · PostgreSQL (DATABASE_URL)
@@ -62,7 +62,7 @@ cliente HTTPS
 | TLS | HSTS se envía solo con `NODE_ENV=production` (HTTPS obligatorio) |
 | DNS | dominio API + dominio app, apuntando al balanceador/reverse proxy |
 | Env backend | `DATABASE_URL`, `SHADOW_DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`, `PORT`, `NODE_ENV=production`, `THROTTLE_*`, `SUPERADMIN_USERNAME`, `SUPERADMIN_PASSWORD_HASH`, `BULK_IMPORT_SAFE_MODE` |
-| Env frontend | `PORT` (4000), `ALLOWED_HOST`, `NODE_ENV=production`; `connect-src` de la CSP apunta al API (en prod: `http://localhost:3001` en dev, ajustar al host real) |
+| Env frontend | `PORT` (4000), `ALLOWED_HOST`, `NODE_ENV=production`; `connect-src` de la CSP apunta al API (en prod: el host real del API; en dev, `http://localhost:3000`) |
 
 > ⚠️ **Drift de BD conocido:** desde 2026-08-16 los cambios de schema se
 > aplicaron con SQL manuales en `backend-erp/prisma/manual/` (`prisma db execute`)
@@ -99,7 +99,7 @@ npx ts-node --transpile-only scripts/ensure-mappings-existing-tenants.ts
 npm run migrate:sales-credit-bo   # convención NC venta BO (solo tenants countryCode=BO)
 
 # 6. Arrancar
-NODE_ENV=production PORT=3001 FRONTEND_URL=https://app.tudominio.com \
+NODE_ENV=production PORT=3000 FRONTEND_URL=https://app.tudominio.com \
   npm run start:prod
 
 # 7. Verificar
