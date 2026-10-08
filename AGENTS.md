@@ -171,6 +171,21 @@ npm run audit:contrast       # contraste WCAG de la paleta
 5. **Playwright sin esperas sin tope:** `actionTimeout: 30000` y `{ timeout }` en los helpers que
    actúan sobre un popup que la app puede cerrar. Un `click()` sin tope reintenta para siempre: la
    prueba muere por su tope, **sin traza** y con la página viva.
+6. **Un caso E2E debe crear lo que mide.** El 2026-10-08, **tres** casos del job `e2e` pasaban por el
+   **estado acumulado de la máquina de desarrollo** y caían en un entorno limpio: el login de
+   super-admin (credenciales solo en el `.env` **no versionado** ⇒ 401 y **264** `did not run`;
+   `39fbba2c`), la Nota de Crédito (el «hoy» del tenant salía del reloj de la máquina —La Paz— y no del
+   caso: con el runner en **UTC** los **5** casos se rechazan como futuros; `9eabacab` + la regla **7**)
+   y el selector de medios (`erp_db` con **23** filas de `MediaAsset` que dejó
+   `backend-erp/scripts/generate-store-cards.ts`, mientras el seed crea **0** ⇒ `picker-grid`
+   «element(s) not found»; `1724af21` con `e2e/helpers/ensure-media-library.ts`). Los **4** casos
+   resultantes pasan en el entorno limpio **sin relajar una aserción**.
+7. **La zona horaria del PROCESO se declara a propósito.** `TZ: America/La_Paz` va **solo** donde la
+   zona entra en el render —`visual-regression` (`ci.yml:376`) y `ssr-smoke` (`ci.yml:514`)— y en el job
+   `baseline` de `update-baselines.yml`; el job `e2e` se queda en **UTC a propósito**: es el único
+   entorno donde el defecto de la doble conversión de zona se manifiesta, y alinearlo lo taparía
+   (`4a7e5b5e`). El defecto y su medición van escritos al lado, en el `env` de los tres jobs, para que
+   nadie lo «arregle» dentro de un mes.
 
 ---
 
@@ -194,6 +209,10 @@ npm run audit:contrast       # contraste WCAG de la paleta
 - **No hacer *round-trip* de código por PowerShell** (`Get-Content -Raw` + `Set-Content` mojibakea los
   acentos en PS 5.1): usar las herramientas del agente o Node, y comprobar con `git diff --numstat` que
   solo aparezcan las inserciones esperadas.
+- **Un commit por sitio al arreglar una familia de bugs.** Si uno sale mal, se revierte **uno** sin
+  deshacer los demás. El barrido de la doble conversión de zona (los **7** sitios que declaró
+  `e33b0b4c`) va así aunque cuatro vivan en el mismo fichero: `76688c98` (los cuatro avisos de
+  vencimiento) y `95fa7edf` (los tramos del aging) son **dos commits, no uno**.
 
 ### Despliegue
 
@@ -253,6 +272,34 @@ npm run audit:contrast       # contraste WCAG de la paleta
   contraseña **sigue en la historia de git**, hay que **rotarla** (no basta con limpiar el código).
 - **Declarar lo que no se midió** y los límites (flakes, datos ausentes, decisiones pendientes del
   usuario) en vez de taparlos. **Un entorno que nadie prueba es un gate que no existe.**
+- **Una puerta tiene que comprobar el VALOR, no solo que el texto sea válido.** El 2026-10-08, al
+  alinear `update-baselines.yml` con `ci.yml`, una sustitución dejó `node-version:` **sin valor** en los
+  dos `setup-node` y el commit salió (`029f8447`, 08:52): el YAML **parsea** —medido con `yaml` 2.9.0:
+  la clave existe y vale `null`—, así que el parseo dijo OK y el workflow **no fijaba Node alguno**.
+  Corregido a `node-version-file: '.nvmrc'` cuatro minutos después (`424d7746`, aún sin empujar).
+  **Ejecute el valor, no el documento.**
+- **La prueba de borde se escribe ANTES y se ve en ROJO.** Los dos arreglos de la doble conversión de
+  zona del 2026-10-08 llevan el caso escrito y **fallando con el código viejo** antes de tocar el
+  código: Notas de Crédito (`9eabacab`) **2 failed / 50 passed** con la zona del proceso por defecto y
+  **6 failed / 46 passed** con `TZ=UTC`; `pricing.util` (`e33b0b4c`) **1 failed / 61 passed** con la
+  zona por defecto y **3 failed / 59 passed** con `TZ=UTC`. Un test que nunca ha estado en rojo no es
+  un gate. Y los **dos signos** del desplazamiento van puestos (tenant detrás y tenant delante) para
+  que algo sea rojo en **cualquier** zona de proceso.
+- **Al arreglar algo compartido, barra TODOS los sitios de la misma expresión.**
+  `startOfTenantDay(nowInTenantTimeZone(tz), tz)` estaba en los **4** llamadores de Notas de Crédito
+  (`9eabacab`), luego en `pricing.util.ts:362` (`e33b0b4c`) — y ese commit **declaró 7 sitios más** con
+  la misma expresión: `alerts.service.ts` ×4 (341-344, 373-376, 401-404, 448-451),
+  `reports.service.ts:694-697` y el precio de línea en `sale-invoices.service.ts:4952-4955` y
+  `sale-reserve-invoices.service.ts:5215-5218`. El barrido va **un commit por sitio** (T258:
+  `76688c98` avisos ×4, `95fa7edf` aging). Arreglar el útil **no** cierra la familia.
+- **Un workflow que nunca se ejecuta es un workflow que nadie sabe si funciona.**
+  `update-baselines.yml` es solo `workflow_dispatch` y **no había corrido nunca**: su primer run murió
+  en `Install dependencies` con `npm ci`/`EUSAGE` (`Missing: chokidar@4.0.3`) porque fijaba **Node 22**
+  y el lock se regeneró con node:24 ⇒ `node-version-file: '.nvmrc'` (`424d7746`, el run verde; el
+  commit roto es `029f8447`). Es hermana de «un script que no arranca es un gate que no existe». Ese
+  mismo día, `ci.yml` tampoco tenía `workflow_dispatch` (`1d7b0e03`): «hacer el CI» exigía empujar y
+  pagar el pre-push entero para ver un run.
+
 ## 6. Variables de entorno críticas
 
 Archivo de referencia: `backend-erp/.env` (no existe `.env.example`).
