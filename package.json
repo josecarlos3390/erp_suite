@@ -7,7 +7,8 @@
     "prepare": "husky",
     "audit:workflow-inputs": "node scripts/audit-workflow-inputs.mjs",
     "audit:workflow-inputs:strict": "node scripts/audit-workflow-inputs.mjs --strict",
-    "audit:workflow-inputs:self-test": "node scripts/audit-workflow-inputs.mjs --self-test"
+    "audit:workflow-inputs:self-test": "node scripts/audit-workflow-inputs.mjs --self-test",
+    "ci:local": "node scripts/ci-local.mjs"
   },
   "devDependencies": {
     "husky": "^9.1.7",
