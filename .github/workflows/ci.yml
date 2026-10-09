@@ -12,8 +12,11 @@ on:
     branches: [master]
     paths:
       - 'storefront/**'
-      # El gate de los workflows (`scripts/audit-workflow-inputs.mjs`) audita tambien los otros dos
-      # repos: si cambia el script, este CI tiene que volver a comprobarlo.
+      # El gate de los workflows (`scripts/audit-workflow-inputs.mjs`) vive en la raiz y audita lo
+      # que **este** arbol tenga. En este CI los repos anidados **no estan clonados**, asi que sus
+      # workflows salen como «no presente en este arbol: se audita en su propio CI» (informativo, no
+      # rojo) y quien los audita de verdad es el CI de cada repo, que lleva su copia del gate. Lo que
+      # si se vigila aqui es este workflow y el propio script.
       - 'scripts/**'
       - '.github/workflows/ci.yml'
   pull_request:
@@ -64,14 +67,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Las **tres reglas auditables** nacidas el 2026-10-08 (`AGENTS.md`, `874d508`), que hasta hoy
-      # nadie comprobaba: el **VALOR** de `node-version` en cada `setup-node` (el `node-version:`
-      # vacio de `029f8447` parsea como `null` y el workflow se queda sin fijar Node), el invariante
-      # de **`TZ`** (exactamente los tres jobs donde la zona entra en el render, y en ninguno mas) y
-      # que todo workflow se pueda **lanzar a mano** o declare por que es solo manual. Va **despues**
-      # de `npm ci` a proposito: el lector YAML (`js-yaml`) se resuelve de `storefront/node_modules`;
-      # sin lector, el gate sale con codigo **2** (ruidoso), nunca en falso verde.
-      - name: Autoprueba del gate de workflows (10 casos)
+      # Las **reglas auditables** de los workflows (`AGENTS.md`): el **VALOR** de `node-version` en
+      # cada `setup-node` (el `node-version:` vacio de `029f8447` parsea como `null` y el workflow se
+      # queda sin fijar Node), el invariante de **`TZ`** (exactamente los tres jobs donde la zona
+      # entra en el render, y en ninguno mas) y que todo workflow se pueda **lanzar a mano** o declare
+      # por que es solo manual.
+      #
+      # Regla 4, nacida del run **rojo** `958cd664` de este mismo CI: un workflow declarado que
+      # **desaparece de un repo que SI esta en el arbol** es ROJO; un workflow cuyo **repo no esta
+      # clonado aqui** es una linea INFORMATIVA. Este CI solo clona la raiz, asi que los cuatro
+      # workflows de `erp-frontend/` y `backend-erp/` salian como cuatro `workflow-declarado-ausente`
+      # que no eran defectos de nadie. La salida lo dice ahora en numeros (`auditados=N/M`), para que
+      # un arbol incompleto se lea como lo que es y no como un arbol limpio.
+      #
+      # Va **despues** de `npm ci` a proposito: el lector YAML (`js-yaml`) se resuelve de
+      # `storefront/node_modules`; sin lector, el gate sale con codigo **2** (ruidoso), nunca en falso
+      # verde.
+      - name: Autoprueba del gate de workflows
         working-directory: .
         run: node scripts/audit-workflow-inputs.mjs --self-test
 
