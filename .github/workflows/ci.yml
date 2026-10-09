@@ -30,6 +30,27 @@ on:
   # ruta, un cambio de `scripts/` ni siquiera lo dispararia). Lo audita la regla 3 del gate.
   workflow_dispatch:
 
+# ── CONCURRENCIA (2026-10-09) ──────────────────────────────────────────────────────────────────
+# Un push nuevo sobre la MISMA rama cancela el run anterior. Aquí el ahorro es pequeño y **medido**:
+# un push a `master` cuesta 38s–1m15s de runner (5 runs del repo; el último verde, `b0908867`, 58s),
+# así que esto no es una optimización de minutos, es higiene: evita dos corridas solapadas sobre el
+# mismo commit y deja el veredicto del HEAD como el único que importa.
+#
+# LO QUE SE PIERDE: el veredicto inmediato del commit intermedio. Su verificación no se pierde — ese
+# commit es **ancestro** del nuevo HEAD (el proyecto prohíbe reescribir historia publicada), así que
+# el run que gana construye un árbol que lo contiene. Y GitHub **factura igual** lo ya consumido.
+#
+# LO QUE **NO** SE HIZO, y por qué: `paths-ignore` para `storefront/**/*.md` (el push de `b0908867`,
+# un `docs(changelog)`, disparó este CI porque el CHANGELOG de la tienda vive bajo `storefront/`).
+# No se añade porque este workflow **ya** usa el filtro positivo `paths:` y **no hay forma de validar
+# la semántica de los dos filtros juntos mientras el CI esté bloqueado por facturación** (los jobs
+# mueren en ~2 s con 0 pasos): el ahorro medido sería ~1 min por push de documentación y el riesgo es
+# dejar el workflow sin dispararse cuando sí debe. Se deja declarado para decidirlo con un run real
+# delante.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   typecheck-lint-build:
     runs-on: ubuntu-latest
