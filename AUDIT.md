@@ -263,6 +263,7 @@ Ambas expresiones son idénticas por distributividad. Las líneas exentas (tasa=
 
 **B. Lo más serio que estas dos zonas dejan abierto no es código — es del humano:**
 1. **Ítem 65 — revocar los tokens de GitHub** (y, por la regla medida el 2026-10-07, **rotar la contraseña local que sigue en la historia de git**: 39 de 42 specs la llevaban). No es medible desde el repo y es **lo único de las 67 entradas con riesgo real de seguridad**. Prioridad 1 para el usuario.
+   - **Corrección al lado (2026-10-10).** El usuario **vuelve a aplazar la rotación**, con motivo literal: «las credenciales no vamos a rotar aún, porque vamos a seguir desarrollando» ⇒ **se sigue en desarrollo**. Es una **decisión consciente del usuario, no un olvido**, y **no cambia el estado del riesgo**: la contraseña local **sigue en la historia de git** (limpiar el código **no basta** — quien clone el repo la tiene—) y los **tokens de GitHub** del ítem 65 siguen vivos. **Cuándo toca**: **antes de dar acceso a terceros o de desplegar a producción con datos reales**; la tarea vive en el checklist go/no-go, `docs/plans/runbook-go-live.md` §9. **No se duplica** aquí el aplazamiento hermano de las claves del canal (`docs/plans/plan-ecommerce-storefront.md` §41, 2026-10-03: «primero que todo funcione»). La entrada de arriba **no se borra**.
 2. **Ítem 65 — desactivar la Public Network del Postgres** de Railway: misma categoría (acción en panel, no en código).
 
 **C. Lo no medible que conviene cerrar con un gate (por impacto potencial, no por coste):**

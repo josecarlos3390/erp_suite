@@ -392,6 +392,7 @@ alineación en producción → `npm run backup:db` y guardar el archivo.
 - [ ] Monitoreo conectado (/health + /metrics) y alertas configuradas
 - [ ] Tenant 2 de prueba operativo (aislamiento multitenant — batería 26)
 - [ ] Concurrencia validada (batería 28: anulación y NCs no duplican datos)
+- [ ] **Credenciales rotadas antes de dar acceso a terceros o de poner datos reales en producción** — la contraseña local **sigue en la historia de git** (limpiar el código no basta); aplazamiento consciente del usuario (2026-10-10, `AUDIT.md` §2c)
 
 ---
 
