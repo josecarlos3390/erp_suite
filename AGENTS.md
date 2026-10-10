@@ -105,7 +105,8 @@ Ningún gate se sustituye por inspección visual. Salida y comandos uno a uno, c
 
 ```bash
 npm run build                # nest build — 0 errores
-npm run typecheck            # tsc (app y specs) — 0 errores
+npm run typecheck:all        # GATE: typecheck (src/ + test/) + typecheck:tools (scripts, prisma, perf) — 0 errores
+npm run typecheck            # subconjunto del gate: solo src/ + test/ (`tsconfig.spec.json`); NO ve scripts/
 npm run lint:ci              # eslint — 0 errores / 0 avisos (lint lleva --fix: NO en CI)
 npm test                     # Jest unitario
 npm run test:e2e             # Jest E2E (sincroniza erp_test antes)
@@ -118,7 +119,7 @@ npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
 
-> **Pre-push del backend:** `npm test` + `npm run typecheck` + `npm run lint:ci`. Los dos últimos
+> **Pre-push del backend:** `npm test` + `npm run typecheck:all` + `npm run lint:ci`. Los dos últimos
 > llevan el **heap dentro del script** porque sin él mueren por OOM. Nada se empuja sin los tres verdes.
 
 ### Frontend (`cd erp-frontend`)
@@ -395,6 +396,42 @@ npm run audit:contrast       # contraste WCAG de la paleta
   agujero de ámbito que venía a arreglar** y su primer rojo dijo **6** en vez de **25**; el gate nace
   con una fijación en su autoprueba para que no vuelva (`backend-erp`, `5169e9df`). Hermana de «una
   métrica en 0 solo vale si el detector está probado contra los casos difíciles».
+- **Cuando dos funciones implementan el mismo concepto, no basta con que compartan la pieza: hay que
+  medir que siguen de acuerdo.** Compartir código es una **intención**, no una garantía: dos funciones
+  que llaman al mismo útil **pueden divergir** en cuanto una añade una guarda que la otra no tiene, y
+  el defecto vuelve por la puerta de al lado. Caso medido: en `backend-erp`, el validador de la
+  frontera (`isTenantDayOrInstant`, que decide si el `date` de un borrador entra por el API) y el
+  conversor de días (`fromTenantDay`) comparten la pieza `isTenantDay`, y **aun así** se escribió una
+  **red de equivalencia** —una tabla donde `isTenantDay(d)` es verdadero **exactamente** cuando
+  `fromTenantDay(d)` no lanza—, con los **dos** signos y en las **cuatro** zonas del repo, porque la
+  equivalencia **no se deduce de compartir la pieza: se mide**. Sin esa red, la guarda que se añada
+  mañana a cualquiera de los dos lados no la ve nadie (`backend-erp`,
+  `src/common/timezone.predicates.spec.ts`; la frontera, en
+  `src/common/decorators/is-tenant-day-or-instant.decorator.ts`). **Escriba la tabla de equivalencia y
+  ejecútela**: «son la misma cosa» no se declara porque llamen al mismo útil.
+- **Los fixtures que reproducen un defecto medido NO se tocan.** Caso medido: **cuatro** casos de
+  `preview-journal-entry-draft.dto.spec.ts` llevaban `date: '2026-09-25T00:00:00.000Z'` —un
+  **instante**, no un día— y eran **el payload real de cuatro pantallas** (factura de venta, factura de
+  compra, reserva de venta y reserva de compra). El cambio «obvio» —que el `date` del borrador tenga
+  que ser un **día**— habría puesto **cuatro casos en verde** (el instante a medias, el 30 de febrero,
+  la basura y el día válido) y habría **roto la función en producción**: el **400** que el propio spec
+  existe para prevenir (T238). **Ningún gate lo habría cazado: solo los fixtures** —`eslint`,
+  `typecheck:all` y el ratchet del `!` pasan igual con el validador equivocado—. Los fixtures que
+  documentan un defecto medido son la **única prueba** de que el defecto existe tal como se describió;
+  por eso la frontera acepta **las dos** formas y hay un caso que exige que el instante real **siga
+  entrando** (`backend-erp`, `src/journal-entries/dto/preview-journal-entry-draft.dto.spec.ts`).
+  **Antes de «arreglar» un fixture, compruebe qué payload real reproduce**: si el payload real es el
+  que el caso rechaza, el que está mal es el validador, no el fixture.
+- **Una tabla de casos también es un instrumento, y también puede mentir.** Una tabla **sin ejecutar**
+  es una afirmación; una tabla que **se ejecuta** encuentra sus propios errores. Caso medido: la red de
+  equivalencia de arriba falló en su **primer acto** porque un día **válido** (`'2026-06-15'`) estaba
+  en la lista de los que **no** lo son: el mismo valor estaba en **las dos** listas (`DIAS_VALIDOS` y
+  `NO_DIAS`), así que la tabla **se contradecía a sí misma** y el rojo señalaba al instrumento, no al
+  código. Y un cero solo vale si el instrumento **puede** encontrar algo: **compruebe que el filtro
+  PUEDE encontrar algo antes de creerte su cero** —hermana de la regla del filtro que no casa («no
+  sé», no «no hay nada»)—. (`backend-erp`, `src/common/timezone.predicates.spec.ts`.) **Ejecute la
+  tabla y compruebe que sus dos listas no se solapan**: un caso que está en las dos es un error de la
+  tabla, no del producto.
 
 ## 6. Variables de entorno críticas
 
