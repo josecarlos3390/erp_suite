@@ -86,7 +86,9 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
 - **Cuentas con `requiresPartner`:** la línea de asiento exige `partnerId` y el `partnerCode`
   (ShortName) se denormaliza (Anexo B).
 - **E2E:** los maestros se resuelven **por código, nunca por posición**.
-- **`0`** `@ts-ignore` / **`--no-verify`**; `eslint-disable` **sólo con la regla nombrada** y `--force`
+- **`0`** `@ts-ignore` / **`--no-verify`**; `eslint-disable` **sólo con la regla nombrada** —y ese
+  calificativo alcanza a las **12** escritas a mano, **no** a las **206** de `src/generated/`, que son
+  `/* eslint-disable */` en bloque, sin regla nombrada, y viven **fuera del lint**— y `--force`
   **sólo** en `prisma migrate reset --force` (ver *Reglas de proceso*).
 
 El detalle **obligatorio** vive en los 5 archivos canónicos del protocolo de arriba y en los planes de
@@ -197,8 +199,11 @@ npm run audit:contrast       # contraste WCAG de la paleta
 
 - **Nunca `--no-verify`** (ni `--force`, `@ts-ignore`, `eslint-disable`, `xit`). El hook se arregla,
   no se salta. El proyecto lo mide, y no todo es cero: **0 usos** de `--no-verify`, `xit`, `@ts-ignore`
-  y `as any`; `eslint-disable` **sólo con la regla nombrada** (12 en código escrito a mano, más **206**
-  en `src/generated/`, que es código de Prisma); y `--force` **sólo** en `prisma migrate reset --force`,
+  y `as any`; `eslint-disable` **sólo con la regla nombrada**, y ese calificativo son **12** directivas
+  **escritas a mano** (8 `local/no-raw-without-tenant` + 4 `@typescript-eslint/no-require-imports`) —
+  las **206** de `src/generated/` **no** nombran ninguna regla: son `/* eslint-disable */` **en bloque**,
+  una por fichero de Prisma, y `eslint.config.mjs:19` las deja **fuera del lint**, así que la condición
+  no las alcanza—; y `--force` **sólo** en `prisma migrate reset --force`,
   que es lo que ejecuta `db:recreate`. Las aserciones no nulas (`!`) van aparte, en la viñeta siguiente
   (medido el **2026-10-10** en `backend-erp`; el detalle, en el `CHANGELOG.md` de la raíz).
 - **Cero `!` nuevos**, que desde el **2026-10-09** **tiene gate**: `npm run audit:non-null:check` en las
