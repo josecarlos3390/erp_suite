@@ -316,6 +316,86 @@ npm run audit:contrast       # contraste WCAG de la paleta
   mismo día, `ci.yml` tampoco tenía `workflow_dispatch` (`1d7b0e03`): «hacer el CI» exigía empujar y
   pagar el pre-push entero para ver un run.
 
+- **Al migrar el ÍNDICE de un ratchet, el orden es: quitar la sonda → congelar el formato → sondear →
+  quitar la sonda.** Regenerar la línea base **con la sonda dentro del árbol** hace que el índice
+  viejo (`file:line`) no case con las claves nuevas y **TODO** aparezca como `NUEVA`: medido en el
+  gate del `!` con un rojo intermedio de **1586** cuando la aserción de verdad era **una**, y en
+  `audit:explicit-any` con **230**. El arreglo lleva las **dos** mitades: índice por **CONTENIDO**
+  (`fichero::fragmento normalizado`) **y** lo que **DESAPARECE también se lista** al bajar (hasta 40),
+  porque un informe que solo habla cuando empeora obliga a creerse la resta. Límite declarado: dos
+  hallazgos idénticos en el mismo fichero comparten clave (inocuo para la **CUENTA**, que es lo que
+  bloquea; afecta solo a la lista de sitios). La cuenta **no se movió**: `1585 = 1585` y `229 = 229`
+  (`backend-erp`: `112a04c7`; su hermano `dca02341` aplica el mismo arreglo al segundo gate y
+  comprueba el tercero —`audit-spec-clock` **no** lo tiene, porque su base no guarda `findings`—).
+- **El delta por commit lo da el INSTRUMENTO, no la aritmética de quien migra.** Cuando la migración
+  toca varios ficheros y va **un commit por fichero**, los otros se apartan para que el commit lleve
+  **su** delta y no el de la tanda: `git stash push -- <fichero>` → `--check` → `--update-baseline` →
+  commit → `git stash pop` (`backend-erp`, lote 1 de los ayudantes de fecha: `7418d513`, `82e67568`,
+  `e1bd8bab`, `acf265e0`).
+- **`--check` y `--update-baseline` son DOS pasos, y el segundo es el que deja el commit
+  reproducible.** `8f944748` (`sales-orders`) corrió `--check` y **se olvidó** `--update-baseline`: la
+  base quedó en **1524** con la cuenta real en **1521**, el gate **no falló** (bajar da verde) y la
+  deuda dejó de estar congelada en su cifra. Hubo que congelarla en un commit aparte —`56770484`,
+  `1524 → 1521`, **sin tocar una línea de código**—. Sin el segundo paso el delta **se pierde aunque
+  el commit lo anuncie**.
+- **La cifra global puede BAJAR mientras un fichero se queda sin migrar: la defensa es el delta por
+  fichero, no el total.** Medido en `document-utils.ts`, donde la variable de zona se llama
+  `timeZone` y no `settings.timeZone`: un `sed` por texto habría dejado sus **4** sitios sin migrar
+  **y el contador habría bajado igual**, porque la cifra global la mueven los demás (`backend-erp`,
+  `17897c18`; el mismo patrón en `2ef7d1b9`). Y el **censo por `!` nunca es el mapa del fichero**:
+  `sale-reserve-invoices` **7** en el censo frente a **15** llamadas, `delivery-orders` **7** frente a
+  **24**, `purchase-receipts` **5** frente a **6** (`7418d513`, `36b33ad7`, `e1bd8bab`).
+- **Una herramienta que no encuentra lo que busca debe GRITAR, no callar.** El transformador de la
+  migración tocaba el `import` solo cuando **no** quedaban llamadas al ayudante viejo; en tres
+  ficheros sí quedaba una (con guarda), así que decidía «no hacía falta»… **y no hacía nada**, dejando
+  `fromTenantDay` sin importar en **12** líneas. Lo cazó `typecheck:all`, y el agujero se arregló **en
+  la herramienta**: amplía el import o dice `NO SE PUDO AÑADIR (revisar a mano)`, y cuando no
+  sustituye nada avisa `⚠️ NINGUN SITIO SUSTITUIDO: ¿forma distinta? REVISAR` (`backend-erp`,
+  `4cfd1c11`).
+- **`typecheck:all` POR FICHERO: el delta del ratchet y el `eslint` por fichero NO bastan.** En el
+  caso anterior, los tres ficheros con el import roto daban `eslint --max-warnings=0` **0** —es un
+  error de **TIPO**, y `no-undef` no cubre un identificador de TypeScript— y el ratchet del `!` **bajó
+  correctamente** (una importación no cambia el número de aserciones): **solo lo vio `typecheck:all`**.
+  Desde ese hallazgo va **por fichero y no por tanda**: ~40 s más por commit a cambio de que ningún
+  commit quede con un nombre que no existe (`backend-erp`, `d7fe712d`). Aplica a **cualquier** cambio,
+  no solo a una migración.
+- **Una herramienta puede hacer BIEN su tarea sobre el CONJUNTO EQUIVOCADO, y ningún gate lo verá:
+  compruebe el ALCANCE antes de dejarla correr.** `audit:date-class` daba **0 hallazgos** mientras tres
+  sitios leían mal `Batch.expiryDate`/`manufactureDate`, porque **no estaban en el registro
+  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** y el «0» pasó a ser cierto
+  sobre el esquema y no sobre lo declarado (`backend-erp`, `017e46f9`, sobre el gate de `819cc493`).
+  Desde el otro lado, la misma lección: en la migración de fechas el ratchet del `!` «hacía bien su
+  trabajo; su trabajo no era este» (`4cfd1c11`). Aplica a **cualquier** cambio.
+- **El instrumento que MIDE y el instrumento que ACTÚA tienen que tener el mismo ALCANCE.** Un censo
+  orientado a líneas (`rg`) y un ejecutor con AST/JS no ven lo mismo, así que **el censo será una cota
+  inferior**. Caso medido, en `AUDIT.md` **T126** (2026-09-14): el escáner del gate de dinero no veía
+  los redondeos **multilínea** —`Math.round(` en una línea, la expresión con `* 100,` en la siguiente,
+  `) / 100` en la tercera— y el **0** con el que se declaró cerrada R2b era un **artefacto de
+  medición**: el valor real era **54**. Ese mismo gate siguió publicando cotas inferiores —**R1 = 22**;
+  **R2c = 14** frente a ~**19** reales— hasta que se arregló el detector (`10a298c0`, `30db7d37`). La
+  lección de T126, literal: **una métrica en 0 solo vale si el detector está probado contra los casos
+  difíciles.** Aplica a **cualquier** cambio.
+- **Un gate que se puede APUNTAR a otro sitio (variable de entorno, argumento) es un gate que se puede
+  burlar; la raíz se resuelve por el propio repositorio.** Caso medido: `--check --file` de
+  `audit:collection-caps` salía **0 en silencio** diciendo «mejoró: produccionSinCota 687 → 32» —**el
+  ratchet degradado a decoración**— y ahora declara que es un informe de fichero y no evalúa nada
+  (`backend-erp`, `fe929d9f`). Por eso los **siete** ratchets de `backend-erp/scripts/audit-*.mjs`
+  resuelven su raíz y su línea base por la ubicación del **propio script**
+  (`repoRoot = path.resolve(__dirname, '..')`; `BASELINE = path.join(__dirname, …)`), nunca por `cwd`,
+  por una variable de entorno ni por un argumento.
+- **Un gate cuyo baseline vive junto al script se puede probar en ROJO fuera del repositorio, sin
+  tocar el árbol.** `audit-workflow-inputs.mjs` y su `.declarations.json` se copiaron a **%TEMP%** en
+  **tres** copias del árbol, cada una con **una** rotura —`node-version:` vacío, la `TZ` movida de
+  `ssr-smoke` a `e2e`, `workflow_dispatch` quitado— ⇒ las tres con `exit 1`; y el árbol real de solo
+  la raíz se reprodujo igual en `%TEMP%` para medir el antes/después de su modo informativo
+  (`958cd66`; `aecda16`). Un gate que solo se puede probar rompiendo el repositorio no se prueba.
+- **Un filtro que no casa no dice «no hay nada»: dice «no sé».** Compruebe que el filtro **puede**
+  encontrar algo antes de creerse su cero. Caso medido: el `walk()` del gate `audit:spec-clock`
+  filtraba `/\.spec\.ts$/`, que **no casa con `*.e2e-spec.ts`**, así que **reproducía exactamente el
+  agujero de ámbito que venía a arreglar** y su primer rojo dijo **6** en vez de **25**; el gate nace
+  con una fijación en su autoprueba para que no vuelva (`backend-erp`, `5169e9df`). Hermana de «una
+  métrica en 0 solo vale si el detector está probado contra los casos difíciles».
+
 ## 6. Variables de entorno críticas
 
 Archivo de referencia: `backend-erp/.env` (no existe `.env.example`).
