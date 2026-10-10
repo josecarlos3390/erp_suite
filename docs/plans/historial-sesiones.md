@@ -4191,3 +4191,25 @@ decida el usuario. **No se reescribió nada** de lo que sigue: el corte fue de f
 > Si se decide arreglarlas, el sitio es el fichero **vivo** (`AGENTS.md`) para lo vigente y este
 > histórico **solo** para dejar constancia de la corrección (la disciplina del proyecto es **escribir**
 > la corrección, nunca borrar el diagnóstico anterior).
+
+---
+
+## Correcciones medidas a esta lista
+
+> La tabla de arriba **no se toca**: disciplina del proyecto — la corrección se **escribe**, el
+> diagnóstico anterior **no se tira**. Aquí va, fechada, cada fila que una medición posterior
+> resuelva o desmienta.
+
+- **Fila 3 (`--no-verify`): NO APLICA — los dos planes ya no lo instruyen (medido el 2026-10-10).**
+  La fila daba por **pendiente** que «dos planes **instruyen** usarlo» y citaba dos literales:
+  `plan-consistencia-visual-v2.md:44` («`git commit … --no-verify && git push --no-verify`») y
+  `plan-cumplimiento-tributario-bo.md:40` («`--no-verify` desde el entorno del agente»). **Medido hoy**:
+  `rg -n -- 'no-verify' docs/plans/plan-consistencia-visual-v2.md` → **0 coincidencias**, y
+  `docs/plans/plan-cumplimiento-tributario-bo.md:40` dice hoy «**nunca** `--no-verify`: el hook se
+  arregla, no se salta — ver `AGENTS.md`, *Reglas de proceso*», esto es, **lo contrario** de lo que la
+  fila le atribuye. **Y la contradicción no era con `AGENTS.md`**: era con este mismo fichero, porque
+  la **Parte 1** ya la contaba **resuelta** en su **línea 444** («En la misma tanda se quita el
+  `--no-verify` de los **dos** planes que lo instruían (uno era un comando **copiable**…)»), de modo
+  que la fila 3 llevaba **desactualizada respecto a su propio histórico** desde aquella tanda.
+  **Los dos planes siguen sin editarse**: no hacía falta —ya están correctos—. La constancia de esta
+  corrección vive también en el `CHANGELOG.md` de la raíz.
