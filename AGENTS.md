@@ -111,6 +111,7 @@ npm run audit:line-accounts  # la cuenta capturada se valida y el builder la pre
 npm run audit:tracking       # lote/serie coherentes (necesita BD)
 npm run audit:reconcile      # cuadre general (necesita BD) (+ :self-test)
 npm run audit:money:check    # dinero al centavo (ratchet en 0)
+npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1601
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
 
@@ -194,7 +195,13 @@ npm run audit:contrast       # contraste WCAG de la paleta
 ### Trabajo y commits
 
 - **Nunca `--no-verify`** (ni `--force`, `@ts-ignore`, `eslint-disable`, `xit`). El hook se arregla,
-  no se salta. El proyecto lo mide: **0 usos** declarados en la revisión de ortodoxia.
+  no se salta. El proyecto lo mide: **0 usos** (el «0» de `--force`/`--no-verify`/`xit`/`@ts-ignore`/
+  `eslint-disable`, no el de `!`: ver el siguiente). Y **cero `!` nuevos**, que desde el **2026-10-09**
+  **tiene gate**: `npm run audit:non-null:check` en las **tres** puertas (CI, `pre-push`, `ci-local.mjs`),
+  con la cifra **congelada en 1601** (`expresión!` 956 + `x!: T` 645; 1249 en producción, 352 en specs)
+  — **la deuda está CONGELADA, no pagada**: el ratchet falla si **sube** (visto en rojo: 1601 → 1602,
+  `exit 1`). Hasta ese gate la regla era un deseo, y el manual no la traía escrita en ningún sitio
+  (medido); el detalle, en el `CHANGELOG.md` de la raíz.
 - **Nunca reescribir un commit ya empujado**: sin `push --force`/`--force-with-lease` sobre ramas
   compartidas y sin `amend`/`rebase` de historia publicada. Si algo salió mal, se **añade** un commit
   que lo corrige y, si aplica, se despliega la reversión.
