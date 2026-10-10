@@ -409,7 +409,7 @@ reforma solo inserta saltos de línea y encabezados: **no** se reescribió ni se
 | **Anexo B** | Sistema ShortName: cuentas asociadas y trazabilidad en asientos |
 | **Anexo C** | Próximos pasos recomendados (2026-09-08), lista fechada |
 | **Anexo D** | Comandos detallados de los tres proyectos, git hooks y **reglas medidas de entorno** |
-| **Anexo E** | Índice de documentación adicional completo (25 filas) |
+| **Anexo E** | Índice de documentación adicional completo (22 filas) |
 | **Anexo F** | Visión general del proyecto y stack tecnológico (íntegros) |
 | **Verificación y pendiente** | La prueba de que no se perdió nada y lo que queda **por decidir** |
 
