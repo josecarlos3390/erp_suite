@@ -2431,3 +2431,4 @@ because the payload-level test alone would not have caught the hydration gap.
 - **Boilerplate page template**: See `references/module-template.md` for copy-paste list component, form component, service, and route registration.
 - **Testing recipes**: See `references/testing-recipes.md` for component and service test patterns with Karma/Jasmine.
 - **Shared component patterns**: See `references/shared-patterns.md` for reusable patterns using existing shared components.
+- **Verifying a change**: for anything about *proof* rather than *construction* — writing a gate that actually blocks, seeing the edge test in red first, measuring before/after, migrating an index or a baseline, or letting a codemod run — follow the portable rules of the `verificacion-y-medicion` skill (`../verificacion-y-medicion/SKILL.md`).

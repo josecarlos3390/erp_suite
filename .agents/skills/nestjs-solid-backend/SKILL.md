@@ -865,3 +865,4 @@ npx tsc -p tsconfig.perf.json --noEmit   # this one INCLUDES prisma/** (seed scr
 - **Boilerplate module template**: See `references/module-template.md` for copy-paste controller, service, module, and DTO boilerplate adapted to this ERP (including SAP aliases).
 - **Testing recipes**: See `references/testing-recipes.md` for mocking PrismaService and writing service/controller specs (strictNullChecks-compliant).
 - **Document flow guide**: See `references/document-flow.md` for creating documents with lines, stock updates, traceability, and SAP alias resolution.
+- **Verifying a change**: for anything about *proof* rather than *construction* — writing a gate that actually blocks, seeing the edge test in red first, measuring before/after, migrating an index or a baseline, or letting a codemod run — follow the portable rules of the `verificacion-y-medicion` skill (`../verificacion-y-medicion/SKILL.md`).
