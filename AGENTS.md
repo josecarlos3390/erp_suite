@@ -86,7 +86,8 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
 - **Cuentas con `requiresPartner`:** la línea de asiento exige `partnerId` y el `partnerCode`
   (ShortName) se denormaliza (Anexo B).
 - **E2E:** los maestros se resuelven **por código, nunca por posición**.
-- **`0`** `@ts-ignore` / `eslint-disable` / `--force` / **`--no-verify`** (ver *Reglas de proceso*).
+- **`0`** `@ts-ignore` / **`--no-verify`**; `eslint-disable` **sólo con la regla nombrada** y `--force`
+  **sólo** en `prisma migrate reset --force` (ver *Reglas de proceso*).
 
 El detalle **obligatorio** vive en los 5 archivos canónicos del protocolo de arriba y en los planes de
 `docs/plans/`.
@@ -195,13 +196,16 @@ npm run audit:contrast       # contraste WCAG de la paleta
 ### Trabajo y commits
 
 - **Nunca `--no-verify`** (ni `--force`, `@ts-ignore`, `eslint-disable`, `xit`). El hook se arregla,
-  no se salta. El proyecto lo mide: **0 usos** (el «0» de `--force`/`--no-verify`/`xit`/`@ts-ignore`/
-  `eslint-disable`, no el de `!`: ver el siguiente). Y **cero `!` nuevos**, que desde el **2026-10-09**
-  **tiene gate**: `npm run audit:non-null:check` en las **tres** puertas (CI, `pre-push`, `ci-local.mjs`),
-  con la cifra **congelada en 1601** (`expresión!` 956 + `x!: T` 645; 1249 en producción, 352 en specs)
-  — **la deuda está CONGELADA, no pagada**: el ratchet falla si **sube** (visto en rojo: 1601 → 1602,
-  `exit 1`). Hasta ese gate la regla era un deseo, y el manual no la traía escrita en ningún sitio
-  (medido); el detalle, en el `CHANGELOG.md` de la raíz.
+  no se salta. El proyecto lo mide, y no todo es cero: **0 usos** de `--no-verify`, `xit`, `@ts-ignore`
+  y `as any`; `eslint-disable` **sólo con la regla nombrada** (12 en código escrito a mano, más **206**
+  en `src/generated/`, que es código de Prisma); y `--force` **sólo** en `prisma migrate reset --force`,
+  que es lo que ejecuta `db:recreate`. Las aserciones no nulas (`!`) van aparte, en la viñeta siguiente
+  (medido el **2026-10-10** en `backend-erp`; el detalle, en el `CHANGELOG.md` de la raíz).
+- **Cero `!` nuevos**, que desde el **2026-10-09** **tiene gate**: `npm run audit:non-null:check` en las
+  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1601** (`expresión!` 956
+  + `x!: T` 645; 1249 en producción, 352 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
+  falla si **sube** (visto en rojo: 1601 → 1602, `exit 1`). Hasta ese gate la regla era un deseo, y el
+  manual no la traía escrita en ningún sitio (medido); el detalle, en el `CHANGELOG.md` de la raíz.
 - **Nunca reescribir un commit ya empujado**: sin `push --force`/`--force-with-lease` sobre ramas
   compartidas y sin `amend`/`rebase` de historia publicada. Si algo salió mal, se **añade** un commit
   que lo corrige y, si aplica, se despliega la reversión.
