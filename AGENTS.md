@@ -75,7 +75,7 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
 - **Backend:** `0` `as any`; DTOs estrictos. **Multi-tenant: ninguna query sin `tenantId`** (regla
   propia `local/no-raw-without-tenant` en `error`). Contrato de error con `code` estable
   (`VALIDATION_ERROR`, …) y `requestId` (`X-Request-Id`).
-- **Frontend:** `0` `!important` y `0` `::ng-deep` sin marca (`!important-ok` / `::ng-deep-ok`);
+- **Frontend:** `0` `!important` sin marca y `0` `::ng-deep` sin marca (`!important-ok` / `::ng-deep-ok`);
   overrides por **especificidad**; un `h1` por página y nombre accesible en todo control (WCAG 2.5.3);
   alturas y densidades por variables, nunca `px` crudos en `pages/`+`shared/`.
 - **Un solo motor por dominio** — precios (`price-resolver.util.ts`), contabilidad (`AccountingEngine`,
@@ -101,10 +101,14 @@ El detalle **obligatorio** vive en los 5 archivos canónicos del protocolo de ar
 Ningún gate se sustituye por inspección visual. Salida y comandos uno a uno, con sus reglas medidas:
 **Anexo D** del histórico; los gates nacidos después del 2026-09-12, fechados en el registro.
 
-Las cifras de los ratchets que siguen se **midieron el 2026-10-11** con el `--check` de cada gate
-(`backend-erp`, sobre `71110f0`). Un ratchet **baja** cuando alguien paga la deuda: la cifra que se lee
-aquí es la **vigente**, no la del día en que nació el gate, y se actualiza al mismo tiempo que su
-`--update-baseline`.
+Las cifras de los ratchets que siguen se **midieron el 2026-10-11** con el `--check` de cada gate, **en
+`backend-erp`** (el repo anidado del backend). La procedencia se declara por **repositorio y fecha**,
+no por un SHA suelto: un hash en un documento **caduca** y, sin el repo al lado, apunta a otro árbol
+—el `71110f0` que decía aquí era un commit de la **raíz** y **no existe** en `backend-erp`—, así que el
+SHA se cita **con su repo** y el gate comprueba que **resuelve** ahí (`git cat-file -t 8c6d2f92`
+devuelve **1** línea; `8c6d2f92` era el HEAD de `backend-erp` cuando se midieron). Un ratchet **baja**
+cuando alguien paga la deuda: la cifra que se lee aquí es la **vigente**, no la del día en que nació el
+gate, y se actualiza al mismo tiempo que su `--update-baseline`.
 
 ### Backend (`cd backend-erp`)
 
@@ -121,6 +125,8 @@ npm run audit:tracking       # lote/serie coherentes (necesita BD)
 npm run audit:reconcile      # cuadre general (necesita BD) (+ :self-test)
 npm run audit:money:check    # dinero al centavo (ratchet en 0)
 npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1502
+npm run audit:explicit-any:check # `any` explícitos: ratchet en 1 (producción 0, specs 1)
+npm run audit:spec-clock:check   # reloj del proceso en specs: 0 hallazgos (2 excepciones declaradas)
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
 
@@ -330,9 +336,15 @@ npm run audit:contrast       # contraste WCAG de la paleta
   (`fichero::fragmento normalizado`) **y** lo que **DESAPARECE también se lista** al bajar (hasta 40),
   porque un informe que solo habla cuando empeora obliga a creerse la resta. Límite declarado: dos
   hallazgos idénticos en el mismo fichero comparten clave (inocuo para la **CUENTA**, que es lo que
-  bloquea; afecta solo a la lista de sitios). La cuenta **no se movió**: `1585 = 1585` y `229 = 229`
+  bloquea; afecta solo a la lista de sitios). La cuenta de **aquel** momento **no se movió**, y esas dos
+  cifras son **históricas** (el rojo intermedio y la cuenta del día de la migración, no la vigente):
+  `1585 = 1585` y `229 = 229`
   (`backend-erp`: `112a04c7`; su hermano `dca02341` aplica el mismo arreglo al segundo gate y
-  comprueba el tercero —`audit-spec-clock` **no** lo tiene, porque su base no guarda `findings`—).
+  comprueba el tercero —`audit:spec-clock` **no** lo tiene, porque su base no guarda `findings`—). La
+  cifra **vigente** de esa familia, medida el **2026-10-11** con `npm run audit:explicit-any:check`, es
+  **1** `any` explícito en total —**0** en producción y **1** en specs, el único sitio en
+  `test/usage-marathon.e2e-spec.ts`—, y su tabla por familia deja **0** `as any`: está declarada
+  arriba, en la lista de comandos del backend.
 - **El delta por commit lo da el INSTRUMENTO, no la aritmética de quien migra.** Cuando la migración
   toca varios ficheros y va **un commit por fichero**, los otros se apartan para que el commit lleve
   **su** delta y no el de la tanda: `git stash push -- <fichero>` → `--check` → `--update-baseline` →
@@ -401,7 +413,10 @@ npm run audit:contrast       # contraste WCAG de la paleta
   encontrar algo antes de creerse su cero. Caso medido: el `walk()` del gate `audit:spec-clock`
   filtraba `/\.spec\.ts$/`, que **no casa con `*.e2e-spec.ts`**, así que **reproducía exactamente el
   agujero de ámbito que venía a arreglar** y su primer rojo dijo **6** en vez de **25**; el gate nace
-  con una fijación en su autoprueba para que no vuelva (`backend-erp`, `5169e9df`). Hermana de «una
+  con una fijación en su autoprueba para que no vuelva (`backend-erp`, `5169e9df`). La cifra **vigente**
+  del gate, medida el **2026-10-11** con `npm run audit:spec-clock:check`, es **0** hallazgos con **2**
+  excepciones declaradas (`spec-clock-ok:` en `seed-storefront-day.spec.ts` y `timezone.util.spec.ts`),
+  declarada arriba en la lista de comandos del backend. Hermana de «una
   métrica en 0 solo vale si el detector está probado contra los casos difíciles».
 - **Cuando dos funciones implementan el mismo concepto, no basta con que compartan la pieza: hay que
   medir que siguen de acuerdo.** Compartir código es una **intención**, no una garantía: dos funciones

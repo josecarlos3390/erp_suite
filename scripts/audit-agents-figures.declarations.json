@@ -19,7 +19,7 @@
     "  · `valorEsperado` es un ENTERO, y es la cifra COMPARTIDA: el manual y el instrumento se comparan contra el. Cuando un ratchet baja de verdad (`--update-baseline`), se actualizan EN EL MISMO COMMIT el manual, este fichero y la linea base del instrumento; si no, el gate dice quien no se movio.",
     "  · `muestra` es una linea de ejemplo de la SALIDA del instrumento con `{v}` en el sitio de la cifra (recortada para que las muestras de un mismo comando no se solapen). Solo la usa la AUTOPRUEBA, para fabricar dobles del instrumento en un arbol temporal: el gate que corre de verdad NUNCA lee `muestra`, lee la salida real (`--check` se ve en verde solo si el extractor encuentra su cifra en la salida de verdad).",
     "",
-    "LO QUE **NO** SE VIGILA, Y POR QUE. Va en `noVigiladas` y se imprime en el informe: una cifra del manual sin instrumento que la produzca (o un instrumento sin cifra que comparar) no se puede vigilar, y decir «no la medimos» es la unica respuesta honesta. Los dos casos que el encargo pedia y NO se pueden vigilar tal cual -- `audit:tracking`/`audit:reconcile` (necesitan base de datos) y la cifra vigente de `audit:spec-clock` (el manual no la declara) -- estan ahi con su motivo.",
+    "LO QUE **NO** SE VIGILA, Y POR QUE. Va en `noVigiladas` y se imprime en el informe: una cifra del manual sin instrumento que la produzca (o un instrumento sin cifra que comparar) no se puede vigilar, y decir «no la medimos» es la unica respuesta honesta. El 2026-10-11 se cerraron los CUATRO huecos que este gate habia declarado: el total de `any` explicitos (figuras `any-explicitos-total` / `-produccion` / `-specs`), la cifra vigente de `audit:spec-clock` (`spec-clock-hallazgos` y `spec-clock-excepciones`), el `!important` sin marca (redaccion del manual alineada con la regla real, SIN cambiar la regla) y la procedencia de los ratchets, que pasa de `noVigiladas` a la figura `procedencia-repo-backend-erp`: la procedencia ya no es un SHA suelto -- nombra repositorio y fecha -- y el SHA que se cita tiene que RESOLVER dentro de ese repositorio. Quedan en `noVigiladas` las que de verdad no se pueden medir desde aqui, cada una con su motivo: `audit:tracking`/`audit:reconcile` (necesitan base de datos), `migrate:heights:check` (su instrumento no publica ninguna cifra y vive en `erp-frontend/`), los ambiguos de `audit:date-class` (el manual no los declara y su gate no compara ese campo) y el comentario de los 205 ficheros de `backend-erp/scripts/audit-explicit-any.mjs` (se podria vigilar, pero hoy saldria rojo y el arreglo exige editar `backend-erp/`, de solo lectura en esta sesion).",
     "",
     "CERO ENTRADAS DE EXENCION: este gate no tiene `declared`. Una cifra que no cuadra es un rojo, y el arreglo es mover el manual o el instrumento, no declarar la excepcion."
   ],
@@ -85,6 +85,56 @@
       "nota": "El manual declara «`0` `as any`» en *Convenciones transversales*. El instrumento `audit:explicit-any` publica la tabla por FAMILIA y `as any` es una de ellas; cuando no aparece, la cuenta es 0 -- y el 0 vale porque la autoprueba del propio instrumento prueba que SI detecta `as any` (caso «las formas sueltas», esperado 4). El TOTAL de `any` explicitos del manual no se puede vigilar: no lo declara (ver `any-explicitos-total` en `noVigiladas`)."
     },
     {
+      "id": "any-explicitos-total",
+      "fichero": "AGENTS.md",
+      "patron": "audit:explicit-any:check[^\\r\\n]*ratchet en (\\d+)",
+      "comando": { "cmd": "npm run audit:explicit-any:check", "cwd": "backend-erp", "requiere": "backend-erp" },
+      "extractor": { "tipo": "regex", "patron": "`any` explícitos en el TypeScript del backend:\\s*(\\d+)" },
+      "valorEsperado": 1,
+      "muestra": "`any` explícitos en el TypeScript del backend: {v}",
+      "nota": "HUECO CERRADO EL 2026-10-11. El manual NO declaraba la cifra VIGENTE del total: el `230` de la vineta del indice es el rojo INTERMEDIO de aquella migracion y el `229 = 229` es la cuenta de AQUEL momento -- los dos son historia y ahora van marcados como historicos. El commit `3027c4a` decia en su mensaje que corrigio «229 -> 1» y su diff no tocaba ninguna linea con esa cifra: la cifra no se reescribe, se MIDE y se declara. Medido: `anyExplicitos=1`, con el sitio unico en `test/usage-marathon.e2e-spec.ts`. El patron del manual esta ANCLADO al comando para no casar la prosa de la vineta, que repite la cifra vigente sin la palabra «ratchet»."
+    },
+    {
+      "id": "any-explicitos-produccion",
+      "fichero": "AGENTS.md",
+      "patron": "\\(producción (\\d+), specs \\d+\\)",
+      "comando": { "cmd": "npm run audit:explicit-any:check", "cwd": "backend-erp", "requiere": "backend-erp" },
+      "extractor": { "tipo": "regex", "patron": "en código de producción\\s*:\\s*(\\d+)" },
+      "valorEsperado": 0,
+      "muestra": "  · en código de producción : {v}",
+      "nota": "El reparto del total, en la MISMA linea del manual que el total: produccion 0 + specs 1 = 1. El patron exige el parentesis completo para no casar la prosa de la vineta («**0** en producción y **1** en specs»), que va SIN parentesis a proposito: el patron de `no-nulo-produccion` es `(\\d+) en producción,` y casa cualquier cifra seguida de «en producción,», asi que una segunda linea con esa forma pondria en rojo la figura del `!` sin que nada este mal."
+    },
+    {
+      "id": "any-explicitos-specs",
+      "fichero": "AGENTS.md",
+      "patron": "\\(producción \\d+, specs (\\d+)\\)",
+      "comando": { "cmd": "npm run audit:explicit-any:check", "cwd": "backend-erp", "requiere": "backend-erp" },
+      "extractor": { "tipo": "regex", "patron": "\\(en specs:\\s*(\\d+)\\)" },
+      "valorEsperado": 1,
+      "muestra": "  (en specs: {v})",
+      "nota": "La otra mitad del reparto. El extractor es el MISMO que el de `no-nulo-specs` pero sobre OTRO comando: cada figura se mide contra la salida de SU instrumento. La muestra va sola en su linea -- recortada de la linea real, que trae las dos cifras -- para que no se solape con la de `any-explicitos-produccion` dentro del mismo doble de la autoprueba."
+    },
+    {
+      "id": "spec-clock-hallazgos",
+      "fichero": "AGENTS.md",
+      "patron": "reloj del proceso en specs: (\\d+) hallazgos",
+      "comando": { "cmd": "npm run audit:spec-clock:check", "cwd": "backend-erp", "requiere": "backend-erp" },
+      "extractor": { "tipo": "regex", "patron": "HALLAZGOS\\s*:\\s*(\\d+)" },
+      "valorEsperado": 0,
+      "muestra": "  · HALLAZGOS            : {v}",
+      "nota": "HUECO CERRADO EL 2026-10-11. El manual NO declaraba la cifra vigente de `audit:spec-clock` en ninguna linea: los unicos numeros de su vineta (6 y 25) son el primer rojo de su autoprueba (`5169e9df`, historia fechada). Medido con `npm run audit:spec-clock:check`: `HALLAZGOS: 0` (deben ser 0) sobre 2 dias fabricados con el reloj del proceso. El 0 vale porque el instrumento prueba su detector contra los casos dificiles -- el filtro que no casaba con `*.e2e-spec.ts` tiene su fijacion en la autoprueba del propio gate."
+    },
+    {
+      "id": "spec-clock-excepciones",
+      "fichero": "AGENTS.md",
+      "patron": "\\((\\d+) excepciones declaradas\\)",
+      "comando": { "cmd": "npm run audit:spec-clock:check", "cwd": "backend-erp", "requiere": "backend-erp" },
+      "extractor": { "tipo": "regex", "patron": "excepciones declaradas:\\s*(\\d+)" },
+      "valorEsperado": 2,
+      "muestra": "  · excepciones declaradas: {v}",
+      "nota": "Las dos excepciones DECLARADAS con la marca `spec-clock-ok:`, que el propio instrumento lista (`seed-storefront-day.spec.ts` y `timezone.util.spec.ts`): son los dos dias fabricados con el reloj del proceso. Se vigilan ademas de los hallazgos porque un 0 sin el numero de excepciones deja fuera la mitad del asunto: los dos lados del gate tienen que cuadrar con el manual."
+    },
+    {
       "id": "money-total",
       "fichero": "AGENTS.md",
       "patron": "audit:money:check[^\\r\\n]*ratchet en (\\d+)",
@@ -123,6 +173,16 @@
       "valorEsperado": 0,
       "muestra": "::ng-deep: 0 usos en 0 archivos · justificados 0 · sin justificar {v}",
       "nota": "El manual dice «0 `::ng-deep` sin marca»; el instrumento dice «sin justificar», que es la misma condicion con su nombre (`::ng-deep-ok:`). La frase gemela de la misma linea -- «`0` `!important`» -- NO se vigila: medida hoy da 7 usos, 7 justificados y 0 sin justificar, asi que la regla real es «0 sin marca» y convertirla en figura exigiria reescribir una REGLA (ver `important-sin-marca` en `noVigiladas`)."
+    },
+    {
+      "id": "important-sin-marca",
+      "fichero": "AGENTS.md",
+      "patron": "`(\\d+)` `!important` sin marca",
+      "comando": { "cmd": "npm run audit:important", "cwd": "erp-frontend", "requiere": "erp-frontend" },
+      "extractor": { "tipo": "regex", "patron": "sin justificar\\s+(\\d+)" },
+      "valorEsperado": 0,
+      "muestra": "!important: 7 usos en 3 archivos · justificados 7 · sin justificar {v}",
+      "nota": "HUECO CERRADO EL 2026-10-11, y SIN TOCAR LA REGLA. El manual prometia «`0` `!important`» sin el calificativo que si llevaba la frase gemela de `::ng-deep`; el instrumento mide 7 usos en 3 archivos, 7 justificados y 0 SIN JUSTIFICAR, asi que la regla real -- la que el gate aplica -- es «0 sin marca» y esa se cumple. Lo que se alineo fue la REDACCIÓN del manual: ya no promete 0 usos, promete 0 sin marca, que es lo que su instrumento mide y publica (los tres numeros van en su salida)."
     },
     {
       "id": "storefront-ficheros",
@@ -183,6 +243,16 @@
       "valorEsperado": 206,
       "muestra": "src/generated/prisma/archivo-{i}.ts",
       "nota": "Una directiva `/* eslint-disable */` EN BLOQUE por fichero de Prisma: por eso el numero de ficheros es el numero de directivas. `src/generated/` es codigo GENERADO y esta gitignored, asi que el comando lo lista con `--others --ignored --exclude-standard` y `requiere` apunta al DIRECTORIO: sin `prisma generate` la cifra no es 0, es DESCONOCIDA, y el gate lo declara no medida en vez de mentir (un 0 ahi seria un falso rojo en un arbol limpio)."
+    },
+    {
+      "id": "procedencia-repo-backend-erp",
+      "fichero": "AGENTS.md",
+      "patron": "`git cat-file -t 8c6d2f92`\\s+devuelve\\s+\\*\\*(\\d+)\\*\\*",
+      "comando": { "cmd": "git cat-file -t 8c6d2f92", "cwd": "backend-erp", "requiere": "backend-erp" },
+      "extractor": { "tipo": "lineas" },
+      "valorEsperado": 1,
+      "muestra": "commit",
+      "nota": "LA PROCEDENCIA, VIGILADA (hueco cerrado el 2026-10-11). El manual decia «(`backend-erp`, sobre `71110f0`)» y `71110f0` es un commit de la RAIZ que NO EXISTE en `backend-erp` (`fatal: Not a valid object name`): una procedencia que apuntaba a otro arbol. El texto ahora nombra REPO + FECHA y cita el SHA CON su repo (`8c6d2f92`, el HEAD de `backend-erp` al medir). Esta figura corre `git cat-file -t 8c6d2f92` DENTRO de `backend-erp` y exige 1 linea de salida: si el objeto desaparece del repo el comando sale distinto de cero y el gate se pone ROJO (`comando-fallido`), que es lo que un SHA que caduca tiene que provocar. Un `git cat-file -t` de un objeto ausente NO devuelve 1 linea: no hay falso verde. En el CI de la raiz `backend-erp/` no existe y la cifra sale NO MEDIDA, con su motivo, sin romper el arbol."
     }
   ],
   "noVigiladas": [
@@ -197,24 +267,6 @@
       "cifra": "`npm run audit:reconcile` (cuadre general)",
       "donde": "AGENTS.md:121",
       "motivo": "Igual que `tracking`: necesita BASE DE DATOS. El manual ya lo dice en su propia linea («necesita BD»), asi que no hay cifra que comparar sin BD."
-    },
-    {
-      "id": "spec-clock-hallazgos",
-      "cifra": "`audit:spec-clock` — hallazgos",
-      "donde": "AGENTS.md:401-405",
-      "motivo": "HUECO DEL MANUAL, no del gate: `AGENTS.md` NO declara la cifra vigente de `audit:spec-clock` en ninguna linea. Los unicos numeros de esa vineta (6 y 25) son el primer rojo de su autoprueba -- historia fechada de `5169e9df` -- y el manual no inventa cifras nuevas donde esta contando un hecho pasado. Medido al escribir este gate: `hallazgos=0`, 2 excepciones declaradas. Si el manual quiere vigilarla, tiene que declararla."
-    },
-    {
-      "id": "any-explicitos-total",
-      "cifra": "`audit:explicit-any` — total de `any` explicitos",
-      "donde": "AGENTS.md:329,333",
-      "motivo": "HUECO DEL MANUAL (y una afirmacion sin diff): el manual no declara la cifra VIGENTE del total. El `230` de la linea 329 es el rojo INTERMEDIO de la migracion del indice (`112a04c7`/`dca02341`) y el `229 = 229` de la 333 es la cuenta de AQUEL momento. El commit `3027c4a` dice en su mensaje que corrigio «229 -> 1», pero su diff no toca ninguna linea con esa cifra: se reporta, no se reescribe. Lo que el manual SI declara de esa familia -- `0` `as any` (linea 75) -- si se vigila (figura `as-any-cero`)."
-    },
-    {
-      "id": "important-sin-marca",
-      "cifra": "`0` `!important`",
-      "donde": "AGENTS.md:78",
-      "motivo": "El manual escribe «`0` `!important`» sin el calificativo «sin marca» que si lleva la frase gemela de la misma linea para `::ng-deep`. Medido con `npm run audit:important` (erp-frontend): 7 usos en 3 archivos, 7 justificados, 0 sin justificar. La regla real -- la que el gate aplica -- es «0 sin marca», y esa se cumple: la discrepancia es de REDACCIÓN, no de cifra, y este gate no reescribe reglas. Ya reportado en `3027c4a`; se vuelve a reportar aqui."
     },
     {
       "id": "heights-px-crudos",
@@ -232,13 +284,7 @@
       "id": "comentario-generados-205",
       "cifra": "`backend-erp/scripts/audit-explicit-any.mjs` — «son 205 ficheros de maquina»",
       "donde": "backend-erp/scripts/audit-explicit-any.mjs (comentario)",
-      "motivo": "FUERA DEL ALCANCE: este gate vigila `AGENTS.md`, no los comentarios de los scripts. Se reporta porque es la MISMA cifra que el manual si declara (206, figura `eslint-disable-generados`) y discrepa: el comentario dice 205 y el disco tiene 206 ficheros `.ts` en `src/generated/`. Corregirlo es tocar `backend-erp/`, que en esta sesion es de solo lectura."
-    },
-    {
-      "id": "procedencia-71110f0",
-      "cifra": "la procedencia de las cifras de los ratchets: «(`backend-erp`, sobre `71110f0`)»",
-      "donde": "AGENTS.md:104-107",
-      "motivo": "NO ES UNA CIFRA, es una referencia de revision, y este gate vigila cifras: se declara y se reporta. **No cuadra**: `71110f0` es un commit de la RAIZ (`git log -1 71110f0` -> `docs(audit): el aplazamiento de la rotacion de credenciales...`, 2026-10-10, ancestro de HEAD) y **no existe en `backend-erp`** (`git -C backend-erp cat-file -t 71110f0` -> `fatal: Not a valid object name`), cuyo HEAD medido es `8c6d2f92`. La raiz no trackea `backend-erp` (`.gitignore:82`), asi que ese hash **no puede identificar el arbol del backend** en el que se midieron las cifras: es la misma clase de defecto que las referencias de linea de `ci.yml` que corrigio `3027c4a` -- una referencia que apunta a otro sitio. Reescribir la procedencia es decision del usuario, no de este gate."
+      "motivo": "FUERA DEL ALCANCE, Y MEDIDO el 2026-10-11: el comentario (`backend-erp/scripts/audit-explicit-any.mjs:27`) dice «son 205 ficheros de maquina» y el disco tiene 206 ficheros `.ts` en `src/generated/` (`git -C backend-erp ls-files --others --ignored --exclude-standard -- src/generated` -> 206): el mismo numero que el manual declara y que SI vigila la figura `eslint-disable-generados`. Se PODRIA vigilar -- la figura apuntaria su `fichero` al comentario del script -- pero hoy saldria ROJA y arreglarla exige editar `backend-erp/`, que en esta sesion es de SOLO LECTURA; declararla roja bloquearia el gate entero por un fichero que no se puede corregir. Se queda declarada no vigilada y se reporta como incremento aparte: en cuanto `backend-erp` sea editable, se corrige el 205 a 206, se declara la figura y se borra esta entrada."
     }
   ]
 }
