@@ -19,12 +19,21 @@ on:
       # si se vigila aqui es este workflow y el propio script.
       - 'scripts/**'
       - '.github/workflows/ci.yml'
+      # `AGENTS.md` entra en el filtro **a proposito** (2026-10-11): el gate de las cifras vive en
+      # `scripts/**`, pero lo que vigila es el MANUAL, asi que sin esta linea un commit que solo
+      # cambie una cifra de `AGENTS.md` no dispararia nada -- y es exactamente cuando hay que
+      # vigilarla. El precio esta medido en el encabezado de arriba: un run de este job cuesta
+      # 38s-1m15s de runner, incluido el build de la tienda, que un cambio de documentacion no
+      # necesita. Se acepta el coste: un gate que no se dispara cuando cambia su objeto es un gate
+      # que no existe.
+      - 'AGENTS.md'
   pull_request:
     branches: [master]
     paths:
       - 'storefront/**'
       - 'scripts/**'
       - '.github/workflows/ci.yml'
+      - 'AGENTS.md'
   # **Lanzable a mano.** El mismo defecto que `1d7b0e03` corrigio en el CI del ERP: sin este
   # disparador, «hacer el CI» de la tienda exigia empujar un commit (y con `paths:` filtrando por
   # ruta, un cambio de `scripts/` ni siquiera lo dispararia). Lo audita la regla 3 del gate.
@@ -111,6 +120,22 @@ jobs:
       - name: Workflows (valor de Node, zona horaria del proceso y disparadores)
         working-directory: .
         run: node scripts/audit-workflow-inputs.mjs
+
+      # Las **CIFRAS de `AGENTS.md`** contra los instrumentos que las producen
+      # (`scripts/audit-agents-figures.mjs`). El 2026-10-11 el manual tenia el `!` en 1601 cuando su
+      # gate decia 1502: sin esto, cada cifra del manual deriva sola.
+      #
+      # Este CI clona **solo la raiz**, asi que las cifras de `backend-erp/` y `erp-frontend/` salen
+      # «NO MEDIDAS» -- con su motivo y contadas en la salida (`NO MEDIDAS en este arbol: N de M`),
+      # que NO es lo mismo que un arbol limpio -- mientras que lo de la raiz si se mide (los ficheros
+      # de `storefront/`, las entradas del historico). La cifra del MANUAL se comprueba siempre,
+      # aunque falte el repo. Quien corre los instrumentos de los tres proyectos es `npm run ci:local`.
+      #
+      # La autoprueba (los señuelos, en arboles temporales) va DENTRO de este paso: `--check` la corre
+      # primero y no sigue al ratchet si esta roja. Mismo orden que `ci-local.mjs`.
+      - name: Cifras de AGENTS.md contra sus instrumentos
+        working-directory: .
+        run: node scripts/audit-agents-figures.mjs --check
 
       - name: Typecheck
         run: npm run typecheck

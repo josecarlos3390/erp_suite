@@ -8,6 +8,8 @@
     "audit:workflow-inputs": "node scripts/audit-workflow-inputs.mjs",
     "audit:workflow-inputs:strict": "node scripts/audit-workflow-inputs.mjs --strict",
     "audit:workflow-inputs:self-test": "node scripts/audit-workflow-inputs.mjs --self-test",
+    "audit:agents-figures": "node scripts/audit-agents-figures.mjs --check",
+    "audit:agents-figures:self-test": "node scripts/audit-agents-figures.mjs --self-test",
     "ci:local": "node scripts/ci-local.mjs"
   },
   "devDependencies": {

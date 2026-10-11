@@ -12,11 +12,14 @@
  *
  *   1. autoprueba del gate de workflows  (`npm run audit:workflow-inputs:self-test`)
  *   2. gate de workflows                 (`npm run audit:workflow-inputs`)
- *   3. `storefront/`: typecheck
- *   4. `storefront/`: lint   (`next lint --max-warnings=0`)
- *   5. `storefront/`: build  (`next build`)
+ *   3. cifras de `AGENTS.md`             (`npm run audit:agents-figures` — autoprueba + ratchet en
+ *      un solo paso, porque su `--check` corre la autoprueba PRIMERO y no sigue al ratchet si está
+ *      roja; el gate hermano sí necesita dos pasos porque su modo de auditoría no la incluye)
+ *   4. `storefront/`: typecheck
+ *   5. `storefront/`: lint   (`next lint --max-warnings=0`)
+ *   6. `storefront/`: build  (`next build`)
  *
- * Los pasos 1 y 2 corren **con `working-directory: .`** (la raíz) y **después** de `npm ci` de la
+ * Los pasos 1 a 3 corren **con `working-directory: .`** (la raíz) y **después** de `npm ci` de la
  * tienda, porque el lector YAML (`js-yaml`) se resuelve de `storefront/node_modules`; sin lector el
  * gate sale con **2** (ruidoso) y nunca en falso verde. Aquí se respeta ese orden.
  *
@@ -31,7 +34,10 @@
  * cuatro workflows como «no presente en este árbol: se audita en su propio CI» (informativo). Aquí
  * los tres árboles existen: el gate audita **los cinco workflows del monorepo** y comprueba además
  * que las dos copias del gate en los repos anidados son **byte a byte** la canónica y que su CI las
- * **ejecuta**. Es decir: en ese paso concreto, **un verde local es más estricto** que el del CI.
+ * **ejecuta**. Lo mismo vale para el gate de las cifras de `AGENTS.md`: aquí **corre los
+ * instrumentos de los tres proyectos** y allí solo los de la raíz (el resto salen «NO MEDIDAS», con
+ * su motivo y contadas). Es decir: en esos dos pasos concretos, **un verde local es más estricto**
+ * que el del CI.
  *
  * LO QUE **NO** CUBRE (y por eso un verde aquí NO es un verde del CI):
  *
@@ -91,6 +97,12 @@ const STEPS = [
   },
   {
     provenance: 'CI typecheck-lint-build',
+    label: 'cifras de AGENTS.md',
+    cmd: 'npm run audit:agents-figures',
+    why: 'autoprueba + ratchet en un paso: las cifras del manual contra sus instrumentos. Aquí mide los TRES árboles; el CI de la raíz solo tiene la raíz y declara el resto NO MEDIDAS (con su motivo)',
+  },
+  {
+    provenance: 'CI typecheck-lint-build',
     label: 'typecheck (storefront)',
     cmd: 'npm run typecheck',
     cwd: STOREFRONT,
@@ -110,7 +122,7 @@ function banner() {
   console.log(' ci:local — gate agregado LOCAL de la raíz / tienda (no es el CI)');
   console.log(line());
   console.log(` node ${process.version} · plataforma ${process.platform}/${process.arch} · TZ del proceso ${process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone}`);
-  console.log(' CI de referencia: .github/workflows/ci.yml (job typecheck-lint-build, 5 pasos)');
+  console.log(' CI de referencia: .github/workflows/ci.yml (job typecheck-lint-build, 6 pasos)');
   console.log(` cwd de los pasos de la tienda: ${STOREFRONT}`);
   console.log('');
   console.log(' LO QUE ESTE COMANDO **NO** CUBRE — un VERDE AQUÍ NO ES UN VERDE DEL CI:');
@@ -129,7 +141,8 @@ function banner() {
   console.log('      nada del despliegue.');
   console.log('');
   console.log(' ÚNICA VENTAJA LOCAL: el gate de workflows aquí audita los CINCO workflows del monorepo (el CI');
-  console.log(' de la raíz clona solo la raíz y ve uno). En ese paso, verde local es MÁS estricto que el CI.');
+  console.log(' de la raíz clona solo la raíz y ve uno), y el de las cifras de AGENTS.md corre los instrumentos');
+  console.log(' de los TRES proyectos (allí solo los de la raíz). En esos dos pasos, verde local es MÁS estricto.');
   console.log('');
   console.log(' Y ADEMÁS: el CI real HOY NO SE EJECUTA (facturación: jobs de ~2 s con 0 pasos).');
   console.log(line());
