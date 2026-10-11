@@ -87,9 +87,9 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   (ShortName) se denormaliza (Anexo B).
 - **E2E:** los maestros se resuelven **por código, nunca por posición**.
 - **`0`** `@ts-ignore` / **`--no-verify`**; `eslint-disable` **sólo con la regla nombrada** —y ese
-  calificativo alcanza a las **12** escritas a mano, **no** a las **206** de `src/generated/`, que son
-  `/* eslint-disable */` en bloque, sin regla nombrada, y viven **fuera del lint**— y `--force`
-  **sólo** en `prisma migrate reset --force` (ver *Reglas de proceso*).
+  calificativo alcanza a las **12** escritas a mano **en `src/`**, **no** a las **206** de
+  `src/generated/`, que son `/* eslint-disable */` en bloque, sin regla nombrada, y viven **fuera del
+  lint**— y `--force` **sólo** en `prisma migrate reset --force` (ver *Reglas de proceso*).
 
 El detalle **obligatorio** vive en los 5 archivos canónicos del protocolo de arriba y en los planes de
 `docs/plans/`.
@@ -100,6 +100,11 @@ El detalle **obligatorio** vive en los 5 archivos canónicos del protocolo de ar
 
 Ningún gate se sustituye por inspección visual. Salida y comandos uno a uno, con sus reglas medidas:
 **Anexo D** del histórico; los gates nacidos después del 2026-09-12, fechados en el registro.
+
+Las cifras de los ratchets que siguen se **midieron el 2026-10-11** con el `--check` de cada gate
+(`backend-erp`, sobre `71110f0`). Un ratchet **baja** cuando alguien paga la deuda: la cifra que se lee
+aquí es la **vigente**, no la del día en que nació el gate, y se actualiza al mismo tiempo que su
+`--update-baseline`.
 
 ### Backend (`cd backend-erp`)
 
@@ -115,7 +120,7 @@ npm run audit:line-accounts  # la cuenta capturada se valida y el builder la pre
 npm run audit:tracking       # lote/serie coherentes (necesita BD)
 npm run audit:reconcile      # cuadre general (necesita BD) (+ :self-test)
 npm run audit:money:check    # dinero al centavo (ratchet en 0)
-npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1601
+npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1502
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
 
@@ -186,7 +191,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
    «element(s) not found»; `1724af21` con `e2e/helpers/ensure-media-library.ts`). Los **4** casos
    resultantes pasan en el entorno limpio **sin relajar una aserción**.
 7. **La zona horaria del PROCESO se declara a propósito.** `TZ: America/La_Paz` va **solo** donde la
-   zona entra en el render —`visual-regression` (`ci.yml:376`) y `ssr-smoke` (`ci.yml:514`)— y en el job
+   zona entra en el render —`visual-regression` (`ci.yml:458`) y `ssr-smoke` (`ci.yml:596`)— y en el job
    `baseline` de `update-baselines.yml`; el job `e2e` se queda en **UTC a propósito**: es el único
    entorno donde el defecto de la doble conversión de zona se manifiesta, y alinearlo lo taparía
    (`4a7e5b5e`). El defecto y su medición van escritos al lado, en el `env` de los tres jobs, para que
@@ -201,15 +206,15 @@ npm run audit:contrast       # contraste WCAG de la paleta
 - **Nunca `--no-verify`** (ni `--force`, `@ts-ignore`, `eslint-disable`, `xit`). El hook se arregla,
   no se salta. El proyecto lo mide, y no todo es cero: **0 usos** de `--no-verify`, `xit`, `@ts-ignore`
   y `as any`; `eslint-disable` **sólo con la regla nombrada**, y ese calificativo son **12** directivas
-  **escritas a mano** (8 `local/no-raw-without-tenant` + 4 `@typescript-eslint/no-require-imports`) —
+  **escritas a mano en `src/`** (8 `local/no-raw-without-tenant` + 4 `@typescript-eslint/no-require-imports`) —
   las **206** de `src/generated/` **no** nombran ninguna regla: son `/* eslint-disable */` **en bloque**,
   una por fichero de Prisma, y `eslint.config.mjs:19` las deja **fuera del lint**, así que la condición
   no las alcanza—; y `--force` **sólo** en `prisma migrate reset --force`,
   que es lo que ejecuta `db:recreate`. Las aserciones no nulas (`!`) van aparte, en la viñeta siguiente
   (medido el **2026-10-10** en `backend-erp`; el detalle, en el `CHANGELOG.md` de la raíz).
 - **Cero `!` nuevos**, que desde el **2026-10-09** **tiene gate**: `npm run audit:non-null:check` en las
-  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1601** (`expresión!` 956
-  + `x!: T` 645; 1249 en producción, 352 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
+  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1502** (`expresión!` 849
+  + `x!: T` 653; 1149 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
   falla si **sube** (visto en rojo: 1601 → 1602, `exit 1`). Hasta ese gate la regla era un deseo, y el
   manual no la traía escrita en ningún sitio (medido); el detalle, en el `CHANGELOG.md` de la raíz.
 - **Nunca reescribir un commit ya empujado**: sin `push --force`/`--force-with-lease` sobre ramas
@@ -363,8 +368,10 @@ npm run audit:contrast       # contraste WCAG de la paleta
 - **Una herramienta puede hacer BIEN su tarea sobre el CONJUNTO EQUIVOCADO, y ningún gate lo verá:
   compruebe el ALCANCE antes de dejarla correr.** `audit:date-class` daba **0 hallazgos** mientras tres
   sitios leían mal `Batch.expiryDate`/`manufactureDate`, porque **no estaban en el registro
-  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** y el «0» pasó a ser cierto
-  sobre el esquema y no sobre lo declarado (`backend-erp`, `017e46f9`, sobre el gate de `819cc493`).
+  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** (hoy **1360**: el ratchet
+  vigila los hallazgos, no las apariciones, así que esa cifra deriva sin que el gate lo diga) y el «0»
+  pasó a ser cierto sobre el esquema y no sobre lo declarado (`backend-erp`, `017e46f9`, sobre el gate
+  de `819cc493`).
   Desde el otro lado, la misma lección: en la migración de fechas el ratchet del `!` «hacía bien su
   trabajo; su trabajo no era este» (`4cfd1c11`). Aplica a **cualquier** cambio.
 - **El instrumento que MIDE y el instrumento que ACTÚA tienen que tener el mismo ALCANCE.** Un censo
@@ -435,7 +442,8 @@ npm run audit:contrast       # contraste WCAG de la paleta
 
 ## 6. Variables de entorno críticas
 
-Archivo de referencia: `backend-erp/.env` (no existe `.env.example`).
+Archivo de referencia: `backend-erp/.env` (no versionado; **sí existe y está trackeado**
+`backend-erp/.env.example`).
 
 ```bash
 # Base de datos
