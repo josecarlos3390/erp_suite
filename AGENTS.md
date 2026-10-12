@@ -124,10 +124,10 @@ npm run audit:line-accounts  # la cuenta capturada se valida y el builder la pre
 npm run audit:tracking       # lote/serie coherentes (necesita BD)
 npm run audit:reconcile      # cuadre general (necesita BD) (+ :self-test)
 npm run audit:money:check    # dinero al centavo (ratchet en 0)
-npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1502
+npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1501 (medido el 2026-10-12 en `backend-erp`)
 npm run audit:explicit-any:check # `any` explícitos: ratchet en 1 (producción 0, specs 1)
 npm run audit:spec-clock:check   # reloj del proceso en specs: 0 hallazgos (2 excepciones declaradas)
-npm run audit:collection-caps:check # consultas sin cota (`produccionSinCota`): ratchet en 685 (medido el 2026-10-12 en `backend-erp`)
+npm run audit:collection-caps:check # consultas sin cota (`produccionSinCota`): ratchet en 683 (medido el 2026-10-12 en `backend-erp`)
 npm run audit:security-headers # postura de cabeceras en el código (gate estático de DECLARACIÓN): x-powered-by desactivado una sola vez en el arranque, nada la vuelve a encender y 0 hallazgos (medido el 2026-10-12 en `backend-erp`; los sitios que ponen cabeceras DERIVAN con cada endpoint legítimo y NO se congelan — prueba que el código lo dice, NO que la cabecera haya desaparecido)
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
@@ -221,8 +221,8 @@ npm run audit:contrast       # contraste WCAG de la paleta
   que es lo que ejecuta `db:recreate`. Las aserciones no nulas (`!`) van aparte, en la viñeta siguiente
   (medido el **2026-10-10** en `backend-erp`; el detalle, en el `CHANGELOG.md` de la raíz).
 - **Cero `!` nuevos**, que desde el **2026-10-09** **tiene gate**: `npm run audit:non-null:check` en las
-  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1502** (`expresión!` 849
-  + `x!: T` 653; 1149 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
+  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1501** (medido el **2026-10-12** en `backend-erp`; `expresión!` 848
+  + `x!: T` 653; 1148 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
   falla si **sube** (visto en rojo: 1601 → 1602, `exit 1`). Hasta ese gate la regla era un deseo, y el
   manual no la traía escrita en ningún sitio (medido); el detalle, en el `CHANGELOG.md` de la raíz.
 - **Nunca reescribir un commit ya empujado**: sin `push --force`/`--force-with-lease` sobre ramas
