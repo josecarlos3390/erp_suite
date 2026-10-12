@@ -147,7 +147,7 @@ npm run e2e:baseline         # regenera baselines (con atribución medida)
 npm run e2e:ssr              # smoke del build SSR
 npm run audit:ci             # las auditorías del frontend (pre-push)
 npm run format:check:touched # prettier: solo lo tocado vs origin/main
-npm run migrate:heights:check# 0 px crudos en pages/+shared/
+npm run migrate:heights:check# 0 px crudos en pages/+shared/ (medido el 2026-10-11; el censo de archivos/líneas deriva y no se congela: se vigila el 0)
 ```
 
 Auditorías individuales del `audit:ci`: `audit:density:ci`, `audit:important`, `audit:ng-deep`,

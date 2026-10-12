@@ -19,7 +19,7 @@
     "  · `valorEsperado` es un ENTERO, y es la cifra COMPARTIDA: el manual y el instrumento se comparan contra el. Cuando un ratchet baja de verdad (`--update-baseline`), se actualizan EN EL MISMO COMMIT el manual, este fichero y la linea base del instrumento; si no, el gate dice quien no se movio.",
     "  · `muestra` es una linea de ejemplo de la SALIDA del instrumento con `{v}` en el sitio de la cifra (recortada para que las muestras de un mismo comando no se solapen). Solo la usa la AUTOPRUEBA, para fabricar dobles del instrumento en un arbol temporal: el gate que corre de verdad NUNCA lee `muestra`, lee la salida real (`--check` se ve en verde solo si el extractor encuentra su cifra en la salida de verdad).",
     "",
-    "LO QUE **NO** SE VIGILA, Y POR QUE. Va en `noVigiladas` y se imprime en el informe: una cifra del manual sin instrumento que la produzca (o un instrumento sin cifra que comparar) no se puede vigilar, y decir «no la medimos» es la unica respuesta honesta. El 2026-10-11 se cerraron los CUATRO huecos que este gate habia declarado: el total de `any` explicitos (figuras `any-explicitos-total` / `-produccion` / `-specs`), la cifra vigente de `audit:spec-clock` (`spec-clock-hallazgos` y `spec-clock-excepciones`), el `!important` sin marca (redaccion del manual alineada con la regla real, SIN cambiar la regla) y la procedencia de los ratchets, que pasa de `noVigiladas` a la figura `procedencia-repo-backend-erp`: la procedencia ya no es un SHA suelto -- nombra repositorio y fecha -- y el SHA que se cita tiene que RESOLVER dentro de ese repositorio. Quedan en `noVigiladas` las que de verdad no se pueden medir desde aqui, cada una con su motivo: `audit:tracking`/`audit:reconcile` (necesitan base de datos), `migrate:heights:check` (su instrumento no publica ninguna cifra y vive en `erp-frontend/`), los ambiguos de `audit:date-class` (el manual no los declara y su gate no compara ese campo) y el comentario de los 205 ficheros de `backend-erp/scripts/audit-explicit-any.mjs` (se podria vigilar, pero hoy saldria rojo y el arreglo exige editar `backend-erp/`, de solo lectura en esta sesion).",
+    "LO QUE **NO** SE VIGILA, Y POR QUE. Va en `noVigiladas` y se imprime en el informe: una cifra del manual sin instrumento que la produzca (o un instrumento sin cifra que comparar) no se puede vigilar, y decir «no la medimos» es la unica respuesta honesta. El 2026-10-11 se cerraron los CUATRO huecos que este gate habia declarado: el total de `any` explicitos (figuras `any-explicitos-total` / `-produccion` / `-specs`), la cifra vigente de `audit:spec-clock` (`spec-clock-hallazgos` y `spec-clock-excepciones`), el `!important` sin marca (redaccion del manual alineada con la regla real, SIN cambiar la regla) y la procedencia de los ratchets, que pasa de `noVigiladas` a la figura `procedencia-repo-backend-erp`: la procedencia ya no es un SHA suelto -- nombra repositorio y fecha -- y el SHA que se cita tiene que RESOLVER dentro de ese repositorio. El 2026-10-11 se cerro un QUINTO hueco: `migrate:heights:check` publica ya su cifra (el instrumento la imprime y su `--check` sale 0), asi que pasa a la figura `heights-px-crudos`; lo que se vigila es el **0**, NO el censo de archivos y lineas, que deriva con cada fichero o linea que se anada y por eso no se congela en el manual. Quedan en `noVigiladas` las que de verdad no se pueden medir desde aqui, cada una con su motivo: `audit:tracking`/`audit:reconcile` (necesitan base de datos), los ambiguos de `audit:date-class` (el manual no los declara y su gate no compara ese campo) y el comentario de los 205 ficheros de `backend-erp/scripts/audit-explicit-any.mjs` (se podria vigilar, pero hoy saldria rojo y el arreglo exige editar `backend-erp/`, de solo lectura en esta sesion).",
     "",
     "CERO ENTRADAS DE EXENCION: este gate no tiene `declared`. Una cifra que no cuadra es un rojo, y el arreglo es mover el manual o el instrumento, no declarar la excepcion."
   ],
@@ -185,6 +185,16 @@
       "nota": "HUECO CERRADO EL 2026-10-11, y SIN TOCAR LA REGLA. El manual prometia «`0` `!important`» sin el calificativo que si llevaba la frase gemela de `::ng-deep`; el instrumento mide 7 usos en 3 archivos, 7 justificados y 0 SIN JUSTIFICAR, asi que la regla real -- la que el gate aplica -- es «0 sin marca» y esa se cumple. Lo que se alineo fue la REDACCIÓN del manual: ya no promete 0 usos, promete 0 sin marca, que es lo que su instrumento mide y publica (los tres numeros van en su salida)."
     },
     {
+      "id": "heights-px-crudos",
+      "fichero": "AGENTS.md",
+      "patron": "migrate:heights:check#\\s*(\\d+) px crudos",
+      "comando": { "cmd": "npm run migrate:heights:check", "cwd": "erp-frontend", "requiere": "erp-frontend" },
+      "extractor": { "tipo": "regex", "patron": "migrate-heights:\\s*(\\d+)" },
+      "valorEsperado": 0,
+      "muestra": "autoprueba del detector de alturas: 13/13 casos\nmigrate-heights: {v} alturas en px crudos en 251 archivos y 23872 líneas de pages/+shared/ · sin shared/luna (canónico) · debe-ser-cero",
+      "nota": "HUECO CERRADO EL 2026-10-11, y el motivo que la declaraba NO VIGILADA ya era falso: el instrumento SI publica su cifra. `npm run migrate:heights:check` (en `erp-frontend`) imprime «autoprueba del detector de alturas: 13/13 casos» y «migrate-heights: 0 alturas en px crudos ... · debe-ser-cero», y su `--check` sale 0 con el detector probado contra 13 casos. LO QUE SE VIGILA ES EL 0, NO EL UNIVERSO: «251 archivos / 23872 lineas» es el censo del dia y deriva con cada fichero o linea que se anada, asi que NO se congela en el manual -- el ancla del manual captura solo la cifra, y el censo vive unicamente en la salida del instrumento. El ancla es la linea de la lista de comandos del frontend, con la fecha de medicion que el manual declara desde `3027c4a`. Verificada ANTES de usarla: el patron casa UNA sola vez en `AGENTS.md`, el extractor saca UNA sola cifra de la salida real, y `0 = 0 = 0`."
+    },
+    {
       "id": "storefront-ficheros",
       "fichero": "AGENTS.md",
       "patron": "sus (\\d+)\\s+ficheros",
@@ -259,25 +269,19 @@
     {
       "id": "tracking",
       "cifra": "`npm run audit:tracking` (lote/serie coherentes)",
-      "donde": "AGENTS.md:120",
+      "donde": "AGENTS.md:124",
       "motivo": "El instrumento necesita BASE DE DATOS. Este gate no levanta `erp_db` ni la sincroniza: no se puede medir aqui, y fingir una medida (o dejar la cifra sin vigilar en silencio) es peor que declararlo. Su gate es el propio `npm run audit:tracking` en el CI del backend, que si tiene base."
     },
     {
       "id": "reconcile",
       "cifra": "`npm run audit:reconcile` (cuadre general)",
-      "donde": "AGENTS.md:121",
+      "donde": "AGENTS.md:125",
       "motivo": "Igual que `tracking`: necesita BASE DE DATOS. El manual ya lo dice en su propia linea («necesita BD»), asi que no hay cifra que comparar sin BD."
-    },
-    {
-      "id": "heights-px-crudos",
-      "cifra": "`migrate:heights:check` — 0 px crudos",
-      "donde": "AGENTS.md:144",
-      "motivo": "HUECO DEL INSTRUMENTO: el comando no publica ninguna cifra. Su salida es «✓ Sin alturas en px crudas en pages/ y shared/» y nada mas. Deducir un 0 del texto seria inventar la medicion (R9: un cero sin detector probado es un artefacto). Vigilarla exigiria cambiar el instrumento, que vive en `erp-frontend/` -- fuera del alcance de este gate."
     },
     {
       "id": "date-class-ambiguos",
       "cifra": "`audit:date-class` — ambiguos declarados y base",
-      "donde": "AGENTS.md:371-372",
+      "donde": "AGENTS.md:381-384",
       "motivo": "El manual declara las APARICIONES vigiladas (que si se vigilan, figura `date-class-apariciones`) y no los ambiguos declarados. El instrumento los publica y su linea base guarda 1102 mientras mide 1100: el gate del instrumento NO compara ese campo (`audit-date-class.mjs`), asi que la base no se toca -- se reporta, como ya hizo `3027c4a`."
     },
     {
