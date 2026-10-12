@@ -127,6 +127,7 @@ npm run audit:money:check    # dinero al centavo (ratchet en 0)
 npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1502
 npm run audit:explicit-any:check # `any` explícitos: ratchet en 1 (producción 0, specs 1)
 npm run audit:spec-clock:check   # reloj del proceso en specs: 0 hallazgos (2 excepciones declaradas)
+npm run audit:collection-caps:check # consultas sin cota (`produccionSinCota`): ratchet en 685 (medido el 2026-10-12 en `backend-erp`)
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
 
