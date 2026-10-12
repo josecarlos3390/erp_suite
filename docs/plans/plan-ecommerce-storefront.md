@@ -304,6 +304,35 @@ gates del repo (backend `npm test`, `lint`, `tsc` y la suite del canal) y de la 
 | — | **Hallazgo de caché** | Declarado | La tienda cachea el canal **60 s** (`revalidate`): un cambio del canal se ve tras la ventana. Un E2E de la tienda falló por eso y pasó al reintentar (no era defecto). **T216** declaró esa **misma** ventana del lado del canal (`Cache-Control: public, max-age=60, stale-while-revalidate=300`) para que no haya dos relojes |
 | — | **Huecos que quedan** | Declarado | Sin filtro por **rango de precio** (rompería la paginación si se hiciera en cliente); sin **datos de cuotas** (no se calcula `precio/6`; la insignia CUOTAS solo se muestra); las imágenes del seed siguen siendo `picsum.photos` (con **respaldo local** implementado); `NEXT_PUBLIC_SITE_URL` es de build (los canónicos de una build local apuntan a `localhost:3000`); checkout y seguimiento son F3 |
 
+#### Corrección medida el 2026-10-11 — el verde de la fila 2-5 ya NO se sostenía (la medición de arriba **no se borra**)
+
+La fila **2-5** decía «`sync-tokens.mjs` (7 módulos del ERP → **621** líneas de CSS, `--check` en verde
+y probado en rojo)». **Ese verde era de su día**: el artefacto se regeneró por última vez el
+**2026-09-24** (`cfb6160`) y la capa de tokens del ERP ganó **después** dos variables de apilado
+—`--z-mobile-overlay` (`1280`) y `--z-mobile-drawer` (`1290`)— en `erp-frontend` **`6fdd8fd9`**
+(2026-09-30, «movil: un solo boton de menu, el fondo tapa el header…»), que es la fuente de la que el
+script compila (`sync-tokens.mjs:29`, `TOKENS_DIR = erp-frontend/src/styles/tokens`). Medido el
+**2026-10-11 sobre `master` (`50a0f38`)**, `npm --prefix storefront run sync:tokens:check` estaba
+**ROJO**: el script imprime «`storefront/src/styles/tokens.css esta desincronizado con la capa de
+tokens del ERP`» y sale con **exit 1**. Las **10** diferencias que imprime **no son diez cambios**:
+son el **tope de 10 líneas** del propio script (`sync-tokens.mjs:129`, `diffLines.length < 10`) sobre
+**una sola** inserción de **2** líneas que desplaza el resto del bloque.
+
+- **Regenerado** con el modo que el script ya tiene (`npm run sync:tokens`, nunca a mano: el artefacto
+  «se regenera, no se edita», `storefront/README.md`) → `sync-tokens --check OK: … coincide con los 7
+  modulos del ERP` (**exit 0**).
+- **El diff es puramente aditivo**: `git diff --numstat` = **2 inserciones, 0 borrados**; el fichero
+  pasa de **622** a **624** líneas (el script imprime «625 lineas» porque cuenta `split('\n').length`).
+  Entran **solo** las dos variables de apilado; **ni se reordena ni se borra** nada, que es lo que el
+  script hace **por diseño**: emite los `TOKEN_MODULES` en orden (`01-primitives` → `07-sizing`) y
+  `--font-mono` **ya estaba** en la versión anterior (el diagnóstico de la sesión la daba por nueva;
+  medido: presente en `git show HEAD:storefront/src/styles/tokens.css`), así que no entra.
+- **Lo que el verde NO decía**: el `--check` de la tienda **no** estaba en ninguna puerta agregada.
+  `npm run ci:local` corría **6** pasos —los mismos del job `typecheck-lint-build`— y las suites de la
+  tienda quedaban fuera **a propósito** (`scripts/ci-local.mjs`, cabecera). Desde este incremento
+  corre **7**: `sync:tokens:check` entra como **ventaja local declarada**, con `provenance` propio
+  (`LOCAL (no en el CI)`), sin tocar `ci.yml`.
+
 ## §12 F3 — checkout, pedido y seguimiento · huecos medidos al cerrar F1/F2
 
 F3 es «checkout multi-paso (guest), métodos offline, `POST` de pedido, confirmación,

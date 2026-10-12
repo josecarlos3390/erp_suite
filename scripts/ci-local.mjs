@@ -8,7 +8,8 @@
  * needs to be increased»). Mientras eso siga así, esto es la única red — y por eso tiene que ser
  * **honesto sobre lo que NO cubre** (banner en la salida, no un README).
  *
- * QUÉ CORRE, Y EN QUÉ ORDEN. El job `typecheck-lint-build` del CI **en su orden exacto**:
+ * QUÉ CORRE, Y EN QUÉ ORDEN. Los **6** pasos del job `typecheck-lint-build` del CI, **en su orden
+ * exacto**, y **después uno más que el CI no tiene** (declarado como tal, ver abajo):
  *
  *   1. autoprueba del gate de workflows  (`npm run audit:workflow-inputs:self-test`)
  *   2. gate de workflows                 (`npm run audit:workflow-inputs`)
@@ -18,18 +19,30 @@
  *   4. `storefront/`: typecheck
  *   5. `storefront/`: lint   (`next lint --max-warnings=0`)
  *   6. `storefront/`: build  (`next build`)
+ *   7. `storefront/`: `sync:tokens:check`  — **LOCAL, no está en el CI** (ver el párrafo siguiente)
  *
  * Los pasos 1 a 3 corren **con `working-directory: .`** (la raíz) y **después** de `npm ci` de la
  * tienda, porque el lector YAML (`js-yaml`) se resuelve de `storefront/node_modules`; sin lector el
  * gate sale con **2** (ruidoso) y nunca en falso verde. Aquí se respeta ese orden.
  *
+ * EL PASO 7 ES UNA VENTAJA LOCAL DECLARADA, NO UN PASO DEL CI. **Por qué no estaba**: el CI de la
+ * raíz **no corre** las suites de la tienda —su job tiene esos 6 pasos— y este script se definió como
+ * «el job del CI, en su orden», así que no las inventariaba. **Por qué entra** (medido, 2026-10-11):
+ * sin él, `storefront/src/styles/tokens.css` se quedó **17 días** desincronizado de la capa de tokens
+ * del ERP (`cfb6160`, 2026-09-24 → hoy) porque el ERP ganó `--z-mobile-overlay`/`--z-mobile-drawer`
+ * (`erp-frontend` `6fdd8fd9`) y **ninguna puerta lo decía**: el `--check` existía, se podía correr y
+ * nadie lo corría. Un gate que no está en ninguna puerta es un gate que no existe. Su `provenance` lo
+ * marca como `LOCAL (no en el CI)` para que la salida no lo haga pasar por un paso del workflow: si
+ * algún día entra a `ci.yml`, se cambia esa etiqueta **en el mismo commit**.
+ *
  * NO HAY `ci:local:full`, y no es un olvido: el CI de la raíz tiene **un solo job**, así que no hay
  * ningún job de CI que añadir. Las suites que la tienda tiene (`e2e`, `e2e:visual`, `e2e:a11y`,
- * `e2e:perf`, `sync:tokens:check`, `sync:fonts:check`) **no las corre su CI**; inventariarlas aquí
+ * `e2e:perf`, `sync:fonts:check`) **no las corre su CI** ni las corre este script; inventariarlas
  * sería inventar un gate que el CI no tiene y presentarlo como "lo del CI". Si algún día entran al
- * workflow, entran a este script en el mismo commit.
+ * workflow, entran a este script en el mismo commit. (`sync:tokens:check` es la **excepción única** y
+ * está declarada arriba con su motivo medido.)
  *
- * ÚNICA VENTAJA LOCAL DECLARADA: el CI de la raíz clona **solo el repo raíz**, así que
+ * VENTAJAS LOCALES DECLARADAS (**dos**). (a) El CI de la raíz clona **solo el repo raíz**, así que
  * `erp-frontend/` y `backend-erp/` **no existen** en su árbol y el gate de workflows informa sus
  * cuatro workflows como «no presente en este árbol: se audita en su propio CI» (informativo). Aquí
  * los tres árboles existen: el gate audita **los cinco workflows del monorepo** y comprueba además
@@ -37,7 +50,9 @@
  * **ejecuta**. Lo mismo vale para el gate de las cifras de `AGENTS.md`: aquí **corre los
  * instrumentos de los tres proyectos** y allí solo los de la raíz (el resto salen «NO MEDIDAS», con
  * su motivo y contadas). Es decir: en esos dos pasos concretos, **un verde local es más estricto**
- * que el del CI.
+ * que el del CI. (b) El **paso 7**, `sync:tokens:check`, que el CI **no corre en absoluto** (ver
+ * arriba): es el único paso de este script que **no existe** en el workflow, y va etiquetado como
+ * tal.
  *
  * LO QUE **NO** CUBRE (y por eso un verde aquí NO es un verde del CI):
  *
@@ -109,6 +124,13 @@ const STEPS = [
   },
   { provenance: 'CI typecheck-lint-build', label: 'lint (storefront)', cmd: 'npm run lint', cwd: STOREFRONT },
   { provenance: 'CI typecheck-lint-build', label: 'build (storefront)', cmd: 'npm run build', cwd: STOREFRONT },
+  {
+    provenance: 'LOCAL (no en el CI)',
+    label: 'sync:tokens:check (storefront)',
+    cmd: 'npm run sync:tokens:check',
+    cwd: STOREFRONT,
+    why: 'la tienda no lo corre su CI, y por eso NO estaba aquí: el artefacto tokens.css se quedo 17 dias desincronizado del ERP (2026-09-24 a 2026-10-11) sin que ninguna puerta lo dijera. Entra como ventaja LOCAL declarada; si entra a ci.yml, cambia esta etiqueta',
+  },
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -123,6 +145,7 @@ function banner() {
   console.log(line());
   console.log(` node ${process.version} · plataforma ${process.platform}/${process.arch} · TZ del proceso ${process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone}`);
   console.log(' CI de referencia: .github/workflows/ci.yml (job typecheck-lint-build, 6 pasos)');
+  console.log(` pasos aqui: ${STEPS.length} (los 6 del CI + 1 LOCAL: sync:tokens:check)`);
   console.log(` cwd de los pasos de la tienda: ${STOREFRONT}`);
   console.log('');
   console.log(' LO QUE ESTE COMANDO **NO** CUBRE — un VERDE AQUÍ NO ES UN VERDE DEL CI:');
@@ -140,9 +163,15 @@ function banner() {
   console.log('   7. ARTEFACTO: el build del CI no se despliega (Vercel construye el suyo). Este verde no dice');
   console.log('      nada del despliegue.');
   console.log('');
-  console.log(' ÚNICA VENTAJA LOCAL: el gate de workflows aquí audita los CINCO workflows del monorepo (el CI');
-  console.log(' de la raíz clona solo la raíz y ve uno), y el de las cifras de AGENTS.md corre los instrumentos');
-  console.log(' de los TRES proyectos (allí solo los de la raíz). En esos dos pasos, verde local es MÁS estricto.');
+  console.log(' VENTAJAS LOCALES DECLARADAS (dos): (a) el gate de workflows aquí audita los CINCO');
+  console.log(' workflows del monorepo (el CI de la raíz clona solo la raíz y ve uno), y el de las cifras de');
+  console.log(' AGENTS.md corre los instrumentos de los TRES proyectos (allí solo los de la raíz): en esos dos');
+  console.log(' pasos, verde local es MÁS estricto; (b) el paso 7, que el CI no corre en absoluto.');
+  console.log('');
+  console.log(' Y UN PASO QUE EL CI NO TIENE: [7] sync:tokens:check (storefront), con provenance');
+  console.log(' «LOCAL (no en el CI)». No estaba porque el job del CI no corre las suites de la tienda; entra');
+  console.log(' porque tokens.css se quedó 17 días desincronizado del ERP sin que ninguna puerta lo dijera.');
+  console.log(' Es más estricto que el CI, no un paso suyo: no lo lea como "lo del CI".');
   console.log('');
   console.log(' Y ADEMÁS: el CI real HOY NO SE EJECUTA (facturación: jobs de ~2 s con 0 pasos).');
   console.log(line());
@@ -160,8 +189,10 @@ function summary(results, startedAt) {
   }
   console.log('');
   console.log(' NO HAY `ci:local:full`: el CI de la raíz tiene un solo job. Las suites de la tienda (e2e,');
-  console.log(' e2e:visual, e2e:a11y, e2e:perf, sync:tokens:check, sync:fonts:check) NO las corre su CI y por');
-  console.log(' eso NO están aquí: inventariarlas sería inventar un gate que el CI no tiene.');
+  console.log(' e2e:visual, e2e:a11y, e2e:perf, sync:fonts:check) NO las corre su CI y por eso NO están aquí:');
+  console.log(' inventariarlas sería inventar un gate que el CI no tiene. La excepción única es');
+  console.log(' sync:tokens:check (paso 7, provenance «LOCAL (no en el CI)»), añadido tras medir que el');
+  console.log(' artefacto tokens.css se quedó 17 días desincronizado del ERP sin que ninguna puerta lo dijera.');
   console.log('');
   console.log(' RECORDATORIO: verde LOCAL ≠ verde del CI (entorno limpio, UTC, npm ci, Linux y los valores de');
   console.log(' relleno del runner NO se reproducen aquí). El CI real está bloqueado por facturación.');

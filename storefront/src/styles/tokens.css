@@ -567,6 +567,8 @@
   --z-dropdown-in-modal: 1250;
   --z-tooltip: 1300;
   --z-toast: 1400;
+  --z-mobile-overlay: 1280;
+  --z-mobile-drawer: 1290;
 }
 :root {
   --font-sans:
