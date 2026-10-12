@@ -3,10 +3,25 @@
  * ci-local.mjs — **gate agregado local de la raíz (la tienda)**.
  *
  * POR QUÉ EXISTE. El CI de la raíz (`.github/workflows/ci.yml`, «Storefront CI») es la red de la
- * tienda y durante un tiempo **no se puede ejecutar**: los jobs mueren en ~2 s con **0 pasos** y sin
+ * tienda y durante un tiempo **no se pudo ejecutar**: los jobs morían en ~2 s con **0 pasos** y sin
  * runner («The job was not started because recent account payments have failed or your spending limit
- * needs to be increased»). Mientras eso siga así, esto es la única red — y por eso tiene que ser
- * **honesto sobre lo que NO cubre** (banner en la salida, no un README).
+ * needs to be increased»).
+ *
+ * **ESO YA NO ES VERDAD, Y AQUÍ ESTABA ESCRITO COMO SI LO FUERA** (corregido el 2026-10-12). El repo
+ * raíz es **público**, así que sus runs se leen **sin credenciales** por la API de GitHub. Medido:
+ * **13 runs** — **9 verdes**, **4 rojos** — y los jobs corren de verdad: el run **10** (`a493c304`)
+ * salió **verde con 13 pasos en 66 s**, con `Checkout`, `Setup Node.js`, `Install dependencies`,
+ * `typecheck`, `lint` y `build` ejecutados. Los runs **11, 12 y 13** (`a61a8ff7`, `50a0f384`,
+ * `322f701`) están rojos por un **defecto de CÓDIGO** del gate de las cifras, no por facturación: su
+ * autoprueba leía un fichero ancla de `backend-erp/` —repo que este CI no clona— y abortaba con
+ * `anclas-reales-ilegibles` (código 2) **antes** de llegar a la tienda, así que `typecheck`, `lint` y
+ * `build` salían **`skipped`**. Corregido en `scripts/audit-agents-figures.mjs` el 2026-10-12; el
+ * run del commit que trae esa corrección es la medida. Un banner que dice «el CI no se ejecuta»
+ * cuando sí se ejecuta es un **diagnóstico falso**, y encima hace parecer inocuo lo que no lo es.
+ *
+ * Y aun así esto sigue siendo necesario —tiene que ser **honesto sobre lo que NO cubre** (banner en
+ * la salida, no un README)— porque el CI de la raíz **no corre ninguna suite de la tienda** más allá
+ * de `typecheck`/`lint`/`build`, y porque clona **solo la raíz**.
  *
  * QUÉ CORRE, Y EN QUÉ ORDEN. Los **6** pasos del job `typecheck-lint-build` del CI, **en su orden
  * exacto**, y **después uno más que el CI no tiene** (declarado como tal, ver abajo):
@@ -34,6 +49,46 @@
  * nadie lo corría. Un gate que no está en ninguna puerta es un gate que no existe. Su `provenance` lo
  * marca como `LOCAL (no en el CI)` para que la salida no lo haga pasar por un paso del workflow: si
  * algún día entra a `ci.yml`, se cambia esa etiqueta **en el mismo commit**.
+ *
+ * DECISIÓN: EL PASO 7 **NO** ENTRA AL CI, Y ESTA ES SU MEDICIÓN (2026-10-12, encargo explícito de
+ * decidirlo entre «añadirlo al workflow» y «dejarlo aquí y declarar por qué»). El criterio que lo
+ * pedía es **correcto** —un gate que solo vive aquí no protege de un push que no lo corra, y eso es
+ * exactamente lo que costó los 17 días— pero **el gate no puede correr en el árbol del CI**:
+ *
+ *   · Su fuente de verdad NO está en la raíz. `storefront/scripts/sync-tokens.mjs` lo dice en su
+ *     cabecera y en sus rutas: `:29` `TOKENS_DIR = <raíz>/erp-frontend/src/styles/tokens`, `:30` la
+ *     salida es `storefront/src/styles/tokens.css`. Un solo sentido: ERP → tienda.
+ *   · Ese directorio **no existe en el árbol del CI**: `.gitignore` de la raíz ignora `/erp-frontend/`
+ *     y `/backend-erp/` (repos anidados con `.git` propio), y `git ls-files erp-frontend` en la raíz
+ *     devuelve **0** ficheros. Medido en un clon del repo raíz —que es literalmente lo que ve el CI—:
+ *     `sync-tokens: no existe el directorio de tokens del ERP: .../erp-frontend/src/styles/tokens`
+ *     ⇒ **exit 1, siempre**. Añadirlo tal cual dejaría el workflow rojo para siempre, y encima sin
+ *     decir nada de la tienda.
+ *   · La forma que SÍ funcionaría —un `actions/checkout` de `josecarlos3390/erp-frontend` con
+ *     `path: erp-frontend`— exige una **credencial**, porque `erp-frontend` es **privado**. Medido con
+ *     el ayudante de credenciales desactivado (`git -c credential.helper= ls-remote`, que es lo único
+ *     que mide de verdad: con el `credential.helper=manager` de esta máquina el mismo comando sale
+ *     **0** y MIENTE, porque usa una credencial guardada): `erp-frontend` y `backend-erp` salen **128**
+ *     («could not read Password»), y `erp_suite` —el control— sale **0**. Lo mismo dice la API: `404`
+ *     para los dos primeros, `200` con `"private": false` para la raíz.
+ *   · Y ese secreto **no consta**: el historial completo de `.github/` de la raíz no contiene **ni una**
+ *     aparición de `secrets.` (`git log --all -p -- .github`), y el propio histórico lo declara no
+ *     medible desde aquí (`docs/plans/historial-sesiones.md:281`: «el estado de ese secreto no se mide
+ *     desde este árbol»). Un checkout que depende de un secreto que **no se puede medir** es un gate
+ *     que nadie sabe si funciona; y si falta, mata el job **entero** —incluidos el `typecheck`, el
+ *     `lint` y el `build` de la tienda—, que es precisamente el modo de fallo que se acaba de medir y
+ *     de corregir en `scripts/audit-agents-figures.mjs` (runs 11-13: los tres pasos de la tienda
+ *     `skipped` por un gate que abortaba antes de llegar a ellos).
+ *
+ * DÓNDE VA ENTONCES: en el CI del **ERP**, que es donde cambia la fuente y donde **no hace falta
+ * ningún secreto**, porque `erp_suite` es público (medido: `ls-remote` anónimo ⇒ 0) y ese CI puede
+ * clonarlo con el token por defecto. Escribirlo allí exige editar `erp-frontend/`, que es de **SOLO
+ * LECTURA** en esta sesión: queda declarado aquí, con su medición, para el incremento que sí pueda
+ * tocarlo. Consecuencia declarada: **el desfase de tokens sigue sin puerta automática en un push que
+ * no corra este script**, y ése es el agujero que esta decisión NO cierra.
+ *
+ * La etiqueta `LOCAL (no en el CI)` del paso 7 sigue siendo **verdad** (no entra al workflow), así que
+ * NO se toca: cambiarla sería escribir lo contrario de lo que pasa.
  *
  * NO HAY `ci:local:full`, y no es un olvido: el CI de la raíz tiene **un solo job**, así que no hay
  * ningún job de CI que añadir. Las suites que la tienda tiene (`e2e`, `e2e:visual`, `e2e:a11y`,
@@ -173,7 +228,18 @@ function banner() {
   console.log(' porque tokens.css se quedó 17 días desincronizado del ERP sin que ninguna puerta lo dijera.');
   console.log(' Es más estricto que el CI, no un paso suyo: no lo lea como "lo del CI".');
   console.log('');
-  console.log(' Y ADEMÁS: el CI real HOY NO SE EJECUTA (facturación: jobs de ~2 s con 0 pasos).');
+  console.log(' Y POR QUÉ **NO** ENTRA AL CI, medido: su fuente de verdad vive en `erp-frontend/src/styles/');
+  console.log(' tokens/`, y el CI de la raíz clona SOLO la raíz (los repos anidados están gitignored), así');
+  console.log(' que ahí el paso sale exit 1 siempre ("no existe el directorio de tokens del ERP"). La forma');
+  console.log(' que sí funcionaría exige un secreto para clonar `erp-frontend`, que es PRIVADO — y ese');
+  console.log(' secreto no consta en este repo (el historial de `.github/` no usa `secrets.` ni una vez). El');
+  console.log(' detalle y las tres mediciones, en la cabecera de este script. El agujero NO queda cerrado:');
+  console.log(' un push que no corra esto sigue sin puerta para los tokens.');
+  console.log('');
+  console.log(' Y ADEMÁS: el CI real SÍ SE EJECUTA (medido el 2026-10-12 contra la API pública de GitHub:');
+  console.log(' 13 runs, 9 verdes y 4 rojos; el run 10, verde con 13 pasos en 66 s). La facturación lo tuvo');
+  console.log(' parado y eso se quedó escrito aquí como si siguiera pasando: ya no. Los tres rojos más');
+  console.log(' recientes eran un defecto de código del gate de las cifras, corregido el 2026-10-12.');
   console.log(line());
 }
 
@@ -193,9 +259,15 @@ function summary(results, startedAt) {
   console.log(' inventariarlas sería inventar un gate que el CI no tiene. La excepción única es');
   console.log(' sync:tokens:check (paso 7, provenance «LOCAL (no en el CI)»), añadido tras medir que el');
   console.log(' artefacto tokens.css se quedó 17 días desincronizado del ERP sin que ninguna puerta lo dijera.');
+  console.log(' Y su promoción al CI está DECIDIDA y medida el 2026-10-12: no puede entrar tal cual (su');
+  console.log(' fuente, `erp-frontend/src/styles/tokens/`, no está en el árbol que el CI clona) y la forma');
+  console.log(' que sí podría exige un secreto que no consta en este repo. El motivo completo, con las tres');
+  console.log(' mediciones, está en la cabecera de este script; su sitio natural es el CI del ERP.');
   console.log('');
   console.log(' RECORDATORIO: verde LOCAL ≠ verde del CI (entorno limpio, UTC, npm ci, Linux y los valores de');
-  console.log(' relleno del runner NO se reproducen aquí). El CI real está bloqueado por facturación.');
+  console.log(' relleno del runner NO se reproducen aquí). El CI real SÍ corre (13 runs, 9 verdes), pero su');
+  console.log(' árbol clona solo la raíz: por eso este script no es "el CI", y por eso el paso 7 no puede');
+  console.log(' entrar a él tal cual (ver la cabecera).');
   console.log(line());
 }
 

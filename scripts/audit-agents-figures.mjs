@@ -92,6 +92,13 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..');
 const DECLARATIONS_PATH = path.join(HERE, 'audit-agents-figures.declarations.json');
 const MANUAL_FILE = 'AGENTS.md';
+/**
+ * La única ancla FUERA del manual: el comentario de `backend-erp/scripts/audit-explicit-any.mjs`, del
+ * que cuelga la figura `comentario-generados-206`. Se nombra una vez porque hay tres sitios que
+ * tienen que hablar del MISMO fichero (la declaración, el señuelo y el «no evaluable si su repo no
+ * está»), y tres literales sueltos divergen.
+ */
+const ANCLA_BACKEND = 'backend-erp/scripts/audit-explicit-any.mjs';
 
 /** Un instrumento colgado no puede colgar el gate: 5 min por comando y el comando se declara fallido. */
 const TIMEOUT_MS = 300000;
@@ -354,6 +361,12 @@ function auditar({ root, declarationsPath }) {
   const problems = [...declarations.problems];
   const findings = [];
   const figures = [];
+  /** Anclas cuyo REPO no está en este árbol: no evaluables, ni defecto ni verde (ver `auditar`). */
+  const anclasNoEvaluables = [];
+  const declararAnclaNoEvaluable = (figId, fichero) => {
+    if (anclasNoEvaluables.some((a) => a.fig === figId && a.fichero === fichero)) return;
+    anclasNoEvaluables.push({ fig: figId, fichero, repo: repoDelAncla(fichero) });
+  };
   const manuales = new Map();
 
   const manualDe = (fichero) => {
@@ -370,8 +383,13 @@ function auditar({ root, declarationsPath }) {
   for (const fig of declarations.figuras) {
     const registro = { fig, ancla: null, instrumento: null, rojo: false };
     const ficheros = archivosDe(fig);
-    const manual = manualDe(fig.fichero);
-    if (manual.error) {
+    // El PRIMER ancla es el «manual» de la figura (`manualDeFigura`). Si cuelga de un repo AUSENTE de
+    // este árbol, la figura NO ES EVALUABLE aquí: el fichero no falta, falta el repo entero. Se
+    // declara, no se denuncia, y se sigue hasta el instrumento — que sale NO MEDIDA por su `requiere`.
+    const anclaFueraDeArbol = !repoDelAnclaPresente(fig.fichero, root);
+    if (anclaFueraDeArbol) declararAnclaNoEvaluable(fig.id, fig.fichero);
+    const manual = anclaFueraDeArbol ? null : manualDe(fig.fichero);
+    if (manual && manual.error) {
       problems.push(`figura \`${fig.id}\`: ${manual.error}`);
       registro.rojo = true;
       figures.push(registro);
@@ -381,6 +399,14 @@ function auditar({ root, declarationsPath }) {
     // ---- el ancla: TODOS sus ficheros (el manual y, si los declara, los demás) ----
     const sitios = [];
     for (const fichero of ficheros) {
+      // Un ancla que cuelga de un repo AUSENTE de este árbol NO es un defecto: el fichero no falta,
+      // falta el repo entero (el CI de la raíz clona solo la raíz). Se declara y se sigue; la figura
+      // sale NO MEDIDA por el `requiere` de su comando, que es donde eso se decide. Antes esto se
+      // denunciaba como `declaracion-invalida` y ponia el gate ROJO en el CI (medido: runs 11-13).
+      if (!repoDelAnclaPresente(fichero, root)) {
+        declararAnclaNoEvaluable(fig.id, fichero);
+        continue;
+      }
       const doc = manualDe(fichero);
       if (doc.error) {
         problems.push(`figura \`${fig.id}\`: ${doc.error}`);
@@ -484,6 +510,7 @@ function auditar({ root, declarationsPath }) {
     findings,
     figures,
     noMedidas,
+    anclasNoEvaluables,
     comandos: [...comandos.values()],
   };
 }
@@ -516,6 +543,8 @@ function cola(texto, lineas = 3) {
 function printReport(result) {
   const lines = [];
   const { figures, findings, problems, noMedidas } = result;
+  /** Anclas no evaluables en este árbol (su repo no está clonado): ni defecto ni verde. */
+  const anclasNoEvaluables = result.anclasNoEvaluables || [];
   const verdes = figures.filter((f) => !f.rojo && f.instrumento && f.instrumento.estado === 'medida').length;
   const rojas = figures.filter((f) => f.rojo).length;
 
@@ -537,8 +566,11 @@ function printReport(result) {
     // (el comentario de un script), se rotula con su ruta en vez de dejar un hueco mudo que se
     // leeria como «una cifra del manual comprobada y correcta», que no es lo que se midio.
     const sitiosAncla = f.ancla ? f.ancla.sitios : [];
-    let ancla = '(sin ancla)';
-    if (f.ancla) {
+    // Una figura cuyo ancla cuelga de un repo ausente de este árbol no tiene sitios que leer: se
+    // rotula `NO EVALUABLE` en vez de `(sin ancla)`, que se leeria como una cifra comprobada.
+    const anclaNoEvaluable = anclasNoEvaluables.some((a) => a.fig === f.fig.id);
+    let ancla = anclaNoEvaluable ? 'NO EVALUABLE' : '(sin ancla)';
+    if (f.ancla && !anclaNoEvaluable) {
       const fichas = [...new Set(sitiosAncla.map((s) => s.fichero))];
       ancla =
         fichas.length === 0
@@ -593,6 +625,18 @@ function printReport(result) {
     lines.push('');
   }
 
+  if (anclasNoEvaluables.length > 0) {
+    lines.push(
+      `Anclas NO EVALUABLES en este arbol (${anclasNoEvaluables.length}) — no es un defecto de nadie, y NO es un verde:`,
+    );
+    for (const a of anclasNoEvaluables) {
+      lines.push(`    · ${a.fig} — su ancla \`${a.fichero}\` cuelga de \`${a.repo}/\`, que no está en este árbol`);
+    }
+    lines.push('  El fichero no falta: falta el repo entero (el CI de la raiz clona solo la raiz). Lo que sí');
+    lines.push('  se comprueba aquí es la cifra del MANUAL; el ancla del comentario se mide donde su repo está.');
+    lines.push('');
+  }
+
   lines.push(`Cifras declaradas como NO VIGILADAS (${result.noVigiladas.length}) — sin instrumento que las produzca, o sin cifra que comparar:`);
   for (const n of result.noVigiladas) {
     lines.push(`    · [${n.id}] ${n.cifra} (${n.donde})`);
@@ -602,6 +646,7 @@ function printReport(result) {
 
   lines.push(
     `RESUMEN: figuras=${figures.length} verdes=${verdes} rojas=${rojas} no_medidas=${noMedidas.length} ` +
+      `anclas_no_evaluables=${anclasNoEvaluables.length} ` +
       `hallazgos=${findings.length} problemas=${problems.length} no_vigiladas=${result.noVigiladas.length} ` +
       `comandos=${result.comandos.length}`,
   );
@@ -628,6 +673,53 @@ function archivosDe(fig) {
 }
 
 /**
+ * El «repo» de una ruta anclada: `backend-erp/…` ⇒ `backend-erp` · `AGENTS.md` ⇒ `.` (la raíz, que
+ * es SIEMPRE el propio árbol auditado). Es la misma traducción que usa el gate hermano
+ * (`audit-workflow-inputs.mjs`, `ownerRepo`) y la razón por la que la regla de abajo se puede
+ * escribir sin heurísticas: el primer segmento de la ruta ES el repo.
+ */
+function repoDelAncla(rel) {
+  const partes = String(rel).split('/');
+  return partes.length > 1 ? partes[0] : '.';
+}
+
+/**
+ * ¿Está el REPO del que cuelga un fichero ancla en ESTE árbol? `AGENTS.md` siempre (la raíz es el
+ * árbol auditado); `backend-erp/scripts/…` solo si `backend-erp/` existe.
+ *
+ * POR QUÉ EXISTE (medido el 2026-10-12). Este gate se corre en dos árboles distintos: el local, con
+ * los tres repos, y el del CI de la raíz, que **clona solo la raíz** (`erp-frontend/` y
+ * `backend-erp/` están en el `.gitignore` del monorepo como repos anidados). El invariante del gate
+ * es que **un repo ausente no es un hallazgo**: lo que no está no es lo mismo que lo que falta
+ * (`audit-workflow-inputs.mjs`, regla 4) — y el ratchet ya lo cumple por su cuenta, porque una cifra
+ * cuyo `requiere` no está sale **NO MEDIDA con su motivo**, y su propio caso de autoprueba
+ * `arbol-sin-repos-anidados (NO MEDIDAS, VERDE informativo)` lo fija.
+ *
+ * Lo que NO lo cumplía era la PRECONDICIÓN de la autoprueba: leía los ficheros ancla de las
+ * declaraciones REALES y, si alguno no se dejaba leer, abortaba con `anclas-reales-ilegibles` y
+ * código **2**. Eso era correcto mientras el único ancla era `AGENTS.md`, y dejó de serlo cuando
+ * `a61a8ff7` añadió la figura `comentario-generados-206`, anclada a
+ * `backend-erp/scripts/audit-explicit-any.mjs`: en el CI de la raíz ese fichero no existe, así que
+ * **el job moría en el paso de las cifras y `typecheck`, `lint` y `build` de la tienda salían
+ * `skipped`**. Medido en GitHub: los runs **11, 12 y 13** (`a61a8ff7`, `50a0f384`, `322f701`) rojos
+ * en ese paso, con los tres pasos de la tienda sin correr; el último verde fue el run **10**
+ * (`a493c304`).
+ *
+ * La regla, por tanto, distingue los DOS modos de fallo distintos que antes se trataban igual:
+ *   · el **repo** no está en el árbol ⇒ no evaluable (informativo, se cuenta y se imprime);
+ *   · el repo ESTÁ y el fichero no ⇒ **ROJO** (`anclas-reales-ilegibles`): ahí el ancla sí falta.
+ */
+function repoDelAnclaPresente(rel, root) {
+  const repo = repoDelAncla(rel);
+  if (repo === '.') return true;
+  try {
+    return fs.existsSync(path.join(root, repo));
+  } catch {
+    return false;
+  }
+}
+
+/**
  * El «manual» de la figura: el fichero que se NORMALIZA en la copia que la autoprueba usa para sus
  * señuelos del manual. Es `manual` si se declara y, si no, la PRIMERA ficha (`fichero`) -- que es lo
  * que valía antes de que existieran las fichas extra, y lo que valen las 24 figuras que solo anclan
@@ -648,8 +740,12 @@ function manualDeFigura(fig) {
  * del manual (las mutaciones de la autoprueba), y una figura anclada a un comentario de `backend-erp/`
  * no pinta nada en `AGENTS.md`. Las demás fichas se comprueban (el patrón tiene que casar) y luego el
  * árbol de pruebas las escribe tal cual, sin normalizar: así un señuelo del manual no las toca.
+ *
+ * `ausentes` son los ficheros ancla cuyo REPO no está en este árbol (ver `repoDelAnclaPresente`): se
+ * saltan en vez de denunciarse, porque ahí el ancla no falta — falta el repo entero, y eso el gate ya
+ * lo sabe leer (`NO MEDIDA`). Todo lo demás sigue siendo ROJO.
  */
-function normalizarAnclas(textos, figuras) {
+function normalizarAnclas(textos, figuras, ausentes = new Set()) {
   const fallos = [];
   const out = new Map();
   for (const [fichero, texto] of textos) out.set(fichero, texto);
@@ -658,6 +754,10 @@ function normalizarAnclas(textos, figuras) {
     const manual = manualDeFigura(fig);
     for (const fichero of archivosDe(fig)) {
       if (!out.has(fichero)) {
+        // Un ancla que cuelga de un repo AUSENTE de este árbol no es un fallo: no se puede leer
+        // porque su repo no se clonó (ver `repoDelAnclaPresente`), y el ratchet ya la declara
+        // NO MEDIDA por su `requiere`. Solo es fallo que falte un ancla de un repo PRESENTE.
+        if (ausentes.has(fichero)) continue;
         fallos.push(`la figura \`${fig.id}\` ancla \`${fichero}\`, que no se pudo leer`);
         continue;
       }
@@ -790,7 +890,7 @@ function montarArbol(declaraciones, opciones = {}) {
   return { dir, declarationsPath };
 }
 
-function renderAutoprueba(casos, { noEjecutable = false } = {}) {
+function renderAutoprueba(casos, { noEjecutable = false, noEvaluables = [] } = {}) {
   const fallos = casos.filter((c) => !c.ok);
   const rojos = casos.filter((c) => c.rojo);
   const lines = ['Autoprueba de audit-agents-figures — el gate tiene que poder estar en ROJO', ''];
@@ -801,7 +901,17 @@ function renderAutoprueba(casos, { noEjecutable = false } = {}) {
     if (!c.ok && c.detalle) lines.push(`        ${c.detalle}`);
   }
   lines.push('');
-  lines.push(`RESUMEN: casos=${casos.length} verdes=${casos.length - rojos.length} rojos=${rojos.length} fallos=${fallos.length}`);
+  if (noEvaluables.length > 0) {
+    // NO EVALUABLE no es verde (ni un fallo del gate): es que ESTE árbol no puede correr el caso
+    // porque el repo de su ancla no está clonado. Se cuenta y se imprime para que un árbol
+    // incompleto —el del CI de la raíz— no se lea como un árbol con la autoprueba completa.
+    lines.push(`Casos NO EVALUABLES en este árbol (${noEvaluables.length}): no es un verde ni un fallo:`);
+    for (const c of noEvaluables) lines.push(`  -- ${c.nombre} :: ${c.motivo}`);
+    lines.push('');
+  }
+  lines.push(
+    `RESUMEN: casos=${casos.length} verdes=${casos.length - rojos.length} rojos=${rojos.length} fallos=${fallos.length} no_evaluables=${noEvaluables.length}`,
+  );
   lines.push(
     fallos.length === 0
       ? `VEREDICTO: VERDE (los ${rojos.length} casos rotos salen ROJOS y los ${casos.length - rojos.length} verdes siguen verdes)`
@@ -810,11 +920,13 @@ function renderAutoprueba(casos, { noEjecutable = false } = {}) {
   if (noEjecutable) {
     lines.push('  (y NO PUDO EJECUTARSE: falta el manual de verdad o las declaraciones no se sostienen: código 2)');
   }
-  return { text: lines.join('\n'), red: fallos.length > 0, cases: casos, noEjecutable };
+  return { text: lines.join('\n'), red: fallos.length > 0, cases: casos, noEvaluables, noEjecutable };
 }
 
 function runSelfTest() {
   const casos = [];
+  /** Los que este árbol no puede correr (su ancla cuelga de un repo ausente): ni verdes ni fallos. */
+  const noEvaluables = [];
   const manualReal = leerTexto(path.join(REPO, MANUAL_FILE));
   const declaraciones = cargarDeclaraciones(DECLARATIONS_PATH);
 
@@ -847,11 +959,22 @@ function runSelfTest() {
     );
   }
 
-  // TODOS los ficheros ancla de las declaraciones reales (el manual y, si los hay, los demás). Si
-  // alguno no se deja leer, es el mismo caso que «el manual no está»: el gate NO PUDO EJECUTARSE.
+  // TODOS los ficheros ancla de las declaraciones reales (el manual y, si los hay, los demás).
+  //
+  // DOS modos de fallo que NO son lo mismo (medido el 2026-10-12; ver `repoDelAnclaPresente`):
+  //   · el REPO del ancla no está en este árbol ⇒ el ancla NO ES EVALUABLE aquí. No es un defecto de
+  //     nadie: es el CI de la raíz, que clona solo la raíz. Se cuenta, se imprime y no aborta.
+  //   · el repo ESTÁ y el fichero no ⇒ es el mismo caso que «el manual no está»: el gate NO PUDO
+  //     EJECUTARSE (código 2). Antes los dos modos caían en el segundo, y por eso el job del CI
+  //     moría aquí y `typecheck`, `lint` y `build` de la tienda salían `skipped`.
   const textosAncla = new Map();
   const ilegibles = [];
+  const anclasNoEvaluables = new Set();
   for (const fichero of new Set(declaraciones.figuras.flatMap((f) => archivosDe(f)))) {
+    if (!repoDelAnclaPresente(fichero, REPO)) {
+      anclasNoEvaluables.add(fichero);
+      continue;
+    }
     const r = leerTexto(path.join(REPO, fichero));
     if (r.error) ilegibles.push(`\`${fichero}\`: ${r.error}`);
     else textosAncla.set(fichero, r.text);
@@ -871,7 +994,7 @@ function runSelfTest() {
     );
   }
 
-  const norm = normalizarAnclas(textosAncla, declaraciones.figuras);
+  const norm = normalizarAnclas(textosAncla, declaraciones.figuras, anclasNoEvaluables);
   if (norm.fallos.length > 0) {
     return renderAutoprueba(
       [
@@ -886,8 +1009,26 @@ function runSelfTest() {
       { noEjecutable: true },
     );
   }
+  // Una figura cuyo ancla no se puede montar (su repo no está en este árbol) NO entra en la copia de
+  // pruebas: `montarArbol` escribe las anclas desde `anclasNormalizadas`, así que sin el fichero real
+  // la figura saldría `ancla-ausente-en-el-manual` y la autoprueba sería ROJA por una razón que no es
+  // un defecto de nadie — el mismo «ancla que no se puede montar» que el caso 3c documenta. NO se
+  // finge su contenido: se aparta, se cuenta y se imprime. El ratchet NO la pierde: mide las 25
+  // figuras de las declaraciones, y esta sale **NO MEDIDA** con su motivo (su `requiere` no está).
+  const figurasMontables = declaraciones.figuras.filter(
+    (f) => archivosDe(f).every((a) => !anclasNoEvaluables.has(a)),
+  );
+  for (const f of declaraciones.figuras) {
+    if (figurasMontables.includes(f)) continue;
+    noEvaluables.push({
+      nombre: `figura \`${f.id}\` (fuera de la copia de pruebas de este árbol)`,
+      motivo: `su ancla \`${archivosDe(f).find((a) => anclasNoEvaluables.has(a))}\` cuelga de un repo ausente: el ratchet la mide y la declara NO MEDIDA`,
+    });
+  }
+
   const base = {
     ...declaraciones,
+    figuras: figurasMontables,
     manualNormalizado: norm.textos.get(MANUAL_FILE),
     anclasNormalizadas: [...norm.textos],
   };
@@ -927,7 +1068,19 @@ function runSelfTest() {
     }
   };
 
-  const check = (nombre, expectativa, result, detalle = '') => {
+  /**
+   * Un caso que necesita un ancla de un repo AUSENTE de este árbol no se puede correr: no es un
+   * verde (no probó nada) ni un fallo (no hay defecto). Se aparta, se cuenta y se imprime — la
+   * misma doctrina que las cifras `NO MEDIDA` del ratchet. `anclaRequerida` lo declara el caso.
+   */
+  const check = (nombre, expectativa, result, detalle = '', anclaRequerida = null) => {
+    if (anclaRequerida && anclasNoEvaluables.has(anclaRequerida)) {
+      noEvaluables.push({
+        nombre,
+        motivo: `su ancla \`${anclaRequerida}\` cuelga de un repo que no está en este árbol (${repoDelAncla(anclaRequerida)}/)`,
+      });
+      return true;
+    }
     const tipos = [...new Set(result.findings.map((f) => f.tipo))].sort();
     const ok = !result.montajeFallido && expectativa(tipos, result);
     casos.push({
@@ -982,6 +1135,7 @@ function runSelfTest() {
       r.figures.some((f) => f.fig.id === 'comentario-generados-206' && f.ancla && f.ancla.valores[0] === 206),
     correr({}),
     'la figura anclada fuera del manual no encontró su cifra en el árbol de pruebas',
+    ANCLA_BACKEND,
   );
 
   // 3d — EL SEÑUELO DEL ENCARGO, LITERAL: cambiar la CIFRA del ancla a otro número ⇒ ROJO nombrando
@@ -997,8 +1151,10 @@ function runSelfTest() {
       r.red === true,
     correr({
       mutarAncla: (txt, fichero) =>
-        fichero === 'backend-erp/scripts/audit-explicit-any.mjs' ? mutar(txt, 'son (\\d+) ficheros de', 207) : txt,
+        fichero === ANCLA_BACKEND ? mutar(txt, 'son (\\d+) ficheros de', 207) : txt,
     }),
+    '',
+    ANCLA_BACKEND,
   );
 
   // 3b — EL SEÑUELO DE OTRA FAMILIA: una frase «congelado en 1521» que habla del ratchet de
@@ -1155,7 +1311,7 @@ function runSelfTest() {
     correr({ sinMotivo: true }),
   );
 
-  return renderAutoprueba(casos);
+  return renderAutoprueba(casos, { noEvaluables });
 }
 
 // ---------------------------------------------------------------------------------------------

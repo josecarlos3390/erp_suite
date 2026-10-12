@@ -133,6 +133,16 @@ jobs:
       #
       # La autoprueba (los señuelos, en arboles temporales) va DENTRO de este paso: `--check` la corre
       # primero y no sigue al ratchet si esta roja. Mismo orden que `ci-local.mjs`.
+      #
+      # **Y ESTE PASO PUEDE MATAR EL JOB ANTES DE LLEGAR A LA TIENDA**, medido el 2026-10-12: su
+      # autoprueba leia un fichero ancla de `backend-erp/` —repo que este CI **no** clona, porque los
+      # anidados estan en el `.gitignore` de la raiz— y abortaba con `anclas-reales-ilegibles` (codigo
+      # 2). Eso dejo los runs **11, 12 y 13** rojos con `Typecheck`, `Lint` y `Build` en **`skipped`**:
+      # la tienda no se construyo en ninguno de los tres, y el rojo no lo decia. El gate distingue
+      # ahora los DOS modos de fallo (`scripts/audit-agents-figures.mjs`, `repoDelAnclaPresente`): repo
+      # **ausente** => ancla NO EVALUABLE (se cuenta y se imprime; no aborta) · repo **presente** y
+      # fichero ausente => sigue ROJO. Antes de "arreglar" esto clonando el repo anidado, lea la
+      # cabecera de `scripts/ci-local.mjs`: son repos **privados** y el secreto no consta en este repo.
       - name: Cifras de AGENTS.md contra sus instrumentos
         working-directory: .
         run: node scripts/audit-agents-figures.mjs --check
