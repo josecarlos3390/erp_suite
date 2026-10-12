@@ -44,6 +44,11 @@
  * y comprueba que el gate se pone ROJO en cada rotura:
  *
  *   · una cifra del **manual** cambiada ⇒ ROJO; y también si cambia **en uno solo** de sus sitios;
+ *   · **un señuelo de OTRA familia** («congelado en N» hablando de otro ratchet) ⇒ **NO cuenta** para
+ *     esta figura y el gate sale **VERDE**: un gate que grita donde no hay defecto se acaba ignorando,
+ *     y esta figura nació con un patrón sin anclar a su familia (`congelad[oa] en (\d+)`) que hacía
+ *     justo eso. El caso se monta mutando el manual real, así que si el señuelo no se puede insertar
+ *     el caso FALLA en vez de pasar por no haber probado nada (R10);
  *   · una cifra del **instrumento** cambiada ⇒ ROJO (con extractor `regex` y con la tabla de
  *     familias, que es un extractor distinto);
  *   · una cifra que **el manual no menciona** ⇒ ROJO (`ancla-ausente-en-el-manual`), decidido y
@@ -830,6 +835,30 @@ function runSelfTest() {
     correr({
       mutarManual: (txt) => mutar(txt, 'congelad[oa] en (\\d+)', 1601, { indice: 1 }),
     }),
+  );
+
+  // 3b — EL SEÑUELO DE OTRA FAMILIA: una frase «congelado en 1521» que habla del ratchet de
+  //      `--update-baseline` (que el manual ya cuenta unas líneas más abajo) ⇒ NO es la cifra del `!`
+  //      y el gate tiene que seguir VERDE. Es la mitad que R10 exige: un gate que grita donde no hay
+  //      defecto se ignora. Y el mutar() de dentro LANZA si el señuelo no se puede montar, así que este
+  //      caso no puede pasar por no haber probado nada.
+  check(
+    'senuelo-de-otra-familia-no-dispara (congelada en 1521 del ratchet de `--update-baseline`: VERDE)',
+    (tipos, r) => tipos.length === 0 && r.problems.length === 0 && r.findings.length === 0 && r.red === false,
+    correr({
+      // El señuelo se INSERTA (no se muta una captura): la comprobación de que de verdad entró es un
+      // `throw`, para que un señuelo que no se puede montar FALLE el caso en vez de no probar nada.
+      mutarManual: (txt) => {
+        const senuelo = '- **Ejemplo de señuelo (OTRA familia).** La base quedó congelada en 1521 y nadie lo dijo.\n';
+        const conSenuelo = txt.replace(
+          '- **`--check` y `--update-baseline` son DOS pasos',
+          `${senuelo}- **\`--check\` y \`--update-baseline\` son DOS pasos`,
+        );
+        if (conSenuelo === txt) throw new Error('el señuelo «congelada en 1521» NO se pudo insertar en el manual');
+        return conSenuelo;
+      },
+    }),
+    'el señuelo «congelada en 1521» de otra familia no puede contar como cifra del `!`',
   );
 
   // 4 — una cifra del INSTRUMENTO cambiada (extractor `regex`) ⇒ ROJO
