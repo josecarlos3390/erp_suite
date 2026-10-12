@@ -274,6 +274,14 @@ curl -s -D - https://app.tudominio.com/ | head -20
 > transfer-state y estilos inline de Angular (trade-off documentado en
 > `erp-frontend/src/server.ts`). Migrar a nonce queda como mejora futura.
 
+> **Ojo con el `curl` de arriba (medido el 2026-10-12): `GET /` devuelve 200, `redirects=0` y SIN
+> cabecera `location`, y `/login` sirve EL MISMO shell (mismo `sha256`).** La redirección a `/login`
+> la hace **el router de Angular, en el cliente**: por HTTP no se puede ver y **no es un fallo**. Lo
+> que sí promete el servidor —que `/` y `/login` sirven el mismo shell— se comprueba con los dos
+> `sha256`; que la app **navegue** a `/login` (con 0 errores de consola) lo comprueba la **sonda de
+> navegador**. Las dos piezas y el comando, en `AGENTS.md` → *Despliegue* (la viñeta de
+> `/` → `/login`).
+
 ---
 
 ## 5. Post-deploy — alineación de tenants existentes

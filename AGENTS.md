@@ -253,10 +253,62 @@ npm run audit:contrast       # contraste WCAG de la paleta
   declaración*): el sello cubre la **verificación**, no el envío. El 2026-10-07 `deploy` se quedó
   **2 commits atrás** (`origin` en `0417acd`) porque su hook falló y el resultado global no lo dijo.
 - **Verificar el despliegue por medición, nunca por suposición:** `/health` **200** con `prisma: up`,
-  contrato de error vivo (`code` + `requestId`), **OpenAPI idéntico** a la línea base, **huella del
-  bundle** servido igual a la del build local del mismo commit y sonda de navegador con **0 errores de
-  consola** y `/` → `/login`. Un `/health/live` que responde **404 y luego 200** es la prueba del
+  contrato de error vivo (`code` + `requestId`), **OpenAPI igual** al del build local del mismo
+  commit (medido así, no contra un fichero: ver la viñeta siguiente), **huella del bundle** servido
+  igual a la del build local del mismo commit y **sonda de navegador** con **0 errores de consola**
+  que acabe en `/login`. Un `/health/live` que responde **404 y luego 200** es la prueba del
   **relevo del contenedor**.
+- **`/` → `/login` es del ROUTER DE ANGULAR, y por HTTP no se puede ver (medido el 2026-10-12).**
+  El manual pedía «`/` → `/login`» y quien lo intentaba con `curl` **no podía pasarlo nunca** y
+  podía declarar un fallo donde no lo hay: `GET /` devuelve **200**, `redirects=0` y **sin cabecera
+  `location`**, y `GET /login` devuelve **el mismo shell** (mismo `sha256`, `E78FBD96…`). Se mide en
+  **dos piezas**, porque son dos cosas distintas:
+  - **Por HTTP: que `/` y `/login` sirven EL MISMO SHELL** (es lo que el servidor promete).
+    `curl -s -o /tmp/r https://<front>/ && curl -s -o /tmp/l https://<front>/login &&
+    sha256sum /tmp/r /tmp/l` ⇒ **el mismo hash**, **200** y **`redirects=0`** en los dos.
+  - **Que la app NAVEGA a `/login`: sonda de navegador**, que es la única que ejecuta el router.
+    Con Playwright, y **desde fuera de los repos** (el repo es de solo lectura):
+    `page.goto('<front>/')` ⇒ `page.url()` termina en **`/login`**, con **0 errores de consola** y
+    `app-root` con contenido (**4975** caracteres medidos: el shell del servidor trae el `<app-root>`
+    vacío, así que 0 caracteres sería un fallo mudo). Se lanza con
+    `npx playwright@<la versión del repo>` desde `%TEMP%`, o con el `playwright` de
+    `erp-frontend/node_modules` resuelto por ruta absoluta (`NODE_PATH` **no** lo ve: ESM lo ignora).
+  **La intención no cambia** —la app tiene que llevar al login—; lo que cambia es que ahora se
+  **puede medir**, y que un `curl` a `/` que devuelva **200** es el resultado **esperado**, no un
+  fallo.
+- **El OpenAPI no se compara contra un FICHERO: se compara contra el build local del MISMO commit
+  (medido el 2026-10-12).** El manual pedía «OpenAPI idéntico a la línea base» y **esa línea base no
+  existe**: `*openapi*`/`*swagger*` fuera de `node_modules`/`.git`/`dist`/`.next` ⇒ **vacío** (medido).
+  El criterio era **inejecutable**. Se elige **comparar contra el build local del mismo commit**, y
+  **no** congelar un fichero, por una razón **medida**: los **404** `schemas` del despliegue traen los
+  **114** DTO de línea anidados que el servidor publica como *huérfanos* (no los referencia ningún
+  `path`), así que esa cifra **deriva con cada DTO de línea que se añada** — igual que el censo de
+  `heights`, **se vigila lo que no deriva**; `paths` (**647**) es estable hoy, pero deriva con cada
+  endpoint nuevo y la comparación ya lo cubre, así que **tampoco se congela**. El procedimiento, tal
+  como se midió:
+  1. `curl -s <api>/api-json > /tmp/desplegado.json` (medido: **200**, **963 744** B).
+  2. **Build local del mismo commit** (`npm run build` en `backend-erp`; el commit, declarado — el
+     desplegado era `f32248be`, que es el `HEAD` de `backend-erp` y el de **sus dos** espejos) y
+     arrancarlo; `curl -s http://localhost:3000/api-json > /tmp/local.json`.
+  3. Comparar los dos **canónicamente** (un Node en `%TEMP%` que ordena las claves y los **`enum`** y
+     hashea), no byte a byte.
+  Medido así: **647** `paths`, **871** operaciones y **404** `schemas` en los **dos**, sha256
+  **canónico** `DCFAF74FAC9D…` **idéntico**. Tres trampas, las tres **medidas**, y las tres dan un
+  rojo **falso**:
+  - **El build local tiene que ser `npm run build` (`nest build`), NO `tsc` a secas.** El repo usa el
+    **plugin del CLI de Swagger** (`backend-erp/nest-cli.json`, `"plugins": [{"name": "@nestjs/swagger"}]`),
+    y es el plugin —no los decoradores— el que rellena `properties` y `required` de los DTO. Medido:
+    `tsc` a secas ⇒ **290** `schemas` y los DTO anidados con **`properties: {}`** (vacío), frente a
+    **404**; un `dist/` **viejo de un día** ⇒ **402** (le faltaban los dos DTO de
+    `CreatePurchaseOrderManual*Dto`, medido). **El instrumento que MIDE y el que ACTÚA tienen que
+    tener el mismo ALCANCE.**
+  - **Un `sha256` del fichero crudo NO sirve:** el servidor serializa cada `enum` **en el orden de
+    declaración del DTO**, no ordenado, así que los **963 744 B** de los dos daban hashes **distintos**
+    con el mismo contenido (primera divergencia en el byte **23634**: el `enum` de `type` de un
+    `@ApiQuery`). Por eso la comparación **canoniza**; el diff byte a byte es un falso rojo.
+  **Quién lo compara: un humano en la verificación del despliegue** — esto **no** tiene gate, y se
+  declara: no lo tiene porque la cifra que se podría congelar **deriva** (las dos de arriba) y porque
+  exige un despliegue vivo y una BD, que ningún gate de este repo levanta.
 - **Nunca el reset/seed destructivo contra una base con datos del usuario** sin su decisión explícita
   (`db:recreate` borra). Procedimiento completo —backup, orden de migraciones, **SQL manuales por
   drift**, rollback y go/no-go—: **`docs/plans/runbook-go-live.md`**.
