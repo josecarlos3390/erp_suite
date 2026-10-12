@@ -369,6 +369,7 @@ function auditar({ root, declarationsPath }) {
 
   for (const fig of declarations.figuras) {
     const registro = { fig, ancla: null, instrumento: null, rojo: false };
+    const ficheros = archivosDe(fig);
     const manual = manualDe(fig.fichero);
     if (manual.error) {
       problems.push(`figura \`${fig.id}\`: ${manual.error}`);
@@ -377,43 +378,63 @@ function auditar({ root, declarationsPath }) {
       continue;
     }
 
-    // ---- el ancla: el manual ----
-    const mm = coincidencias(manual.text, fig.patron, fig.flags, fig.grupo || 1);
-    if (mm.error) {
-      problems.push(`figura \`${fig.id}\`: ${mm.error}`);
-      registro.rojo = true;
-    } else if (mm.matches.length === 0) {
-      findings.push({
-        tipo: 'ancla-ausente-en-el-manual',
-        fig,
-        detalle: `el patrón /${fig.patron}/ no casa ninguna vez en \`${fig.fichero}\``,
-      });
-      registro.rojo = true;
-    } else if (mm.matches.some((m) => m.valor === undefined)) {
-      findings.push({ tipo: 'ancla-sin-grupo', fig, detalle: `el patrón /${fig.patron}/ no captura ninguna cifra` });
-      registro.rojo = true;
-    } else if (mm.matches.some((m) => !esEntero(m.valor))) {
-      const malo = mm.matches.find((m) => !esEntero(m.valor));
-      findings.push({
-        tipo: 'ancla-no-numerica',
-        fig,
-        detalle: `el patrón /${fig.patron}/ capturó «${malo.valor}» en \`${fig.fichero}:${malo.linea}\`, que no es un entero`,
-      });
-      registro.rojo = true;
-    } else {
-      const sitios = mm.matches.map((m) => ({ linea: m.linea, valor: Number(m.valor) }));
-      registro.ancla = { sitios, valores: [...new Set(sitios.map((s) => s.valor))] };
-      const malos = sitios.filter((s) => s.valor !== fig.valorEsperado);
-      if (malos.length > 0) {
+    // ---- el ancla: TODOS sus ficheros (el manual y, si los declara, los demás) ----
+    const sitios = [];
+    for (const fichero of ficheros) {
+      const doc = manualDe(fichero);
+      if (doc.error) {
+        problems.push(`figura \`${fig.id}\`: ${doc.error}`);
+        registro.rojo = true;
+        continue;
+      }
+      const mm = coincidencias(doc.text, fig.patron, fig.flags, fig.grupo || 1);
+      if (mm.error) {
+        problems.push(`figura \`${fig.id}\`: ${mm.error}`);
+        registro.rojo = true;
+        continue;
+      }
+      if (mm.matches.length === 0) {
         findings.push({
-          tipo: 'manual-divergente',
+          tipo: 'ancla-ausente-en-el-manual',
           fig,
-          detalle:
-            `${malos.length} de ${sitios.length} sitio(s) del manual no dicen ${fig.valorEsperado}: ` +
-            malos.map((s) => `«${fig.fichero}:${s.linea}» dice ${s.valor}`).join(', '),
+          detalle: `el patrón /${fig.patron}/ no casa ninguna vez en \`${fichero}\``,
         });
         registro.rojo = true;
+        continue;
       }
+      if (mm.matches.some((m) => m.valor === undefined)) {
+        findings.push({ tipo: 'ancla-sin-grupo', fig, detalle: `el patrón /${fig.patron}/ no captura ninguna cifra` });
+        registro.rojo = true;
+        continue;
+      }
+      if (mm.matches.some((m) => !esEntero(m.valor))) {
+        const malo = mm.matches.find((m) => !esEntero(m.valor));
+        findings.push({
+          tipo: 'ancla-no-numerica',
+          fig,
+          detalle: `el patrón /${fig.patron}/ capturó «${malo.valor}» en \`${fichero}:${malo.linea}\`, que no es un entero`,
+        });
+        registro.rojo = true;
+        continue;
+      }
+      for (const m of mm.matches) sitios.push({ fichero, linea: m.linea, valor: Number(m.valor) });
+    }
+    const porFichero = (fichero) => sitios.filter((s) => s.fichero === fichero).map((s) => s.valor);
+    registro.ancla = {
+      sitios,
+      valores: [...new Set(sitios.map((s) => s.valor))],
+      porFichero,
+    };
+    const malos = sitios.filter((s) => s.valor !== fig.valorEsperado);
+    if (malos.length > 0) {
+      findings.push({
+        tipo: 'manual-divergente',
+        fig,
+        detalle:
+          `${malos.length} de ${sitios.length} sitio(s) del manual no dicen ${fig.valorEsperado}: ` +
+          malos.map((s) => `«${s.fichero}:${s.linea}» dice ${s.valor}`).join(', '),
+      });
+      registro.rojo = true;
     }
 
     // ---- el instrumento: se corre de verdad ----
@@ -510,9 +531,25 @@ function printReport(result) {
   );
   lines.push('');
 
-  lines.push('Las cifras (manual / instrumento / declarado):');
+  lines.push('Las cifras (ancla / instrumento / declarado):');
   for (const f of figures) {
-    const manual = f.ancla ? f.ancla.sitios.map((s) => s.valor).join(',') : '(sin ancla)';
+    // `ancla=` son los sitios de TODAS las fichas declaradas. Cuando el ancla vive FUERA del manual
+    // (el comentario de un script), se rotula con su ruta en vez de dejar un hueco mudo que se
+    // leeria como «una cifra del manual comprobada y correcta», que no es lo que se midio.
+    const sitiosAncla = f.ancla ? f.ancla.sitios : [];
+    let ancla = '(sin ancla)';
+    if (f.ancla) {
+      const fichas = [...new Set(sitiosAncla.map((s) => s.fichero))];
+      ancla =
+        fichas.length === 0
+          ? '(sin ancla)'
+          : fichas
+              .map((x) => {
+                const valores = f.ancla.porFichero(x).join(',');
+                return x === MANUAL_FILE ? valores : `${x}=${valores}`;
+              })
+              .join(' ');
+    }
     let inst = '(no ejecutado)';
     if (f.instrumento) {
       if (f.instrumento.estado === 'medida') inst = String(f.instrumento.valor);
@@ -521,7 +558,7 @@ function printReport(result) {
     }
     const marca = f.rojo ? 'ROJO' : f.instrumento && f.instrumento.estado === 'medida' ? 'OK  ' : 'INFO';
     lines.push(
-      `  ${marca} ${String(f.fig.id).padEnd(30)} manual=${manual.padEnd(12)} instrumento=${inst.padEnd(10)} esperado=${f.fig.valorEsperado}`,
+      `  ${marca} ${String(f.fig.id).padEnd(30)} ancla=${ancla.padEnd(12)} instrumento=${inst.padEnd(10)} esperado=${f.fig.valorEsperado}`,
     );
   }
   lines.push('');
@@ -577,25 +614,75 @@ function printReport(result) {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * El manual normalizado a los valores declarados: la base de la autoprueba, y la prueba de que cada
- * patrón ENCUENTRA su cifra en el manual de verdad (si no, esto grita y la autoprueba es roja).
+ * TODOS los ficheros que una figura ancla: `fichero` (el primero) más `archivos` (las demás fichas).
+ * POR QUE EXISTE: una cifra puede vivir en un fichero distinto del manual -- el caso medido es el
+ * comentario de `backend-erp/scripts/audit-explicit-any.mjs` -- y el gate no puede fingir que lo
+ * vigila anclándolo a `AGENTS.md`, que no lo contiene. Sin esto la autoprueba exigía que TODO patrón
+ * casara en `AGENTS.md`, y el gate no podía vigilar un fichero que no fuera el manual.
+ *
+ * CADA ficha declarada tiene que contener el patrón (si no: `ancla-ausente-en-el-manual`): declarar
+ * un fichero que no lleva la cifra sería un ancla que no ancla.
  */
-function normalizarManual(texto, figuras) {
+function archivosDe(fig) {
+  return [fig.fichero, ...(Array.isArray(fig.archivos) ? fig.archivos : [])];
+}
+
+/**
+ * El «manual» de la figura: el fichero que se NORMALIZA en la copia que la autoprueba usa para sus
+ * señuelos del manual. Es `manual` si se declara y, si no, la PRIMERA ficha (`fichero`) -- que es lo
+ * que valía antes de que existieran las fichas extra, y lo que valen las 24 figuras que solo anclan
+ * `AGENTS.md`. Una figura anclada a un comentario de `backend-erp/` NO declara `manual`: su patrón no
+ * está en el manual, y normalizar `AGENTS.md` con él sería un fallo de la autoprueba, no una medida.
+ */
+function manualDeFigura(fig) {
+  return fig.manual || fig.fichero;
+}
+
+/**
+ * Normaliza, en cada fichero ancla, SOLO el patrón de las figuras cuyo «manual» es ese fichero -- y
+ * comprueba de paso que cada figura ENCUENTRA su cifra en CADA ficha que declara: una declaración cuyo
+ * patrón no casa no vigila nada, y un fichero declarado que no lleva la cifra es un ancla que no ancla
+ * (R9/R10; si algo de esto falla, la autoprueba es ROJA, no un verde callado).
+ *
+ * POR QUE SOLO EL «manual» SE NORMALIZA: la copia normalizada del manual es la base de los señuelos
+ * del manual (las mutaciones de la autoprueba), y una figura anclada a un comentario de `backend-erp/`
+ * no pinta nada en `AGENTS.md`. Las demás fichas se comprueban (el patrón tiene que casar) y luego el
+ * árbol de pruebas las escribe tal cual, sin normalizar: así un señuelo del manual no las toca.
+ */
+function normalizarAnclas(textos, figuras) {
   const fallos = [];
-  let out = texto;
+  const out = new Map();
+  for (const [fichero, texto] of textos) out.set(fichero, texto);
   for (const fig of figuras) {
     if (!tieneValor(fig.patron)) continue;
-    const r = reescribirCapturas(out, fig.patron, fig.flags, fig.valorEsperado);
-    if (r.error) {
-      fallos.push(
-        `la figura \`${fig.id}\` no encuentra su cifra en el manual con /${fig.patron}/: ${r.error} ` +
-          '(una declaración cuyo patrón no casa no vigila nada)',
-      );
-      continue;
+    const manual = manualDeFigura(fig);
+    for (const fichero of archivosDe(fig)) {
+      if (!out.has(fichero)) {
+        fallos.push(`la figura \`${fig.id}\` ancla \`${fichero}\`, que no se pudo leer`);
+        continue;
+      }
+      if (fichero !== manual) {
+        const v = coincidencias(out.get(fichero), fig.patron, fig.flags, fig.grupo || 1);
+        if (v.error || v.matches.length === 0) {
+          fallos.push(
+            `la figura \`${fig.id}\` no encuentra su cifra en \`${fichero}\` con /${fig.patron}/ ` +
+              '(una declaración cuyo patrón no casa no vigila nada)',
+          );
+        }
+        continue;
+      }
+      const r = reescribirCapturas(out.get(fichero), fig.patron, fig.flags, fig.valorEsperado);
+      if (r.error) {
+        fallos.push(
+          `la figura \`${fig.id}\` no encuentra su cifra en \`${fichero}\` con /${fig.patron}/: ${r.error} ` +
+            '(una declaración cuyo patrón no casa no vigila nada)',
+        );
+        continue;
+      }
+      out.set(fichero, r.text);
     }
-    out = r.text;
   }
-  return { text: out, fallos };
+  return { textos: out, fallos };
 }
 
 /** La salida que el doble de un instrumento tiene que imprimir para una figura y un valor dados. */
@@ -630,6 +717,7 @@ function montarArbol(declaraciones, opciones = {}) {
     sinRequiere = [],
     sinManual = false,
     mutarManual = null,
+    mutarAncla = null,
     sinDoble = [],
     rotas = [],
     ambiguas = [],
@@ -642,6 +730,21 @@ function montarArbol(declaraciones, opciones = {}) {
   let texto = declaraciones.manualNormalizado;
   if (mutarManual) texto = mutarManual(texto);
   if (!sinManual) fs.writeFileSync(path.join(dir, MANUAL_FILE), texto, 'utf8');
+
+  // Las fichas EXTRA de las figuras (fuera del manual): el árbol de pruebas las escribe para que la
+  // autoprueba pueda anclar en ellas igual que en el manual. `mutarAncla(texto, fichero)` puede
+  // mover la cifra de UNA de ellas -- es el señuelo de una figura que ancla fuera del manual, y va
+  // aparte de `mutarManual` para no robarle su tercer argumento (las `opciones` del señuelo). No las
+  // escribe `sinManual` (ese señuelo es «el manual no está», no «no está ningún fichero»), así que
+  // siguen denunciándose por su vía.
+  if (!sinManual) {
+    for (const [fichero, textoNormalizado] of declaraciones.anclasNormalizadas || []) {
+      if (fichero === MANUAL_FILE) continue;
+      const abs = path.join(dir, fichero);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, mutarAncla ? mutarAncla(textoNormalizado, fichero) : textoNormalizado, 'utf8');
+    }
+  }
 
   for (const r of new Set(declaraciones.figuras.map((f) => f.comando && f.comando.requiere).filter(tieneValor))) {
     if (sinRequiere.includes(r)) continue;
@@ -744,7 +847,31 @@ function runSelfTest() {
     );
   }
 
-  const norm = normalizarManual(manualReal.text, declaraciones.figuras);
+  // TODOS los ficheros ancla de las declaraciones reales (el manual y, si los hay, los demás). Si
+  // alguno no se deja leer, es el mismo caso que «el manual no está»: el gate NO PUDO EJECUTARSE.
+  const textosAncla = new Map();
+  const ilegibles = [];
+  for (const fichero of new Set(declaraciones.figuras.flatMap((f) => archivosDe(f)))) {
+    const r = leerTexto(path.join(REPO, fichero));
+    if (r.error) ilegibles.push(`\`${fichero}\`: ${r.error}`);
+    else textosAncla.set(fichero, r.text);
+  }
+  if (ilegibles.length > 0) {
+    return renderAutoprueba(
+      [
+        {
+          nombre: 'anclas-reales-ilegibles',
+          ok: false,
+          rojo: true,
+          tipos: [],
+          detalle: `hay ${ilegibles.length} fichero(s) ancla que no se pueden leer: ${ilegibles.join(' | ')}`,
+        },
+      ],
+      { noEjecutable: true },
+    );
+  }
+
+  const norm = normalizarAnclas(textosAncla, declaraciones.figuras);
   if (norm.fallos.length > 0) {
     return renderAutoprueba(
       [
@@ -753,13 +880,17 @@ function runSelfTest() {
           ok: false,
           rojo: true,
           tipos: [],
-          detalle: `hay ${norm.fallos.length} patrón(es) que NO encuentran su cifra en el manual de verdad: ${norm.fallos.join(' | ')}`,
+          detalle: `hay ${norm.fallos.length} patrón(es) que NO encuentran su cifra en el fichero de verdad: ${norm.fallos.join(' | ')}`,
         },
       ],
       { noEjecutable: true },
     );
   }
-  const base = { ...declaraciones, manualNormalizado: norm.text };
+  const base = {
+    ...declaraciones,
+    manualNormalizado: norm.textos.get(MANUAL_FILE),
+    anclasNormalizadas: [...norm.textos],
+  };
 
   /**
    * Un señuelo que no se puede montar NO puede parecer un caso verde (R10): si el patrón del
@@ -834,6 +965,39 @@ function runSelfTest() {
       r.red === true,
     correr({
       mutarManual: (txt) => mutar(txt, 'congelad[oa] en (\\d+)', 1601, { indice: 1 }),
+    }),
+  );
+
+  // 3c — EL ANCLA FUERA DEL MANUAL SE MONTA Y SU PATRÓN CASA: el árbol de pruebas tiene que escribir
+  //      el comentario de `backend-erp/scripts/audit-explicit-any.mjs`, donde ancla la figura
+  //      `comentario-generados-206`. Sin esta ficha, el patrón no casaría en el árbol temporal y la
+  //      autoprueba sería ROJA por una razón falsa (un ancla que no se puede montar).
+  check(
+    'ancla-fuera-del-manual-montada (el comentario del script se escribe y su patrón casa: VERDE)',
+    (tipos, r) =>
+      tipos.length === 0 &&
+      r.problems.length === 0 &&
+      r.findings.length === 0 &&
+      r.red === false &&
+      r.figures.some((f) => f.fig.id === 'comentario-generados-206' && f.ancla && f.ancla.valores[0] === 206),
+    correr({}),
+    'la figura anclada fuera del manual no encontró su cifra en el árbol de pruebas',
+  );
+
+  // 3d — EL SEÑUELO DEL ENCARGO, LITERAL: cambiar la CIFRA del ancla a otro número ⇒ ROJO nombrando
+  //      ESA figura. El señuelo NO toca `AGENTS.md`, así que la figura del manual (`eslint-disable-generados`,
+  //      la MISMA cifra 206) tiene que seguir VERDE: son DOS anclas distintas de la misma cifra, y
+  //      pueden divergir por separado -- que es justo lo que la figura del comentario viene a cubrir.
+  check(
+    'ancla-fuera-del-manual-cambiada (el comentario del script: 206 -> 207)',
+    (tipos, r) =>
+      tipos.includes('manual-divergente') &&
+      r.findings.some((f) => f.fig.id === 'comentario-generados-206') &&
+      !r.findings.some((f) => f.fig.id === 'eslint-disable-generados') &&
+      r.red === true,
+    correr({
+      mutarAncla: (txt, fichero) =>
+        fichero === 'backend-erp/scripts/audit-explicit-any.mjs' ? mutar(txt, 'son (\\d+) ficheros de', 207) : txt,
     }),
   );
 
