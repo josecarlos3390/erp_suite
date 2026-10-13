@@ -83,6 +83,15 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   `calcLineWithIndicator`). **Ninguna pantalla ni la tienda replican la regla: la consumen.**
 - **Dinero al centavo** (`Decimal` / `Money` / `isZeroMoney`; `.toFixed()` solo para **serializar**) y
   **fechas con `tenantToday()`** en specs y seeds, nunca `toISOString()`.
+- **Cantidad derivada que se publique y se lea en pantalla** (pendiente, saldo, progreso, total,
+  disponible, facturado, entregado, recibido, consumido…): se entrega con su **invariante canónica
+  citada (`fichero:línea`)** y **un caso que la compare**, y **se deriva de los documentos ACTIVOS**,
+  nunca de una columna denormalizada (`openQty`, `receivedQty`, `invoicedQty`…): puede estar desviada y
+  nadie la mira, pero **en cuanto alguien la lee, publica un número falso** (T265). Censo buscable:
+  `npm run census:derived` (en `backend-erp`; medido: **207** nombres censados y **65** diana). Los dos
+  antídotos ya escritos valen aquí —medir que dos funciones del mismo concepto siguen de acuerdo
+  (`backend-erp/src/common/timezone.predicates.spec.ts`) y **el mismo ALCANCE** para el instrumento que
+  MIDE y el que ACTÚA—; la evidencia con importes de la familia (T259–T266), en `BACKEND_GUIDE.md` §2.
 - **Cuentas con `requiresPartner`:** la línea de asiento exige `partnerId` y el `partnerCode`
   (ShortName) se denormaliza (Anexo B).
 - **E2E:** los maestros se resuelven **por código, nunca por posición**.
