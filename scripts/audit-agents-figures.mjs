@@ -1102,7 +1102,7 @@ function runSelfTest() {
 
   // 2 — una cifra del MANUAL cambiada ⇒ ROJO
   check(
-    'manual-cambiado (1502 -> 1601 en el total del `!`)',
+    'manual-cambiado (1501 -> 1601 en el total del `!`)',
     (tipos, r) => tipos.includes('manual-divergente') && r.findings.some((f) => f.fig.id === 'no-nulo-total') && r.red === true,
     correr({
       mutarManual: (txt) => mutar(txt, 'congelad[oa] en (\\d+)', 1601, { soloPrimera: true }),

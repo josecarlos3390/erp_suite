@@ -204,6 +204,31 @@ npm run audit:contrast       # contraste WCAG de la paleta
    entorno donde el defecto de la doble conversión de zona se manifiesta, y alinearlo lo taparía
    (`4a7e5b5e`). El defecto y su medición van escritos al lado, en el `env` de los tres jobs, para que
    nadie lo «arregle» dentro de un mes.
+8. **El `node` del `PATH` no es el Node que ejecuta un `npm run`, y ninguno de los dos es el que fija el
+   repo.** Medido el **2026-10-12**: el `node` del `PATH` es **v24.14.0** (`C:\Program Files\nodejs`)
+   mientras `backend-erp/.nvmrc` y `erp-frontend/.nvmrc` fijan **24.21.0** y los dos CI anidados lo leen
+   con `node-version-file: '.nvmrc'` (la raíz —la tienda, que **no** tiene `.nvmrc` a propósito porque
+   Vercel elegiría otro Node— lo fija con `node-version: '24'` en su `setup-node`). Rompió **cuatro**
+   puertas: dos `pre-push` del frontend, uno del backend y el arranque de los E2E, donde `ng serve` sale
+   con **exit 3** y el literal «Node.js version v24.14.0 detected.» + «The Angular CLI requires a minimum
+   Node.js version of v22.22.3 or v24.15.0 or v26.0.0.».
+   **Lo que hay que medir es la versión que ve el SCRIPT, no la del `PATH`.** Comprobación verificada, la
+   más simple: un script del `package.json` que imprima su propia versión
+   (`"pv": "node -p \"process.version\""`) y `npm run pv` ⇒ **v24.14.0** con el `PATH` tal cual. Sirve
+   también `npm run env`, que publica además la versión que ve **npm** (`npm_node_execpath` y
+   `npm_config_user_agent`); **`npm exec -- node -p "process.version"` NO sirve de sonda** (medido:
+   resuelve el paquete `node` del registro y devuelve **v26.11.1**, no el `node` del `PATH`).
+   **Y la sutileza medida**: anteponer el Node del repo al `PATH` hace que el SCRIPT vea **v24.21.0**
+   —medido— pero **el proceso `npm` sigue corriendo bajo v24.14.0**, porque el `npm.ps1`/`npm.cmd` de
+   `C:\Program Files\nodejs` llama al **`node.exe` hermano** del propio shim: con el `PATH` preparado,
+   `npm run env` publica `npm_node_execpath=C:\Program Files\nodejs\node.exe` y
+   `npm_config_user_agent=… node/v24.14.0`. **Mitigación medida, en dos piezas**: (a) anteponer el Node
+   del repo al `PATH` (`C:\Users\jdiaz\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin`),
+   que arregla el script; y (b) cuando haga falta que **npm** también sea el fijado, invocar el CLI **con
+   ese Node**: `& "<node>\node.exe" "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js" run
+   <script>` ⇒ el script sigue viendo v24.21.0 y `npm_node_execpath` pasa a ser el Node del repo, con el
+   `user_agent` en `node/v24.21.0` (medido). **Ningún gate vigila esto** y por eso se escribe: la trampa
+   es que `node -v` responde lo correcto mientras la puerta falla por la vía de npm.
 
 ---
 
