@@ -25,13 +25,76 @@
 # COSTE, MEDIDO Y DECLARADO: 200 s por CADA empujon de la raiz. Es del orden del pre-push del
 # backend (209,4 s por cada espejo, medido el 2026-09-25) y muy por debajo del frontend (~10 min,
 # con Karma y el build de produccion). Un empujon que no corra esto paga el rojo en el CI o, peor,
-# en `main`. Lo que NO lleva -- y por que -- esta declarado en el informe del incremento: no hay
-# sello por contenido, no hay guarda de "nada que empujar" y no se reordena el paso caro.
+# en `main`. Lo que NO lleva esta declarado en el informe del incremento: no hay sello por
+# CONTENIDO (el backend si lo tiene) y no se reordena el paso caro.
+#
+# LA GUARDA DEL STDIN (2026-10-12). Copiada del pre-push del backend, calcando su forma: su
+# comentario de cabecera explica la medicion que la origino. El pre-push del backend la tenia y
+# este no, y el desperdicio se midio aqui: un `git push` SIN NADA QUE EMPUJAR corria el gate
+# entero -- 271,56 s medidos el 2026-10-12 con una sonda, incluido el paso 3 -- y despues git
+# imprimia `Everything up-to-date`. El trabajo del hook es verificar lo que se EMPUJA: si no se
+# empuja nada, no hay nada que verificar. Medido, con la guarda puesta: ese mismo empujon sale en
+# 0,2 s en vez de 271,56 s (x1358), y un empujon CON algo que empujar la atraviesa y corre el gate
+# entero (7/7 en 3m58s medidos).
+#
+# LA GUARDA ES DOBLE, y comprueba el VALOR, no solo la forma: (a) stdin sin ninguna linea, o
+# (b) TODAS las lineas anunciadas con el MISMO objeto local y remoto. Cualquier otra cosa -- una
+# linea con forma inesperada (no son 4 campos) o con objetos distintos (alta, borrado, avance) --
+# NO salta nada: el hook sigue su curso entero. Con el stdin ILEGIBLE tampoco se salta: degrada al
+# comportamiento de siempre y NUNCA omite la verificacion por accidente.
+#
+# POR QUE NO CONFUNDE "NADA QUE EMPUJAR" CON "EMPUJAR A UN REMOTO NUEVO". Las dos oraciones
+# hermanas de la guarda son independientes: el stdin VACIO significa que git no anuncia ninguna
+# ref, y las refs IDENTICAS significan que lo anunciado ya esta en el remoto. Un remoto NUEVO no
+# cae en ninguna de las dos: git anuncia `<sha local> <ref> <sha remoto 0000...0>`, que da objetos
+# DISTINTOS, asi que la guarda no corta y el gate corre. Comprobado ejecutando la tabla de casos
+# (8 de 8: 3 de "no hay nada" cortan; remoto nuevo, avance normal, borrado, forma inesperada de 2
+# campos y mezcla de una al dia con otra que avanza, las 5 corren el gate).
 #
 # EL ROJO. Husky invoca el hook como `sh -e "$s"` (`.husky/_/h`), asi que el primer comando que
 # falla ya corta; el `|| exit 1` lo DECLARA, que es lo que hace el pre-push del backend en sus 12
 # comandos, y hace que el rojo no dependa de una opcion del shell. Husky anade ademas su propia
 # linea `husky - pre-push script failed (code N)`.
+#
+# MEDIDO Y DECLARADO EN EL ENTORNO REAL DEL HOOK: git lanza este script por `sh` y le pone en el
+# PATH `/usr/bin` de su instalacion (`sh=/usr/bin/sh`, `cat=/usr/bin/cat`, `sed`, `tr`), asi que
+# los utilitarios de la guarda resuelven. Eso NO es cierto al invocar `sh` a mano desde PowerShell
+# (su PATH no lleva `/usr/bin` y hasta `dirname` falla): por eso la guarda se probo con un `git
+# push` de verdad contra un remoto bare desechable, que es la forma fiel.
+
+input="$(cat)"
+
+nada_que_empujar=1
+if [ -z "$(printf '%s' "$input" | tr -d '[:space:]')" ]; then
+  nada_que_empujar=0
+else
+  lineas=0
+  distintas=0
+  while read -r lref lsha rref rsha resto; do
+    if [ -z "$lref" ]; then
+      continue
+    fi
+    lineas=$((lineas + 1))
+    if [ -n "$resto" ] || [ -z "$lsha" ] || [ -z "$rref" ] || [ -z "$rsha" ]; then
+      distintas=1
+      break
+    fi
+    if [ "$lsha" != "$rsha" ]; then
+      distintas=1
+      break
+    fi
+  done <<EOF
+$input
+EOF
+  if [ "$lineas" -gt 0 ] && [ "$distintas" = 0 ]; then
+    nada_que_empujar=0
+  fi
+fi
+
+if [ "$nada_que_empujar" = 0 ]; then
+  echo "pre-push (raiz): git no anuncia ninguna ref que actualizar: NO hay nada que empujar, no se corre el gate agregado."
+  exit 0
+fi
 
 echo "pre-push (raiz): gate agregado de la raiz -- npm run ci:local (7 pasos, 3m19s medidos el 2026-10-12)."
 
