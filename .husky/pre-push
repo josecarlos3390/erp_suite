@@ -1,0 +1,41 @@
+# PRE-PUSH DE LA RAIZ (la tienda). Hasta este fichero la raiz tenia SOLO `pre-commit`
+# (`npx lint-staged`), y su `lint-staged` cubre unicamente `backend-erp/src/**/*.ts` y
+# `erp-frontend/src/**/*.{ts,html,scss}`: medido el 2026-10-12, un commit que solo toca la raiz
+# (Markdown incluido) imprimia literalmente "No staged files match any configured task", asi que
+# los gates de la raiz los corria quien empujaba, a mano -- o no los corria. Ningun gate. Eso es
+# exactamente lo que el manual llama "un gate que no existe": se puede empujar sin correr nada.
+#
+# QUE CORRE, Y POR QUE EL AGREGADO ENTERO Y NO UN SUBCONJUNTO. Medido el 2026-10-12 con
+# `npm run ci:local` (node v24.14.0 del PATH, win32/x64, TZ America/La_Paz): **7 pasos en verde
+# en 3m19s** de reloj (200 s medidos por fuera), y por paso:
+#   1. autoprueba del gate de workflows   0m02s
+#   2. gate de workflows                  0m01s
+#   3. cifras de `AGENTS.md`              2m27s   <- 147 s, el 74 % del total
+#   4. typecheck (storefront)             0m04s
+#   5. lint (storefront)                  0m08s
+#   6. build (storefront)                 0m34s
+#   7. sync:tokens:check (storefront)     0m02s   <- LOCAL: no esta en NINGUN CI
+# El paso caro (3) es justamente una de las cosas que SOLO existen en la raiz, asi que recortarlo
+# es quedarse sin el gate que la raiz posee; y lo unico que se ahorraria recortando son los pasos
+# 4-6 (46 s, el 23 %) -- a cambio de una SEGUNDA definicion de "el gate de la raiz" que habria que
+# mantener en sync con `scripts/ci-local.mjs`. El hook corre el agregado canonico y no inventa un
+# subconjunto: `ci:local` ya se detiene en el primer paso rojo y lo NOMBRA en su resumen, asi que
+# el motivo del rojo se lee sin buscarlo.
+#
+# COSTE, MEDIDO Y DECLARADO: 200 s por CADA empujon de la raiz. Es del orden del pre-push del
+# backend (209,4 s por cada espejo, medido el 2026-09-25) y muy por debajo del frontend (~10 min,
+# con Karma y el build de produccion). Un empujon que no corra esto paga el rojo en el CI o, peor,
+# en `main`. Lo que NO lleva -- y por que -- esta declarado en el informe del incremento: no hay
+# sello por contenido, no hay guarda de "nada que empujar" y no se reordena el paso caro.
+#
+# EL ROJO. Husky invoca el hook como `sh -e "$s"` (`.husky/_/h`), asi que el primer comando que
+# falla ya corta; el `|| exit 1` lo DECLARA, que es lo que hace el pre-push del backend en sus 12
+# comandos, y hace que el rojo no dependa de una opcion del shell. Husky anade ademas su propia
+# linea `husky - pre-push script failed (code N)`.
+
+echo "pre-push (raiz): gate agregado de la raiz -- npm run ci:local (7 pasos, 3m19s medidos el 2026-10-12)."
+
+npm run ci:local || exit 1
+
+echo "pre-push (raiz): los 7 pasos del gate agregado de la raiz en verde."
+exit 0
