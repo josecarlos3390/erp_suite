@@ -235,9 +235,17 @@ npm run audit:contrast       # contraste WCAG de la paleta
    del repo al `PATH` (`C:\Users\jdiaz\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin`),
    que arregla el script; y (b) cuando haga falta que **npm** también sea el fijado, invocar el CLI **con
    ese Node**: `& "<node>\node.exe" "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js" run
-   <script>` ⇒ el script sigue viendo v24.21.0 y `npm_node_execpath` pasa a ser el Node del repo, con el
-   `user_agent` en `node/v24.21.0` (medido). **Ningún gate vigila esto** y por eso se escribe: la trampa
-   es que `node -v` responde lo correcto mientras la puerta falla por la vía de npm.
+   <script>` ⇒ **el proceso `npm`** pasa a ser el Node del repo (`npm_node_execpath`, con el `user_agent`
+   en `node/v24.21.0`, medido). **Las dos piezas NO son alternativas, y la que arregla el SCRIPT es la
+   (a)**: medido el **2026-10-15**, un `ng lint` lanzado **solo con (b)** —el CLI bajo el Node del repo,
+   sin tocar el `PATH`— sale con **exit 3 en 0 segundos** (literal de Angular: «The Angular CLI requires a
+   minimum Node.js version…»), porque `npm` resuelve el script al shim `node_modules/.bin/ng.cmd` y **ese
+   shim llama al `node` del `PATH`**, no al que arrancó `npm`. Con `tsc` la diferencia **no se ve** (no
+   exige ≥ v24.15.0), y **ese es el caso que enmascara el error**: la fila del typecheck pasa igual con
+   solo (b). Regla: **si el script es un binario de `.bin` (`ng`, `karma`, `next`), hacen falta LAS DOS**
+   —(a) para el hijo, (b) para `npm`—; medir la versión que ve **el script**, no la del `PATH`.
+   **Ningún gate vigila esto** y por eso se escribe: la trampa es que `node -v` responde lo correcto
+   mientras la puerta falla por la vía de npm.
 
 ---
 
