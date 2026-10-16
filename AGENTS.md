@@ -247,6 +247,22 @@ npm run audit:contrast       # contraste WCAG de la paleta
    **Ningún gate vigila esto** y por eso se escribe: la trampa es que `node -v` responde lo correcto
    mientras la puerta falla por la vía de npm.
 
+9. **La `E2E_DATABASE_URL` que se deriva del `.env` conserva las COMILLAS, y Prisma lo denuncia acusando al
+   esquema (medido el 2026-10-15).** El `.env` trae el valor entrecomillado (`DATABASE_URL="postgresql://…"`),
+   así que una derivación naive —`-replace '^DATABASE_URL=', ''` sobre la línea— **deja la comilla de
+   apertura dentro de la URL** y `node scripts/prepare-test-db.mjs` muere con **`P1013: The provided database
+   string is invalid. The scheme is not recognized in database URL`**: el mensaje **acusa al esquema**, que
+   está perfecto, y manda a revisar la parte que no falla. La resta que lo delata: la URL sin comillas mide
+   **67** caracteres y la derivada midió **69**. Regla: derivarla con el patrón **anclado**
+   (`^DATABASE_URL\s*=\s*"?([^"\r\n]+)"?`, el que ya usan las sondas de este repo) y **comprobar el valor
+   con dos aserciones que ABORTEN** —esquema `postgres*` y base `erp_test`—, porque «derivé algo» no es una
+   comprobación. Y **cuidado con la herramienta**: `Select-String` devuelve `MatchInfo`, cuya representación
+   en texto lleva **la ruta y el número de línea delante**, así que un `-replace` sobre él **no casa con el
+   principio de la línea**; `Get-Content` sí devuelve strings. **Y la lección hermana, del mismo día**: cuando
+   la causa no aparece, **quite el filtro** — un `Where-Object` que no casa con el mensaje real **esconde la
+   causa** y deja acusar a la hipótesis equivocada (pasó en esta misma medición: el error de Prisma no casaba
+   con ninguno de los patrones pedidos y estuve a punto de declarar que el problema era el nombre de la base).
+
 ---
 
 ## Reglas de proceso (obligatorias)
