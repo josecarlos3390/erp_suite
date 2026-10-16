@@ -263,6 +263,25 @@ npm run audit:contrast       # contraste WCAG de la paleta
    causa** y deja acusar a la hipótesis equivocada (pasó en esta misma medición: el error de Prisma no casaba
    con ninguno de los patrones pedidos y estuve a punto de declarar que el problema era el nombre de la base).
 
+10. **`Invoke-WebRequest` de PS 5.1 NO entrega el cuerpo de una respuesta de error: un «cuerpo vacío» leído por
+   esa vía es un artefacto del INSTRUMENTO, no del servidor (medido el 2026-10-16).** Sondeando el API
+   desplegado, `Invoke-WebRequest` + `$_.Exception.Response.GetResponseStream()` devolvió **cuerpo vacío** en un
+   **400** y en varios **404**, y estuvo a punto de entrar al ledger como **defecto de producto** («el contrato
+   de error no devuelve `code` ni `requestId`», que el manual exige). **La respuesta real, leída con
+   `curl.exe -i`, traía `Content-Length: 640`** y su cuerpo entero:
+   `{"code":"VALIDATION_ERROR","requestId":"c365a058-…","path":"/auth/login",…}`, con el `requestId`
+   **idéntico** a la cabecera `x-request-id`. Regla: **para leer el cuerpo de una respuesta de error, use
+   `curl.exe`** (o cualquier cliente que no pase por el manejo de errores del framework). **Y la lección
+   hermana, que es la de toda esta lista**: cuando quedan **dos explicaciones incompatibles vivas** —«el
+   servidor no manda cuerpo» frente a «mi sonda no lo sabe leer»—, **NO SE CONCLUYE: se cambia de instrumento**.
+   Lo que evitó el falso hallazgo no fue saberlo, fue **negarse a concluir con un instrumento que podía estar
+   ciego** — y ese mismo patrón explica las otras cuatro trampas medidas el mismo día: `audit:flows` R10b
+   **callaba** (le faltaba un campo en el `select`), `ng lint` **moría en 0 segundos** (el shim cogía otro
+   `node`), un `Where-Object` **no casaba con el mensaje real** y escondía la causa, y `P1013` **acusaba al
+   esquema** cuando sobraba una comilla en la URL del `.env`. **Las cinco señalaban al sitio equivocado; las
+   cinco se resolvieron igual: quitar el filtro, mirar el valor crudo y medir el conjunto que de verdad se
+   toca.**
+
 ---
 
 ## Reglas de proceso (obligatorias)
