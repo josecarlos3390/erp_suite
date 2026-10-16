@@ -33,9 +33,9 @@
       "patron": "(?:ratchet|cifra) \\*{0,2}congelad[oa] en (\\d+)",
       "comando": { "cmd": "npm run audit:non-null:check", "cwd": "backend-erp", "requiere": "backend-erp" },
       "extractor": { "tipo": "regex", "patron": "Aserciones de «no nulo» \\(`!`\\) en TypeScript:\\s*(\\d+)" },
-      "valorEsperado": 1500,
+      "valorEsperado": 1498,
       "muestra": "Aserciones de «no nulo» (`!`) en TypeScript: {v}",
-      "nota": "El manual lo dice DOS veces (la lista de comandos de Backend y la vineta «Cero `!` nuevos»): las dos tienen que decir 1501. La deuda esta CONGELADA, no pagada: el ratchet del instrumento falla si sube. ANCLA, Y POR QUE (2026-10-11): el patron nacio como `congelad[oa] en (\\d+)`, SIN anclar a la familia del `!`, asi que una frase «congelado en N» de OTRA familia ponia esta figura en rojo por una razon equivocada -- el manual ya tiene una: la vineta del delta por commit cuenta el ratchet `1524 -> 1521` de `audit:non-null` y hoy escapa por casualidad, porque escribe «congelada en su cifra» y no «congelada en 1521». El ancla son las DOS palabras que de verdad acompanan a la cifra del `!` en el manual -- «ratchet congelado en 1501» (la lista de comandos de Backend) y «la cifra **congelada en 1501**» (la vineta «Cero `!` nuevos») --, con `\\*{0,2}` para el resalte Markdown, que cae ENTRE las dos palabras: el ancla no puede ser `cifra congelada` a secas, porque no casa y dejaria la cifra real sin encontrar (un filtro que no casa dice «no se»). NO se ancla al `!` ni a «aserciones no nulas»: la vineta «Cero `!` nuevos» no repite ninguna de las dos en su linea de la cifra, y ese ancla perderia el segundo sitio -- la mitad del problema. Probado en la autoprueba: un senuelo «congelada en 1521» de otra familia NO cuenta y el gate sale VERDE (`senuelo-de-otra-familia-no-dispara`), y la cifra real movida a 1601 sale ROJA."
+      "nota": "El manual lo dice DOS veces (la lista de comandos de Backend y la vineta «Cero `!` nuevos»): las dos tienen que decir la MISMA cifra, la vigente. **La cifra bajo de 1500 a 1498 el 2026-10-16 (T279)**: no subiendo la base, sino QUITANDO dos aserciones (`test/test-utils.ts`, `createBatchItem`, que pasan a una local con guarda). La deuda esta CONGELADA, no pagada: el ratchet del instrumento falla si sube. ANCLA, Y POR QUE (2026-10-11): el patron nacio como `congelad[oa] en (\\d+)`, SIN anclar a la familia del `!`, asi que una frase «congelado en N» de OTRA familia ponia esta figura en rojo por una razon equivocada -- el manual ya tiene una: la vineta del delta por commit cuenta el ratchet `1524 -> 1521` de `audit:non-null` y hoy escapa por casualidad, porque escribe «congelada en su cifra» y no «congelada en 1521». El ancla son las DOS palabras que de verdad acompanan a la cifra del `!` en el manual -- «ratchet congelado en N» (la lista de comandos de Backend) y «la cifra **congelada en N**» (la vineta «Cero `!` nuevos») --, con `\\*{0,2}` para el resalte Markdown, que cae ENTRE las dos palabras: el ancla no puede ser `cifra congelada` a secas, porque no casa y dejaria la cifra real sin encontrar (un filtro que no casa dice «no se»). NO se ancla al `!` ni a «aserciones no nulas»: la vineta «Cero `!` nuevos» no repite ninguna de las dos en su linea de la cifra, y ese ancla perderia el segundo sitio -- la mitad del problema. Probado en la autoprueba: un senuelo «congelada en 1521» de otra familia NO cuenta y el gate sale VERDE (`senuelo-de-otra-familia-no-dispara`), y la cifra real movida sale ROJA."
     },
     {
       "id": "no-nulo-expresion",
@@ -43,9 +43,9 @@
       "patron": "`expresión!`\\s*(\\d+)",
       "comando": { "cmd": "npm run audit:non-null:check", "cwd": "backend-erp", "requiere": "backend-erp" },
       "extractor": { "tipo": "regex", "patron": "`expresión!`\\s*:\\s*(\\d+)" },
-      "valorEsperado": 847,
+      "valorEsperado": 845,
       "muestra": "  · `expresión!`            : {v}",
-      "nota": "Desglose del total: 848 + 653 = 1501. El instrumento lo publica como «· `expresión!` : 848»."
+      "nota": "Desglose del total: 845 + 653 = 1498. El instrumento lo publica como «· `expresión!` : 845»."
     },
     {
       "id": "no-nulo-asignacion",
@@ -63,9 +63,9 @@
       "patron": "(\\d+) en producción,",
       "comando": { "cmd": "npm run audit:non-null:check", "cwd": "backend-erp", "requiere": "backend-erp" },
       "extractor": { "tipo": "regex", "patron": "en código de producción\\s*:\\s*(\\d+)" },
-      "valorEsperado": 1147,
+      "valorEsperado": 1145,
       "muestra": "  · en código de producción : {v}",
-      "nota": "El manual reparte el total entre produccion y specs (1148 + 353 = 1501). El censo es por CARPETA (`src`: 1254 incluye specs de `src/`), asi que las dos particiones no son la misma: la del manual es produccion/specs y es la que se vigila."
+      "nota": "El manual reparte el total entre produccion y specs (1145 + 353 = 1498). El censo es por CARPETA (`src`: 1254 incluye specs de `src/`), asi que las dos particiones no son la misma: la del manual es produccion/specs y es la que se vigila."
     },
     {
       "id": "no-nulo-specs",
