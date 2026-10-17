@@ -628,6 +628,14 @@ npm run audit:contrast       # contraste WCAG de la paleta
   sé», no «no hay nada»)—. (`backend-erp`, `src/common/timezone.predicates.spec.ts`.) **Ejecute la
   tabla y compruebe que sus dos listas no se solapan**: un caso que está en las dos es un error de la
   tabla, no del producto.
+- **Toda invariante NUEVA entra con su A/B: sin el A/B, «verde» no es una prueba, es una opinión
+  (2026-10-17).** El caso se escribe con el **código anterior** delante y tiene que marcar el defecto
+  —su literal y su cifra—; con el arreglo, tiene que dar verde. El caso medido lo escribió un agente
+  horas antes: `ANNULMENTS_LOT` con el código de `main` daba **12 lotes rojos** y con el arreglo **0**,
+  sobre un universo de **32 lotes**. El A/B va dentro de la autoprueba del instrumento (`--self-test`),
+  no en la prosa: un caso que nunca se ha visto en rojo no es un gate. Y si el A/B descubre que el rojo
+  era del **alcance** del instrumento y no del producto (T126, R2b), lo que se corrige es el alcance y
+  se declara; no se celebra el verde.
 
 ## 6. Variables de entorno críticas
 
