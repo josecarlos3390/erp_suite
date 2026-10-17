@@ -552,8 +552,10 @@ npm run audit:contrast       # contraste WCAG de la paleta
 - **Una herramienta puede hacer BIEN su tarea sobre el CONJUNTO EQUIVOCADO, y ningún gate lo verá:
   compruebe el ALCANCE antes de dejarla correr.** `audit:date-class` daba **0 hallazgos** mientras tres
   sitios leían mal `Batch.expiryDate`/`manufactureDate`, porque **no estaban en el registro
-  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** (hoy **1360**: el ratchet
-  vigila los hallazgos, no las apariciones, así que esa cifra deriva sin que el gate lo diga) y el «0»
+  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** (hoy **1361**: el ratchet
+  vigila los hallazgos, no las apariciones, y `audit:agents-figures` es el que cierra ese hueco — por
+  eso la cifra se mueve EN EL MISMO empujón que el código que la mueve; subió de 1360 a 1361 con la
+  reversa de T280, que añade el `documentDate` de la anulación al movimiento) y el «0»
   pasó a ser cierto sobre el esquema y no sobre lo declarado (`backend-erp`, `017e46f9`, sobre el gate
   de `819cc493`).
   Desde el otro lado, la misma lección: en la migración de fechas el ratchet del `!` «hacía bien su

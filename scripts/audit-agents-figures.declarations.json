@@ -173,9 +173,9 @@
       "patron": "\\(hoy \\*\\*(\\d+)\\*\\*: el ratchet",
       "comando": { "cmd": "npm run audit:date-class:check", "cwd": "backend-erp", "requiere": "backend-erp" },
       "extractor": { "tipo": "regex", "patron": "Apariciones de columnas declaradas:\\s*(\\d+)" },
-      "valorEsperado": 1360,
+      "valorEsperado": 1361,
       "muestra": "Apariciones de columnas declaradas: {v}",
-      "nota": "El manual lo declara como cifra que DERIVA («hoy 1360»): el ratchet del instrumento vigila los HALLAZGOS (0), no las apariciones. Este gate es justo lo que cierra ese hueco: si las apariciones se mueven, el manual lo dice o el gate lo dice."
+      "nota": "El manual lo declara como cifra que DERIVA («hoy 1361»): el ratchet del instrumento vigila los HALLAZGOS (0), no las apariciones. Este gate es justo lo que cierra ese hueco: si las apariciones se mueven, el manual lo dice o el gate lo dice. Subio de 1360 a 1361 con la reversa de T280 (el `documentDate` del movimiento de anulacion, `purchase-receipts.service.ts`): la cifra se mueve EN EL MISMO empujon que el codigo que la mueve, medido con `git checkout main -- <fichero>` -> 1360 y `git checkout HEAD -- <fichero>` -> 1361."
     },
     {
       "id": "ng-deep-sin-marca",
