@@ -282,6 +282,45 @@ npm run audit:contrast       # contraste WCAG de la paleta
    cinco se resolvieron igual: quitar el filtro, mirar el valor crudo y medir el conjunto que de verdad se
    toca.**
 
+11. **El `pre-push` NO existe en un worktree recién creado: el gate no corre, el push sale con `exit 0`
+   y con CERO salida de gates, y no deja rastro en ningún sitio (medido el 2026-10-17).** Reproducción
+   medida, no hipótesis:
+   ```powershell
+   git -C D:\ProyectosPython\erp_suite\backend-erp worktree add --detach $env:TEMP\wt-hook-probe main
+   git -C $env:TEMP\wt-hook-probe config --get core.hooksPath    # -> .husky/_
+   Test-Path -LiteralPath "$env:TEMP\wt-hook-probe\.husky\_"     # -> False
+   Get-ChildItem "$env:TEMP\wt-hook-probe\.husky" -Force         # -> solo pre-commit y pre-push (los VERSIONADOS)
+   # y un PUSH REAL contra un remoto desechable:
+   git init --bare $env:TEMP\probe-remote.git
+   git -C $env:TEMP\wt-hook-probe remote add probe $env:TEMP\probe-remote.git
+   # ...añadir un fichero, commit y:
+   git -C $env:TEMP\wt-hook-probe push probe HEAD:refs/heads/probe   # -> PUSH_EXIT=0 y CERO salida de gates
+   ```
+   **Causa**: `core.hooksPath = .husky/_`, y **ese directorio lo GENERA husky en el `install`**; **git lo
+   ignora** ⇒ **no viaja en el checkout de un worktree nuevo**. Medido además: **el commit salió sin
+   `lint-staged` y el push sin `typecheck:all`, sin la suite y sin `audit:pg-tools:self-test`** (ni una
+   línea). **SEGUNDA INSTANCIA medida**: el worktree de otro agente (`%TEMP%\inc2\main-tree`, en `main`)
+   **tampoco** lo tiene.
+   **Por qué importa**: **es peor que un `--no-verify`** — aquél deja rastro en la línea de comandos y
+   **esto no deja rastro en ningún sitio** ⇒ **un push desde un worktree sin hook no es «un push sin
+   verificar»: es un push que PARECE verificado.** Caso concreto que casi ocurrió: **el gate que
+   bloqueaba a otro agente (`audit:collection-caps`, base 683) era justo el que no habría corrido.**
+   **Arreglo, por worktree**: `npm run prepare` **dentro del worktree** (crea `.husky/_` con los shims)
+   — es lo que hizo que un push pasara el hook **entero**. **Y la comprobación OBLIGATORIA antes de
+   empujar**: `Test-Path -LiteralPath '<worktree>\.husky\_\pre-push'` **tiene que decir `True`**.
+   **Regla: no basta con no usar `--no-verify`; hay que comprobar que el hook EXISTE.**
+
+12. **El build de la tienda hace fallar `ci:local` de forma INTERMITENTE por contención de `.next`: es un
+   rojo FALSO, no un defecto del producto (medido el 2026-10-17, en la misma máquina y con el mismo
+   commit).** `ci:local` (**7** pasos) **falló en el paso 5** con
+   `Error: ENOENT: no such file or directory, rename 'D:\ProyectosPython\erp_suite\storefront\.next\export\500.html' -> ...`
+   y **`RESUMEN: 5 pasos en verde en 3m19s`**; **a los dos minutos, el MISMO gate dio
+   `RESUMEN: 7 pasos en verde en 1m52s`** ⇒ **es un rojo FALSO por contención de `.next`**, **no un
+   defecto del producto**: **la regla 3 de esta misma lista ya lo dice** («el dev server (:3000) y el
+   E2E/build comparten `.next`»). ⇒ **antes de atribuir ese rojo al cambio que estás empujando, comprueba
+   quién más está usando `.next` (un `next build`, un `next start`, un E2E de la tienda, otro agente) y
+   repítelo en aislamiento.**
+
 ---
 
 ## Reglas de proceso (obligatorias)
