@@ -136,7 +136,7 @@ npm run audit:money:check    # dinero al centavo (ratchet en 0)
 npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1498 (medido el 2026-10-16 en `backend-erp`)
 npm run audit:explicit-any:check # `any` explícitos: ratchet en 1 (producción 0, specs 1)
 npm run audit:spec-clock:check   # reloj del proceso en specs: 0 hallazgos (2 excepciones declaradas)
-npm run audit:collection-caps:check # consultas sin cota (`produccionSinCota`): ratchet en 682 (medido el 2026-10-12 en `backend-erp`)
+npm run audit:collection-caps:check # consultas sin cota (`produccionSinCota`): ratchet en 682 (medido el 2026-10-16 en `backend-erp`)
 npm run audit:security-headers # postura de cabeceras en el código (gate estático de DECLARACIÓN): x-powered-by desactivado una sola vez en el arranque, nada la vuelve a encender y 0 hallazgos (medido el 2026-10-12 en `backend-erp`; los sitios que ponen cabeceras DERIVAN con cada endpoint legítimo y NO se congelan — prueba que el código lo dice, NO que la cabecera haya desaparecido)
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
@@ -283,7 +283,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
    toca.**
 
 11. **El `pre-push` NO existe en un worktree recién creado: el gate no corre, el push sale con `exit 0`
-   y con CERO salida de gates, y no deja rastro en ningún sitio (medido el 2026-10-17).** Reproducción
+   y con CERO salida de gates, y no deja rastro en ningún sitio (medido el 2026-10-16).** Reproducción
    medida, no hipótesis:
    ```powershell
    git -C D:\ProyectosPython\erp_suite\backend-erp worktree add --detach $env:TEMP\wt-hook-probe main
@@ -311,7 +311,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
    **Regla: no basta con no usar `--no-verify`; hay que comprobar que el hook EXISTE.**
 
 12. **El build de la tienda hace fallar `ci:local` de forma INTERMITENTE por contención de `.next`: es un
-   rojo FALSO, no un defecto del producto (medido el 2026-10-17, en la misma máquina y con el mismo
+   rojo FALSO, no un defecto del producto (medido el 2026-10-16, en la misma máquina y con el mismo
    commit).** `ci:local` (**7** pasos) **falló en el paso 5** con
    `Error: ENOENT: no such file or directory, rename 'D:\ProyectosPython\erp_suite\storefront\.next\export\500.html' -> ...`
    y **`RESUMEN: 5 pasos en verde en 3m19s`**; **a los dos minutos, el MISMO gate dio
