@@ -360,8 +360,18 @@ npm run audit:contrast       # contraste WCAG de la paleta
    `node e2e/harness/test-database-url.cjs --self-test`. **Lo que el cambio destapó** (medido y
    atribuido en el `CHANGELOG.md` del frontend): el `auth.setup` daba por hecho `branchId = 1` y
    en `erp_test` la sucursal del seed es `SUC-01` con otro id ⇒ se resuelve **por código**; y
-   `/discount-groups/groups` devuelve **una fila por (grupo, descuento)** —el seed duplica los
-   descuentos en cada pasada—, así que la huella del seed cuenta los `groupId` **distintos**.
+   `/discount-groups/groups` devuelve **una fila por (grupo, descuento)**; el seed duplicaba
+   los descuentos en cada pasada, así que la huella contaba los `groupId` **distintos**. **Eso
+   quedó arreglado el 2026-10-18**: el seed hacía `upsert({ where: { id: 1 } })` —el id es un
+   autoincremento global que en una BD ya sembrada vale otro— y creaba **+2 filas por pasada**
+   (medido: `ItemGroupDiscount` 18 → 20 → 22; de las **199** tablas, la única que cambiaba).
+   Ahora usa la clave de negocio `(tenantId, groupId, partnerId, partnerGroupId, partnerType)`
+   —la misma que `DiscountGroupsService.bulkUpsert`—, conserva la primera fila y borra solo los
+   duplicados de esa clave (`ensureSeedItemGroupDiscount` en `backend-erp/prisma/seed.ts`). La
+   BD converge (22 → 2 en la primera pasada con el arreglo) y la segunda pasada deja las **199**
+   tablas idénticas, así que la huella del seed ya cuenta **filas** (`discount-groups` = 9:
+   una por grupo, con su descuento; antes las filas duplicadas la hacían derivar) en vez de
+   `groupId` distintos.
    La regla 1 (dos suites E2E completas comparten `erp_test`) no cubre este caso: aquí la base
    que se tocaba no era `erp_test`, era `erp_db`.**
 
