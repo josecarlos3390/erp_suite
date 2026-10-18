@@ -321,6 +321,31 @@ npm run audit:contrast       # contraste WCAG de la paleta
    quién más está usando `.next` (un `next build`, un `next start`, un E2E de la tienda, otro agente) y
    repítelo en aislamiento.**
 
+13. **`npm run e2e:visual` SIEMBRA `erp_db`, la base del usuario, porque el `webServer` de
+   `erp-frontend/playwright.config.ts` corre `prisma db seed` contra `backend-erp/.env` (medido el
+   2026-10-17).** El `webServer` del backend declara, literal:
+   `command: \`cd "${BACKEND_DIR}" && npx prisma db seed && 'npm run start'\``, con
+   `BACKEND_DIR` = `../backend-erp` por defecto. Ese `prisma db seed` **no recibe un `DATABASE_URL`
+   de test**: lo resuelve el `.env` de `backend-erp`, que apunta a **`erp_db`**. Reproducción literal
+   (sin ejecutarla en este incremento):
+   ```powershell
+   cd D:\ProyectosPython\erp_suite\erp-frontend
+   npm run e2e:visual
+   # webServer[0]: cd "../backend-erp" && npx prisma db seed && 'npm run start'
+   # backend-erp/.env: DATABASE_URL="postgresql://…@localhost:5432/erp_db"
+   # ⇒ el seed escribe en erp_db (la base del usuario), no en erp_test
+   ```
+   **Por qué importa.** `erp_db` es la base de desarrollo del usuario y este manual prohíbe el
+   seed/reset destructivo contra ella sin su decisión explícita; además, el arnés visual no es un
+   gate de producto que deba tocar datos reales. **Arreglo recomendado (NO implementado aquí: toca
+   el arnés y el usuario regenera los baselines con `update-baselines.yml`)**: cablear al `webServer`
+   del backend un `DATABASE_URL` de **test** —el que ya deriva `E2E_DATABASE_URL`, con las dos
+   aserciones que abortan de la regla 9— o levantar una **base desechable** para el arnés, y hacer
+   que el `prisma db seed` del `webServer` use esa URL. Mientras no se cablee, **no se ejecuta
+   `e2e:visual` ni `e2e:baseline` en esta máquina**; los baselines se regeneran solo por
+   `update-baselines.yml`. La regla 1 (dos suites E2E completas comparten `erp_test`) no cubre este
+   caso: aquí la base que se toca no es `erp_test`, es `erp_db`.**
+
 ---
 
 ## Reglas de proceso (obligatorias)
