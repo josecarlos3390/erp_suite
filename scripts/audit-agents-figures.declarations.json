@@ -173,9 +173,9 @@
       "patron": "\\(hoy \\*\\*(\\d+)\\*\\*: el ratchet",
       "comando": { "cmd": "npm run audit:date-class:check", "cwd": "backend-erp", "requiere": "backend-erp" },
       "extractor": { "tipo": "regex", "patron": "Apariciones de columnas declaradas:\\s*(\\d+)" },
-      "valorEsperado": 1361,
+      "valorEsperado": 1364,
       "muestra": "Apariciones de columnas declaradas: {v}",
-      "nota": "El manual lo declara como cifra que DERIVA («hoy 1361»): el ratchet del instrumento vigila los HALLAZGOS (0), no las apariciones. Este gate es justo lo que cierra ese hueco: si las apariciones se mueven, el manual lo dice o el gate lo dice. Subio de 1360 a 1361 con la reversa de T280 (el `documentDate` del movimiento de anulacion, `purchase-receipts.service.ts`): la cifra se mueve EN EL MISMO empujon que el codigo que la mueve, medido con `git checkout main -- <fichero>` -> 1360 y `git checkout HEAD -- <fichero>` -> 1361."
+      "nota": "El manual lo declara como cifra que DERIVA («hoy 1364»): el ratchet del instrumento vigila los HALLAZGOS (0), no las apariciones. Este gate es justo lo que cierra ese hueco: si las apariciones se mueven, el manual lo dice o el gate lo dice. De 1360 a 1361 la movio la reversa de T280 (el `documentDate` del movimiento de anulacion, `purchase-receipts.service.ts`); de 1361 a 1364 la movio T287 (la cadena del flujo de documentos, `backend-erp/src/document-flow/document-flow-chain*.ts`, que nombra `date` en el contrato y en sus dos specs) y con ella subieron los ambiguos declarados de la linea base del instrumento (1101 -> 1104); de paso se congelo esa linea base, que iba un punto por detras (1360/1100 frente a 1361/1101 medidos). La cifra se mueve EN EL MISMO empujon que el codigo que la mueve."
     },
     {
       "id": "ng-deep-sin-marca",
@@ -305,7 +305,7 @@
       "id": "date-class-ambiguos",
       "cifra": "`audit:date-class` — ambiguos declarados y base",
       "donde": "AGENTS.md:381-384",
-      "motivo": "El manual declara las APARICIONES vigiladas (que si se vigilan, figura `date-class-apariciones`) y no los ambiguos declarados. El instrumento los publica y su linea base guarda 1102 mientras mide 1100: el gate del instrumento NO compara ese campo (`audit-date-class.mjs`), asi que la base no se toca -- se reporta, como ya hizo `3027c4a`."
+      "motivo": "El manual declara las APARICIONES vigiladas (que si se vigilan, figura `date-class-apariciones`) y no los ambiguos declarados. El instrumento los publica y su linea base quedo CONGELADA en su cifra medida el 2026-10-17 (1104, la misma que publica), porque su ratchet NO compara ese campo (`audit-date-class.mjs`): se reporta, y lo que bloquea sigue siendo `hallazgos`. Antes de esa fecha la base iba un punto por detras (1100 frente a 1101 medidos) -- ese desfase es el que T287 cerro al mover la cifra de su empujon."
     }
   ]
 }
