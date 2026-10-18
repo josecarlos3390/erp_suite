@@ -337,14 +337,33 @@ npm run audit:contrast       # contraste WCAG de la paleta
    ```
    **Por qué importa.** `erp_db` es la base de desarrollo del usuario y este manual prohíbe el
    seed/reset destructivo contra ella sin su decisión explícita; además, el arnés visual no es un
-   gate de producto que deba tocar datos reales. **Arreglo recomendado (NO implementado aquí: toca
-   el arnés y el usuario regenera los baselines con `update-baselines.yml`)**: cablear al `webServer`
-   del backend un `DATABASE_URL` de **test** —el que ya deriva `E2E_DATABASE_URL`, con las dos
-   aserciones que abortan de la regla 9— o levantar una **base desechable** para el arnés, y hacer
-   que el `prisma db seed` del `webServer` use esa URL. Mientras no se cablee, **no se ejecuta
-   `e2e:visual` ni `e2e:baseline` en esta máquina**; los baselines se regeneran solo por
-   `update-baselines.yml`. La regla 1 (dos suites E2E completas comparten `erp_test`) no cubre este
-   caso: aquí la base que se toca no es `erp_test`, es `erp_db`.**
+   gate de producto que deba tocar datos reales. **Arreglo IMPLEMENTADO el 2026-10-18** (el diagnóstico de arriba se conserva íntegro; esta
+   regla decía «NO implementado aquí»): el `webServer` del backend **ya no siembra contra el
+   `.env`**. `playwright.config.ts` deriva la URL en `e2e/harness/test-database-url.cjs` con el
+   patrón **anclado** (`^DATABASE_URL\s*=\s*"?([^"\r\n]+)"?`), **quita las comillas**, cambia la
+   base a `erp_test` y la pasa al `env` del `webServer` (nunca al `.env`), junto con
+   `E2E_DATABASE_URL` para que `test:e2e:prepare` —el camino que ya usa `npm run test:e2e` del
+   backend— sincronice el esquema; el `command` encadena `test:e2e:prepare && prisma db seed &&
+   npm run start`. **Dos aserciones abortan** (esquema `postgres*` y base **exactamente**
+   `erp_test`) y una **guarda** aborta si la URL resuelta es `erp_db`: el arnés **no arranca**.
+   Además el `webServer` **no reutiliza** un backend levantado (`reuseExistingServer: false`),
+   porque un `npm run start` de desarrollo habla con `erp_db` y la suite escribiría ahí; y las
+   bases de CI y de `update-baselines.yml` se llaman `erp_test`, para que la guarda sea la misma
+   en local y en el runner. **Medido**: `E2E_DATABASE_URL=…/erp_db` ⇒ `playwright test --list`
+   aborta con `ABORTA: la base resuelta para el arnés es "erp_db"…` y exit 1 **sin arrancar el
+   seed**; la derivación de `backend-erp/.env` da `…/erp_test` (65 caracteres limpios frente a
+   los 67 con comillas, la resta de la regla 9) y el `webServer` imprime la base con la que
+   trabaja. La huella de `erp_db` —conteos de `Tenant`, `Partner`, `Item`, `SaleInvoice`,
+   `PurchaseInvoice`, `Stock`, `StockMovement`, `Batch` y `SerialNumber`, más su `updatedAt`
+   máximo— quedó **idéntica** antes y después de `e2e:visual` y de regenerar el baseline
+   `-win32`. Autoprueba de la derivación y de la guarda:
+   `node e2e/harness/test-database-url.cjs --self-test`. **Lo que el cambio destapó** (medido y
+   atribuido en el `CHANGELOG.md` del frontend): el `auth.setup` daba por hecho `branchId = 1` y
+   en `erp_test` la sucursal del seed es `SUC-01` con otro id ⇒ se resuelve **por código**; y
+   `/discount-groups/groups` devuelve **una fila por (grupo, descuento)** —el seed duplica los
+   descuentos en cada pasada—, así que la huella del seed cuenta los `groupId` **distintos**.
+   La regla 1 (dos suites E2E completas comparten `erp_test`) no cubre este caso: aquí la base
+   que se tocaba no era `erp_test`, era `erp_db`.**
 
 ---
 
