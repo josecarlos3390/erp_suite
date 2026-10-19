@@ -15,6 +15,12 @@
 #   5. lint (storefront)                  0m08s
 #   6. build (storefront)                 0m34s
 #   7. sync:tokens:check (storefront)     0m02s   <- LOCAL: no esta en NINGUN CI
+# **El agregado HA CRECIDO desde esa medicion, y los numeros de arriba son los de AQUEL DIA.**
+# Medido el 2026-10-19: `ci:local` tiene **9 pasos** (se le sumaron el 8, `audit:invariants:coverage`
+# del backend, y el 9, `audit:suppressions:check`, el gate de la regla «Nunca --no-verify») y salio
+# **9/9 en verde en 2m03s**; el paso 9 tardo 0m03s. Este hook NO lleva la cuenta: la imprime el
+# propio `ci:local` en su banner y en su `RESUMEN`, y aqui no se repite para que no vuelva a
+# quedarse vieja (estas dos lineas de `echo` decian «7 pasos» cuando ya eran 8).
 # El paso caro (3) es justamente una de las cosas que SOLO existen en la raiz, asi que recortarlo
 # es quedarse sin el gate que la raiz posee; y lo unico que se ahorraria recortando son los pasos
 # 4-6 (46 s, el 23 %) -- a cambio de una SEGUNDA definicion de "el gate de la raiz" que habria que
@@ -104,9 +110,9 @@ if [ "$nada_que_empujar" = 0 ]; then
   exit 0
 fi
 
-echo "pre-push (raiz): gate agregado de la raiz -- npm run ci:local (7 pasos, 3m19s medidos el 2026-10-12)."
+echo "pre-push (raiz): gate agregado de la raiz -- npm run ci:local (su cuenta y su coste los imprime el propio script)."
 
 npm run ci:local || exit 1
 
-echo "pre-push (raiz): los 7 pasos del gate agregado de la raiz en verde."
+echo "pre-push (raiz): todos los pasos del gate agregado de la raiz en verde (la cuenta, en el RESUMEN de ci:local)."
 exit 0
