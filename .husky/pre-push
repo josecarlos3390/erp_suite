@@ -16,9 +16,11 @@
 #   6. build (storefront)                 0m34s
 #   7. sync:tokens:check (storefront)     0m02s   <- LOCAL: no esta en NINGUN CI
 # **El agregado HA CRECIDO desde esa medicion, y los numeros de arriba son los de AQUEL DIA.**
-# Medido el 2026-10-19: `ci:local` tiene **9 pasos** (se le sumaron el 8, `audit:invariants:coverage`
-# del backend, y el 9, `audit:suppressions:check`, el gate de la regla «Nunca --no-verify») y salio
-# **9/9 en verde en 2m03s**; el paso 9 tardo 0m03s. Este hook NO lleva la cuenta: la imprime el
+# Medido el 2026-10-19: `ci:local` tiene **10 pasos** (se le sumaron el 8,
+# `audit:invariants:coverage` del backend, el 9, `audit:suppressions:check` —el gate de la regla
+# «Nunca --no-verify»— y el 10, `audit:fixtures:check`, el vinculo entre el fixture medido y su T en
+# `AUDIT.md`) y salio **10/10 en verde en 1m32s**; los pasos 9 y 10 tardaron 0m03s y 0m01s. (Antes
+# del 10, ese mismo dia: **9/9 en 2m03s**.) Este hook NO lleva la cuenta: la imprime el
 # propio `ci:local` en su banner y en su `RESUMEN`, y aqui no se repite para que no vuelva a
 # quedarse vieja (estas dos lineas de `echo` decian «7 pasos» cuando ya eran 8).
 # El paso caro (3) es justamente una de las cosas que SOLO existen en la raiz, asi que recortarlo

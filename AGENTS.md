@@ -616,19 +616,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
   `src/common/timezone.predicates.spec.ts`; la frontera, en
   `src/common/decorators/is-tenant-day-or-instant.decorator.ts`). **Escriba la tabla de equivalencia y
   ejecútela**: «son la misma cosa» no se declara porque llamen al mismo útil.
-- **Los fixtures que reproducen un defecto medido NO se tocan.** Caso medido: **cuatro** casos de
-  `preview-journal-entry-draft.dto.spec.ts` llevaban `date: '2026-09-25T00:00:00.000Z'` —un
-  **instante**, no un día— y eran **el payload real de cuatro pantallas** (factura de venta, factura de
-  compra, reserva de venta y reserva de compra). El cambio «obvio» —que el `date` del borrador tenga
-  que ser un **día**— habría puesto **cuatro casos en verde** (el instante a medias, el 30 de febrero,
-  la basura y el día válido) y habría **roto la función en producción**: el **400** que el propio spec
-  existe para prevenir (T238). **Ningún gate lo habría cazado: solo los fixtures** —`eslint`,
-  `typecheck:all` y el ratchet del `!` pasan igual con el validador equivocado—. Los fixtures que
-  documentan un defecto medido son la **única prueba** de que el defecto existe tal como se describió;
-  por eso la frontera acepta **las dos** formas y hay un caso que exige que el instante real **siga
-  entrando** (`backend-erp`, `src/journal-entries/dto/preview-journal-entry-draft.dto.spec.ts`).
-  **Antes de «arreglar» un fixture, compruebe qué payload real reproduce**: si el payload real es el
-  que el caso rechaza, el que está mal es el validador, no el fixture.
+- **Los fixtures que reproducen un defecto medido NO se tocan** (gate: `npm run audit:fixtures:check` —toda marca `fixture-medido: T<nnn>` con su `T` en `AUDIT.md`, y toda spec que CITA un `T` en un comentario con su marca—). **La mitad que ningún gate ve, explícita: antes de «arreglar» un fixture, compruebe qué payload real reproduce; el que está mal puede ser el validador, no el fixture.** [Texto completo](docs/guides/reglas-medidas.md#fixtures-medidos).
 - **Una tabla de casos también es un instrumento, y también puede mentir.** Una tabla **sin ejecutar**
   es una afirmación; una tabla que **se ejecuta** encuentra sus propios errores. Caso medido: la red de
   equivalencia de arriba falló en su **primer acto** porque un día **válido** (`'2026-06-15'`) estaba

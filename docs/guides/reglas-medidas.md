@@ -15,7 +15,7 @@
 > con cada comando, cifra y fecha. El informe del incremento declara el resultado y los bytes.
 >
 > **Procedencia.** Bloques movidos desde `AGENTS.md`: los cinco primeros desde el commit base
-> `2f3cc7f`, el de la raíz desde `cf00645` y el de supresiones desde `6c28770`. No se reescribió ni se
+> `2f3cc7f`, el de la raíz desde `cf00645`, el de supresiones desde `6c28770` y el de fixtures desde `d8bbc24`. No se reescribió ni se
 > borró una línea: son los mismos bytes, con el mismo CRLF.
 
 ## Índice
@@ -29,6 +29,7 @@
 | `typecheck:all` POR FICHERO | `npm run typecheck:all` | [`#typecheck-all-por-fichero`](#typecheck-all-por-fichero) |
 | `/` → `/login` (router, no HTTP) | `e2e/auth-guard.spec.ts` (raíz sin sesión) | [`#raiz-a-login`](#raiz-a-login) |
 | Nunca `--no-verify` | `npm run audit:suppressions:check` | [`#nunca-no-verify`](#nunca-no-verify) |
+| Los fixtures que reproducen un defecto medido | `npm run audit:fixtures:check` | [`#fixtures-medidos`](#fixtures-medidos) |
 
 ---
 
@@ -152,5 +153,27 @@
   no las alcanza—; y `--force` **sólo** en `prisma migrate reset --force`,
   que es lo que ejecuta `db:recreate`. Las aserciones no nulas (`!`) van aparte, en la viñeta siguiente
   (medido el **2026-10-10** en `backend-erp`; el detalle, en el `CHANGELOG.md` de la raíz).
+
+---
+
+<a id="fixtures-medidos"></a>
+
+## Los fixtures que reproducen un defecto medido NO se tocan.
+
+> Bloque literal de `AGENTS.md` (commit base `d8bbc24`), sin reescribir, con su CRLF.
+
+- **Los fixtures que reproducen un defecto medido NO se tocan.** Caso medido: **cuatro** casos de
+  `preview-journal-entry-draft.dto.spec.ts` llevaban `date: '2026-09-25T00:00:00.000Z'` —un
+  **instante**, no un día— y eran **el payload real de cuatro pantallas** (factura de venta, factura de
+  compra, reserva de venta y reserva de compra). El cambio «obvio» —que el `date` del borrador tenga
+  que ser un **día**— habría puesto **cuatro casos en verde** (el instante a medias, el 30 de febrero,
+  la basura y el día válido) y habría **roto la función en producción**: el **400** que el propio spec
+  existe para prevenir (T238). **Ningún gate lo habría cazado: solo los fixtures** —`eslint`,
+  `typecheck:all` y el ratchet del `!` pasan igual con el validador equivocado—. Los fixtures que
+  documentan un defecto medido son la **única prueba** de que el defecto existe tal como se describió;
+  por eso la frontera acepta **las dos** formas y hay un caso que exige que el instante real **siga
+  entrando** (`backend-erp`, `src/journal-entries/dto/preview-journal-entry-draft.dto.spec.ts`).
+  **Antes de «arreglar» un fixture, compruebe qué payload real reproduce**: si el payload real es el
+  que el caso rechaza, el que está mal es el validador, no el fixture.
 
 ---
