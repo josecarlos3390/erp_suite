@@ -15,8 +15,8 @@
 > con cada comando, cifra y fecha. El informe del incremento declara el resultado y los bytes.
 >
 > **Procedencia.** Bloques movidos desde `AGENTS.md`: los cinco primeros desde el commit base
-> `2f3cc7f` y el de la raíz desde `cf00645`. No se reescribió ni se borró una línea: son los mismos
-> bytes, con el mismo CRLF.
+> `2f3cc7f`, el de la raíz desde `cf00645` y el de supresiones desde `6c28770`. No se reescribió ni se
+> borró una línea: son los mismos bytes, con el mismo CRLF.
 
 ## Índice
 
@@ -28,6 +28,7 @@
 | Un workflow que nunca se ejecuta | `npm run audit:workflow-inputs` | [`#workflow-que-nunca-se-ejecuta`](#workflow-que-nunca-se-ejecuta) |
 | `typecheck:all` POR FICHERO | `npm run typecheck:all` | [`#typecheck-all-por-fichero`](#typecheck-all-por-fichero) |
 | `/` → `/login` (router, no HTTP) | `e2e/auth-guard.spec.ts` (raíz sin sesión) | [`#raiz-a-login`](#raiz-a-login) |
+| Nunca `--no-verify` | `npm run audit:suppressions:check` | [`#nunca-no-verify`](#nunca-no-verify) |
 
 ---
 
@@ -133,5 +134,23 @@
   **La intención no cambia** —la app tiene que llevar al login—; lo que cambia es que ahora se
   **puede medir**, y que un `curl` a `/` que devuelva **200** es el resultado **esperado**, no un
   fallo.
+
+---
+
+<a id="nunca-no-verify"></a>
+
+## Nunca `--no-verify`
+
+> Bloque literal de `AGENTS.md` (commit base `6c28770`), sin reescribir.
+
+- **Nunca `--no-verify`** (ni `--force`, `@ts-ignore`, `eslint-disable`, `xit`). El hook se arregla,
+  no se salta. El proyecto lo mide, y no todo es cero: **0 usos** de `--no-verify`, `xit`, `@ts-ignore`
+  y `as any`; `eslint-disable` **sólo con la regla nombrada**, y ese calificativo son **12** directivas
+  **escritas a mano en `src/`** (8 `local/no-raw-without-tenant` + 4 `@typescript-eslint/no-require-imports`) —
+  las **206** de `src/generated/` **no** nombran ninguna regla: son `/* eslint-disable */` **en bloque**,
+  una por fichero de Prisma, y `eslint.config.mjs:19` las deja **fuera del lint**, así que la condición
+  no las alcanza—; y `--force` **sólo** en `prisma migrate reset --force`,
+  que es lo que ejecuta `db:recreate`. Las aserciones no nulas (`!`) van aparte, en la viñeta siguiente
+  (medido el **2026-10-10** en `backend-erp`; el detalle, en el `CHANGELOG.md` de la raíz).
 
 ---

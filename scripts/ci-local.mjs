@@ -24,7 +24,7 @@
  * de `typecheck`/`lint`/`build`, y porque clona **solo la raíz**.
  *
  * QUÉ CORRE, Y EN QUÉ ORDEN. Los **6** pasos del job `typecheck-lint-build` del CI, **en su orden
- * exacto**, y **después dos más que el CI no tiene** (declarados como tales, ver abajo):
+ * exacto**, y **después tres más que el CI no tiene** (declarados como tales, ver abajo):
  *
  *   1. autoprueba del gate de workflows  (`npm run audit:workflow-inputs:self-test`)
  *   2. gate de workflows                 (`npm run audit:workflow-inputs`)
@@ -36,6 +36,7 @@
  *   6. `storefront/`: build  (`next build`)
  *   7. `storefront/`: `sync:tokens:check`  — **LOCAL, no está en el CI** (ver el párrafo siguiente)
  *   8. `backend-erp/`: `audit:invariants:coverage` — **LOCAL, no está en el CI** (ver abajo)
+ *   9. `backend-erp/`: `audit:suppressions:check` — **LOCAL, no está en el CI** (ver abajo)
  *
  * Los pasos 1 a 3 corren **con `working-directory: .`** (la raíz) y **después** de `npm ci` de la
  * tienda, porque el lector YAML (`js-yaml`) se resuelve de `storefront/node_modules`; sin lector el
@@ -98,7 +99,7 @@
  * workflow, entran a este script en el mismo commit. (`sync:tokens:check` y
  * `audit:invariants:coverage` son las **dos excepciones**, declaradas arriba con su motivo medido.)
  *
- * VENTAJAS LOCALES DECLARADAS (**tres**). (a) El CI de la raíz clona **solo el repo raíz**, así que
+ * VENTAJAS LOCALES DECLARADAS (**cuatro**). (a) El CI de la raíz clona **solo el repo raíz**, así que
  * `erp-frontend/` y `backend-erp/` **no existen** en su árbol y el gate de workflows informa sus
  * cuatro workflows como «no presente en este árbol: se audita en su propio CI» (informativo). Aquí
  * los tres árboles existen: el gate audita **los cinco workflows del monorepo** y comprueba además
@@ -107,11 +108,15 @@
  * instrumentos de los tres proyectos** y allí solo los de la raíz (el resto salen «NO MEDIDAS», con
  * su motivo y contadas). Es decir: en esos dos pasos concretos, **un verde local es más estricto**
  * que el del CI. (b) El **paso 7**, `sync:tokens:check`, que el CI **no corre en absoluto** (ver
- * arriba): es uno de los dos pasos de este script que **no existe** en el workflow, y va etiquetado
+ * arriba): es uno de los tres pasos de este script que **no existe** en el workflow, y va etiquetado
  * como tal. (c) El **paso 8**, `audit:invariants:coverage` del backend: comprueba que **toda
  * invariante que publica el instrumento tiene al menos un caso** en su `--self-test` (y corre los
  * casos). Vive en `backend-erp`, que el CI de la raíz no clona; su puerta obligatoria es el
- * `pre-push` del backend, y aquí se corre además para que un push local no lo deje atrás.
+ * `pre-push` del backend, y aquí se corre además para que un push local no lo deje atrás. (d) El
+ * **paso 9**, `audit:suppressions:check` del backend: la primera regla de proceso del manual
+ * («Nunca `--no-verify`») estrena gate —0 `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck`, 0
+ * `eslint-disable` sin regla y 0 `xit`, con las directivas CON regla congeladas y su mapa—; vive en
+ * `backend-erp`, que el CI de la raíz no clona, y su puerta obligatoria es el `pre-push` del backend.
  *
  * LO QUE **NO** CUBRE (y por eso un verde aquí NO es un verde del CI):
  *
@@ -198,6 +203,13 @@ const STEPS = [
     cwd: BACKEND,
     why: 'el gate vive en backend-erp (el CI de la raiz no clona ese arbol): corre los 61 casos del A/B —puros, sin BD— y falla si alguna invariante que PUBLICA measure() no tiene ninguno. Su puerta obligatoria es el pre-push del backend; aqui se corre ademas para no dejarlo atras en un push local',
   },
+  {
+    provenance: 'LOCAL (no en el CI)',
+    label: 'supresiones (backend)',
+    cmd: 'npm run audit:suppressions:check',
+    cwd: BACKEND,
+    why: 'la primera regla de proceso del manual («Nunca --no-verify») estrena gate: 0 @ts-ignore/@ts-expect-error/@ts-nocheck, 0 eslint-disable sin regla y 0 xit/.only, con las 32 directivas CON regla congeladas y su mapa por sitio. `--no-verify`/`--force` son COMANDOS y NO se gatean (prosa). Vive en backend-erp, que el CI de la raiz no clona; su puerta obligatoria es el pre-push del backend',
+  },
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -212,7 +224,7 @@ function banner() {
   console.log(line());
   console.log(` node ${process.version} · plataforma ${process.platform}/${process.arch} · TZ del proceso ${process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone}`);
   console.log(' CI de referencia: .github/workflows/ci.yml (job typecheck-lint-build, 6 pasos)');
-  console.log(` pasos aqui: ${STEPS.length} (los 6 del CI + 2 LOCAL: sync:tokens:check y cobertura de invariantes)`);
+  console.log(` pasos aqui: ${STEPS.length} (los 6 del CI + 3 LOCAL: sync:tokens:check, cobertura de invariantes y supresiones del backend)`);
   console.log(` cwd de los pasos de la tienda: ${STOREFRONT}`);
   console.log('');
   console.log(' LO QUE ESTE COMANDO **NO** CUBRE — un VERDE AQUÍ NO ES UN VERDE DEL CI:');
@@ -230,18 +242,20 @@ function banner() {
   console.log('   7. ARTEFACTO: el build del CI no se despliega (Vercel construye el suyo). Este verde no dice');
   console.log('      nada del despliegue.');
   console.log('');
-  console.log(' VENTAJAS LOCALES DECLARADAS (tres): (a) el gate de workflows aquí audita los CINCO');
+  console.log(' VENTAJAS LOCALES DECLARADAS (cuatro): (a) el gate de workflows aquí audita los CINCO');
   console.log(' workflows del monorepo (el CI de la raíz clona solo la raíz y ve uno), y el de las cifras de');
   console.log(' AGENTS.md corre los instrumentos de los TRES proyectos (allí solo los de la raíz): en esos dos');
-  console.log(' pasos, verde local es MÁS estricto; (b) el paso 7, que el CI no corre en absoluto; y (c) el');
-  console.log(' paso 8, el gate de cobertura de invariantes del backend, que el CI de la raíz tampoco corre.');
+  console.log(' pasos, verde local es MÁS estricto; (b) el paso 7, que el CI no corre en absoluto; (c) el');
+  console.log(' paso 8, el gate de cobertura de invariantes del backend, que el CI de la raíz tampoco corre; y');
+  console.log(' (d) el paso 9, el gate de supresiones del backend (la regla «Nunca --no-verify»).');
   console.log('');
-  console.log(' Y DOS PASOS QUE EL CI NO TIENE: [7] sync:tokens:check (storefront) y [8] cobertura de');
-  console.log(' invariantes (backend), con provenance «LOCAL (no en el CI)». El [7] entra porque tokens.css');
-  console.log(' se quedó 17 días desincronizado del ERP sin que ninguna puerta lo dijera; el [8] porque el');
-  console.log(' CI de la raíz no clona `backend-erp` y su puerta obligatoria es el `pre-push` del backend:');
-  console.log(' aquí se corre además para que un push local no deje una invariante sin caso. Ninguno de los');
-  console.log(' dos es un paso del CI: no los lea como "lo del CI".');
+  console.log(' Y TRES PASOS QUE EL CI NO TIENE: [7] sync:tokens:check (storefront), [8] cobertura de');
+  console.log(' invariantes (backend) y [9] supresiones (backend), con provenance «LOCAL (no en el CI)». El [7]');
+  console.log(' entra porque tokens.css se quedó 17 días desincronizado del ERP sin que ninguna puerta lo');
+  console.log(' dijera; el [8] y el [9] porque el CI de la raíz no clona `backend-erp` y su puerta obligatoria');
+  console.log(' es el `pre-push` del backend: aquí se corren además para que un push local no deje una');
+  console.log(' invariante sin caso ni una supresión sin gate. Ninguno de los tres es un paso del CI: no los');
+  console.log(' lea como "lo del CI".');
   console.log('');
   console.log(' Y POR QUÉ **NO** ENTRA AL CI, medido: su fuente de verdad vive en `erp-frontend/src/styles/');
   console.log(' tokens/`, y el CI de la raíz clona SOLO la raíz (los repos anidados están gitignored), así');
@@ -271,11 +285,12 @@ function summary(results, startedAt) {
   console.log('');
   console.log(' NO HAY `ci:local:full`: el CI de la raíz tiene un solo job. Las suites de la tienda (e2e,');
   console.log(' e2e:visual, e2e:a11y, e2e:perf, sync:fonts:check) NO las corre su CI y por eso NO están aquí:');
-  console.log(' inventariarlas sería inventar un gate que el CI no tiene. Las excepciones son DOS, las dos');
+  console.log(' inventariarlas sería inventar un gate que el CI no tiene. Las excepciones son TRES, las tres');
   console.log(' con provenance «LOCAL (no en el CI)»: sync:tokens:check (paso 7), añadido tras medir que el');
   console.log(' artefacto tokens.css se quedó 17 días desincronizado del ERP sin que ninguna puerta lo dijera,');
-  console.log(' y audit:invariants:coverage (paso 8), el gate que exige caso para toda invariante publicada y');
-  console.log(' cuya puerta obligatoria es el `pre-push` del backend (el CI de la raíz no clona ese árbol).');
+  console.log(' audit:invariants:coverage (paso 8), el gate que exige caso para toda invariante publicada, y');
+  console.log(' audit:suppressions:check (paso 9), el de la regla «Nunca --no-verify»; de los dos últimos, la');
+  console.log(' puerta obligatoria es el `pre-push` del backend (el CI de la raíz no clona ese árbol).');
   console.log(' Y la promoción del paso 7 al CI está DECIDIDA y medida el 2026-10-12: no puede entrar tal cual');
   console.log(' (su fuente, `erp-frontend/src/styles/tokens/`, no está en el árbol que el CI clona) y la forma');
   console.log(' que sí podría exige un secreto que no consta en este repo. El motivo completo, con las tres');

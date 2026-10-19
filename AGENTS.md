@@ -382,15 +382,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
 
 ### Trabajo y commits
 
-- **Nunca `--no-verify`** (ni `--force`, `@ts-ignore`, `eslint-disable`, `xit`). El hook se arregla,
-  no se salta. El proyecto lo mide, y no todo es cero: **0 usos** de `--no-verify`, `xit`, `@ts-ignore`
-  y `as any`; `eslint-disable` **sólo con la regla nombrada**, y ese calificativo son **12** directivas
-  **escritas a mano en `src/`** (8 `local/no-raw-without-tenant` + 4 `@typescript-eslint/no-require-imports`) —
-  las **206** de `src/generated/` **no** nombran ninguna regla: son `/* eslint-disable */` **en bloque**,
-  una por fichero de Prisma, y `eslint.config.mjs:19` las deja **fuera del lint**, así que la condición
-  no las alcanza—; y `--force` **sólo** en `prisma migrate reset --force`,
-  que es lo que ejecuta `db:recreate`. Las aserciones no nulas (`!`) van aparte, en la viñeta siguiente
-  (medido el **2026-10-10** en `backend-erp`; el detalle, en el `CHANGELOG.md` de la raíz).
+- **Nunca `--no-verify`** (ni `--force`, `@ts-ignore`, `eslint-disable`, `xit`): **el hook se arregla, no se salta**; `--no-verify` y `--force` son **comandos** y **no se gatean** (esa mitad es prosa). Gate del resto: `npm run audit:suppressions:check` —0 `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck`, 0 `eslint-disable` sin regla, 0 `xit`, y **12** directivas con regla en `src/` (8 `local/no-raw-without-tenant` + 4 `@typescript-eslint/no-require-imports`) más las de `scripts/`/`perf/`, congeladas con su mapa—. [Texto completo](docs/guides/reglas-medidas.md#nunca-no-verify).
 - **Cero `!` nuevos** (gate: `npm run audit:non-null:check` en las **tres** puertas —CI, `pre-push` y `ci-local.mjs`—; cifra **congelada en 1498**: `expresión!` 845 + `x!: T` 653; 1145 en producción, 353 en specs): la deuda está **CONGELADA, no pagada** y el ratchet falla si sube. [Texto completo](docs/guides/reglas-medidas.md#cero-no-nulos).
 - **Nunca reescribir un commit ya empujado**: sin `push --force`/`--force-with-lease` sobre ramas
   compartidas y sin `amend`/`rebase` de historia publicada. Si algo salió mal, se **añade** un commit
