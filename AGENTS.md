@@ -616,7 +616,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
   `src/common/timezone.predicates.spec.ts`; la frontera, en
   `src/common/decorators/is-tenant-day-or-instant.decorator.ts`). **Escriba la tabla de equivalencia y
   ejecútela**: «son la misma cosa» no se declara porque llamen al mismo útil.
-- **Los fixtures que reproducen un defecto medido NO se tocan** (gate: `npm run audit:fixtures:check` —toda marca `fixture-medido: T<nnn>` con su `T` en `AUDIT.md`, y toda spec que CITA un `T` en un comentario con su marca—). **La mitad que ningún gate ve, explícita: antes de «arreglar» un fixture, compruebe qué payload real reproduce; el que está mal puede ser el validador, no el fixture.** [Texto completo](docs/guides/reglas-medidas.md#fixtures-medidos).
+- **Los fixtures que reproducen un defecto medido NO se tocan** (gate: `npm run audit:fixtures:check` —en `backend-erp` **y** en `erp-frontend`: toda marca `fixture-medido: T<nnn>` con su `T` en `AUDIT.md`, y toda spec que CITA un `T` en un comentario con su marca; el `ci:local` de la raíz corre **los dos**—). **La mitad que ningún gate ve, explícita: antes de «arreglar» un fixture, compruebe qué payload real reproduce; el que está mal puede ser el validador, no el fixture.** [Texto completo](docs/guides/reglas-medidas.md#fixtures-medidos).
 - **Una tabla de casos también es un instrumento, y también puede mentir.** Una tabla **sin ejecutar**
   es una afirmación; una tabla que **se ejecuta** encuentra sus propios errores. Caso medido: la red de
   equivalencia de arriba falló en su **primer acto** porque un día **válido** (`'2026-06-15'`) estaba
