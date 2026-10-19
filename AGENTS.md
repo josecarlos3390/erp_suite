@@ -134,7 +134,7 @@ npm run audit:tracking       # lote/serie coherentes (necesita BD)
 npm run audit:reconcile      # cuadre general (necesita BD) (+ :self-test)
 npm run audit:invariants:coverage # toda invariante que publica `measure()` tiene al menos un caso en el `--self-test` (A/B; medido el 2026-10-19 en `backend-erp`)
 npm run audit:money:check    # dinero al centavo (ratchet en 0)
-npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1498 (medido el 2026-10-16 en `backend-erp`)
+npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1497 (medido el 2026-10-19 en `backend-erp`; T291 quitó `dto.deliveryOrderId!`)
 npm run audit:explicit-any:check # `any` explícitos: ratchet en 1 (producción 0, specs 1)
 npm run audit:spec-clock:check   # reloj del proceso en specs: 0 hallazgos (2 excepciones declaradas)
 npm run audit:collection-caps:check # consultas sin cota (`produccionSinCota`): ratchet en 681 (medido el 2026-10-17 en `backend-erp`)
@@ -383,7 +383,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
 ### Trabajo y commits
 
 - **Nunca `--no-verify`** (ni `--force`, `@ts-ignore`, `eslint-disable`, `xit`): **el hook se arregla, no se salta**; `--no-verify` y `--force` son **comandos** y **no se gatean** (esa mitad es prosa). Gate del resto: `npm run audit:suppressions:check` —0 `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck`, 0 `eslint-disable` sin regla, 0 `xit`, y **12** directivas con regla en `src/` (8 `local/no-raw-without-tenant` + 4 `@typescript-eslint/no-require-imports`) más las de `scripts/`/`perf/`, congeladas con su mapa—. [Texto completo](docs/guides/reglas-medidas.md#nunca-no-verify).
-- **Cero `!` nuevos** (gate: `npm run audit:non-null:check` en las **tres** puertas —CI, `pre-push` y `ci-local.mjs`—; cifra **congelada en 1498**: `expresión!` 845 + `x!: T` 653; 1145 en producción, 353 en specs): la deuda está **CONGELADA, no pagada** y el ratchet falla si sube. [Texto completo](docs/guides/reglas-medidas.md#cero-no-nulos).
+- **Cero `!` nuevos** (gate: `npm run audit:non-null:check` en las **tres** puertas —CI, `pre-push` y `ci-local.mjs`—; cifra **congelada en 1497**: `expresión!` 844 + `x!: T` 653; 1144 en producción, 353 en specs): la deuda está **CONGELADA, no pagada** y el ratchet falla si sube. [Texto completo](docs/guides/reglas-medidas.md#cero-no-nulos).
 - **Nunca reescribir un commit ya empujado**: sin `push --force`/`--force-with-lease` sobre ramas
   compartidas y sin `amend`/`rebase` de historia publicada. Si algo salió mal, se **añade** un commit
   que lo corrige y, si aplica, se despliega la reversión.
@@ -554,7 +554,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
 - **Una herramienta puede hacer BIEN su tarea sobre el CONJUNTO EQUIVOCADO, y ningún gate lo verá:
   compruebe el ALCANCE antes de dejarla correr.** `audit:date-class` daba **0 hallazgos** mientras tres
   sitios leían mal `Batch.expiryDate`/`manufactureDate`, porque **no estaban en el registro
-  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** (hoy **1364**: el ratchet
+  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** (hoy **1382**: el ratchet
   vigila los hallazgos, no las apariciones, y `audit:agents-figures` es el que cierra ese hueco — por
   eso la cifra se mueve EN EL MISMO empujón que el código que la mueve). **De dónde viene cada
   movimiento de esa cifra** (para que no vuelva a moverse sin saber por qué): de **1360 a 1361** la
