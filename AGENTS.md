@@ -427,24 +427,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
   igual a la del build local del mismo commit y **sonda de navegador** con **0 errores de consola**
   que acabe en `/login`. Un `/health/live` que responde **404 y luego 200** es la prueba del
   **relevo del contenedor**.
-- **`/` → `/login` es del ROUTER DE ANGULAR, y por HTTP no se puede ver (medido el 2026-10-12).**
-  El manual pedía «`/` → `/login`» y quien lo intentaba con `curl` **no podía pasarlo nunca** y
-  podía declarar un fallo donde no lo hay: `GET /` devuelve **200**, `redirects=0` y **sin cabecera
-  `location`**, y `GET /login` devuelve **el mismo shell** (mismo `sha256`, `E78FBD96…`). Se mide en
-  **dos piezas**, porque son dos cosas distintas:
-  - **Por HTTP: que `/` y `/login` sirven EL MISMO SHELL** (es lo que el servidor promete).
-    `curl -s -o /tmp/r https://<front>/ && curl -s -o /tmp/l https://<front>/login &&
-    sha256sum /tmp/r /tmp/l` ⇒ **el mismo hash**, **200** y **`redirects=0`** en los dos.
-  - **Que la app NAVEGA a `/login`: sonda de navegador**, que es la única que ejecuta el router.
-    Con Playwright, y **desde fuera de los repos** (el repo es de solo lectura):
-    `page.goto('<front>/')` ⇒ `page.url()` termina en **`/login`**, con **0 errores de consola** y
-    `app-root` con contenido (**4975** caracteres medidos: el shell del servidor trae el `<app-root>`
-    vacío, así que 0 caracteres sería un fallo mudo). Se lanza con
-    `npx playwright@<la versión del repo>` desde `%TEMP%`, o con el `playwright` de
-    `erp-frontend/node_modules` resuelto por ruta absoluta (`NODE_PATH` **no** lo ve: ESM lo ignora).
-  **La intención no cambia** —la app tiene que llevar al login—; lo que cambia es que ahora se
-  **puede medir**, y que un `curl` a `/` que devuelva **200** es el resultado **esperado**, no un
-  fallo.
+- **`/` → `/login` es del ROUTER DE ANGULAR, y por HTTP no se puede ver (medido el 2026-10-12).** Gate: `e2e/auth-guard.spec.ts` (raíz sin sesión ⇒ `page.url()` acaba en `/login`, y `/` y `/login` sirven el mismo `sha256`); la app tiene que llevar al login y el `curl` a `/` devuelve **200** a propósito. [Texto completo](docs/guides/reglas-medidas.md#raiz-a-login).
 - **El OpenAPI no se compara contra un FICHERO: se compara contra el build local del MISMO commit
   (medido el 2026-10-12).** El manual pedía «OpenAPI idéntico a la línea base» y **esa línea base no
   existe**: `*openapi*`/`*swagger*` fuera de `node_modules`/`.git`/`dist`/`.next` ⇒ **vacío** (medido).

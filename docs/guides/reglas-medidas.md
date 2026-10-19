@@ -14,8 +14,9 @@
 > commit base y comprueba que aparece **byte a byte** en este archivo, con el mismo número de líneas y
 > con cada comando, cifra y fecha. El informe del incremento declara el resultado y los bytes.
 >
-> **Procedencia.** Bloques movidos desde `AGENTS.md` (commit base `2f3cc7f`). No se reescribió ni se
-> borró una línea: son los mismos bytes, con el mismo CRLF.
+> **Procedencia.** Bloques movidos desde `AGENTS.md`: los cinco primeros desde el commit base
+> `2f3cc7f` y el de la raíz desde `cf00645`. No se reescribió ni se borró una línea: son los mismos
+> bytes, con el mismo CRLF.
 
 ## Índice
 
@@ -26,6 +27,7 @@
 | Una puerta tiene que comprobar el VALOR | `npm run audit:workflow-inputs` | [`#puerta-comprueba-el-valor`](#puerta-comprueba-el-valor) |
 | Un workflow que nunca se ejecuta | `npm run audit:workflow-inputs` | [`#workflow-que-nunca-se-ejecuta`](#workflow-que-nunca-se-ejecuta) |
 | `typecheck:all` POR FICHERO | `npm run typecheck:all` | [`#typecheck-all-por-fichero`](#typecheck-all-por-fichero) |
+| `/` → `/login` (router, no HTTP) | `e2e/auth-guard.spec.ts` (raíz sin sesión) | [`#raiz-a-login`](#raiz-a-login) |
 
 ---
 
@@ -107,3 +109,29 @@
 
 ---
 
+<a id="raiz-a-login"></a>
+
+## `/` → `/login` es del ROUTER DE ANGULAR, y por HTTP no se puede ver.
+
+> Bloque literal de `AGENTS.md` (commit base `cf00645`), sin reescribir.
+
+- **`/` → `/login` es del ROUTER DE ANGULAR, y por HTTP no se puede ver (medido el 2026-10-12).**
+  El manual pedía «`/` → `/login`» y quien lo intentaba con `curl` **no podía pasarlo nunca** y
+  podía declarar un fallo donde no lo hay: `GET /` devuelve **200**, `redirects=0` y **sin cabecera
+  `location`**, y `GET /login` devuelve **el mismo shell** (mismo `sha256`, `E78FBD96…`). Se mide en
+  **dos piezas**, porque son dos cosas distintas:
+  - **Por HTTP: que `/` y `/login` sirven EL MISMO SHELL** (es lo que el servidor promete).
+    `curl -s -o /tmp/r https://<front>/ && curl -s -o /tmp/l https://<front>/login &&
+    sha256sum /tmp/r /tmp/l` ⇒ **el mismo hash**, **200** y **`redirects=0`** en los dos.
+  - **Que la app NAVEGA a `/login`: sonda de navegador**, que es la única que ejecuta el router.
+    Con Playwright, y **desde fuera de los repos** (el repo es de solo lectura):
+    `page.goto('<front>/')` ⇒ `page.url()` termina en **`/login`**, con **0 errores de consola** y
+    `app-root` con contenido (**4975** caracteres medidos: el shell del servidor trae el `<app-root>`
+    vacío, así que 0 caracteres sería un fallo mudo). Se lanza con
+    `npx playwright@<la versión del repo>` desde `%TEMP%`, o con el `playwright` de
+    `erp-frontend/node_modules` resuelto por ruta absoluta (`NODE_PATH` **no** lo ve: ESM lo ignora).
+  **La intención no cambia** —la app tiene que llevar al login—; lo que cambia es que ahora se
+  **puede medir**, y que un `curl` a `/` que devuelva **200** es el resultado **esperado**, no un
+  fallo.
+
+---
