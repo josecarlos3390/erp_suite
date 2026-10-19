@@ -62,6 +62,14 @@
 # (su PATH no lleva `/usr/bin` y hasta `dirname` falla): por eso la guarda se probo con un `git
 # push` de verdad contra un remoto bare desechable, que es la forma fiel.
 
+# GIT_DIR QUE EXPORTA GIT AL HOOK (medido el 2026-10-19). Git pone
+# `GIT_DIR=.../.git/worktrees/<worktree>` en el entorno del pre-push. Los gates
+# de `ci:local` ejecutan `git grep -- src` y `git cat-file` DENTRO de
+# `backend-erp`/`erp-frontend`; con ese `GIT_DIR` heredado, el hijo mide el repo
+# RAÍZ (que no tiene `src/`) y el gate de cifras sale rojo con 4/26
+# («fatal: Not a valid object name 8c6d2f92»). Se limpia aquí, una sola vez,
+# para que cada repo anidado resuelva el suyo.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR
 input="$(cat)"
 
 nada_que_empujar=1
