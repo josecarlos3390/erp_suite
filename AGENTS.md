@@ -132,6 +132,7 @@ npm run db:recreate          # BD dev reproducible (reset + db push + SQL + seed
 npm run audit:line-accounts  # la cuenta capturada se valida y el builder la prefiere
 npm run audit:tracking       # lote/serie coherentes (necesita BD)
 npm run audit:reconcile      # cuadre general (necesita BD) (+ :self-test)
+npm run audit:invariants:coverage # toda invariante que publica `measure()` tiene al menos un caso en el `--self-test` (A/B; medido el 2026-10-19 en `backend-erp`)
 npm run audit:money:check    # dinero al centavo (ratchet en 0)
 npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1498 (medido el 2026-10-16 en `backend-erp`)
 npm run audit:explicit-any:check # `any` explícitos: ratchet en 1 (producción 0, specs 1)

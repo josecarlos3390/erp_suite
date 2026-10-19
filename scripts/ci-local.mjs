@@ -95,8 +95,8 @@
  * ningún job de CI que añadir. Las suites que la tienda tiene (`e2e`, `e2e:visual`, `e2e:a11y`,
  * `e2e:perf`, `sync:fonts:check`) **no las corre su CI** ni las corre este script; inventariarlas
  * sería inventar un gate que el CI no tiene y presentarlo como "lo del CI". Si algún día entran al
- * workflow, entran a este script en el mismo commit. (`sync:tokens:check` es la **excepción única** y
- * está declarada arriba con su motivo medido.)
+ * workflow, entran a este script en el mismo commit. (`sync:tokens:check` y
+ * `audit:invariants:coverage` son las **dos excepciones**, declaradas arriba con su motivo medido.)
  *
  * VENTAJAS LOCALES DECLARADAS (**tres**). (a) El CI de la raíz clona **solo el repo raíz**, así que
  * `erp-frontend/` y `backend-erp/` **no existen** en su árbol y el gate de workflows informa sus
