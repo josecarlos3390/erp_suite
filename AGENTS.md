@@ -60,7 +60,7 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
 
 | Carpeta | Propósito | Archivos clave |
 |---------|-----------|----------------|
-| `docs/guides/` | Guías canónicas de dominio específico | `ESTANDAR_LINEAS_DOCUMENTO.md`, `ACCOUNTING_ENTRIES_GUIDE.md`, `guia-implementacion-configuracion.md` (orden de configuración/parametrización por perfil: contabilidad completa vs solo comercial/inventario; checklist + errores típicos) |
+| `docs/guides/` | Guías canónicas de dominio específico | `ESTANDAR_LINEAS_DOCUMENTO.md`, `ACCOUNTING_ENTRIES_GUIDE.md`, `guia-implementacion-configuracion.md` (orden de configuración/parametrización por perfil: contabilidad completa vs solo comercial/inventario; checklist + errores típicos), `reglas-medidas.md` (texto íntegro de las reglas de proceso que `AGENTS.md` comprime por tener gate; una ancla por regla) |
 | `docs/plans/` | Planes de trabajo activos | `plan-consistencia-visual-v2.md`, `plan-mejoras-ux-ui-frontend.md`, `plan-g3-produccion.md` (plan del módulo de Producción: **aprobado el 2026-09-19**, con las **siete fases implementadas**) |
 | `docs/reference/` | Análisis técnicos y referencias de arquitectura | `ACCOUNTS_DETERMINATION_FIX.md`, `SAP_B1_VS_ERP_COMPARATIVE_ANALYSIS.md`, `SAP_B1_INTEGRATION.md` (capa de integración bidireccional SAP B1: modelos, mapeos, idempotencia, migraciones), `PRODUCCION_ERP_COMPARATIVA.md` (cómo resuelven producción SAP B1 / Odoo 19 / Dynamics 365, verificado contra documentación pública) |
 | `docs/archive/` | Informes históricos de migraciones completadas | Índice de frentes y cierres de fase |
@@ -390,13 +390,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
   no las alcanza—; y `--force` **sólo** en `prisma migrate reset --force`,
   que es lo que ejecuta `db:recreate`. Las aserciones no nulas (`!`) van aparte, en la viñeta siguiente
   (medido el **2026-10-10** en `backend-erp`; el detalle, en el `CHANGELOG.md` de la raíz).
-- **Cero `!` nuevos**, que desde el **2026-10-09** **tiene gate**: `npm run audit:non-null:check` en las
-  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1498** (medido el **2026-10-16** en `backend-erp`; `expresión!` 845
-  + `x!: T` 653; 1145 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
-  falla si **sube** (visto en rojo: 1601 → 1602, `exit 1`). Hasta ese gate la regla era un deseo, y el
-  manual no la traía escrita en ningún sitio (medido); el detalle, en el `CHANGELOG.md` de la raíz.
-  **La cifra BAJÓ de 1500 a 1498 el 2026-10-16** (T279): no subiendo la base, sino **quitando** las dos
-  aserciones de `createBatchItem` (`test/test-utils.ts`), que pasan a una local con guarda.
+- **Cero `!` nuevos** (gate: `npm run audit:non-null:check` en las **tres** puertas —CI, `pre-push` y `ci-local.mjs`—; cifra **congelada en 1498**: `expresión!` 845 + `x!: T` 653; 1145 en producción, 353 en specs): la deuda está **CONGELADA, no pagada** y el ratchet falla si sube. [Texto completo](docs/guides/reglas-medidas.md#cero-no-nulos).
 - **Nunca reescribir un commit ya empujado**: sin `push --force`/`--force-with-lease` sobre ramas
   compartidas y sin `amend`/`rebase` de historia publicada. Si algo salió mal, se **añade** un commit
   que lo corrige y, si aplica, se despliega la reversión.
@@ -502,12 +496,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
   del push midió el **build viejo** (medido: el 200 sin `X-Request-Id` seis veces y con él en el
   séptimo). La huella es algo que **solo** existe en el build nuevo (un endpoint, una cabecera, un
   hash de bundle); si no lo hay, **declare** que la identidad del build se confirma en el panel.
-- **Un script que no arranca es un gate que no existe.** Siete `scripts/*.mjs` tenían el `import` en la
-  línea 1 y el **shebang en la 2** (Node solo lo acepta como primeros bytes) ⇒ `SyntaxError` siempre:
-  `audit-tracking`, `audit-reconcile` y `audit-flow-links` eran **tres gates** que llevaban meses sin
-  poder ejecutarse, y el CI moría antes de llamarlos. Regla: **ejecute el script, no lo parsee** — y
-  si un `--self-test` no existe de verdad (hay scripts que **ignoran** los flags y corren la
-  auditoría completa), **no invente el alias**: sería un gate que pasa por casualidad.
+- **Un script que no arranca es un gate que no existe** (gate: `npm run audit:tracking:self-test`, `audit:reconcile:self-test` y `audit:pg-tools:self-test` en `.husky/pre-push`; el CI ejecuta los dos primeros): ejecute el script, no lo parsee; si un `--self-test` no existe de verdad, no invente el alias. [Texto completo](docs/guides/reglas-medidas.md#script-que-no-arranca).
 - **Después de empujar, compruebe LOS DOS espejos** (`git ls-remote origin refs/heads/main` y
   `git ls-remote deploy refs/heads/main`). El 2026-10-07 el push «salió bien» y el espejo `deploy` se
   quedó **2 commits atrás** (`origin` en `0417acd`, `deploy` en `4948689`) sin que el resultado global
@@ -526,12 +515,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
   contraseña **sigue en la historia de git**, hay que **rotarla** (no basta con limpiar el código).
 - **Declarar lo que no se midió** y los límites (flakes, datos ausentes, decisiones pendientes del
   usuario) en vez de taparlos. **Un entorno que nadie prueba es un gate que no existe.**
-- **Una puerta tiene que comprobar el VALOR, no solo que el texto sea válido.** El 2026-10-08, al
-  alinear `update-baselines.yml` con `ci.yml`, una sustitución dejó `node-version:` **sin valor** en los
-  dos `setup-node` y el commit salió (`029f8447`, 08:52): el YAML **parsea** —medido con `yaml` 2.9.0:
-  la clave existe y vale `null`—, así que el parseo dijo OK y el workflow **no fijaba Node alguno**.
-  Corregido a `node-version-file: '.nvmrc'` cuatro minutos después (`424d7746`, aún sin empujar).
-  **Ejecute el valor, no el documento.**
+- **Una puerta tiene que comprobar el VALOR, no solo que el texto sea válido** (gate: `npm run audit:workflow-inputs`, en el CI de la raíz y `ci-local.mjs`): el YAML parsea aunque `node-version:` valga `null`; ejecute el valor, no el documento. [Texto completo](docs/guides/reglas-medidas.md#puerta-comprueba-el-valor).
 - **La prueba de borde se escribe ANTES y se ve en ROJO.** Los dos arreglos de la doble conversión de
   zona del 2026-10-08 llevan el caso escrito y **fallando con el código viejo** antes de tocar el
   código: Notas de Crédito (`9eabacab`) **2 failed / 50 passed** con la zona del proceso por defecto y
@@ -546,13 +530,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
   `reports.service.ts:694-697` y el precio de línea en `sale-invoices.service.ts:4952-4955` y
   `sale-reserve-invoices.service.ts:5215-5218`. El barrido va **un commit por sitio** (T258:
   `76688c98` avisos ×4, `95fa7edf` aging). Arreglar el útil **no** cierra la familia.
-- **Un workflow que nunca se ejecuta es un workflow que nadie sabe si funciona.**
-  `update-baselines.yml` es solo `workflow_dispatch` y **no había corrido nunca**: su primer run murió
-  en `Install dependencies` con `npm ci`/`EUSAGE` (`Missing: chokidar@4.0.3`) porque fijaba **Node 22**
-  y el lock se regeneró con node:24 ⇒ `node-version-file: '.nvmrc'` (`424d7746`, el run verde; el
-  commit roto es `029f8447`). Es hermana de «un script que no arranca es un gate que no existe». Ese
-  mismo día, `ci.yml` tampoco tenía `workflow_dispatch` (`1d7b0e03`): «hacer el CI» exigía empujar y
-  pagar el pre-push entero para ver un run.
+- **Un workflow que nunca se ejecuta es un workflow que nadie sabe si funciona** (gate: `npm run audit:workflow-inputs`, que exige `workflow_dispatch` o la marca `manual-only-ok:`): un run que no existe no prueba nada. [Texto completo](docs/guides/reglas-medidas.md#workflow-que-nunca-se-ejecuta).
 
 - **Al migrar el ÍNDICE de un ratchet, el orden es: quitar la sonda → congelar el formato → sondear →
   quitar la sonda.** Regenerar la línea base **con la sonda dentro del árbol** hace que el índice
@@ -596,13 +574,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
   la herramienta**: amplía el import o dice `NO SE PUDO AÑADIR (revisar a mano)`, y cuando no
   sustituye nada avisa `⚠️ NINGUN SITIO SUSTITUIDO: ¿forma distinta? REVISAR` (`backend-erp`,
   `4cfd1c11`).
-- **`typecheck:all` POR FICHERO: el delta del ratchet y el `eslint` por fichero NO bastan.** En el
-  caso anterior, los tres ficheros con el import roto daban `eslint --max-warnings=0` **0** —es un
-  error de **TIPO**, y `no-undef` no cubre un identificador de TypeScript— y el ratchet del `!` **bajó
-  correctamente** (una importación no cambia el número de aserciones): **solo lo vio `typecheck:all`**.
-  Desde ese hallazgo va **por fichero y no por tanda**: ~40 s más por commit a cambio de que ningún
-  commit quede con un nombre que no existe (`backend-erp`, `d7fe712d`). Aplica a **cualquier** cambio,
-  no solo a una migración.
+- **`typecheck:all` POR FICHERO** (gate: `npm run typecheck:all`, en el CI y el `pre-push` del backend): el delta del ratchet y el `eslint` por fichero no ven un identificador de TypeScript que no existe; va por fichero y no por tanda, en cualquier cambio. [Texto completo](docs/guides/reglas-medidas.md#typecheck-all-por-fichero).
 - **Una herramienta puede hacer BIEN su tarea sobre el CONJUNTO EQUIVOCADO, y ningún gate lo verá:
   compruebe el ALCANCE antes de dejarla correr.** `audit:date-class` daba **0 hallazgos** mientras tres
   sitios leían mal `Batch.expiryDate`/`manufactureDate`, porque **no estaban en el registro
