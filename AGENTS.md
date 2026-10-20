@@ -96,7 +96,7 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   (ShortName) se denormaliza (Anexo B).
 - **E2E:** los maestros se resuelven **por código, nunca por posición**.
 - **`0`** `@ts-ignore` / **`--no-verify`**; `eslint-disable` **sólo con la regla nombrada** —y ese
-  calificativo alcanza a las **12** escritas a mano **en `src/`**, **no** a las **206** de
+  calificativo alcanza a las **12** escritas a mano **en `src/`**, **no** a las **207** de
   `src/generated/`, que son `/* eslint-disable */` en bloque, sin regla nombrada, y viven **fuera del
   lint**— y `--force` **sólo** en `prisma migrate reset --force` (ver *Reglas de proceso*).
 

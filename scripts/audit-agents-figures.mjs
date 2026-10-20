@@ -94,7 +94,7 @@ const DECLARATIONS_PATH = path.join(HERE, 'audit-agents-figures.declarations.jso
 const MANUAL_FILE = 'AGENTS.md';
 /**
  * La única ancla FUERA del manual: el comentario de `backend-erp/scripts/audit-explicit-any.mjs`, del
- * que cuelga la figura `comentario-generados-206`. Se nombra una vez porque hay tres sitios que
+ * que cuelga la figura `comentario-generados-207`. Se nombra una vez porque hay tres sitios que
  * tienen que hablar del MISMO fichero (la declaración, el señuelo y el «no evaluable si su repo no
  * está»), y tres literales sueltos divergen.
  */
@@ -698,7 +698,7 @@ function repoDelAncla(rel) {
  * Lo que NO lo cumplía era la PRECONDICIÓN de la autoprueba: leía los ficheros ancla de las
  * declaraciones REALES y, si alguno no se dejaba leer, abortaba con `anclas-reales-ilegibles` y
  * código **2**. Eso era correcto mientras el único ancla era `AGENTS.md`, y dejó de serlo cuando
- * `a61a8ff7` añadió la figura `comentario-generados-206`, anclada a
+ * `a61a8ff7` añadió la figura `comentario-generados-207`, anclada a
  * `backend-erp/scripts/audit-explicit-any.mjs`: en el CI de la raíz ese fichero no existe, así que
  * **el job moría en el paso de las cifras y `typecheck`, `lint` y `build` de la tienda salían
  * `skipped`**. Medido en GitHub: los runs **11, 12 y 13** (`a61a8ff7`, `50a0f384`, `322f701`) rojos
@@ -1123,7 +1123,7 @@ function runSelfTest() {
 
   // 3c — EL ANCLA FUERA DEL MANUAL SE MONTA Y SU PATRÓN CASA: el árbol de pruebas tiene que escribir
   //      el comentario de `backend-erp/scripts/audit-explicit-any.mjs`, donde ancla la figura
-  //      `comentario-generados-206`. Sin esta ficha, el patrón no casaría en el árbol temporal y la
+  //      `comentario-generados-207`. Sin esta ficha, el patrón no casaría en el árbol temporal y la
   //      autoprueba sería ROJA por una razón falsa (un ancla que no se puede montar).
   check(
     'ancla-fuera-del-manual-montada (el comentario del script se escribe y su patrón casa: VERDE)',
@@ -1132,7 +1132,7 @@ function runSelfTest() {
       r.problems.length === 0 &&
       r.findings.length === 0 &&
       r.red === false &&
-      r.figures.some((f) => f.fig.id === 'comentario-generados-206' && f.ancla && f.ancla.valores[0] === 206),
+      r.figures.some((f) => f.fig.id === 'comentario-generados-207' && f.ancla && f.ancla.valores[0] === 207),
     correr({}),
     'la figura anclada fuera del manual no encontró su cifra en el árbol de pruebas',
     ANCLA_BACKEND,
@@ -1140,18 +1140,18 @@ function runSelfTest() {
 
   // 3d — EL SEÑUELO DEL ENCARGO, LITERAL: cambiar la CIFRA del ancla a otro número ⇒ ROJO nombrando
   //      ESA figura. El señuelo NO toca `AGENTS.md`, así que la figura del manual (`eslint-disable-generados`,
-  //      la MISMA cifra 206) tiene que seguir VERDE: son DOS anclas distintas de la misma cifra, y
+  //      la MISMA cifra 207) tiene que seguir VERDE: son DOS anclas distintas de la misma cifra, y
   //      pueden divergir por separado -- que es justo lo que la figura del comentario viene a cubrir.
   check(
-    'ancla-fuera-del-manual-cambiada (el comentario del script: 206 -> 207)',
+    'ancla-fuera-del-manual-cambiada (el comentario del script: 207 -> 208)',
     (tipos, r) =>
       tipos.includes('manual-divergente') &&
-      r.findings.some((f) => f.fig.id === 'comentario-generados-206') &&
+      r.findings.some((f) => f.fig.id === 'comentario-generados-207') &&
       !r.findings.some((f) => f.fig.id === 'eslint-disable-generados') &&
       r.red === true,
     correr({
       mutarAncla: (txt, fichero) =>
-        fichero === ANCLA_BACKEND ? mutar(txt, 'son (\\d+) ficheros de', 207) : txt,
+        fichero === ANCLA_BACKEND ? mutar(txt, 'son (\\d+) ficheros de', 208) : txt,
     }),
     '',
     ANCLA_BACKEND,
