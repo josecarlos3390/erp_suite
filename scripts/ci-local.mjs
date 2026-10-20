@@ -116,7 +116,7 @@
  * instrumentos de los tres proyectos** y allí solo los de la raíz (el resto salen «NO MEDIDAS», con
  * su motivo y contadas). Es decir: en esos dos pasos concretos, **un verde local es más estricto**
  * que el del CI. (b) El **paso 7**, `sync:tokens:check`, que el CI **no corre en absoluto** (ver
- * arriba): es uno de los cinco pasos de este script que **no existe** en el workflow, y va etiquetado
+ * arriba): es uno de los seis pasos de este script que **no existe** en el workflow, y va etiquetado
  * como tal. (c) El **paso 8**, `audit:invariants:coverage` del backend: comprueba que **toda
  * invariante que publica el instrumento tiene al menos un caso** en su `--self-test` (y corre los
  * casos). Vive en `backend-erp`, que el CI de la raíz no clona; su puerta obligatoria es el
