@@ -1,7 +1,9 @@
 # Reglas medidas: texto íntegro de las reglas que `AGENTS.md` comprime
 
 > **Qué es.** El texto **completo** de las reglas de proceso de `AGENTS.md` que se comprimieron a una
-> línea porque **ya tienen un gate**. Cada entrada conserva el bloque original **palabra por palabra**,
+> línea porque **ya tienen un gate** —y, desde el **2026-10-20**, una regla que nació **aquí** porque su
+> caso se midió en el ledger antes de tener gate: [`#guard-falsificado`](#guard-falsificado), `AUDIT.md`
+> T293—. Cada entrada conserva el bloque original **palabra por palabra**,
 > con su título, su comando y su caso medido; `AGENTS.md` deja el título, el gate, una línea de por qué
 > existe y el enlace a esta ancla.
 >
@@ -30,6 +32,7 @@
 | `/` → `/login` (router, no HTTP) | `e2e/auth-guard.spec.ts` (raíz sin sesión) | [`#raiz-a-login`](#raiz-a-login) |
 | Nunca `--no-verify` | `npm run audit:suppressions:check` | [`#nunca-no-verify`](#nunca-no-verify) |
 | Los fixtures que reproducen un defecto medido | `npm run audit:fixtures:check` | [`#fixtures-medidos`](#fixtures-medidos) |
+| Un guard ya implementado se prueba falsificándolo | — (sin gate; su caso se declara en `AUDIT.md` T293) | [`#guard-falsificado`](#guard-falsificado) |
 
 ---
 
@@ -175,5 +178,33 @@
   entrando** (`backend-erp`, `src/journal-entries/dto/preview-journal-entry-draft.dto.spec.ts`).
   **Antes de «arreglar» un fixture, compruebe qué payload real reproduce**: si el payload real es el
   que el caso rechaza, el que está mal es el validador, no el fixture.
+
+---
+
+<a id="guard-falsificado"></a>
+
+## Un guard ya implementado se prueba FALSIFICÁNDOLO: se mutila, el caso se pone rojo y se revierte.
+
+> Regla nueva (2026-10-20), con su caso medido en `AUDIT.md` **T293**. No se comprime de `AGENTS.md`
+> porque **no tiene gate**: su prosa es su único cumplimiento. Es la hermana de «Toda invariante NUEVA
+> entra con su A/B», que cubre la invariante nueva; ésta cubre el guard que **ya está** cerrado.
+
+- **El problema.** Un guard ya implementado **no se puede ver en rojo**: el rojo de la FUNCIÓN está
+  medido y no se puede volver a ejecutar sin deshacer el cierre. En T292/E2 el rojo de la función son
+  dos `POST` ⇒ **201 + 201** y **452,00 Bs** por una venta de **226,00 Bs**; ese rojo ya vive en la
+  suite E2E y en el ledger, y no se rehace.
+- **El método.** Se **falsifica cada guarda**: se mutila el guard —se quita el `throw`, la comparación
+  de ruta, la caducidad o se cambia el ancla—, se corre **su** caso y se exige el **rojo literal**;
+  después se **revierte**. Si el caso no se pone rojo, el caso **no prueba esa guarda**. Al final:
+  `git status` limpio y el fichero del guard **sin tocar**.
+- **El caso medido (T293).** `backend-erp/src/common/idempotency.interceptor.spec.ts` (**8** casos):
+  cinco mutaciones, cinco rojos y cinco reversiones; los literales están en la fila **T293**. El que
+  más importa es el **ancla**: con la caducidad contada desde `completedAt`, el caso **ANCLA** —un
+  `completedAt` de **25 h** con `createdAt` de **1 h**— deja de reproducir `FVE-1`/41 y crea un
+  documento nuevo (id 999) ⇒ rojo. Ese caso es el que impide cambiar el ancla sin que un rojo lo diga.
+- **Cómo se declara.** Cada mutación con su **rojo literal** y el caso que lo produce, más la
+  **reversión comprobada**. Un A/B que solo dice «se puso rojo» no es un A/B: el literal es lo que
+  distingue el rojo de la mutación del rojo de un caso mal escrito. Y esto **no sustituye** al rojo de
+  la función: la suite que la mide de punta a punta sigue siendo la prueba de que el defecto existía.
 
 ---
