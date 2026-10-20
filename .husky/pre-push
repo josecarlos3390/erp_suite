@@ -16,13 +16,14 @@
 #   6. build (storefront)                 0m34s
 #   7. sync:tokens:check (storefront)     0m02s   <- LOCAL: no esta en NINGUN CI
 # **El agregado HA CRECIDO desde esa medicion, y los numeros de arriba son los de AQUEL DIA.**
-# Medido el 2026-10-19: `ci:local` tiene **11 pasos**: a los 7 del CI se les sumaron el 8,
+# Medido el 2026-10-19: `ci:local` tenia **11 pasos**: a los 7 del CI se les sumaron el 8,
 # `audit:invariants:coverage` del backend, el 9, `audit:suppressions:check` —el gate de la regla
 # «Nunca --no-verify»—, el 10, `audit:fixtures:check`, el vinculo entre el fixture medido y su T en
 # `AUDIT.md`, y el 11, su gemelo del frontend (120 ficheros / 209 pares, `src/**/*.spec.ts` +
 # `e2e/**/*.spec.ts`). Salio **11/11 en verde en 5m12s**; los pasos 9, 10 y 11 tardaron 0m06s,
 # 0m02s y 0m02s (el 3, el caro, 1m28s). Antes del 11: **10/10 en 1m32s**; antes del 10, ese mismo
-# dia: **9/9 en 2m03s**. Este hook NO lleva la cuenta: la imprime el
+# dia: **9/9 en 2m03s**. Con el paso 12 (la autoprueba del reparador del ancla, T292-bis), medido el
+# mismo dia: **12/12 en verde en 1m32s** (el 3, 0m51s; el 12, 0m02s). Este hook NO lleva la cuenta: la imprime el
 # propio `ci:local` en su banner y en su `RESUMEN`, y aqui no se repite para que no vuelva a
 # quedarse vieja (estas dos lineas de `echo` decian «7 pasos» cuando ya eran 8).
 # El paso caro (3) es justamente una de las cosas que SOLO existen en la raiz, asi que recortarlo

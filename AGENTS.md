@@ -472,7 +472,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
   del push midió el **build viejo** (medido: el 200 sin `X-Request-Id` seis veces y con él en el
   séptimo). La huella es algo que **solo** existe en el build nuevo (un endpoint, una cabecera, un
   hash de bundle); si no lo hay, **declare** que la identidad del build se confirma en el panel.
-- **Un script que no arranca es un gate que no existe** (gate: `npm run audit:tracking:self-test`, `audit:reconcile:self-test` y `audit:pg-tools:self-test` en `.husky/pre-push`; el CI ejecuta los dos primeros): ejecute el script, no lo parsee; si un `--self-test` no existe de verdad, no invente el alias. [Texto completo](docs/guides/reglas-medidas.md#script-que-no-arranca).
+- **Un script que no arranca es un gate que no existe** (gate: `npm run audit:tracking:self-test`, `audit:reconcile:self-test`, `audit:pg-tools:self-test` y `declare:return-anchors:self-test` en `.husky/pre-push`; el CI ejecuta los dos primeros): ejecute el script, no lo parsee; si un `--self-test` no existe de verdad, no invente el alias. [Texto completo](docs/guides/reglas-medidas.md#script-que-no-arranca).
 - **Después de empujar, compruebe LOS DOS espejos** (`git ls-remote origin refs/heads/main` y
   `git ls-remote deploy refs/heads/main`). El 2026-10-07 el push «salió bien» y el espejo `deploy` se
   quedó **2 commits atrás** (`origin` en `0417acd`, `deploy` en `4948689`) sin que el resultado global
