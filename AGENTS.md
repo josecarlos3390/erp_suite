@@ -137,7 +137,7 @@ npm run audit:money:check    # dinero al centavo (ratchet en 0)
 npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1497 (medido el 2026-10-19 en `backend-erp`; T291 quitó `dto.deliveryOrderId!`)
 npm run audit:explicit-any:check # `any` explícitos: ratchet en 1 (producción 0, specs 1)
 npm run audit:spec-clock:check   # reloj del proceso en specs: 0 hallazgos (2 excepciones declaradas)
-npm run audit:collection-caps:check # consultas sin cota (`produccionSinCota`): ratchet en 681 (medido el 2026-10-17 en `backend-erp`)
+npm run audit:collection-caps:check # consultas sin cota (`produccionSinCota`): ratchet en 680 (medido el 2026-10-19 en `backend-erp`)
 npm run audit:security-headers # postura de cabeceras en el código (gate estático de DECLARACIÓN): x-powered-by desactivado una sola vez en el arranque, nada la vuelve a encender y 0 hallazgos (medido el 2026-10-12 en `backend-erp`; los sitios que ponen cabeceras DERIVAN con cada endpoint legítimo y NO se congelan — prueba que el código lo dice, NO que la cabecera haya desaparecido)
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
