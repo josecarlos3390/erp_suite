@@ -43,8 +43,8 @@
 > Bloque literal de `AGENTS.md` (commit base `2f3cc7f`), sin reescribir.
 
 - **Cero `!` nuevos**, que desde el **2026-10-09** **tiene gate**: `npm run audit:non-null:check` en las
-  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1454** (medido el **2026-10-22** en `backend-erp`; `expresión!` 801
-  + `x!: T` 653; 1101 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
+  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1350** (medido el **2026-10-22** en `backend-erp`; `expresión!` 697
+  + `x!: T` 653; 997 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
   falla si **sube** (visto en rojo: 1601 → 1602, `exit 1`). Hasta ese gate la regla era un deseo, y el
   manual no la traía escrita en ningún sitio (medido); el detalle, en el `CHANGELOG.md` de la raíz.
   **La cifra BAJÓ de 1500 a 1498 el 2026-10-16** (T279): no subiendo la base, sino **quitando** las dos
@@ -56,6 +56,11 @@
   con el censo por riesgo (dinero y stock **341** · DTOs y controladores **656** · specs **353** ·
   resto de producción **147**), un commit por fichero y el `--update-baseline` en el mismo commit;
   el caso con `null` del POS quedó **rojo antes y verde después** (ver `CHANGELOG.md`).
+  **El lote 2, el mismo día, pagó los dos ficheros más grandes del censo de dinero: 1454 → 1350**
+  (`incoming-payments.service` **53** y `outgoing-payments.service` **51**), con **10** guardas nuevas
+  por fichero para factura/anticipo/socio/cuenta bancaria y su caso con `null` **rojo antes** (el `!`
+  escondía un `TypeError`, no un `null` de Prisma), un commit por fichero y la base congelada en el
+  mismo commit (ver `CHANGELOG.md`).
 
 ---
 
