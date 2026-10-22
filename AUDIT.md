@@ -2371,7 +2371,7 @@ declaración en el sitio.
 | # | Decisión | Qué se eligió | (A)/(B) | Sitio / interruptor | Prueba |
 |---|---|---|---|---|---|
 | **D1** | ¿La FV **directa** pasa por aprobaciones? | **NO**: se queda **no cableada** (una FV directa no se bloquea; la orden sí exige aprobación con regla activa) | **B** | `sale-invoices.service.ts` constructor (`ApprovalsService` inyectado, **0** usos de código) + `_executeConfirmLogic` sería el sitio de cableado; la regla `ApprovalRule` (`documentType='SALE_INVOICE'`, `isActive`) existe y nace **inactiva** | `test/approvals-wiring.e2e-spec.ts` **2/2** (FV directa 201 y 0 filas; orden 403 sin aprobación y 201 con ella), `src/sale-invoices/approvals-wiring.spec.ts` **2/2**, `src/approvals/approvals.service.spec.ts` **3/3** |
-| **D2** | ¿El crédito queda en `off`? | **SÍ, `off`** (no bloquea; es el modo de las pruebas) | **B** | `SystemSettings.creditPolicyMode` (`off`\|`warn`\|`block`), por tenant; se cambia con `PUT /settings` | `src/credit/credit-policy.spec.ts` **10/10** (off/warn/block, borde, override) + `src/credit/credit-policy-application.spec.ts` **5/5** (off no consulta; block 400; warn alerta; override con motivo deja `AuditLog`) |
+| **D2** | ¿El crédito queda en `off`? | **NO — APLICADA EL 2026-10-22: el tenant `default` pasa a `warn`** (alerta y **no** bloquea; ninguna venta se rompe); `block` **NO** se aplica: exige el proceso comercial (límites y aprobación de excepciones), decisión del usuario aún no tomada | **B** | `SystemSettings.creditPolicyMode` (`off`\|`warn`\|`block`), **una fila** por tenant (`@@unique(tenantId, key)`); se cambia con `PUT /settings` o, sin API, con `scripts/set-credit-policy-mode.mjs` | `src/credit/credit-policy.spec.ts` **10/10** + `src/credit/credit-policy-application.spec.ts` **7/7** (**17/17** en la corrida) + bloque **E6** de `test/concurrency-documents.e2e-spec.ts` **25/25** (`warn` ⇒ **201 + 1 alerta**; `off` ⇒ **201 + 0**; `block` ⇒ **400**, concurrente **201 + 400**). En `erp_db`: fila `id=11`, `value="warn"`, `SettingsService.getAll(1).creditPolicyMode === "warn"`; huella idéntica salvo `SystemSettings` **10 → 11** |
 | **D3** | ¿Se endurece el **400** de la condición del socio? | **NO**: se mantiene el 400 actual (solo rechaza la retención **no declarada** cuando el socio ya declaró otras). El 400 más estricto (toda retención de un socio **sin** asignaciones) **no se implementa** | **B** | `purchase-invoices.service.ts` → `_validateAndBuildRetentionLines`, condición `if (declared.length)`; no hay flag | `purchase-invoices.service.spec.ts`: T272 **3/3** + T286 **19/19** (medido hoy); escenarios S1/S2/S4/S7 y R3 **aceptados** hoy; S5 es el único rechazado |
 | **D4** | ¿Qué retención tiene el change log (`AuditLog`)? | **Se conserva todo**: no se purga; el script de purga queda como **tarea futura declarada, NO implementada** | **B** | No hay script de purga (censo); si se decide: 24 meses o tope de 2 GB, por antigüedad, con `--dry-run` + `--apply` | Medición real en `erp_test` (2026-10-20): **UPDATE 917 B · CREATE 2 740 B · CANCEL 474 B** de JSON ⇒ **≈0,41 MB/día · ≈2,85 MB/semana · ≈149 MB/año** con 100 documentos/día + 1,3 actualizaciones + 0,3 anulaciones |
 
@@ -2412,9 +2412,55 @@ activa, cerrar el pedido sin aprobación da **403** y, tras `POST /approvals`
 `sale-invoices/approvals-wiring.spec.ts` **2/2** y
 `approvals/approvals.service.spec.ts` **3/3** fijan lo mismo sin base de datos.
 
-### D2 — El crédito se queda en `off` (2026-10-20)
+### D2 — El crédito: de `off` a `warn` (**APLICADA EL 2026-10-22**; el 2026-10-20 se había declarado `off`)
 
-**Medido hoy.** El defecto está en **una sola constante**,
+**ESTADO VIGENTE — `warn`, aplicado el 2026-10-22 en `erp_db`.** La fila
+`SystemSettings(key = 'creditPolicyMode')` del tenant **1** (`slug = 'default'`) se creó con
+`value = 'warn'` (`id = 11`) mediante **un solo `upsert` por `(tenantId, key)`**
+(`scripts/set-credit-policy-mode.mjs --apply --mode=warn --expect-database=erp_db`); antes **no
+existía la fila** y el valor efectivo era `off` (`DEFAULT_CREDIT_POLICY_MODE`,
+`credit-policy.ts:44`). **`warn` alerta y NO bloquea**: el cajero ve el aviso y decide; ninguna
+venta se rompe. **`block` NO se aplica**: exige el proceso comercial (quién fija los límites y
+quién aprueba excepciones), que es una decisión del usuario que aún no está tomada.
+
+**Dónde vive el interruptor, medido (no supuesto).** Es **una fila** de `SystemSettings`, no una
+columna ni una constante de arranque: `key = 'creditPolicyMode'`, `value` de texto, única por
+`@@unique([tenantId, key])` (`prisma/schema.prisma`, modelo `SystemSettings`). El literal que lo
+lee es `settings.service.ts:318-320` —
+`map['creditPolicyMode'] ? parseCreditPolicyMode(map['creditPolicyMode']) : DEFAULT_CREDIT_POLICY_MODE`—
+y lo consumen `credit.service.ts:356` (`getStatus`) y `:424` (`assertDocumentCredit`, con
+`if (mode === 'off') return` en `:426`; el encargo citaba `:392`, que es la línea **anterior** a
+T300: el lock movió el bloque). Se escribe con `PUT /settings` (`settings.controller.ts:262-266`
+→ `settings.service.ts:640-643`) o, sin API levantado —el caso de hoy: el puerto 3000 estaba
+cerrado—, con el script de una fila.
+
+**La escritura y sus salvaguardas.** El script **aborta** si `Tenant` no es exactamente **1**, si
+su `slug` no es `default`, si el `--expect-database` no coincide con la base de `DATABASE_URL`
+(`erp_db`) o si el modo no es `off`/`warn`/`block`; sin `--apply` es **dry-run** y no escribe.
+Imprime el valor **antes** y **después** y comprueba que **ninguna otra fila** de `SystemSettings`
+cambió (id, clave y valor). Medido: `SystemSettings` **10 → 11** filas, la nueva `id = 11`,
+`value = "warn"`, y las otras diez con el mismo id, la misma clave y el mismo valor.
+
+**La huella de `erp_db` (solo lectura).** Antes → después: `Tenant` **1 → 1**, `Partner` **14 → 14**,
+`Item` **137 → 137**, `SaleInvoice` **0 → 0**, `SaleInvoiceItem` **0 → 0**, `SaleReserveInvoice`
+**0 → 0**, `Stock` **239 → 239**, `StockMovement` **0 → 0**, `Alert` **0 → 0**; `SystemSettings`
+**10 → 11** (la única que se tocó) y su `updatedAt` máximo `2026-10-20T02:45:59.778Z →
+2026-10-22T22:20:50.785Z`; los demás `updatedAt` máximos, idénticos. **No se metió ninguna factura
+de prueba en `erp_db`**: el funcional fue a `erp_test` y la huella de `erp_db` volvió a medirse
+después, **idéntica**. El valor efectivo se leyó **por el camino del producto**:
+`SettingsService.getAll(1).creditPolicyMode === "warn"`.
+
+**El A/B funcional (`erp_test`, sin tocar `erp_db`).** El bloque **E6** de
+`test/concurrency-documents.e2e-spec.ts` —la suite completa **25/25**, 139,1 s— deja los tres
+modos medidos con ventas reales: `warn` + venta que excede **⇒ 201 + 1 alerta** (`CREDIT_LIMIT`);
+`off` + venta que excede **⇒ 201 + 0 alertas**; `block` + venta que excede **⇒ 400** y, en
+concurrente con dos series, **201 + 400** (un documento, `excess "152.00"`). Los unitarios por el
+camino del servicio: `credit-policy.spec.ts` **10/10** + `credit-policy-application.spec.ts`
+**7/7** (**17/17** en la corrida de hoy).
+
+#### El estado declarado el 2026-10-20 (histórico; superado por la aplicación de arriba)
+
+**Medido el 2026-10-20.** El defecto está en **una sola constante**,
 `DEFAULT_CREDIT_POLICY_MODE = 'off'` (`credit-policy.ts:44`), y
 `settings.service.ts` lo aplica cuando la clave no está guardada
 (`:318-320`: `map['creditPolicyMode'] ? parseCreditPolicyMode(...) : 'off'`). El
