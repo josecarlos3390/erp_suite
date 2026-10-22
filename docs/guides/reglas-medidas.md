@@ -43,12 +43,19 @@
 > Bloque literal de `AGENTS.md` (commit base `2f3cc7f`), sin reescribir.
 
 - **Cero `!` nuevos**, que desde el **2026-10-09** **tiene gate**: `npm run audit:non-null:check` en las
-  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1498** (medido el **2026-10-16** en `backend-erp`; `expresión!` 845
-  + `x!: T` 653; 1145 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
+  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1454** (medido el **2026-10-22** en `backend-erp`; `expresión!` 801
+  + `x!: T` 653; 1101 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
   falla si **sube** (visto en rojo: 1601 → 1602, `exit 1`). Hasta ese gate la regla era un deseo, y el
   manual no la traía escrita en ningún sitio (medido); el detalle, en el `CHANGELOG.md` de la raíz.
   **La cifra BAJÓ de 1500 a 1498 el 2026-10-16** (T279): no subiendo la base, sino **quitando** las dos
   aserciones de `createBatchItem` (`test/test-utils.ts`), que pasan a una local con guarda.
+  **Y de 1498 a 1497 el 2026-10-19** (T291), quitando `dto.deliveryOrderId!` en `sales-returns`.
+  **La deuda se empezó a PAGAR por riesgo el 2026-10-22 (T303, lote 1)**: **1497 → 1454** en las
+  **12** utilidades y servicios del camino de dinero y stock (motor contable, notas de crédito,
+  entradas/salidas/ajustes/traspasos de stock, devoluciones de compra, POS, ensamblaje y extractos),
+  con el censo por riesgo (dinero y stock **341** · DTOs y controladores **656** · specs **353** ·
+  resto de producción **147**), un commit por fichero y el `--update-baseline` en el mismo commit;
+  el caso con `null` del POS quedó **rojo antes y verde después** (ver `CHANGELOG.md`).
 
 ---
 
