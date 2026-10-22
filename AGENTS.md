@@ -134,7 +134,7 @@ npm run audit:tracking       # lote/serie coherentes (necesita BD)
 npm run audit:reconcile      # cuadre general (necesita BD) (+ :self-test)
 npm run audit:invariants:coverage # toda invariante que publica `measure()` tiene al menos un caso en el `--self-test` (A/B; medido el 2026-10-19 en `backend-erp`)
 npm run audit:money:check    # dinero al centavo (ratchet en 0)
-npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1350 (medido el 2026-10-22 en `backend-erp`; T303 quitó 147 del camino de dinero y stock: 43 en el lote 1 y 104 en el lote 2 —cobros 53 y pagos 51—)
+npm run audit:non-null:check # aserciones no nulas (`!`): ratchet congelado en 1265 (medido el 2026-10-22 en `backend-erp`; T303 quitó 232 del camino de dinero y stock: 43 en el lote 1, 104 en el lote 2 —cobros 53 y pagos 51— y 85 en el lote 3 —sale-invoices 47 y sale-reserve-invoices 38—)
 npm run audit:explicit-any:check # `any` explícitos: ratchet en 1 (producción 0, specs 1)
 npm run audit:spec-clock:check   # reloj del proceso en specs: 0 hallazgos (2 excepciones declaradas)
 npm run audit:collection-caps:check # consultas sin cota (`produccionSinCota`): ratchet en 680 (medido el 2026-10-19 en `backend-erp`)
@@ -383,7 +383,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
 ### Trabajo y commits
 
 - **Nunca `--no-verify`** (ni `--force`, `@ts-ignore`, `eslint-disable`, `xit`): **el hook se arregla, no se salta**; `--no-verify` y `--force` son **comandos** y **no se gatean** (esa mitad es prosa). Gate del resto: `npm run audit:suppressions:check` —0 `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck`, 0 `eslint-disable` sin regla, 0 `xit`, y **12** directivas con regla en `src/` (8 `local/no-raw-without-tenant` + 4 `@typescript-eslint/no-require-imports`) más las de `scripts/`/`perf/`, congeladas con su mapa—. [Texto completo](docs/guides/reglas-medidas.md#nunca-no-verify).
-- **Cero `!` nuevos** (gate: `npm run audit:non-null:check` en las **tres** puertas —CI, `pre-push` y `ci-local.mjs`—; cifra **congelada en 1350**: `expresión!` 697 + `x!: T` 653; 997 en producción, 353 en specs): la deuda está **CONGELADA, no pagada** y el ratchet falla si sube. [Texto completo](docs/guides/reglas-medidas.md#cero-no-nulos).
+- **Cero `!` nuevos** (gate: `npm run audit:non-null:check` en las **tres** puertas —CI, `pre-push` y `ci-local.mjs`—; cifra **congelada en 1265**: `expresión!` 612 + `x!: T` 653; 912 en producción, 353 en specs): la deuda está **CONGELADA, no pagada** y el ratchet falla si sube. [Texto completo](docs/guides/reglas-medidas.md#cero-no-nulos).
 - **Nunca reescribir un commit ya empujado**: sin `push --force`/`--force-with-lease` sobre ramas
   compartidas y sin `amend`/`rebase` de historia publicada. Si algo salió mal, se **añade** un commit
   que lo corrige y, si aplica, se despliega la reversión.

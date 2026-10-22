@@ -43,8 +43,8 @@
 > Bloque literal de `AGENTS.md` (commit base `2f3cc7f`), sin reescribir.
 
 - **Cero `!` nuevos**, que desde el **2026-10-09** **tiene gate**: `npm run audit:non-null:check` en las
-  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1350** (medido el **2026-10-22** en `backend-erp`; `expresión!` 697
-  + `x!: T` 653; 997 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
+  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1265** (medido el **2026-10-22** en `backend-erp`; `expresión!` 612
+  + `x!: T` 653; 912 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
   falla si **sube** (visto en rojo: 1601 → 1602, `exit 1`). Hasta ese gate la regla era un deseo, y el
   manual no la traía escrita en ningún sitio (medido); el detalle, en el `CHANGELOG.md` de la raíz.
   **La cifra BAJÓ de 1500 a 1498 el 2026-10-16** (T279): no subiendo la base, sino **quitando** las dos
@@ -61,6 +61,17 @@
   por fichero para factura/anticipo/socio/cuenta bancaria y su caso con `null` **rojo antes** (el `!`
   escondía un `TypeError`, no un `null` de Prisma), un commit por fichero y la base congelada en el
   mismo commit (ver `CHANGELOG.md`).
+  **El lote 3, el mismo día, pagó los dos documentos de venta: 1350 → 1265** (`sale-invoices.service`
+  **47** y `sale-reserve-invoices.service` **38**), con la forma (a) para los ids de origen que no
+  pertenecen al documento (`requireSourceLine`, **400** en vez del `TypeError` ⇒ 500) y para el socio
+  de la entrega y el almacén de la FRV manual, y la forma (b) para los cinco sitios donde el valor ya
+  era no nulo por la guarda (`headerSpec`, `item`, `ri`, los dos `Map.get` y el `baseDocId` de la
+  lectura); **NUNCA `?? 0`** sobre un importe. Los dos A/B medidos con el servicio del commit padre:
+  `Cannot read properties of undefined (reading 'items')` en las dos rutas `from-multi-*` de la FV y
+  `Received promise resolved instead of rejected` en el alta manual de la FRV sin almacén. **Quedan
+  del lote 3** `purchase-receipts` **37**, `purchase-invoices` **32**, `purchase-credit-notes` **20** y
+  `delivery-orders` **19** (**108**), más los **656** de DTOs/controladores y los **353** de specs
+  (ver `CHANGELOG.md`).
 
 ---
 
