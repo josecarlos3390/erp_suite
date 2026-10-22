@@ -43,8 +43,8 @@
 > Bloque literal de `AGENTS.md` (commit base `2f3cc7f`), sin reescribir.
 
 - **Cero `!` nuevos**, que desde el **2026-10-09** **tiene gate**: `npm run audit:non-null:check` en las
-  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1157** (medido el **2026-10-22** en `backend-erp`; `expresión!` 504
-  + `x!: T` 653; 804 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
+  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1146** (medido el **2026-10-22** en `backend-erp`; `expresión!` 493
+  + `x!: T` 653; 793 en producción, 353 en specs) — **la deuda está CONGELADA en su suelo MEDIDO**: el ratchet
   falla si **sube** (visto en rojo: 1601 → 1602, `exit 1`). Hasta ese gate la regla era un deseo, y el
   manual no la traía escrita en ningún sitio (medido); el detalle, en el `CHANGELOG.md` de la raíz.
   **La cifra BAJÓ de 1500 a 1498 el 2026-10-16** (T279): no subiendo la base, sino **quitando** las dos
@@ -86,6 +86,27 @@
   (declarado: exigen los dobles completos de `from-order` y de `from-receipt`). Lo que queda del camino
   de dinero son **0** sitios de esta familia (ver
   `CHANGELOG.md`).
+  **T307 pagó los 11 de RIESGO que ese censo dejó medidos y el ratchet llegó a su SUELO: 1157 → 1146**
+  el 2026-10-22. Los **siete de fecha** son el mismo patrón —el día llega como string de query/DTO y el
+  ayudante devuelve `null`—, y el `!` convertía ese `null` en un valor que llegaba a Prisma
+  (`where.date: { gte: null }`, o `null` en una columna NO nulable ⇒ `PrismaClientValidationError` ⇒
+  **500**): `exchange-rates`
+  (`dateFrom`), `reports` (**2**: `from` y `to`), `stock-revaluations` (**2**: `dateFrom` y `dateTo`),
+  `purchase-requests` (`postingDate`, columna NO nulable) y `timezone.util` (`resolveDocumentDate`, el
+  ayudante canónico: la guarda es **única** y los llamadores no la repiten). Todos con **400** y el
+  valor en el mensaje, ninguno con un valor por defecto: el 0 y el «hoy» **no** son correctos para un
+  día que el cliente no mandó bien. El **8** (`sales-orders`) era un `quotations.find(...)!` con un
+  `quotationId` de **LÍNEA ajeno a la ruta** ⇒ `requireSourceLine` (**400** `Cotización 99 no
+  encontrada`), el patrón del lote 4. Los **3** del `prisma/seed` (categoría `MOB-EQUIPO`) estaban
+  dentro de un `if` que ya comprobaba las tres cuentas: equivalencia evidente, pero ahora el seed
+  **falla con el mensaje** que dice **qué cuenta falta** en vez de omitir la categoría en silencio. El
+  **A/B**: los seis casos del día y el de `sales-orders` se vieron **rojos con el servicio del padre y
+  verdes con la guarda**; el único con un `TypeError` real es `sales-orders`
+  (`Cannot read properties of undefined (reading 'items')`), y los demás dicen lo que de verdad hacían
+  —`Received promise resolved instead of rejected`, o `did not throw`—: el `null` cruzaba la frontera
+  en vez de reventar en el doble. Lo que queda (**1 146**) es **legítimo por construcción**: **656**
+  DTOs y controladores, **353** specs, **1** `currency!` declarado de dinero y **136** del resto (con
+  guarda previa o tipo no nulo), así que **el censo no se equivocó en ninguno de los 11**.
 
 ---
 
