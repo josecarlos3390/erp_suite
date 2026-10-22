@@ -43,8 +43,8 @@
 > Bloque literal de `AGENTS.md` (commit base `2f3cc7f`), sin reescribir.
 
 - **Cero `!` nuevos**, que desde el **2026-10-09** **tiene gate**: `npm run audit:non-null:check` en las
-  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1265** (medido el **2026-10-22** en `backend-erp`; `expresión!` 612
-  + `x!: T` 653; 912 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
+  **tres** puertas (CI, `pre-push`, `ci-local.mjs`), con la cifra **congelada en 1157** (medido el **2026-10-22** en `backend-erp`; `expresión!` 504
+  + `x!: T` 653; 804 en producción, 353 en specs) — **la deuda está CONGELADA, no pagada**: el ratchet
   falla si **sube** (visto en rojo: 1601 → 1602, `exit 1`). Hasta ese gate la regla era un deseo, y el
   manual no la traía escrita en ningún sitio (medido); el detalle, en el `CHANGELOG.md` de la raíz.
   **La cifra BAJÓ de 1500 a 1498 el 2026-10-16** (T279): no subiendo la base, sino **quitando** las dos
@@ -68,10 +68,24 @@
   era no nulo por la guarda (`headerSpec`, `item`, `ri`, los dos `Map.get` y el `baseDocId` de la
   lectura); **NUNCA `?? 0`** sobre un importe. Los dos A/B medidos con el servicio del commit padre:
   `Cannot read properties of undefined (reading 'items')` en las dos rutas `from-multi-*` de la FV y
-  `Received promise resolved instead of rejected` en el alta manual de la FRV sin almacén. **Quedan
-  del lote 3** `purchase-receipts` **37**, `purchase-invoices` **32**, `purchase-credit-notes` **20** y
-  `delivery-orders` **19** (**108**), más los **656** de DTOs/controladores y los **353** de specs
-  (ver `CHANGELOG.md`).
+  `Received promise resolved instead of rejected` en el alta manual de la FRV sin almacén.
+  **El lote 4, el mismo día, cerró el camino de dinero: 1265 → 1157** — `delivery-orders` **19**
+  (primero, el que más escribe stock), `purchase-receipts` **37**, `purchase-invoices` **32** y
+  `purchase-credit-notes` **20**: **108** sitios, uno por commit y la base congelada en cada uno. Las
+  formas del lote 3, sin inventar ninguna: `requireSourceLine` (**400**) para los ids de línea que no
+  pertenecen al documento de origen, el estrechamiento equivalente (`Map.get` tras `has` ⇒ const
+  capturada, `find(...)!` tras el bucle de validación ⇒ const/`requireSourceLine`, `customItem!` ⇒ la
+  unión discriminada) y el `?.` ⇒ `?? null` **solo donde el null es semánticamente correcto**; los
+  **`x!: T` de DTO no se tocaron**. **NUNCA `?? 0`** sobre un importe. Cuatro crashes que el `!`
+  escondía, con su literal y su A/B: el **update de una línea de servicio sin almacén**
+  (`PrismaClientValidationError: Argument 'warehouseId' must not be null` ⇒ 500) y el **alta manual de
+  la FPI sin almacén** (columna `Int` obligatoria ⇒ 500), los dos con caso **rojo con el servicio del
+  commit padre y verde con la guarda**; y el **`taxIndicatorId!` del alta desde pedido** (`id: null` a
+  Prisma ⇒ 500) y el **`ri` de la factura desde recepción leído antes de su guarda**
+  (`Cannot read properties of undefined (reading 'itemId')` ⇒ 500), corregidos sin caso propio
+  (declarado: exigen los dobles completos de `from-order` y de `from-receipt`). Lo que queda del camino
+  de dinero son **0** sitios de esta familia (ver
+  `CHANGELOG.md`).
 
 ---
 
