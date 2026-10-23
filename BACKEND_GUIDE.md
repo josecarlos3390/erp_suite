@@ -236,6 +236,23 @@ Antes de mergear un PR que agregue un flujo `createFrom*`, verificar:
 
 **Censo que la hace buscable**: `npm run census:derived` (en `backend-erp`, `scripts/census-derived-quantities.mjs`). Medido el 2026-10-12: **822** ficheros de `src/` analizados, **207** nombres censados, **80** publicados por dos o más ficheros, **128** calculados y no persistidos, **126** leídos por el frontend y **65** **DIANA** (derivado + publicado por varios servicios + leído en pantalla). Son cifras **del día**: el censo **deriva** con cada fichero o nombre que se añada, así que **no se congelan** —se vigila la **regla**, no el recuento—.
 
+#### La DEFINICIÓN de `deliveredQty` y `openQty` en la línea de PEDIDO (T310, 2026-10-23)
+
+**La definición que el instrumento comprueba, y que se lee donde se lee la columna** (`prisma/schema.prisma`, modelo `SalesOrderItem`), literal: **«`deliveredQty` = entregado por una ENTREGA o por una FV DIRECTA (el bien salió del almacén); `openQty` = quantity − deliveredQty.»**
+
+```
+deliveredQty = Σ (líneas de entrega ACTIVAS con ese orderItemId)
+             + Σ (líneas de factura DIRECTA activas con ese orderItemId)   ← la FV directa entrega
+             − Σ (líneas de devolución ACTIVAS que revierten esa entrega)  ← la REVERTA, no una fuente
+openQty      = quantity − deliveredQty            (acotado en 0: criterio del sanado de T97)
+```
+
+- **Son dos formas de entregar, no un doble conteo.** La FV directa (`sale-invoices.service.ts:4264-4277`) incrementa `deliveredQty` **porque saca stock**, así que la columna ya contaba las dos. En el simulacro, la columna decía **120 u** y las **entregas** sumaban **80 u**: las **40 u** que faltaban salieron por factura directa (`sale-invoices/from-multi-order`). El dato era correcto: **el instrumento medía otra cosa**, y desde T310 mide esta definición.
+- **La FV directa se reconoce por el CAMPO**, `SaleInvoice.isReserve === 'N'` —la bandera de la **cabecera**, la misma que lee el producto en `:4268` para decidir el incremento—. **NO se infiere** de «no tiene entrega»: una FRV (`'Y'`) tampoco trae línea de entrega y **no entrega**, y una factura sin la bandera no se adivina.
+- **Lo devuelto se resta** porque el producto lo revierte (`sales-returns.service.ts:1199-1203`; lo restaura al anular, `:1455-1459`): es la viñeta **T100** de esta misma guía aplicada al instrumento, que tiene que tener el **mismo ALCANCE** que el camino que **ACTÚA**.
+- **El ALCANCE es la CONDICIÓN del camino que ACTÚA, no el que parece**: `line.orderItemId && !line.deliveryOrderItemId && isReserve === 'N'` (`sale-invoices.service.ts:4264`) ⇒ la factura que nació de una **entrega** no vuelve a entregar (`fi."deliveryOrderItemId" IS NULL` en el SQL del cuadre); y la **entrega cancelada** no cuenta, porque `cancel` devuelve la unidad al pedido (`delivery-orders.service.ts:4078-4084`, `d.status <> 'CANCELLED'`). Las dos guardas las prueba el `--self-test` (caso 5) y el SQL las replica.
+- **Quién lo mide**: la invariante **4.5** (`src/tenant-health/invariant-rules.ts`, `orderQtyDrift`, con sus **cinco** casos en el `--self-test` → `npm run audit:invariants:self-test`) y el **frente 5** de `audit:independent`, que hace la misma cuenta en SQL independiente (no usa el producto). **Medido el 2026-10-23 sobre el MISMO tenant y los MISMOS datos** (tenant **26** del maratón, `--volume=20 --keep`: 1 820 acciones aceptadas, 0 rechazadas): con la **fórmula vieja** (solo entregas) el frente 5 publicaba `deliveredQty` **40 líneas / +40,0000 u** y `openQty` **40 / −40,0000 u**; con la nueva da **0 desvíos / 0,0000 u** en las dos (columna 120,0000 = documentos 120,0000 y openQty 0,0000 = 0,0000), `4.5 = 0 líneas` y `audit:invariants` **24/24 en verde** (`invariantes medidas: 24 · en ROJO: 0`). Una definición que solo viviera en la invariante no la encontraría quien lee la columna: por eso está en el `schema.prisma` y aquí.
+
 ---
 
 ## 3. Deuda técnica — Fases completadas
