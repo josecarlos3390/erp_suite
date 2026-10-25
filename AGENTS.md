@@ -149,7 +149,7 @@ npm run audit:collection-caps:check # consultas sin cota (`produccionSinCota`): 
 npm run census:inmemory:check # agregados que se SUMAN EN MEMORIA (`findMany`/`findFirst` cuyas filas se reducen en JS): el censo parte los sitios en MOVIBLES (el resultado sería idéntico con `count`/`aggregate`/`groupBy`) y NO movibles (regla de negocio encima); ratchet en 70 movibles de 99 sitios (medido el 2026-10-25 en `backend-erp`; el lote 1 dejó 75 de 104 y el lote 2 pagó los 5 «solo para el número», así que quedan **0** de esos). **Los «113 agregados» de la campaña NO eran 113 agregados**: medido con este censo, 80 son GUARDAS `.length` (`if (filas.length)`), 2 no tienen binding atribuible, 2 usan las filas como filas y solo 29 son una suma real (`AUDIT.md` T318)
 npm run audit:security-headers # postura de cabeceras en el código (gate estático de DECLARACIÓN): x-powered-by desactivado una sola vez en el arranque, nada la vuelve a encender y 0 hallazgos (medido el 2026-10-12 en `backend-erp`; los sitios que ponen cabeceras DERIVAN con cada endpoint legítimo y NO se congelan — prueba que el código lo dice, NO que la cabecera haya desaparecido)
 npm run audit:derived-invariants:check # la cantidad derivada publicada y leída en pantalla cita su invariante (`fichero:línea`) en su declaración y tiene un caso que la asevera; la diana (72) sale del MISMO censo que `census:derived`, la deuda está en 68 y el gate falla si sube (medido el 2026-10-24 en `backend-erp`)
-npm run audit:detectors:check # el ALCANCE de cada detector: ejecuta el `--self-test` de los 19 `audit-*.mjs`, exige un caso declarado de cada patrón que aplique (multilínea T126 / nombre distinto / sufijo) y lista los 2 sin `--self-test`; 12 sin caso difícil, deuda congelada (medido el 2026-10-24 en `backend-erp`)
+npm run audit:detectors:check # el ALCANCE de cada detector: ejecuta el `--self-test` de los 20 `audit-*.mjs`, exige un caso declarado de cada patrón que aplique (multilínea T126 / nombre distinto / sufijo) y lista los 2 sin `--self-test`; 12 sin caso difícil, deuda congelada (medido el 2026-10-25 en `backend-erp`; eran 19/17/5 el 2026-10-24 y el gate del exit code añadió el detector 20)
 npm run audit:single-engine:check # un solo motor por dominio: 4 conceptos con su motor citado (`fichero:línea` + evidencia) y la segunda fórmula prohibida en los ficheros ajenos; 0 en el progreso del pedido (T316) y 5 hallazgos de deuda (2 del `invoiceStatus` de la entrega y 3 copias del stock disponible), congelados (medido el 2026-10-24 en `backend-erp`)
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
@@ -476,6 +476,16 @@ npm run audit:contrast       # contraste WCAG de la paleta
   Angular, revertida y re-adoptada solo al construir la configuración que permite medirla).
 - **Los gates se declaran con su salida**, no con un «debería pasar». Un rojo por **entorno o arnés**
   se declara como tal con su evidencia, y se repite en aislamiento antes de atribuirlo al producto.
+- **El veredicto de un gate es su RESUMEN, no el exit code de un wrapper que mezcla stderr** (medido el
+  2026-10-25). `npm run ci:local` termina con **`EXITCODE_CI_LOCAL=0`** y `RESUMEN: 23 pasos en verde en
+  29m42s` (jest 268 suites / 3 625 tests): el script **no** devuelve 1. El `[exit code: 1]` lo pone el
+  **invocador**: `node -e "console.error('X')" 2>&1 | Out-Null` ⇒ 1, la misma con `; echo $LASTEXITCODE`
+  ⇒ 0. Se mide el exit code del **PROCESO** (`$LASTEXITCODE`/`spawnSync().status`), nunca el de una
+  tubería con `2>&1`; y un script cuyo código no corresponde a su veredicto **sí es un defecto**. Gate:
+  `npm run audit:exit-codes` (en `pre-push` y `ci:local`), que ejecuta una tabla declarada de gates con
+  `spawnSync` y exige verde⇒0 / rojo⇒≠0, más la forma de `ci-local.mjs` y del `pre-push`; **no es
+  gateable genéricamente** (cada gate inventa su resumen): la forma mínima es esa tabla, una línea por
+  gate. [Texto completo](docs/guides/reglas-medidas.md#el-veredicto-es-el-resumen).
 - **Si un diagnóstico se corrige, se escribe**: la corrección va al CHANGELOG o al plan; el diagnóstico
   anterior **no se borra**.
 - **Una verificación de despliegue empieza esperando una HUELLA DE VERSIÓN**, nunca asumiendo que el
@@ -595,8 +605,9 @@ npm run audit:contrast       # contraste WCAG de la paleta
   que **ejecuta** el `--self-test` de cada `audit-*.mjs` y exige, en los declarados, un caso de cada
   patrón que aplique —**multilínea** (T126), **nombre distinto** (`timeZone` vs `settings.timeZone`) y
   **sufijo** (`*.e2e-spec.ts` vs `*.spec.ts`)—, con su nombre en la salida real y su fixture **dentro**
-  de la autoprueba; medido el 2026-10-24: **19** detectores, **17** con `--self-test`, **2** sin él (el
-  hallazgo), **5** declarados y **12** con deuda. [Texto completo](docs/guides/reglas-medidas.md#mismo-alcance).
+  de la autoprueba; medido el 2026-10-25: **20** detectores, **18** con `--self-test`, **2** sin él (el
+  hallazgo), **6** declarados y **12** con deuda (eran 19/17/5 el 2026-10-24; el gate del exit code añadió
+  el detector 20). [Texto completo](docs/guides/reglas-medidas.md#mismo-alcance).
 - **Un gate que se puede APUNTAR a otro sitio (variable de entorno, argumento) es un gate que se puede
   burlar; la raíz se resuelve por el propio repositorio.** Caso medido: `--check --file` de
   `audit:collection-caps` salía **0 en silencio** diciendo «mejoró: produccionSinCota 687 → 32» —**el

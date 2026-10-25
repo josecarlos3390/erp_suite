@@ -36,6 +36,7 @@
 | Cantidad derivada publicada y leída en pantalla | `npm run audit:derived-invariants:check` | [`#cantidad-derivada`](#cantidad-derivada) |
 | Un solo motor por dominio | `npm run audit:single-engine:check` | [`#un-solo-motor`](#un-solo-motor) |
 | El mismo ALCANCE para el instrumento que MIDE y el que ACTÚA | `npm run audit:detectors:check` | [`#mismo-alcance`](#mismo-alcance) |
+| El veredicto de un gate es su RESUMEN, no el exit code de un wrapper | `npm run audit:exit-codes` | [`#el-veredicto-es-el-resumen`](#el-veredicto-es-el-resumen) |
 
 ---
 
@@ -407,5 +408,47 @@
   `porQue` declara el rojo; la calidad del caso se revisa al declararlo. Los detectores que no son
   `audit-*.mjs` (`audit-tracking.ts`, `audit-invariants.ts`, `declare-return-anchors.ts`) quedan fuera
   de este censo y los corre el `pre-push` por otra vía.
+
+---
+
+<a id="el-veredicto-es-el-resumen"></a>
+
+## El veredicto de un gate es su RESUMEN, no el exit code de un wrapper que mezcla stderr.
+
+> Regla del manual. Gate desde el **2026-10-25**: `npm run audit:exit-codes` en `backend-erp`
+> (`scripts/audit-exit-codes.mjs`), en el `ci:local` (paso 6) y en el `pre-push`.
+
+- **El hallazgo que la origina (T318, medido el 2026-10-25).** Se atribuyó a `ci:local` y a los hooks
+  del backend devolver **1** con el resumen en verde, «porque escriben en stderr». Medido con el literal
+  delante: `npm run ci:local` termina con **`EXITCODE_CI_LOCAL=0`** y `RESUMEN: 23 pasos en verde en
+  29m42s` (jest **268 suites / 3 625 tests**). El script **no** devuelve 1.
+- **La reproducción mínima, el mismo día.** `node -e "console.error('X')" 2>&1 | Out-Null` ⇒
+  **`[exit code: 1]`**; la misma llamada con `; echo $LASTEXITCODE` ⇒ **0**. Y la forma de `ci:local`
+  —un padre con `stdio: 'inherit'` que lanza hijos que escriben en stderr— da lo mismo:
+  `node -e "require('child_process').spawnSync('node',['-e','console.error(1)'],{stdio:'inherit'});process.exitCode=0" 2>&1 | Out-Null`
+  ⇒ **1**, y con `; echo $LASTEXITCODE` ⇒ **0**. Con un gate real, `npm run audit:line-accounts` (su
+  RESUMEN va por `console.error`): `2>&1 | Out-Null` ⇒ 0 y `; echo $LASTEXITCODE` ⇒ 0. **El defecto no
+  es del gate: es del INVOCADOR** — la tubería con `2>&1` deja `$?` en falso aunque `$LASTEXITCODE` sea 0.
+- **La regla.** El **veredicto es el RESUMEN**; el exit code que se mide es el del **PROCESO**
+  (`$LASTEXITCODE`, o `spawnSync().status`), **nunca** el de una tubería de PowerShell con `2>&1`. Un
+  script que devuelve un código que no corresponde a su veredicto (verde⇒1 o rojo⇒0) **sí es un defecto**
+  y se arregla.
+- **El gate.** `npm run audit:exit-codes` ejecuta una **tabla declarada** de gates con `spawnSync` (sin
+  PowerShell, así el artefacto no puede confundirlo), lee el veredicto de la salida con la expresión
+  declarada y exige que el status **coincida**: verde ⇒ 0, rojo ⇒ ≠ 0; un gate sin veredicto legible sale
+  **NO medible**, no verde. Además comprueba la **forma** de los dos agregados que no puede correr en cada
+  pasada: `ci-local.mjs` (el camino verde termina en `summary(...)` y no fija `process.exitCode`, leído con
+  el AST —una regex contaba el `process.exit()` que el propio fichero NOMBRA en un comentario: rojo falso
+  medido—) y `.husky/pre-push` (su última línea efectiva es `exit 0`). Medido: **17 gates declarados, 17
+  con el exit code igual a su veredicto**; autoprueba **12/12** con fixtures en un directorio temporal.
+- **No se puede gatear genéricamente, y por qué.** Cada instrumento inventa su resumen (`OK — sin
+  regresiones`, `VEREDICTO: VERDE`, `7/7 casos OK`, `COBERTURA: …`); un gate que adivinara el formato daría
+  falsos verdes con el primer cambio de palabra. La forma mínima es la tabla declarada: una línea por gate
+  nuevo (id, comando, expresiones del veredicto) más la comprobación de forma de los agregados. `npm test`
+  no está en la tabla —es el paso más caro (~25 min) y su ejecución real ya está en cada puerta—: se
+  declara.
+- **Lo que NO cubre.** No juzga el contenido del veredicto (si el verde es merecido), solo su
+  correspondencia con el exit code; y la comprobación de forma lee el AST de dos ficheros concretos, no de
+  cualquier script del repo.
 
 ---
