@@ -320,6 +320,40 @@
       "valorEsperado": 99,
       "muestra": "OK — sin regresiones (base: movibles=70, soloNumero=0, sitios={v}; hoy: movibles=70, soloNumero=0, sitios=99).",
       "nota": "El TAMANO del universo, declarado para que la cifra del manual no derive sin que nadie lo note. NO es un ratchet: baja cuando alguien paga deuda (mover un agregado a la base quita un sitio del censo: 116 -> 104 en el primer lote y 104 -> 99 en el segundo) y sube con codigo nuevo; el gate falla solo si SUBEN los movibles. La separacion importa: congelar el universo convertiria cada mejora en un rojo."
+    },
+    {
+      "id": "bulk-sitios",
+      "fichero": "AGENTS.md",
+      "patron": "census:bulk:check[^\\r\\n]*ratchet en \\d+ movibles de (\\d+) sitios",
+      "comando": {
+        "cmd": "npm run census:bulk:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "base: sitios=(\\d+), movibles="
+      },
+      "valorEsperado": 311,
+      "muestra": "OK — sin regresiones (base: sitios={v}, movibles=67; hoy: sitios=311, movibles=67).",
+      "nota": "FIGURA NUEVA, 2026-10-25. `census-bulk-writes.mjs` (backend-erp) censa las ESCRITURAS POR FILA: create/update/upsert/delete dentro de un bucle (for/for-of/forEach/map/while) y $transaction por fila. El universo son 311 sitios en 216 bucles; aparte y sin sumar: 21 ya en lote y 148 indirectas (un ayudante que escribe, llamado por fila). NO es un ratchet: el ratchet vigila los movibles; esta cifra se declara para que el tamano del universo no derive en silencio. Relacion con el «377 BULK» de la campana: ese 377 es la clase BULK de audit-collection-caps (LECTURA sin cota que se itera), que hoy mide 366, y NO es este conjunto; el censo la recalcula con su detector."
+    },
+    {
+      "id": "bulk-movibles",
+      "fichero": "AGENTS.md",
+      "patron": "census:bulk:check[^\\r\\n]*ratchet en (\\d+) movibles de",
+      "comando": {
+        "cmd": "npm run census:bulk:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "base: sitios=\\d+, movibles=(\\d+)"
+      },
+      "valorEsperado": 67,
+      "muestra": "OK — sin regresiones (base: sitios=311, movibles={v}; hoy: sitios=311, movibles=67).",
+      "nota": "FIGURA NUEVA, 2026-10-25. Los MOVIBLES del censo de escrituras por fila: el mismo resultado con createMany/updateMany/deleteMany (o una sola $transaction). La DEUDA no puede subir (`--check` falla si sube); los NO movibles (244: condicion/guarda por fila 186, lectura previa 37, upsert 11, acumulador 5, dependencia de la escritura anterior 2, SQL crudo 2 y try/catch por fila 1) llevan una regla de negocio o una dependencia que el lote no reproduce. El --check imprime la cifra dos veces (base y hoy) y por eso el extractor esta anclado a `base:`."
     }
   ],
   "noVigiladas": [
