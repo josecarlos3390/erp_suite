@@ -334,9 +334,9 @@
         "tipo": "regex",
         "patron": "base: sitios=(\\d+), movibles="
       },
-      "valorEsperado": 292,
-      "muestra": "OK — sin regresiones (base: sitios={v}, movibles=23; hoy: sitios=292, movibles=23).",
-      "nota": "FIGURA NUEVA, 2026-10-25. `census-bulk-writes.mjs` (backend-erp) censa las ESCRITURAS POR FILA: create/update/upsert/delete dentro de un bucle (for/for-of/forEach/map/while) y $transaction por fila. El universo bajo de 311 sitios en 216 bucles a 292 en 198 por el LOTE 1 de los BULK: 19 sitios migrados a createMany/updateMany (17 movibles + 2 que el censo ya contaba como no movibles, la rama else del mismo bucle) y 27 reclasificados por la regla nueva `id-de-la-fila`. Aparte y sin sumar: 21 ya en lote y 148 indirectas (un ayudante que escribe, llamado por fila). NO es un ratchet: el ratchet vigila los movibles; esta cifra se declara para que el tamano del universo no derive en silencio. Relacion con el «377 BULK» de la campana: ese 377 es la clase BULK de audit-collection-caps (LECTURA sin cota que se itera), que hoy mide 366, y NO es este conjunto; el censo la recalcula con su detector."
+      "valorEsperado": 274,
+      "muestra": "OK — sin regresiones (base: sitios={v}, movibles=10; hoy: sitios=274, movibles=10).",
+      "nota": "FIGURA NUEVA, 2026-10-25. `census-bulk-writes.mjs` (backend-erp) censa las ESCRITURAS POR FILA: create/update/upsert/delete dentro de un bucle (for/for-of/forEach/map/while) y $transaction por fila. El universo bajo de 311 sitios en 216 bucles a 292 en 198 por el LOTE 1 (19 sitios migrados a createMany/updateMany y 27 reclasificados por la regla nueva `id-de-la-fila`) y a 274 en 181 por el LOTE 2 (13 movibles migrados + 5 sitios de las ramas else del kardex que el censo contaba como no movibles). Aparte y sin sumar: 23 ya en lote y 148 indirectas (un ayudante que escribe, llamado por fila). NO es un ratchet: el ratchet vigila los movibles; esta cifra se declara para que el tamano del universo no derive en silencio. Relacion con el «377 BULK» de la campana: ese 377 es la clase BULK de audit-collection-caps (LECTURA sin cota que se itera), que hoy mide 366, y NO es este conjunto; el censo la recalcula con su detector."
     },
     {
       "id": "bulk-movibles",
@@ -351,9 +351,9 @@
         "tipo": "regex",
         "patron": "base: sitios=\\d+, movibles=(\\d+)"
       },
-      "valorEsperado": 23,
-      "muestra": "OK — sin regresiones (base: sitios=292, movibles={v}; hoy: sitios=292, movibles=23).",
-      "nota": "FIGURA NUEVA, 2026-10-25. Los MOVIBLES del censo de escrituras por fila: el mismo resultado con createMany/updateMany/deleteMany (o una sola $transaction). La DEUDA no puede subir (`--check` falla si sube); los NO movibles (269: condicion/guarda por fila 184, la escritura devuelve el id que el bucle consume 32, lectura previa 37, upsert 11, acumulador 2, dependencia de la escritura anterior 2, SQL crudo 2 y try/catch por fila 1) llevan una regla de negocio o una dependencia que el lote no reproduce. La razon `id-de-la-fila` es NUEVA del lote 1 y cerro un FALSO POSITIVO medido: 27 de los 67 «movibles» devolvian el id de cada fila (`createdItems.push({ id: created.id })`) y un createMany lo habria perdido. El --check imprime la cifra dos veces (base y hoy) y por eso el extractor esta anclado a `base:`."
+      "valorEsperado": 10,
+      "muestra": "OK — sin regresiones (base: sitios=274, movibles={v}; hoy: sitios=274, movibles=10).",
+      "nota": "FIGURA NUEVA, 2026-10-25. Los MOVIBLES del censo de escrituras por fila: el mismo resultado con createMany/updateMany/deleteMany (o una sola $transaction). La DEUDA no puede subir (`--check` falla si sube); los NO movibles (264: condicion/guarda por fila 179, la escritura devuelve el id que el bucle consume 32, lectura previa 37, upsert 11, acumulador 2, dependencia de la escritura anterior 2, SQL crudo 2 y try/catch por fila 1) llevan una regla de negocio o una dependencia que el lote no reproduce. La razon `id-de-la-fila` es del lote 1 y cerro un FALSO POSITIVO medido: 27 de los 67 «movibles» devolvian el id de cada fila. El lote 2 migro 13 movibles (23 -> 10) y midio la TRAMPA 4 —una LECTURA por fila que el censo no ve—: `stock-revaluations:590`, declarado «falso positivo conocido» por el lote 1 SIN medirlo, resulto MOVIBLE (la lectura se queda dentro del bucle y solo se difiere el INSERT), asi que no hubo segundo falso positivo. Los 10 que quedan son `update` con `data` DISTINTO por fila (invoicedQty: ci.qty, increment: line.quantity, importes prorrateados, campos parciales), que ningun `updateMany` reproduce. El --check imprime la cifra dos veces (base y hoy) y por eso el extractor esta anclado a `base:`."
     }
   ],
   "noVigiladas": [
