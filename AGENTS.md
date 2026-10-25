@@ -80,7 +80,12 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   alturas y densidades por variables, nunca `px` crudos en `pages/`+`shared/`.
 - **Un solo motor por dominio** — precios (`price-resolver.util.ts`), contabilidad (`AccountingEngine`,
   punto único `_persist`), reparto por centros de costo, impuestos (`resolveLineTaxIndicator` +
-  `calcLineWithIndicator`). **Ninguna pantalla ni la tienda replican la regla: la consumen.**
+  `calcLineWithIndicator`) y el progreso del pedido (`computeSalesOrderProgress`,
+  `backend-erp/src/common/progress.util.ts:61`). **Ninguna pantalla ni la tienda replican la regla: la
+  consumen.** Gate: `npm run audit:single-engine:check` (medido el 2026-10-24 en `backend-erp`:
+  **4** conceptos con su motor citado, **0** segundas fórmulas en el progreso del pedido —el caso
+  T316— y **5** hallazgos declarados como deuda: **2** del `invoiceStatus` de la entrega y **3** copias
+  de `stockPhysical + stockOrdered - stockCommitted`). [Texto completo](docs/guides/reglas-medidas.md#un-solo-motor)
 - **Dinero al centavo** (`Decimal` / `Money` / `isZeroMoney`; `.toFixed()` solo para **serializar**) y
   **fechas con `tenantToday()`** en specs y seeds, nunca `toISOString()`.
 - **Cantidad derivada que se publique y se lea en pantalla** (pendiente, saldo, progreso, total,
@@ -88,10 +93,13 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   citada (`fichero:línea`)** y **un caso que la compare**, y **se deriva de los documentos ACTIVOS**,
   nunca de una columna denormalizada (`openQty`, `receivedQty`, `invoicedQty`…): puede estar desviada y
   nadie la mira, pero **en cuanto alguien la lee, publica un número falso** (T265). Censo buscable:
-  `npm run census:derived` (en `backend-erp`; medido: **207** nombres censados y **65** diana). Los dos
-  antídotos ya escritos valen aquí —medir que dos funciones del mismo concepto siguen de acuerdo
-  (`backend-erp/src/common/timezone.predicates.spec.ts`) y **el mismo ALCANCE** para el instrumento que
-  MIDE y el que ACTÚA—; la evidencia con importes de la familia (T259–T266), en `BACKEND_GUIDE.md` §2.
+  `npm run census:derived` (en `backend-erp`; medido el 2026-10-24: **229** nombres censados y **72**
+  diana). Gate: `npm run audit:derived-invariants:check` —de las 72 diana, **4** tienen cita que
+  resuelve y caso (2 comparan de verdad) y **68** quedan sin declarar, con la línea base en 68 y el
+  gate rojo si sube—. Los dos antídotos ya escritos valen aquí —medir que dos funciones del mismo
+  concepto siguen de acuerdo (`backend-erp/src/common/timezone.predicates.spec.ts`) y **el mismo
+  ALCANCE** para el instrumento que MIDE y el que ACTÚA—; la evidencia con importes de la familia
+  (T259–T266), en `BACKEND_GUIDE.md` §2. [Texto completo](docs/guides/reglas-medidas.md#cantidad-derivada)
 - **Cuentas con `requiresPartner`:** la línea de asiento exige `partnerId` y el `partnerCode`
   (ShortName) se denormaliza (Anexo B).
 - **E2E:** los maestros se resuelven **por código, nunca por posición**.
@@ -139,6 +147,9 @@ npm run audit:explicit-any:check # `any` explícitos: ratchet en 1 (producción 
 npm run audit:spec-clock:check   # reloj del proceso en specs: 0 hallazgos (2 excepciones declaradas)
 npm run audit:collection-caps:check # consultas sin cota (`produccionSinCota`): ratchet en 671 (medido el 2026-10-24 en `backend-erp`) · y el **detector de SQL crudo** (`$queryRaw`/`$queryRawUnsafe` de lectura sin `LIMIT`) cuenta aparte y se congela en su línea base
 npm run audit:security-headers # postura de cabeceras en el código (gate estático de DECLARACIÓN): x-powered-by desactivado una sola vez en el arranque, nada la vuelve a encender y 0 hallazgos (medido el 2026-10-12 en `backend-erp`; los sitios que ponen cabeceras DERIVAN con cada endpoint legítimo y NO se congelan — prueba que el código lo dice, NO que la cabecera haya desaparecido)
+npm run audit:derived-invariants:check # la cantidad derivada publicada y leída en pantalla cita su invariante (`fichero:línea`) en su declaración y tiene un caso que la asevera; la diana (72) sale del MISMO censo que `census:derived`, la deuda está en 68 y el gate falla si sube (medido el 2026-10-24 en `backend-erp`)
+npm run audit:detectors:check # el ALCANCE de cada detector: ejecuta el `--self-test` de los 19 `audit-*.mjs`, exige un caso declarado de cada patrón que aplique (multilínea T126 / nombre distinto / sufijo) y lista los 2 sin `--self-test`; 12 sin caso difícil, deuda congelada (medido el 2026-10-24 en `backend-erp`)
+npm run audit:single-engine:check # un solo motor por dominio: 4 conceptos con su motor citado (`fichero:línea` + evidencia) y la segunda fórmula prohibida en los ficheros ajenos; 0 en el progreso del pedido (T316) y 5 hallazgos de deuda (2 del `invoiceStatus` de la entrega y 3 copias del stock disponible), congelados (medido el 2026-10-24 en `backend-erp`)
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
 
@@ -579,7 +590,12 @@ npm run audit:contrast       # contraste WCAG de la paleta
   medición**: el valor real era **54**. Ese mismo gate siguió publicando cotas inferiores —**R1 = 22**;
   **R2c = 14** frente a ~**19** reales— hasta que se arregló el detector (`10a298c0`, `30db7d37`). La
   lección de T126, literal: **una métrica en 0 solo vale si el detector está probado contra los casos
-  difíciles.** Aplica a **cualquier** cambio.
+  difíciles.** Aplica a **cualquier** cambio. Gate: `npm run audit:detectors:check` (en `backend-erp`),
+  que **ejecuta** el `--self-test` de cada `audit-*.mjs` y exige, en los declarados, un caso de cada
+  patrón que aplique —**multilínea** (T126), **nombre distinto** (`timeZone` vs `settings.timeZone`) y
+  **sufijo** (`*.e2e-spec.ts` vs `*.spec.ts`)—, con su nombre en la salida real y su fixture **dentro**
+  de la autoprueba; medido el 2026-10-24: **19** detectores, **17** con `--self-test`, **2** sin él (el
+  hallazgo), **5** declarados y **12** con deuda. [Texto completo](docs/guides/reglas-medidas.md#mismo-alcance).
 - **Un gate que se puede APUNTAR a otro sitio (variable de entorno, argumento) es un gate que se puede
   burlar; la raíz se resuelve por el propio repositorio.** Caso medido: `--check --file` de
   `audit:collection-caps` salía **0 en silencio** diciendo «mejoró: produccionSinCota 687 → 32» —**el

@@ -33,6 +33,9 @@
 | Nunca `--no-verify` | `npm run audit:suppressions:check` | [`#nunca-no-verify`](#nunca-no-verify) |
 | Los fixtures que reproducen un defecto medido | `npm run audit:fixtures:check` | [`#fixtures-medidos`](#fixtures-medidos) |
 | Un guard ya implementado se prueba falsificándolo | — (sin gate; su caso se declara en `AUDIT.md` T293) | [`#guard-falsificado`](#guard-falsificado) |
+| Cantidad derivada publicada y leída en pantalla | `npm run audit:derived-invariants:check` | [`#cantidad-derivada`](#cantidad-derivada) |
+| Un solo motor por dominio | `npm run audit:single-engine:check` | [`#un-solo-motor`](#un-solo-motor) |
+| El mismo ALCANCE para el instrumento que MIDE y el que ACTÚA | `npm run audit:detectors:check` | [`#mismo-alcance`](#mismo-alcance) |
 
 ---
 
@@ -264,5 +267,145 @@
   **reversión comprobada**. Un A/B que solo dice «se puso rojo» no es un A/B: el literal es lo que
   distingue el rojo de la mutación del rojo de un caso mal escrito. Y esto **no sustituye** al rojo de
   la función: la suite que la mide de punta a punta sigue siendo la prueba de que el defecto existía.
+
+---
+
+<a id="cantidad-derivada"></a>
+
+## La cantidad derivada que se publica y se lee en pantalla se entrega con su invariante citada y un caso que la compare.
+
+> Regla del manual (T265). Gate desde el **2026-10-24**: `npm run audit:derived-invariants:check` en
+> `backend-erp` (`scripts/audit-derived-invariants.mjs`), en el `ci:local` (paso 15) y en el `pre-push`.
+> El texto de la convención sigue en `AGENTS.md` (Convenciones transversales) con la cifra vigente.
+
+- **La regla.** Toda cantidad derivada que se **publique** en una respuesta del API y se **lea en
+  pantalla** —pendiente, saldo, progreso, total, disponible, facturado, entregado, recibido,
+  consumido…— se entrega con su **invariante canónica citada (`fichero:línea`) en su declaración** y
+  con **un caso que la compare**; y se deriva de los documentos **ACTIVOS**, nunca de una columna
+  denormalizada: puede estar desviada y nadie la mira, pero en cuanto alguien la lee publica un número
+  falso.
+- **El censo, y por qué la diana no es 65.** `npm run census:derived` (medido el **2026-10-24** en
+  `backend-erp`) da **229** nombres censados y **72** diana (derivado + publicado + leído por el
+  frontend); el manual decía **207 / 65** de una medición anterior, y la cifra se movió con el código.
+  La diana es por **NOMBRE**: `totalPages` (paginación) y `pendingInvoice` (venta y compra, dos
+  derivaciones) entran en el mismo conjunto; el registro lo declara y el `nota` avisa del homónimo.
+- **Qué comprueba el gate.** El conjunto diana sale del **mismo motor** que el censo
+  (`collectDerivedCensus()`, importado: no es una copia). Por cada nombre declarado en
+  `scripts/derived-invariants.declarations.json`: (1) `invariante` resuelve como `fichero:línea`;
+  (2) el texto citado **contiene la `evidencia`** declarada (el trozo de la fórmula); (3) la línea
+  `declaracion` —la del registro del dueño, p. ej. `FLOW_QUANTITY_SOURCES`— **lleva esa cita**; (4) el
+  `caso` es una spec y tiene un `expect(...)` que **nombra la cantidad** (paréntesis balanceados,
+  multilínea incluida). `compara: true` declara además que ese caso compara la derivada con su
+  invariante; se cuenta aparte (`conCompara`).
+- **La medición, y el defecto que encontró.** De las **72** diana, **4** tienen hoy cita que resuelve y
+  caso (**2** comparan de verdad: `delivered` y `pendingInvoice`, en
+  `test/document-flow-chain.e2e-spec.ts`), y **68** quedan sin declarar (la línea base). Las **cuatro**
+  citas que había en `FLOW_QUANTITY_SOURCES` estaban **CADUCADAS**: `delivered` y `pendingInvoice`
+  citaban `delivery-orders.service.ts:4949-4952`, que hoy es la **paginación** del listado; `received`
+  citaba `purchase-receipts.service.ts:1760-1800`, que es el **alta de cabecera**; y
+  `pendingDelivery` citaba el **comentario** de los ayudantes de devoluciones. El gate las cazó con la
+  evidencia y se corrigieron a la derivación real (`document-flow-chain.util.ts:441`, `:536`, `:549`,
+  `:563`). `pendingReceipt` **no se declara**: su invariante (`document-flow-chain.util.ts:321`) no cita
+  ningún `fichero:línea`, igual que `purchase.ordered` (`:263`); declararla sería una cita inventada.
+- **El A/B.** Con el código del **padre** (las citas caducadas) y este registro,
+  `node scripts/audit-derived-invariants.mjs --check` sale **ROJO**, literal: `✗ RATCHET EN ROJO: · cita
+  ROTA en declaradas (4): delivered, pendingDelivery, pendingInvoice, received — el fichero/línea citado
+  ya no resuelve; la declaración miente` y `EXIT=1`. Con las citas corregidas, **VERDE** (`diana=72
+  sinDeclarar=68`). La autoprueba (`--self-test`) son **11 casos del evaluador (1 VERDE, 10 ROJOS) + 3
+  del ratchet + 1 CONTROL real**, con el ROJO de «la línea citada NO contiene la evidencia».
+- **Lo que NO cubre, declarado.** Que el `expect` compare **semánticamente** la derivada con su
+  invariante no se puede automatizar (se declara con `compara` y su `nota`); el cruce «se lee en
+  pantalla» es el del censo por texto sobre `erp-frontend/src` (si el frontend no está al lado, la diana
+  sale 0 y el gate lo imprime como «no-disponible», no como un cero medido); y el gate **congela** la
+  deuda, no la paga.
+
+---
+
+<a id="un-solo-motor"></a>
+
+## Un solo motor por dominio: ninguna pantalla ni servicio replica la fórmula, la consumen.
+
+> Regla del manual. Gate desde el **2026-10-24**: `npm run audit:single-engine:check` en `backend-erp`
+> (`scripts/audit-single-engine.mjs`), en el `ci:local` (paso 17) y en el `pre-push`.
+
+- **La regla.** Cada concepto derivado tiene **un** motor canónico; los ficheros ajenos lo **consumen**.
+  El caso medido es el **progreso del pedido de venta** (`sales-orders`): la celda del listado y el
+  recálculo tenían **dos** fórmulas del mismo concepto y se desviaban —medido en `PED-237`, la columna
+  guardaba `FULL` y `GET /sales-orders/:id` respondía `PARTIAL`—. T220 dejó `computeSalesOrderProgress`
+  como motor y **T316** quitó la segunda fórmula de `findAll`; el gate vigila que no vuelva.
+- **Qué comprueba.** El registro `scripts/single-engine.declarations.json` declara, por concepto, su
+  `motor` (`fichero:línea` + `evidencia` que tiene que estar en esa línea), los ficheros donde **no**
+  puede aparecer una segunda fórmula (`prohibidoEn`, o `"*"` con `excepto`) y el `patron` de la fórmula,
+  con el **AST** (no una regex sobre líneas): `asignacion` (un `deliveryStatus:`/`const invoiceStatus =`
+  cuyo inicializador es un condicional o una binaria, salvo llamada al motor) o
+  `expresion-binaria-con` (una expresión que recompone los operandos del motor). Un motor que se mueve o
+  se renombra es rojo; una fórmula nueva es roja.
+- **La medición: 4 conceptos, 1 con más de una implementación.** Medido el **2026-10-24** en
+  `backend-erp`: **4** motores que resuelven con su evidencia; **0** segundas fórmulas en el **progreso
+  del pedido** (el caso T316, verde); **2** en el **progreso de facturación de la ENTREGA** (el listado
+  deriva su `invoiceStatus` en `delivery-orders.service.ts:4889` y `:4907`, mientras
+  `recalcDeliveryOrderProgress` calcula el mismo campo desde el denormalizado `invoicedQty`: pueden
+  desviarse); **3** copias del **stock disponible** (`Number(stock.stockPhysical) +
+  Number(stock.stockOrdered) - Number(stock.stockCommitted)` en `assembly-orders.service.ts:330`,
+  `kit-expansion.util.ts:97` e `items.service.ts:3582`, con el motor en `stock.util.ts:470`); **0** en el
+  **saldo del socio** (los demás leen la columna). Total: **5 hallazgos** declarados como deuda.
+- **El A/B.** Con una segunda fórmula de vuelta en `sales-orders.service.ts` (la sonda
+  `const deliveryStatus = delivered >= ordered ? 'FULL' : …`), el informe publica `✗ SEGUNDA FÓRMULA en
+  src/sales-orders/sales-orders.service.ts:4792: deliveryStatus = delivered >= ordered ? 'FULL' …` y
+  `--check` sale **ROJO** —primero por el CONTROL de la autoprueba: `[FALLO] CONTROL · el motor real
+  resuelve y sales-orders.service.ts sigue sin segunda fórmula — motoresRotos=0 hallazgos=1`, `EXIT=1`—;
+  con la sonda fuera, **VERDE** (`conceptos=4 hallazgos=5`). La autoprueba son **9 casos del evaluador
+  (3 VERDES, 6 ROJOS) + 3 del ratchet + 1 CONTROL real**, y el ROJO principal es el **código del PADRE
+  de T316**: `deliveryStatus: deliverable === 0 ? 'FULL' : …` e `invoiceStatus: …` ⇒ 2 hallazgos.
+- **Lo que NO cubre, declarado.** Una segunda derivación con **otra forma** (un helper local, un
+  `reduce` que suma lo mismo) no la ve: el patrón es una **cota inferior** y por eso va escrito y
+  revisado por concepto; las **escrituras denormalizadas** de `openQty` (`increment`/`decrement` en
+  `delivery-orders.service.ts`) son otro camino y no se comparan; y el **precio**
+  (`price-resolver.util.ts`) no se declara todavía: su fórmula multi-paso exige un patrón con casos, y
+  una cota inferior con falsos positivos sería peor que ninguna.
+
+---
+
+<a id="mismo-alcance"></a>
+
+## El instrumento que MIDE y el instrumento que ACTÚA tienen que tener el mismo ALCANCE.
+
+> Regla del manual. Gate desde el **2026-10-24**: `npm run audit:detectors:check` en `backend-erp`
+> (`scripts/audit-detectors-self-test.mjs`), en el `ci:local` (paso 16) y en el `pre-push`.
+
+- **La regla.** Un censo orientado a líneas y un ejecutor con AST no ven lo mismo, así que el censo es
+  una **cota inferior**; y **una métrica en 0 solo vale si el detector está probado contra los casos
+  difíciles**. Caso medido, `AUDIT.md` **T126** (2026-09-14): el escáner del gate de dinero no veía los
+  redondeos **multilínea** y el **0** con el que se cerró R2b era un artefacto; el valor real era
+  **54**. Y los otros dos que se escaparon: la variable con **nombre distinto** (`timeZone` vs
+  `settings.timeZone`, que dejó 4 sitios sin migrar mientras el contador global bajaba) y el fichero
+  cuyo **sufijo no casa** con el filtro (`*.e2e-spec.ts` vs `*.spec.ts`, el primer rojo de
+  `audit:spec-clock` dijo 6 en vez de 25).
+- **Qué comprueba.** Deriva los `scripts/audit-*.mjs` del directorio (no los declara: un detector nuevo
+  aparece solo) y **ejecuta** el `--self-test` de cada uno (un script que no arranca no es un gate). Para
+  los declarados en `scripts/detectors-self-test.declarations.json` exige, por cada patrón que
+  `aplica`—`multilinea`, `nombreDistinto`, `sufijo`—, un caso con **dos valores**: su `nombre` aparece
+  en la salida **REAL** de la autoprueba (el caso se ejecutó) y su `fixture` (el literal del código
+  difícil) está **DENTRO de la función de autoprueba**, comprobado con el **AST** (una fixture en un
+  comentario no cuenta). Los detectores **sin** `--self-test` salen como hallazgo, con su motivo.
+- **El censo (medido el 2026-10-24 en `backend-erp`).** **19** detectores; **17** con `--self-test` que
+  arranca; **2** sin él —`audit-account-matrix.mjs` y `audit-independent-reconcile.mjs`: no declaran
+  `--self-test` en el fuente y el flag correría la auditoría completa, así que no se ejecutan y se
+  listan—; **5** declarados (2 con caso de sufijo: `audit-spec-clock` y `audit-derived-invariants`;
+  `audit-day-helpers` con multilínea **y** nombre distinto; y 2 gates nuevos sin patrón aplicable); **12**
+  con `--self-test` pero **sin** caso difícil declarado (deuda). Por patrón: **1** multilínea, **1**
+  nombre distinto, **2** sufijo.
+- **El A/B.** Se renombró una etiqueta del caso multilínea en `audit-day-helpers.mjs` (el caso se sigue
+  ejecutando, pero ya no es el que el registro declara) ⇒ `npm run audit:detectors:check` sale **ROJO**,
+  literal: `✗ RATCHET EN ROJO: · declaración ROTA en audit-day-helpers.mjs: multilinea: el nombre del
+  caso NO aparece en la salida real — el caso que se cree cubierto no está en la autoprueba` y
+  `EXIT=1`; restaurada, **VERDE** (`detectores=19 sinSelfTest=2 sinCasoDificil=12`). La autoprueba son
+  **9 casos del evaluador (3 VERDES, 6 ROJOS) + 3 del ratchet + 1 CONTROL real** sobre
+  `audit-day-helpers`, e incluye el rojo de la fixture **fuera** de la autoprueba.
+- **Lo que NO cubre, declarado.** No prueba que el caso se ponga rojo al **estrechar el alcance** (eso
+  exigiría mutar 16 detectores heterogéneos): comprueba que el caso **existe y se ejecuta**, y su
+  `porQue` declara el rojo; la calidad del caso se revisa al declararlo. Los detectores que no son
+  `audit-*.mjs` (`audit-tracking.ts`, `audit-invariants.ts`, `declare-return-anchors.ts`) quedan fuera
+  de este censo y los corre el `pre-push` por otra vía.
 
 ---
