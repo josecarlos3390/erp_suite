@@ -103,6 +103,14 @@ frontend.zip
 __pycache__/
 memory/
 
+# ── Higiene local (2026-10-26): lo barrido NO se versiona ──
+# Los 186 `.log` de sesiones viejas se movieron a `_logs-archivo/` (ya caían en `*.log`, pero el
+# directorio se ignora entero para que un `.txt` o un `.json` suelto dentro no aparezca como
+# nuevo) y los 40 `stash` de `backend-erp` se archivaron como `refs/archivo/stash/<n>` con este
+# índice al lado. Ninguno de los dos es un artefacto del producto.
+_logs-archivo/
+_archivo-stashes-*.txt
+
 # ZCode CLI session files
 .zcode/
 
