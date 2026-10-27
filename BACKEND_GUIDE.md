@@ -113,10 +113,18 @@ body.branchId = resolveDocumentBranchId(body.branchId, user.defaultBranchId);
 `if (!dto.branchId && user.defaultBranchId) { dto.branchId = user.defaultBranchId; }`: cuando el
 usuario **no tenía** sucursal por defecto el bloque **no hacía nada** y el documento nacía con
 `null`. Esa forma no puede volver: `npm run audit:branch-required:check` exige **0** controllers con
-ella y **congela** el número de `branchId: … ?? null` en los servicios (hoy **146**, copias de un
-documento origen y caminos internos — el borde ya garantiza la sucursal de toda alta por el API). El
+ella y **congela por clase** los `branchId: … ?? null` de los servicios —medido el 2026-10-27:
+**103** = `parametro` **0** (pagada), `cuerpo` **57**, `copiaOrigen` **43** y `otro` **3**—. El
 detector **quita los comentarios antes de contar** y su `--self-test` prueba los tres casos difíciles
-(multilínea, nombre distinto y sufijo).
+(multilínea, nombre distinto y sufijo) además de la clasificación por clase.
+
+**La deuda, por clase, y qué hacer con cada una** (medido el 2026-10-27; el gate la congela, no la
+esconde): `parametro` está **pagada** (43 → 0: `branchId: branchId ?? null` era la sucursal que el
+borde ya resolvía, y su único camino a `null` era una llamada interna — ahora es un 400);
+`cuerpo` (**57**) mezcla documentos con maestros que pueden no tener sucursal (una serie **global**,
+un borrador, un asiento) ⇒ se paga **por familia**, con su decisión; `copiaOrigen` (**43**) solo es
+`null` si el origen es **legado** ⇒ decidir entre «400» y «heredar la del usuario» es una decisión de
+producto; `otro` (**3**) se mira a mano.
 
 **Al añadir un alta nueva**: DTO → controller que resuelve la sucursal con el motor → servicio que la
 exige (no la inventa). Si el alta nace de otro documento, la sucursal se **hereda** del origen; si el
