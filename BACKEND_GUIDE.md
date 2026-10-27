@@ -104,6 +104,19 @@ usuario del JWT; si tampoco la tiene, 400** con un literal único (`BRANCH_REQUI
 `assertBranchRequired` —el guard que ya llamaban los servicios— **delega** en él, así que el borde y
 el servicio no pueden divergir en la condición ni en el mensaje.
 
+**La regla tiene DOS capas, y conviene saber cuál responde** (medido el 2026-10-27 en el E2E
+`test/branch-required.e2e-spec.ts`):
+
+| Capa | Cuándo | Qué devuelve |
+|---|---|---|
+| **`BranchRequiredGuard`** (`src/common/branch-required.guard.ts`) | **toda escritura** de un usuario sin `defaultBranchId` — salvo `SUPERADMIN` y el wizard de `setup/base-masters` | **403** «Debe tener una sucursal asignada…» |
+| **`resolveDocumentBranchId`** | cuando el guard **no aplica** (SUPERADMIN, llamada interna) | **400** «La sucursal (branchId) es obligatoria.» |
+
+Un cliente normal sin sucursal **nunca llega a ver el 400**: lo corta el guard. Por eso el caso E2E
+mide el **403** en ese camino y deja el 400 para los unitarios y las llamadas internas. **Y la
+sucursal del usuario viaja en el TOKEN**: cambiarla en la BD **no surte efecto hasta que vuelve a
+entrar**, así que un caso que la toque tiene que re-loguear (el E2E lo hace, y lo dice).
+
 ```ts
 // En el controller, en la primera línea del handler de alta:
 body.branchId = resolveDocumentBranchId(body.branchId, user.defaultBranchId);

@@ -94,12 +94,14 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   alturas y densidades por variables, nunca `px` crudos en `pages/`+`shared/`.
 - **Un solo motor por dominio** — precios (`price-resolver.util.ts`), contabilidad (`AccountingEngine`,
   punto único `_persist`), reparto por centros de costo, impuestos (`resolveLineTaxIndicator` +
-  `calcLineWithIndicator`) y el progreso del pedido (`computeSalesOrderProgress`,
-  `backend-erp/src/common/progress.util.ts:61`). **Ninguna pantalla ni la tienda replican la regla: la
-  consumen.** Gate: `npm run audit:single-engine:check` (medido el 2026-10-24 en `backend-erp`:
-  **4** conceptos con su motor citado, **0** segundas fórmulas en el progreso del pedido —el caso
-  T316— y **5** hallazgos declarados como deuda: **2** del `invoiceStatus` de la entrega y **3** copias
-  de `stockPhysical + stockOrdered - stockCommitted`). [Texto completo](docs/guides/reglas-medidas.md#un-solo-motor)
+  `calcLineWithIndicator`), el progreso del pedido (`computeSalesOrderProgress`,
+  `backend-erp/src/common/progress.util.ts:61`) y **la sucursal del documento**
+  (`resolveDocumentBranchId`). **Ninguna pantalla ni la tienda replican la regla: la consumen.** Gate:
+  `npm run audit:single-engine:check` (medido el 2026-10-27 en `backend-erp`: **5** conceptos con su
+  motor citado, **0** segundas fórmulas en el progreso del pedido —el caso T316— y **7** hallazgos
+  declarados como deuda: **2** del `invoiceStatus` de la entrega, **3** copias de
+  `stockPhysical + stockOrdered - stockCommitted` y **2** del fallback de la sucursal en los
+  controllers de pedidos). [Texto completo](docs/guides/reglas-medidas.md#un-solo-motor)
 - **Dinero al centavo** (`Decimal` / `Money` / `isZeroMoney`; `.toFixed()` solo para **serializar**) y
   **fechas con `tenantToday()`** en specs y seeds, nunca `toISOString()`.
 - **Cantidad derivada que se publique y se lea en pantalla** (pendiente, saldo, progreso, total,
@@ -165,7 +167,7 @@ npm run census:bulk:check # ESCRITURAS POR FILA («BULK»): `create`/`update`/`u
 npm run audit:security-headers # postura de cabeceras en el código (gate estático de DECLARACIÓN): x-powered-by desactivado una sola vez en el arranque, nada la vuelve a encender y 0 hallazgos (medido el 2026-10-12 en `backend-erp`; los sitios que ponen cabeceras DERIVAN con cada endpoint legítimo y NO se congelan — prueba que el código lo dice, NO que la cabecera haya desaparecido)
 npm run audit:derived-invariants:check # la cantidad derivada publicada y leída en pantalla cita su invariante (`fichero:línea`) en su declaración y tiene un caso que la asevera; la diana (72) sale del MISMO censo que `census:derived`, la deuda está en 68 y el gate falla si sube (medido el 2026-10-24 en `backend-erp`)
 npm run audit:detectors:check # el ALCANCE de cada detector: ejecuta el `--self-test` de los 20 `audit-*.mjs`, exige un caso declarado de cada patrón que aplique (multilínea T126 / nombre distinto / sufijo) y lista los 2 sin `--self-test`; 12 sin caso difícil, deuda congelada (medido el 2026-10-25 en `backend-erp`; eran 19/17/5 el 2026-10-24 y el gate del exit code añadió el detector 20)
-npm run audit:single-engine:check # un solo motor por dominio: 4 conceptos con su motor citado (`fichero:línea` + evidencia) y la segunda fórmula prohibida en los ficheros ajenos; 0 en el progreso del pedido (T316) y 5 hallazgos de deuda (2 del `invoiceStatus` de la entrega y 3 copias del stock disponible), congelados (medido el 2026-10-24 en `backend-erp`)
+npm run audit:single-engine:check # un solo motor por dominio: 5 conceptos con su motor citado (`fichero:línea` + evidencia) y la segunda fórmula prohibida en los ficheros ajenos; 0 en el progreso del pedido (T316) y 7 hallazgos de deuda (2 del `invoiceStatus` de la entrega, 3 copias del stock disponible y 2 del fallback de la sucursal en los controllers de pedidos), congelados (medido el 2026-10-27 en `backend-erp`)
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
 
