@@ -84,10 +84,14 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   **declarados con su razón**; el gate falla si aparece un `cuerpo` nuevo sin declarar—,
   `copiaOrigen` **43**, `otro` **2**). Un `update` **no** puede reescribir la sucursal a `null`: se
   escribe solo si el payload la trae. Y un **usuario sin sucursal por defecto no puede crearla ni
-  quedarse sin ella**: `PATCH /users` la rechaza. **La regla vive en los dos lados** (2026-10-27): el
-  formulario la exige con `Validators.required` y la explica con `[required]`/`[error]`, así que el
-  usuario ve por qué no puede guardar en vez de recibir un 400. Las tres excepciones —serie global,
-  asiento del tenant y borrador— están declaradas y **no** se marcan.
+  quedarse sin ella**: `PATCH /users` la rechaza. **El documento tiene que ser de la sucursal DEL
+  USUARIO** (2026-10-27): el cuerpo solo manda si coincide con la del usuario —si pide otra, **403**—,
+  y la **copia hereda la del origen** y valida la pertenencia; sin usuario con sucursal (SUPERADMIN,
+  canal) no hay contra qué validar. **La regla vive en los dos lados**: el formulario la exige con
+  `Validators.required` y la explica con `[required]`/`[error]`, y el interceptor **lee el mensaje del
+  403** del backend en vez de sustituirlo por «no tienes permisos», que es lo que deja al usuario sin
+  saber que le falta la asignación. Las tres excepciones —serie global, asiento del tenant y
+  borrador— están declaradas y **no** se marcan.
   [Texto completo](BACKEND_GUIDE.md) · [El patrón de la pantalla](FRONTEND_GUIDE.md#17-la-sucursal-del-documento-branchid-también-en-el-formulario)
 - **Frontend:** `0` `!important` sin marca y `0` `::ng-deep` sin marca (`!important-ok` / `::ng-deep-ok`);
   overrides por **especificidad**; un `h1` por página y nombre accesible en todo control (WCAG 2.5.3);

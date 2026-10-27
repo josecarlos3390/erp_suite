@@ -111,6 +111,16 @@ el servicio no pueden divergir en la condición ni en el mensaje.
 |---|---|---|
 | **`BranchRequiredGuard`** (`src/common/branch-required.guard.ts`) | **toda escritura** de un usuario sin `defaultBranchId` — salvo `SUPERADMIN` y el wizard de `setup/base-masters` | **403** «Debe tener una sucursal asignada…» |
 | **`resolveDocumentBranchId`** | cuando el guard **no aplica** (SUPERADMIN, llamada interna) | **400** «La sucursal (branchId) es obligatoria.» |
+| **`resolveDocumentBranchId`** (pertenencia) | el cuerpo pide una sucursal **distinta** de la del usuario | **403** «No puedes operar sobre otra sucursal…» |
+
+**La pertenencia es la mitad que faltaba** (2026-10-27): el cuerpo mandaba **sin preguntar**, así que
+un usuario de la sucursal B podía crear —o **copiar**— en la A. Y la copia es justo el flujo que lo
+destapó: al copiar, el formulario se pre-rellena con la sucursal del documento **origen**, así que el
+cuerpo traía la del origen y nadie comprobaba la pertenencia. Ahora el documento copiado **hereda la
+sucursal del origen** y el usuario tiene que **pertenecer** a ella; si no, **403** con un mensaje que
+dice qué hacer. Las dos excepciones, declaradas: **sin usuario con sucursal no hay contra qué validar**
+(SUPERADMIN, canal de la tienda, llamada interna) y el `SUPERADMIN` conserva el poder de trabajar en
+cualquier sucursal.
 
 Un cliente normal sin sucursal **nunca llega a ver el 400**: lo corta el guard. Por eso el caso E2E
 mide el **403** en ese camino y deja el 400 para los unitarios y las llamadas internas. **Y la
