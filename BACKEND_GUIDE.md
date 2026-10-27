@@ -114,8 +114,8 @@ body.branchId = resolveDocumentBranchId(body.branchId, user.defaultBranchId);
 usuario **no tenía** sucursal por defecto el bloque **no hacía nada** y el documento nacía con
 `null`. Esa forma no puede volver: `npm run audit:branch-required:check` exige **0** controllers con
 ella y **congela por clase** los `branchId: … ?? null` de los servicios —medido el 2026-10-27:
-**89** = `parametro` **0** (pagada), `cuerpo` **43** (stock y pedidos pagados), `copiaOrigen` **43** y
-`otro` **3**—. El
+**53** = `parametro` **0** (pagada), `cuerpo` **7** (maestros, borradores y asientos), `copiaOrigen`
+**43** y `otro` **3**—. El
 detector **quita los comentarios antes de contar** y su `--self-test` prueba los tres casos difíciles
 (multilínea, nombre distinto y sufijo) además de la clasificación por clase.
 
@@ -128,9 +128,9 @@ sucursal activo el documento **desaparecía de su propia lista**.
 **La deuda, por clase, y qué hacer con cada una** (medido el 2026-10-27; el gate la congela, no la
 esconde): `parametro` está **pagada** (43 → 0: `branchId: branchId ?? null` era la sucursal que el
 borde ya resolvía, y su único camino a `null` era una llamada interna — ahora es un 400);
-`cuerpo` (**43**) ya tiene pagados stock y pedidos (14 sitios) y lo que queda mezcla documentos con
-maestros que pueden no tener sucursal (una serie **global**, un borrador, un asiento) ⇒ se paga **por
-familia**, con su decisión; `copiaOrigen` (**43**) solo es
+`cuerpo` (**7**) son **maestros** (series globales, empleados, terminales, almacenes, centros de
+trabajo), **borradores** y **asientos**: cada uno necesita su decisión de producto, porque una serie
+global o un asiento del tenant pueden no tener sucursal; `copiaOrigen` (**43**) solo es
 `null` si el origen es **legado** ⇒ decidir entre «400» y «heredar la del usuario» es una decisión de
 producto; `otro` (**3**) se mira a mano.
 
