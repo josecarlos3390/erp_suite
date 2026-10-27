@@ -331,6 +331,44 @@ npx playwright test e2e/accessibility-focus.spec.ts --project=chromium   # foco/
 
 ---
 
+### 1.7. La sucursal del documento (`branchId`) también en el formulario
+
+El API **exige** la sucursal de todo documento (ver `BACKEND_GUIDE.md`), pero un campo obligatorio que la
+pantalla no exige es un **400 que el usuario no puede explicar**. El patrón, en cualquier formulario cuya
+entidad la requiera:
+
+1. **El control es requerido**, y nace de la sucursal del usuario en los documentos
+   (`branchId: [defaultBranchId, Validators.required]`, en `DocumentFormBase`) y en `null` en los maestros
+   que la eligen a mano (almacén, terminal, empleado, centro de trabajo).
+2. **El wrapper lo dice**: el `luna-form-field` que envuelve `<app-branch-selector>` lleva
+   `[required]="true"` y el motivo al tocarlo:
+
+   ```html
+   <luna-form-field
+     label="Sucursal"
+     [required]="true"
+     [error]="
+       form.get('branchId')?.invalid && form.get('branchId')?.touched
+         ? 'Selecciona la sucursal del documento.'
+         : undefined
+     "
+   >
+     <app-branch-selector formControlName="branchId" placeholder="Seleccionar sucursal"></app-branch-selector>
+   </luna-form-field>
+   ```
+
+3. **El placeholder no invita a dejarlo vacío**: «Seleccionar sucursal», nunca «- Sin sucursal -».
+4. El botón Guardar ya se bloquea solo, porque usa `form.invalid`.
+
+**Las tres excepciones son datos, no deuda**: `document-series` (una serie global se comparte entre
+sucursales), `journal-entries` (la contabilidad es del tenant) y `document-drafts` (un borrador no es un
+documento) **pueden** no tener sucursal y su selector **no** se marca. Y en los specs, el documento
+simulado y **el almacén simulado** tienen que declarar su sucursal: si el formulario filtra el pool por
+sucursal, un almacén de mentira sin sucursal desaparece y el caso falla por una razón que no es la que
+cree medir. **Medido el 2026-10-27**: 16 controles + la base, 33 plantillas, **2789/2789** tests.
+
+---
+
 ## 2. Regla crítica: OnPush + Async = markForCheck()
 
 > **Contexto:** Todos los componentes de formularios de documentos usan `ChangeDetectionStrategy.OnPush`. En esta estrategia, Angular **no** refresca la vista automáticamente cuando una suscripción asíncrona modifica el estado del componente.

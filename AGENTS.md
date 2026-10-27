@@ -84,8 +84,11 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   **declarados con su razón**; el gate falla si aparece un `cuerpo` nuevo sin declarar—,
   `copiaOrigen` **43**, `otro` **2**). Un `update` **no** puede reescribir la sucursal a `null`: se
   escribe solo si el payload la trae. Y un **usuario sin sucursal por defecto no puede crearla ni
-  quedarse sin ella**: `PATCH /users` la rechaza.
-  [Texto completo](BACKEND_GUIDE.md)
+  quedarse sin ella**: `PATCH /users` la rechaza. **La regla vive en los dos lados** (2026-10-27): el
+  formulario la exige con `Validators.required` y la explica con `[required]`/`[error]`, así que el
+  usuario ve por qué no puede guardar en vez de recibir un 400. Las tres excepciones —serie global,
+  asiento del tenant y borrador— están declaradas y **no** se marcan.
+  [Texto completo](BACKEND_GUIDE.md) · [El patrón de la pantalla](FRONTEND_GUIDE.md#17-la-sucursal-del-documento-branchid-también-en-el-formulario)
 - **Frontend:** `0` `!important` sin marca y `0` `::ng-deep` sin marca (`!important-ok` / `::ng-deep-ok`);
   overrides por **especificidad**; un `h1` por página y nombre accesible en todo control (WCAG 2.5.3);
   alturas y densidades por variables, nunca `px` crudos en `pages/`+`shared/`.
