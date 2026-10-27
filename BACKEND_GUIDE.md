@@ -114,10 +114,13 @@ body.branchId = resolveDocumentBranchId(body.branchId, user.defaultBranchId);
 usuario **no tenía** sucursal por defecto el bloque **no hacía nada** y el documento nacía con
 `null`. Esa forma no puede volver: `npm run audit:branch-required:check` exige **0** controllers con
 ella y **congela por clase** los `branchId: … ?? null` de los servicios —medido el 2026-10-27:
-**53** = `parametro` **0** (pagada), `cuerpo` **7** (maestros, borradores y asientos), `copiaOrigen`
-**43** y `otro` **3**—. El
+**48** = `parametro` **0** (pagada), `cuerpo` **3** (serie global, asiento del tenant y borrador,
+**declarados con su razón**), `copiaOrigen` **43** y `otro` **2**—. El
 detector **quita los comentarios antes de contar** y su `--self-test` prueba los tres casos difíciles
-(multilínea, nombre distinto y sufijo) además de la clasificación por clase.
+(multilínea, nombre distinto y sufijo) además de la clasificación por clase. **El `cuerpo` no se
+congela como un número: se declara como una LISTA** (`cuerpoDeclaradas` en la línea base, con el
+motivo de cada excepción) y el gate falla si aparece un fichero nuevo con `cuerpo` que no esté
+declarado — así un alta nueva **paga** en vez de engordar la cifra.
 
 **Un `update` NO reescribe la sucursal.** El `data` de un update escribe
 `...(dto.branchId ? { branchId: dto.branchId } : {})`: si el formulario no la manda, **no se toca**. La
@@ -128,9 +131,13 @@ sucursal activo el documento **desaparecía de su propia lista**.
 **La deuda, por clase, y qué hacer con cada una** (medido el 2026-10-27; el gate la congela, no la
 esconde): `parametro` está **pagada** (43 → 0: `branchId: branchId ?? null` era la sucursal que el
 borde ya resolvía, y su único camino a `null` era una llamada interna — ahora es un 400);
-`cuerpo` (**7**) son **maestros** (series globales, empleados, terminales, almacenes, centros de
-trabajo), **borradores** y **asientos**: cada uno necesita su decisión de producto, porque una serie
-global o un asiento del tenant pueden no tener sucursal; `copiaOrigen` (**43**) solo es
+`cuerpo` (**3**) son los **tres que de verdad pueden no tener sucursal**, y están declarados en el
+gate con su motivo: **`DocumentSeries`** (una serie global se comparte entre sucursales, T50),
+**`JournalEntry`** (la contabilidad es del tenant; la sucursal es una dimensión, y un asiento de
+cierre o manual no la tiene) y **`DocumentDraft`** (un borrador no es un documento: la sucursal se
+elige al confirmar). Los **maestros sí la exigen**: `Warehouse` y `PosTerminal` porque sin ella no se
+pueden usar (el almacén desaparece del pool del formulario y el POS toma la sucursal del terminal), y
+`Employee` y `WorkCenter` porque la UI ya los asignaba. `copiaOrigen` (**43**) solo es
 `null` si el origen es **legado** ⇒ decidir entre «400» y «heredar la del usuario» es una decisión de
 producto; `otro` (**3**) se mira a mano.
 

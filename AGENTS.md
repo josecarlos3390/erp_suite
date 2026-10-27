@@ -79,10 +79,12 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   documento sin sucursal existe y **nadie lo ve** (lo esconde cualquier listado filtrado). Un solo
   motor, `resolveDocumentBranchId` (cuerpo → sucursal del usuario → **400**), y `assertBranchRequired`
   delega en él. Gate `npm run audit:branch-required:check` (medido el 2026-10-27 en `backend-erp`:
-  **0** controllers con la forma vieja y **53** `branchId: … ?? null` en servicios, **congelados por
-  clase**: `parametro` **0** —pagada—, `cuerpo` **7** —maestros, borradores y asientos—, `copiaOrigen`
-  **43**, `otro` **3**). Un `update` **no** puede reescribir la sucursal a `null`: se escribe solo si
-  el payload la trae.
+  **0** controllers con la forma vieja y **48** `branchId: … ?? null` en servicios, **congelados por
+  clase**: `parametro` **0** —pagada—, `cuerpo` **3** —serie global, asiento del tenant y borrador,
+  **declarados con su razón**; el gate falla si aparece un `cuerpo` nuevo sin declarar—,
+  `copiaOrigen` **43**, `otro` **2**). Un `update` **no** puede reescribir la sucursal a `null`: se
+  escribe solo si el payload la trae. Y un **usuario sin sucursal por defecto no puede crearla ni
+  quedarse sin ella**: `PATCH /users` la rechaza.
   [Texto completo](BACKEND_GUIDE.md)
 - **Frontend:** `0` `!important` sin marca y `0` `::ng-deep` sin marca (`!important-ok` / `::ng-deep-ok`);
   overrides por **especificidad**; un `h1` por página y nombre accesible en todo control (WCAG 2.5.3);
