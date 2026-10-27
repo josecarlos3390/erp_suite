@@ -90,6 +90,39 @@ src/common/accounting/
 - `src/common/document-totals.util.ts` — totales de documentos.
 - `src/common/timezone.util.ts` — manejo de zonas horarias.
 
+### La sucursal del documento (`branchId`) — obligatoria, como el inquilino (2026-10-26)
+
+**Regla de producto.** Todo documento nace **con sucursal**. No es una preferencia de UI ni algo que
+dependa de una configuración: un documento con `branchId = null` es tan inválido como uno sin
+`tenantId`. El motivo es medible: cualquier listado filtrado por sucursal lo esconde, así que el
+documento existe y **nadie lo ve** (el caso que lo destapó pintaba **0** filas donde la base contaba
+**2**).
+
+**Un solo motor.** `resolveDocumentBranchId(fromBody, fromUser)` en
+`src/common/branch-validation.util.ts`: **el cuerpo manda; si no viene, se toma la sucursal del
+usuario del JWT; si tampoco la tiene, 400** con un literal único (`BRANCH_REQUIRED_ERROR`).
+`assertBranchRequired` —el guard que ya llamaban los servicios— **delega** en él, así que el borde y
+el servicio no pueden divergir en la condición ni en el mensaje.
+
+```ts
+// En el controller, en la primera línea del handler de alta:
+body.branchId = resolveDocumentBranchId(body.branchId, user.defaultBranchId);
+```
+
+**Lo que NO se escribe, y por qué.** La forma vieja era
+`if (!dto.branchId && user.defaultBranchId) { dto.branchId = user.defaultBranchId; }`: cuando el
+usuario **no tenía** sucursal por defecto el bloque **no hacía nada** y el documento nacía con
+`null`. Esa forma no puede volver: `npm run audit:branch-required:check` exige **0** controllers con
+ella y **congela** el número de `branchId: … ?? null` en los servicios (hoy **146**, copias de un
+documento origen y caminos internos — el borde ya garantiza la sucursal de toda alta por el API). El
+detector **quita los comentarios antes de contar** y su `--self-test` prueba los tres casos difíciles
+(multilínea, nombre distinto y sufijo).
+
+**Al añadir un alta nueva**: DTO → controller que resuelve la sucursal con el motor → servicio que la
+exige (no la inventa). Si el alta nace de otro documento, la sucursal se **hereda** del origen; si el
+origen pudiera ser legado sin sucursal, la copia lleva `?? null` y **entra en la cifra congelada** —
+no se convierte en una exención silenciosa.
+
 ### Modelos de Prisma
 
 El schema (`prisma/schema.prisma`) tiene ~106 modelos. Los más relevantes:

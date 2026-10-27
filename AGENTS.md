@@ -75,6 +75,12 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
 - **Backend:** `0` `as any`; DTOs estrictos. **Multi-tenant: ninguna query sin `tenantId`** (regla
   propia `local/no-raw-without-tenant` en `error`). Contrato de error con `code` estable
   (`VALIDATION_ERROR`, …) y `requestId` (`X-Request-Id`).
+- **`branchId` obligatorio en todo documento, con la misma fuerza que `tenantId`** (2026-10-26): un
+  documento sin sucursal existe y **nadie lo ve** (lo esconde cualquier listado filtrado). Un solo
+  motor, `resolveDocumentBranchId` (cuerpo → sucursal del usuario → **400**), y `assertBranchRequired`
+  delega en él. Gate `npm run audit:branch-required:check` (medido el 2026-10-26 en `backend-erp`:
+  **0** controllers con la forma vieja y **146** `branchId: … ?? null` en servicios, **congelados**).
+  [Texto completo](BACKEND_GUIDE.md)
 - **Frontend:** `0` `!important` sin marca y `0` `::ng-deep` sin marca (`!important-ok` / `::ng-deep-ok`);
   overrides por **especificidad**; un `h1` por página y nombre accesible en todo control (WCAG 2.5.3);
   alturas y densidades por variables, nunca `px` crudos en `pages/`+`shared/`.
