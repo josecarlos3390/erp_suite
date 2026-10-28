@@ -116,6 +116,7 @@
 
 ### Fixed
 
+- **T379 · cierre de la investigación de `totalAmount`** (2026-10-28). **6 de 6** sitios son **passthrough o parámetro** (cuatro 	oNum(inv.total), un Number(r.totalAmount) de SQL y un parámetro): el nombre **nunca** contiene una fórmula. Declararlo sería citar algo que resuelve y **no mide**. sinDeclarar = 0 **no es alcanzable honestamente** sin cambiar el **criterio del censo**; queda con cifra y razón.
 - **T378 · `derived-invariants` 2 → 1: `pending`** (2026-10-28). El nombre descartado en T376 **sí tenía sitio**: 	otal − facturado con   si no queda. Motor pendingOrderAmount, caso que compara las dos fronteras. Queda 1: 	otalAmount.
 - **T377 · `derived-invariants` 3 → 2: `progress`** (2026-10-28). La celda publicaba un *fallback* {PENDING, PENDING} sin decirlo; motor publishedProgress, con caso que **compara** contra computeSalesOrderProgress sobre las mismas líneas. Quedan 2.
 - **T376 · diagnóstico: `pending` y `totalAmount` no tienen sitio honesto** (2026-10-28). Una **lista**, un **conteo**, dos **passthroughs** y un **parámetro**: declararlos sería citar algo que resuelve y **no mide**. Quedan con cifra y razón.
@@ -147,6 +148,7 @@
 
 ### Fixed
 
+- **T379 · cierre de la investigación de `totalAmount`** (2026-10-28). **6 de 6** sitios son **passthrough o parámetro** (cuatro 	oNum(inv.total), un Number(r.totalAmount) de SQL y un parámetro): el nombre **nunca** contiene una fórmula. Declararlo sería citar algo que resuelve y **no mide**. sinDeclarar = 0 **no es alcanzable honestamente** sin cambiar el **criterio del censo**; queda con cifra y razón.
 - **T378 · `derived-invariants` 2 → 1: `pending`** (2026-10-28). El nombre descartado en T376 **sí tenía sitio**: 	otal − facturado con   si no queda. Motor pendingOrderAmount, caso que compara las dos fronteras. Queda 1: 	otalAmount.
 - **T377 · `derived-invariants` 3 → 2: `progress`** (2026-10-28). La celda publicaba un *fallback* {PENDING, PENDING} sin decirlo; motor publishedProgress, con caso que **compara** contra computeSalesOrderProgress sobre las mismas líneas. Quedan 2.
 - **T376 · diagnóstico: `pending` y `totalAmount` no tienen sitio honesto** (2026-10-28). Una **lista**, un **conteo**, dos **passthroughs** y un **parámetro**: declararlos sería citar algo que resuelve y **no mide**. Quedan con cifra y razón.
@@ -166,6 +168,7 @@
 
 ### Fixed
 
+- **T379 · cierre de la investigación de `totalAmount`** (2026-10-28). **6 de 6** sitios son **passthrough o parámetro** (cuatro 	oNum(inv.total), un Number(r.totalAmount) de SQL y un parámetro): el nombre **nunca** contiene una fórmula. Declararlo sería citar algo que resuelve y **no mide**. sinDeclarar = 0 **no es alcanzable honestamente** sin cambiar el **criterio del censo**; queda con cifra y razón.
 - **T378 · `derived-invariants` 2 → 1: `pending`** (2026-10-28). El nombre descartado en T376 **sí tenía sitio**: 	otal − facturado con   si no queda. Motor pendingOrderAmount, caso que compara las dos fronteras. Queda 1: 	otalAmount.
 - **T377 · `derived-invariants` 3 → 2: `progress`** (2026-10-28). La celda publicaba un *fallback* {PENDING, PENDING} sin decirlo; motor publishedProgress, con caso que **compara** contra computeSalesOrderProgress sobre las mismas líneas. Quedan 2.
 - **T376 · diagnóstico: `pending` y `totalAmount` no tienen sitio honesto** (2026-10-28). Una **lista**, un **conteo**, dos **passthroughs** y un **parámetro**: declararlos sería citar algo que resuelve y **no mide**. Quedan con cifra y razón.
