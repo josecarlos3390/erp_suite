@@ -1,4 +1,4 @@
-# Changelog — repo raíz (`erp_suite`)
+﻿# Changelog — repo raíz (`erp_suite`)
 
 > **Este fichero se creó el 2026-10-08 y no existía antes** (medido: `git ls-files` en la raíz no
 > listaba ningún `CHANGELOG.md`; los tres del monorepo viven en `backend-erp/`, `erp-frontend/` y
@@ -8,8 +8,7 @@
 
 ## [Unreleased]
 
-### Fixed
-
+- **T373 · `derived-invariants` 5 → 4: `consumedAsIsItemIds`** (2026-10-28). Decide **qué componentes publica la pantalla** (las ramas que no se despliegan). Frontera: **igual cuenta**. El typecheck cazó 	ype Money inexistente y un import que mi ancla no insertó. Quedan 4.
 - **T372 · `derived-invariants` 7 → 5: `balances` y `balancesByCurrency`** (2026-10-28). Los dos saldos multimoneda del listado de partners estaban **dentro** del listado, y el principal resolvía su moneda con un **`data.find()` lineal por cada fila** de saldo. Motores `pickPreferredBalances` (la moneda del partner entra como **mapa**) y `groupBalancesByCurrency`; el caso compara la elección contra un recorrido independiente y fija que **con el orden invertido da lo mismo** y que un saldo nulo es **0, no `NaN`**. Quedan 5.
 - **T371 · `derived-invariants` 9 → 7: `totalsByType` y `totalsByPartner`** (2026-10-28). Los dos totales del informe de retenciones sufridas ya tenían su derivación en un **método nombrado** (no un `reduce` suelto); lo que faltaba era la cita y un caso que **comparara**. Las citas apuntan a la **cabecera de cada método** —única en el fichero, para que el re-anclador no tenga que elegir— y el caso nuevo compara **cada total** contra una agrupación a mano sobre las propias filas, en centavos. **Lo que el caso añade**: cruza las **tres** descomposiciones —suma por tipo = suma por cliente = gran total—, tres caminos que podían divergir y que nadie había puesto uno al lado del otro. Quedan 7.
 - **T370 · `derived-invariants` 10 → 9: `totalQty`** (2026-10-28). La cantidad pedida se acumulaba **dentro** del bucle de `computeSalesOrderProgress` y es el **denominador** del estado de facturación. Motor `sumOrderedQuantity`; el caso fija lo que el código decía sin decirlo: los **servicios cuentan** (se facturan, sólo quedan fuera de la entrega), sin líneas es **cero** y no `NaN`. **El typecheck, tercera ronda seguida haciendo su trabajo**: el primer caso pasó un literal con una propiedad de más (`canBeInventoried`) contra `{ quantity: unknown }` —TS2353, exceso de propiedad, el chequeo que sólo existe para literales—; corregido declarando la lista en una variable con su tipo. Quedan 9.
