@@ -590,7 +590,12 @@ npm run audit:contrast       # contraste WCAG de la paleta
   **una sola aparición** (con dos, el ancla no identifica nada y **se niega a escribir**: son los
   gemelos venta/compra), reescribe el número y la **cita en línea del código**. Su A/B está hecho:
   insertar una línea pone el gate en ROJO, `--apply` lo devuelve a VERDE. **Un re-anclador que se
-  equivoca es peor que ninguno**, por eso se niega en vez de adivinar.
+  equivoca es peor que ninguno**, por eso se niega en vez de adivinar. **Y el `pre-commit` también
+  mueve líneas**: lint-staged corre `eslint --fix` sobre los ficheros del commit, así que una cita
+  puede romperse **después** de congelada (medido el 2026-10-28: el útil de la revaluación pasó de 30 a
+  34 líneas al expandir un `return` y dos citas quedaron rotas; el gate lo cazó en la verificación
+  posterior al commit). **Regla: tras commitear, vuelva a correr el gate** —o pase el `--fix` de
+  lint-staged antes de medir las líneas—.
 - **`--check` y `--update-baseline` son DOS pasos, y el segundo es el que deja el commit
   reproducible.** `8f944748` (`sales-orders`) corrió `--check` y **se olvidó** `--update-baseline`: la
   base quedó en **1524** con la cuenta real en **1521**, el gate **no falló** (bajar da verde) y la
