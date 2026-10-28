@@ -116,6 +116,7 @@
 
 ### Fixed
 
+- **T384 · ecibido era un nombre de la diana** (2026-10-28). Un local nuevo del motor de T383 casó con la familia que vigila el censo ⇒ sinDeclarar 1→2 y ratchet ROJO; lo cazó el pre-push tras el --fix de lint-staged. Renombrado a ecepcionPorLinea. **Cuarta** vez de la misma trampa: el nombre de un local se elige también por lo que mira el **censo**.
 - **T383 · eceivedQtyDrift, el motor que faltaba** (2026-10-28). El quinto nombre que el manual nombra y el único sin motor; semántica leída del escritor (recepción suma, cancelación resta, nota de crédito suma), 5 casos que comparan. **No cableado todavía**: sin consulta ni measure(), hoy no lo corre ningún instrumento contra datos — se declara.
 - **T382 · casos de suite para orderQtyDrift y alanceDueDrift** (2026-10-28). Tres columnas que el manual nombra (deliveredQty, openQty, alanceDue) tenían motor y A/B en el script, pero **ningún test de la suite**; 7 casos que comparan contra la resta a mano.
 - **T381 · invoicedQty con caso en la suite** (2026-10-28). La columna que el manual prohíbe leer ya tenía motor (4.3) y casos A/B en el pre-push, pero **ninguno en la suite**: 4 casos nuevos que comparan contra la resta a mano. Y el hallazgo estructural: la diana **excluye las columnas guardadas por construcción**, así que las cinco que el manual nombra están fuera del instrumento; medido, **46** nombres son persistedColumn && readOnScreen.
@@ -152,6 +153,7 @@
 
 ### Fixed
 
+- **T384 · ecibido era un nombre de la diana** (2026-10-28). Un local nuevo del motor de T383 casó con la familia que vigila el censo ⇒ sinDeclarar 1→2 y ratchet ROJO; lo cazó el pre-push tras el --fix de lint-staged. Renombrado a ecepcionPorLinea. **Cuarta** vez de la misma trampa: el nombre de un local se elige también por lo que mira el **censo**.
 - **T383 · eceivedQtyDrift, el motor que faltaba** (2026-10-28). El quinto nombre que el manual nombra y el único sin motor; semántica leída del escritor (recepción suma, cancelación resta, nota de crédito suma), 5 casos que comparan. **No cableado todavía**: sin consulta ni measure(), hoy no lo corre ningún instrumento contra datos — se declara.
 - **T382 · casos de suite para orderQtyDrift y alanceDueDrift** (2026-10-28). Tres columnas que el manual nombra (deliveredQty, openQty, alanceDue) tenían motor y A/B en el script, pero **ningún test de la suite**; 7 casos que comparan contra la resta a mano.
 - **T381 · invoicedQty con caso en la suite** (2026-10-28). La columna que el manual prohíbe leer ya tenía motor (4.3) y casos A/B en el pre-push, pero **ninguno en la suite**: 4 casos nuevos que comparan contra la resta a mano. Y el hallazgo estructural: la diana **excluye las columnas guardadas por construcción**, así que las cinco que el manual nombra están fuera del instrumento; medido, **46** nombres son persistedColumn && readOnScreen.
@@ -176,6 +178,7 @@
 
 ### Fixed
 
+- **T384 · ecibido era un nombre de la diana** (2026-10-28). Un local nuevo del motor de T383 casó con la familia que vigila el censo ⇒ sinDeclarar 1→2 y ratchet ROJO; lo cazó el pre-push tras el --fix de lint-staged. Renombrado a ecepcionPorLinea. **Cuarta** vez de la misma trampa: el nombre de un local se elige también por lo que mira el **censo**.
 - **T383 · eceivedQtyDrift, el motor que faltaba** (2026-10-28). El quinto nombre que el manual nombra y el único sin motor; semántica leída del escritor (recepción suma, cancelación resta, nota de crédito suma), 5 casos que comparan. **No cableado todavía**: sin consulta ni measure(), hoy no lo corre ningún instrumento contra datos — se declara.
 - **T382 · casos de suite para orderQtyDrift y alanceDueDrift** (2026-10-28). Tres columnas que el manual nombra (deliveredQty, openQty, alanceDue) tenían motor y A/B en el script, pero **ningún test de la suite**; 7 casos que comparan contra la resta a mano.
 - **T381 · invoicedQty con caso en la suite** (2026-10-28). La columna que el manual prohíbe leer ya tenía motor (4.3) y casos A/B en el pre-push, pero **ninguno en la suite**: 4 casos nuevos que comparan contra la resta a mano. Y el hallazgo estructural: la diana **excluye las columnas guardadas por construcción**, así que las cinco que el manual nombra están fuera del instrumento; medido, **46** nombres son persistedColumn && readOnScreen.
