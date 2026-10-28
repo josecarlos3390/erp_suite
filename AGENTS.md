@@ -162,6 +162,7 @@ npm run build                # nest build — 0 errores
 npm run typecheck:all        # GATE: typecheck (src/ + test/) + typecheck:tools (scripts, prisma, perf) — 0 errores
 npm run typecheck            # subconjunto del gate: solo src/ + test/ (`tsconfig.spec.json`); NO ve scripts/
 npm run lint:ci              # eslint — 0 errores / 0 avisos (lint lleva --fix: NO en CI)
+npm run gate:rapido          # los gates de CONTENIDO sin la suite (~71 s medidos el 2026-10-28): typecheck + money + fixtures + derived-invariants + single-engine + eslint de los ficheros tocados. Un verde aquí NO es un verde del `pre-push` (su cabecera lo dice): sirve para encontrar en segundos lo que la suite no ve — los tres defectos reales de la campaña de `derived-invariants` los vieron `tsc`, el gate de dinero y el de fixtures, no un test
 npm test                     # Jest unitario
 npm run test:e2e             # Jest E2E (sincroniza erp_test antes)
 npm run db:recreate          # BD dev reproducible (reset + db push + SQL + seed)
@@ -186,8 +187,14 @@ npm run audit:single-engine:check # un solo motor por dominio: 5 conceptos con s
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
 
-> **Pre-push del backend:** `npm test` + `npm run typecheck:all` + `npm run lint:ci`. Los dos últimos
-> llevan el **heap dentro del script** porque sin él mueren por OOM. Nada se empuja sin los tres verdes.
+> **Pre-push del backend:** corre **21 auditorías** (`money`, `fixtures`, `derived-invariants`,
+> `single-engine`, `suppressions`, `branch-required`, `non-null`, `explicit-any`, `date-class`,
+> `spec-clock`, `day-helpers`, `collection-caps`, `census:inmemory`, `census:bulk`, `exit-codes`,
+> `security-headers`, `detectors`, `invariants:coverage`, `tracking:self-test`, `reconcile:self-test`
+> y las autopruebas de los reparadores) **+ `typecheck:all` + `lint:ci` + la suite**, se detiene en el
+> primer fallo y tarda **~34 min medidos** (2 031 s y 1 779 s en dos corridas). El sello por contenido
+> omite la segunda pasada del mismo commit en el segundo espejo. Para no pagar ese ciclo por un error
+> de tipo o una marca sin congelar: `npm run gate:rapido`.
 
 ### Frontend (`cd erp-frontend`)
 
