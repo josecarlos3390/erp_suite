@@ -31,9 +31,16 @@
       "id": "no-nulo-total",
       "fichero": "AGENTS.md",
       "patron": "(?:ratchet|cifra) \\*{0,2}congelad[oa] en (\\d+)",
-      "comando": { "cmd": "npm run audit:non-null:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "Aserciones de «no nulo» \\(`!`\\) en TypeScript:\\s*(\\d+)" },
-      "valorEsperado": 1146,
+      "comando": {
+        "cmd": "npm run audit:non-null:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "Aserciones de «no nulo» \\(`!`\\) en TypeScript:\\s*(\\d+)"
+      },
+      "valorEsperado": 1138,
       "muestra": "Aserciones de «no nulo» (`!`) en TypeScript: {v}",
       "nota": "El manual lo dice DOS veces (la lista de comandos de Backend y la vineta «Cero `!` nuevos»): las dos tienen que decir la MISMA cifra, la vigente. **La cifra bajo de 1500 a 1498 el 2026-10-16 (T279)**: no subiendo la base, sino QUITANDO dos aserciones (`test/test-utils.ts`, `createBatchItem`, que pasan a una local con guarda). La deuda esta CONGELADA, no pagada: el ratchet del instrumento falla si sube. ANCLA, Y POR QUE (2026-10-11): el patron nacio como `congelad[oa] en (\\d+)`, SIN anclar a la familia del `!`, asi que una frase «congelado en N» de OTRA familia ponia esta figura en rojo por una razon equivocada -- el manual ya tiene una: la vineta del delta por commit cuenta el ratchet `1524 -> 1521` de `audit:non-null` y hoy escapa por casualidad, porque escribe «congelada en su cifra» y no «congelada en 1521». El ancla son las DOS palabras que de verdad acompanan a la cifra del `!` en el manual -- «ratchet congelado en N» (la lista de comandos de Backend) y «la cifra **congelada en N**» (la vineta «Cero `!` nuevos») --, con `\\*{0,2}` para el resalte Markdown, que cae ENTRE las dos palabras: el ancla no puede ser `cifra congelada` a secas, porque no casa y dejaria la cifra real sin encontrar (un filtro que no casa dice «no se»). NO se ancla al `!` ni a «aserciones no nulas»: la vineta «Cero `!` nuevos» no repite ninguna de las dos en su linea de la cifra, y ese ancla perderia el segundo sitio -- la mitad del problema. Probado en la autoprueba: un senuelo «congelada en 1521» de otra familia NO cuenta y el gate sale VERDE (`senuelo-de-otra-familia-no-dispara`), y la cifra real movida sale ROJA. **La cifra volvio a bajar de 1498 a 1497 el 2026-10-19 (T291)**: quito `dto.deliveryOrderId!` en `src/sales-returns/sales-returns.service.ts`; la deuda sigue CONGELADA, no pagada. **El 2026-10-22 (T303, lote 1) la cifra bajo de 1497 a 1454**: se PAGARON 43 aserciones del camino de dinero y stock, por riesgo y un commit por fichero (motor contable, notas de credito, entradas/salidas/ajustes/traspasos de stock, devoluciones de compra, POS, ensamblaje y extractos), con el caso null del POS rojo antes y verde despues. **El mismo dia, el LOTE 2 bajo de 1454 a 1350**: 53 aserciones en `incoming-payments.service.ts` y 51 en `outgoing-payments.service.ts`, con 10 guardas reales por fichero (factura, anticipo, socio y cuenta bancaria; `404` del contrato) y cada caso con `null` ROJO antes -- el `!` escondia un `TypeError`, no un `null` de Prisma --, un commit por fichero y la base congelada en el mismo commit. **El lote 3 (el mismo dia) bajo de 1350 a 1265**: 47 en `sale-invoices.service.ts` y 38 en `sale-reserve-invoices.service.ts`, con `requireSourceLine` (400) para los ids de origen ajenos y los dos A/B medidos (2 failed/14 skipped y `Received promise resolved instead of rejected`). **El lote 4 cerro el camino de dinero: 1265 a 1157 (108 sitios)**: `delivery-orders` 19 (`1819542e`), `purchase-receipts` 37 (`7fe259ac`), `purchase-invoices` 32 (`f41d70cb`) y `purchase-credit-notes` 20 (`2441ce37`), un commit por fichero y la base congelada en cada uno; los dos A/B de los crashes que el `!` escondia van en `cf49f3ce` (`PrismaClientValidationError: Argument warehouseId must not be null` en el update de una linea sin almacen, y la columna `Int` obligatoria del alta manual de la FPI). **El mismo 2026-10-22 T307 pago los 11 de RIESGO que el censo del lote 4 dejo medidos y la cifra bajo de 1157 a 1146 (el SUELO: 656 DTOs y controladores + 353 specs + 1 `currency!` declarado + 136 del resto legitimas por construccion)**: siete de fecha (`exchange-rates`, `reports` ×2, `stock-revaluations` ×2, `purchase-requests` y `timezone.util`), `sales-orders` ×1 y `prisma/seed` ×3, un commit por fichero, cada uno con su caso (los seis del dia y el de `sales-orders` vistos en ROJO con el servicio del padre) y `--update-baseline` en el mismo commit. La deuda ya NO tiene riesgo declarado: lo que queda es legitimo por construccion y el ratchet sigue fallando si sube."
     },
@@ -41,9 +48,16 @@
       "id": "no-nulo-expresion",
       "fichero": "AGENTS.md",
       "patron": "`expresión!`\\s*(\\d+)",
-      "comando": { "cmd": "npm run audit:non-null:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "`expresión!`\\s*:\\s*(\\d+)" },
-      "valorEsperado": 493,
+      "comando": {
+        "cmd": "npm run audit:non-null:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "`expresión!`\\s*:\\s*(\\d+)"
+      },
+      "valorEsperado": 485,
       "muestra": "  · `expresión!`            : {v}",
       "nota": "Desglose del total: 493 + 653 = 1146. El instrumento lo publica como «· `expresión!` : 493»."
     },
@@ -51,8 +65,15 @@
       "id": "no-nulo-asignacion",
       "fichero": "AGENTS.md",
       "patron": "`x!: T`\\s*(\\d+)",
-      "comando": { "cmd": "npm run audit:non-null:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "`x!: T` \\(asignación\\)\\s*:\\s*(\\d+)" },
+      "comando": {
+        "cmd": "npm run audit:non-null:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "`x!: T` \\(asignación\\)\\s*:\\s*(\\d+)"
+      },
       "valorEsperado": 653,
       "muestra": "  · `x!: T` (asignación)   : {v}",
       "nota": "La otra mitad del total. El extractor exige «(asignación)» para no confundirse con la linea de la autoprueba, que habla de la asercion de ASIGNACION sin cifra de familia."
@@ -61,9 +82,16 @@
       "id": "no-nulo-produccion",
       "fichero": "AGENTS.md",
       "patron": "(\\d+) en producción,",
-      "comando": { "cmd": "npm run audit:non-null:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "en código de producción\\s*:\\s*(\\d+)" },
-      "valorEsperado": 793,
+      "comando": {
+        "cmd": "npm run audit:non-null:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "en código de producción\\s*:\\s*(\\d+)"
+      },
+      "valorEsperado": 785,
       "muestra": "  · en código de producción : {v}",
       "nota": "El manual reparte el total entre produccion y specs (793 + 353 = 1146). El censo es por CARPETA (`src`: 905 incluye specs de `src/`), asi que las dos particiones no son la misma: la del manual es produccion/specs y es la que se vigila. Los 11 pagados por T307 son todos de produccion (siete de fecha, `sales-orders` y `prisma/seed` ×3), asi que specs no se mueve."
     },
@@ -71,8 +99,15 @@
       "id": "no-nulo-specs",
       "fichero": "AGENTS.md",
       "patron": "(\\d+) en specs\\)",
-      "comando": { "cmd": "npm run audit:non-null:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "\\(en specs:\\s*(\\d+)\\)" },
+      "comando": {
+        "cmd": "npm run audit:non-null:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "\\(en specs:\\s*(\\d+)\\)"
+      },
       "valorEsperado": 353,
       "muestra": "  (en specs: {v})",
       "nota": "La otra mitad del reparto produccion/specs. La muestra va en su propia linea a proposito: no se solapa con la de `no-nulo-produccion`."
@@ -81,8 +116,16 @@
       "id": "as-any-cero",
       "fichero": "AGENTS.md",
       "patron": "`(\\d+)` `as any`",
-      "comando": { "cmd": "npm run audit:explicit-any:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "familia", "seccion": "Por FAMILIA (el bloque, no el sitio suelto):", "familia": "as any" },
+      "comando": {
+        "cmd": "npm run audit:explicit-any:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "familia",
+        "seccion": "Por FAMILIA (el bloque, no el sitio suelto):",
+        "familia": "as any"
+      },
       "valorEsperado": 0,
       "muestra": "Por FAMILIA (el bloque, no el sitio suelto):\n     {v}  as any\n     1  Record<…any…>",
       "nota": "El manual declara «`0` `as any`» en *Convenciones transversales*. El instrumento `audit:explicit-any` publica la tabla por FAMILIA y `as any` es una de ellas; cuando no aparece, la cuenta es 0 -- y el 0 vale porque la autoprueba del propio instrumento prueba que SI detecta `as any` (caso «las formas sueltas», esperado 4). El TOTAL de `any` explicitos del manual no se puede vigilar: no lo declara (ver `any-explicitos-total` en `noVigiladas`)."
@@ -91,8 +134,15 @@
       "id": "any-explicitos-total",
       "fichero": "AGENTS.md",
       "patron": "audit:explicit-any:check[^\\r\\n]*ratchet en (\\d+)",
-      "comando": { "cmd": "npm run audit:explicit-any:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "`any` explícitos en el TypeScript del backend:\\s*(\\d+)" },
+      "comando": {
+        "cmd": "npm run audit:explicit-any:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "`any` explícitos en el TypeScript del backend:\\s*(\\d+)"
+      },
       "valorEsperado": 1,
       "muestra": "`any` explícitos en el TypeScript del backend: {v}",
       "nota": "HUECO CERRADO EL 2026-10-11. El manual NO declaraba la cifra VIGENTE del total: el `230` de la vineta del indice es el rojo INTERMEDIO de aquella migracion y el `229 = 229` es la cuenta de AQUEL momento -- los dos son historia y ahora van marcados como historicos. El commit `3027c4a` decia en su mensaje que corrigio «229 -> 1» y su diff no tocaba ninguna linea con esa cifra: la cifra no se reescribe, se MIDE y se declara. Medido: `anyExplicitos=1`, con el sitio unico en `test/usage-marathon.e2e-spec.ts`. El patron del manual esta ANCLADO al comando para no casar la prosa de la vineta, que repite la cifra vigente sin la palabra «ratchet»."
@@ -101,8 +151,15 @@
       "id": "any-explicitos-produccion",
       "fichero": "AGENTS.md",
       "patron": "\\(producción (\\d+), specs \\d+\\)",
-      "comando": { "cmd": "npm run audit:explicit-any:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "en código de producción\\s*:\\s*(\\d+)" },
+      "comando": {
+        "cmd": "npm run audit:explicit-any:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "en código de producción\\s*:\\s*(\\d+)"
+      },
       "valorEsperado": 0,
       "muestra": "  · en código de producción : {v}",
       "nota": "El reparto del total, en la MISMA linea del manual que el total: produccion 0 + specs 1 = 1. El patron exige el parentesis completo para no casar la prosa de la vineta («**0** en producción y **1** en specs»), que va SIN parentesis a proposito: el patron de `no-nulo-produccion` es `(\\d+) en producción,` y casa cualquier cifra seguida de «en producción,», asi que una segunda linea con esa forma pondria en rojo la figura del `!` sin que nada este mal."
@@ -111,8 +168,15 @@
       "id": "any-explicitos-specs",
       "fichero": "AGENTS.md",
       "patron": "\\(producción \\d+, specs (\\d+)\\)",
-      "comando": { "cmd": "npm run audit:explicit-any:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "\\(en specs:\\s*(\\d+)\\)" },
+      "comando": {
+        "cmd": "npm run audit:explicit-any:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "\\(en specs:\\s*(\\d+)\\)"
+      },
       "valorEsperado": 1,
       "muestra": "  (en specs: {v})",
       "nota": "La otra mitad del reparto. El extractor es el MISMO que el de `no-nulo-specs` pero sobre OTRO comando: cada figura se mide contra la salida de SU instrumento. La muestra va sola en su linea -- recortada de la linea real, que trae las dos cifras -- para que no se solape con la de `any-explicitos-produccion` dentro del mismo doble de la autoprueba."
@@ -121,8 +185,15 @@
       "id": "spec-clock-hallazgos",
       "fichero": "AGENTS.md",
       "patron": "reloj del proceso en specs: (\\d+) hallazgos",
-      "comando": { "cmd": "npm run audit:spec-clock:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "HALLAZGOS\\s*:\\s*(\\d+)" },
+      "comando": {
+        "cmd": "npm run audit:spec-clock:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "HALLAZGOS\\s*:\\s*(\\d+)"
+      },
       "valorEsperado": 0,
       "muestra": "  · HALLAZGOS            : {v}",
       "nota": "HUECO CERRADO EL 2026-10-11. El manual NO declaraba la cifra vigente de `audit:spec-clock` en ninguna linea: los unicos numeros de su vineta (6 y 25) son el primer rojo de su autoprueba (`5169e9df`, historia fechada). Medido con `npm run audit:spec-clock:check`: `HALLAZGOS: 0` (deben ser 0) sobre 2 dias fabricados con el reloj del proceso. El 0 vale porque el instrumento prueba su detector contra los casos dificiles -- el filtro que no casaba con `*.e2e-spec.ts` tiene su fijacion en la autoprueba del propio gate."
@@ -131,8 +202,15 @@
       "id": "spec-clock-excepciones",
       "fichero": "AGENTS.md",
       "patron": "\\((\\d+) excepciones declaradas\\)",
-      "comando": { "cmd": "npm run audit:spec-clock:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "excepciones declaradas:\\s*(\\d+)" },
+      "comando": {
+        "cmd": "npm run audit:spec-clock:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "excepciones declaradas:\\s*(\\d+)"
+      },
       "valorEsperado": 2,
       "muestra": "  · excepciones declaradas: {v}",
       "nota": "Las dos excepciones DECLARADAS con la marca `spec-clock-ok:`, que el propio instrumento lista (`seed-storefront-day.spec.ts` y `timezone.util.spec.ts`): son los dos dias fabricados con el reloj del proceso. Se vigilan ademas de los hallazgos porque un 0 sin el numero de excepciones deja fuera la mitad del asunto: los dos lados del gate tienen que cuadrar con el manual."
@@ -141,8 +219,15 @@
       "id": "money-total",
       "fichero": "AGENTS.md",
       "patron": "audit:money:check[^\\r\\n]*ratchet en (\\d+)",
-      "comando": { "cmd": "npm run audit:money:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "TOTAL:\\s*(\\d+)" },
+      "comando": {
+        "cmd": "npm run audit:money:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "TOTAL:\\s*(\\d+)"
+      },
       "valorEsperado": 0,
       "muestra": "  TOTAL: {v}",
       "nota": "El manual declara el TOTAL (0) y no las cuatro sub-reglas (R1, R2a, R2b, R2c), que el instrumento tambien publica. Se vigila lo declarado."
@@ -151,8 +236,15 @@
       "id": "collection-caps-produccion",
       "fichero": "AGENTS.md",
       "patron": "audit:collection-caps:check[^\\r\\n]*ratchet en (\\d+)",
-      "comando": { "cmd": "npm run audit:collection-caps:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "produccionSinCota=(\\d+)" },
+      "comando": {
+        "cmd": "npm run audit:collection-caps:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "produccionSinCota=(\\d+)"
+      },
       "valorEsperado": 0,
       "muestra": "OK — sin regresiones (base: produccionSinCota={v}, visibleSinCota=64)",
       "nota": "RE-ANCLADA EL 2026-10-12: el ratchet BAJO de verdad -- 687 al nacer (`15cd6b52`), 686 en `367e9725` (T260) y 685 en `228b711b` (T261) -- y el manual NO declaraba la cifra VIGENTE en ningun sitio: su unico 687 era la CITA NARRATIVA de un mensaje pasado, y reescribir esa cita seria borrar historia (regla del manual: el diagnostico anterior no se borra). Asi que se hace lo que esta nota pedia desde que nacio: se ANADE la cifra vigente al manual -- la linea `npm run audit:collection-caps:check` de la lista de comandos del backend, con su fecha de medicion -- y se RE-ANCLA esta declaracion a ESA linea, con la forma de la figura hermana `money-total` (`<comando>[^\\r\\n]*ratchet en (\\d+)`), no a la cita. La cita queda FUERA del ancla a proposito: es historia fechada. El extractor sigue pidiendo `=`, que es como el instrumento publica su base, y los otros TRES contadores que publica el instrumento (visibleSinCota=72, lookupSinCota=29, agregadoSinCota=113) NO se movieron entre `15cd6b52` y `228b711b`: se midieron y se declaran aqui como evidencia, NO como figuras vigiladas (serian cifras nuevas, y este incremento alinea una cifra con su instrumento). SEGUNDA BAJADA, 2026-10-12: el ratchet bajo otra vez 685 -> 683 -- dos consultas sin cota eliminadas en `b629f3b3` (T262) y `46bc7e30` (T263) --, y el manual y esta declaracion se movieron EN EL MISMO COMMIT. La fecha de medicion de la linea (`2026-10-12`) NO cambia: es la misma jornada. Los otros tres contadores se volvieron a medir y siguen en `visibleSinCota=72`, `lookupSinCota=29`, `agregadoSinCota=113`: siguen SIN declararse como figuras. TERCERA BAJADA, 2026-10-17: el ratchet bajo de 682 a 681 en el incremento 3 de TODO VERDE (T281) -- el `cancel` de la devolucion de venta ya no consulta `saleInvoiceItem`, porque la columna `invoicedQty` deja de escribirse en ese camino y su derivacion tampoco se necesita ahi --, y el manual (la linea `npm run audit:collection-caps:check`, con su fecha de medicion) y esta declaracion se mueven EN EL MISMO EMPUJON. Los otros tres contadores se volvieron a medir en ese mismo commit y siguen en `visibleSinCota=72`, `lookupSinCota=29`, `agregadoSinCota=113`: siguen SIN declararse como figuras. CUARTA BAJADA, 2026-10-19 (T292): el ratchet baja de 681 a 680 -- neto -1 en el arbol de T292 (por fichero: -1 en `permissions.service.ts`, -1 en `sales-returns.service.ts` y +1 en el nuevo `credit.service.ts`) --, y el manual (la linea `npm run audit:collection-caps:check`, con la fecha de medicion 2026-10-19), esta declaracion y la linea base del instrumento se mueven EN EL MISMO EMPUJON. Los tres contadores restantes se vuelven a medir y siguen en `visibleSinCota=72`, `lookupSinCota=29`, `agregadoSinCota=113`. QUINTA BAJADA, 2026-10-22 (T306): el ratchet baja de 680 a 672 -- 680 -> 679 en `warehouses.service.ts` (el stock de un almacen, una fila por articulo x almacen, pasa a `take: UNPAGINATED_LIST_CAP`), 679 -> 677 en `item-price-histories.service.ts` (historial por articulo y por lista de precios), 677 -> 673 en `document-line-tracking.service.ts` (1 por el tope de la traza por articulo y 3 DECLARADAS con `collection-caps-ok:`: la traza de UN documento, de UN lote y de UNA unidad serializada, que NO se coartan a proposito) y 673 -> 672 en `pos-sessions.service.ts` (una sesion por turno de caja) --, y el manual (la linea `npm run audit:collection-caps:check`, con la fecha de medicion 2026-10-22), esta declaracion y la linea base del instrumento se mueven EN EL MISMO EMPUJON. Los contadores restantes se vuelven a medir: `visibleSinCota` 72 -> 64 (la misma bajada: los ocho sitios eran listados), `lookupSinCota=29` y `agregadoSinCota=113` NO se mueven. Se declara ademas, medido en el mismo empujon, lo que el instrumento NO ve y por eso no puede estar en esta cifra: 41 `$queryRaw` + 11 `$queryRawUnsafe` en produccion (solo 2 llevan `LIMIT` en todo el arbol) y los `count`/`aggregate`/`groupBy` (494 + 676 llamadas), que no materializan filas y por eso no son el mismo riesgo. SEXTA BAJADA, 2026-10-24 (T316): el ratchet baja de 672 a 671 -- el `findAll` de `sales-orders` elimina la consulta de facturas anuladas (`cancelledInvoiceIds`) al excluirlas por cabecera en el `where` de `saleInvoiceItem` (`saleInvoice: { status: { not: 'CANCELLED' } }`), en la misma consulta que ya leia las lineas de factura --, y el manual (la linea `npm run audit:collection-caps:check`, con la fecha de medicion 2026-10-24), esta declaracion y la linea base del instrumento se mueven EN EL MISMO EMPUJON. Los otros contadores se vuelven a medir: `visibleSinCota=64`, `lookupSinCota=29` y `agregadoSinCota=113` NO se mueven. El reindexado del fichero reescribe ~200 claves `file:line` porque la base anterior estaba desfasada: es ruido de indice, no un cambio de 200 consultas (verificado por el revisor contra las consultas reales). CUARTA BAJADA, 2026-10-25: el ratchet baja de 671 a 659 porque el lote de agregados movio 12 `findMany` a `aggregate`/`_sum` (un documento que se suma en la base ya no trae las filas), y `agregadoSinCota` baja 113 -> 111. El manual (la linea del comando, con su fecha de medicion), esta declaracion y la linea base del instrumento se mueven EN EL MISMO EMPUJON; los otros contadores siguen en `visibleSinCota=64` y `lookupSinCota=29`. SÉPTIMA BAJADA, 2026-10-27 (T333): el ratchet baja de 654 a 625 al declarar con `collection-caps-ok:` los 29 sitios del reparto `lookup/predicado` --18 de 19 NO eran candidatos a `findFirst`: el arbol de categorias del canal necesita la coleccion entera, el plan de cuentas completo es la ENTRADA del reporte, y el resto son `in: <ids>` o las lineas de UN documento--, y `lookupSinCota` baja de 29 a 0 (contador que NO se declara como figura, igual que `visibleSinCota` y `agregadoSinCota`). El manual (la linea del comando, con la fecha 2026-10-27), esta declaracion y la linea base del instrumento se mueven EN EL MISMO EMPUJON. Los otros contadores se vuelven a medir: `visibleSinCota=64` y `agregadoSinCota=107`. TRAMPA MEDIDA AL USAR LA MARCA: solo se mira en la linea del `findMany` o en la INMEDIATAMENTE anterior; puesta en la primera de dos lineas de comentario NO cuenta (654 con la marca mal puesta, 653 con una sola linea), y queda escrito en la cabecera de `CAPS_OK`. OCTAVA BAJADA, 2026-10-27 (T334): 625 -> 536. El detector era CIEGO a la forma corta `{ where, take }` (`take` como ShorthandPropertyAssignment): 6 sitios ya acotados se contaban como libres (4 de `search.service`), se arregla el detector y nace el caso de autoprueba 15. Los 82 `indeterminado` se cierran: 80 declarados con la razon extraida de su propio `where` y 2 arreglos reales (`items.findAll` con `take` incondicional a `UNPAGINATED_LIST_CAP`; `master-accounts` y los dos `cancelledInvs` de `purchase-orders` reescritos sin el parentesis que se comia la marca, y con la marca en la linea anterior —`prettier` la movia fuera de la ventana de dos lineas—). `indeterminado` = 0, `lookup` = 0, `agregado` = 107, `visible` = 64. NOVENA BAJADA, 2026-10-27 (T335): 536 -> 429. El lote 3 declara los 107 `agregado`: el `where` los acota (lineas de UN documento, `in:` del llamador, maestro del selector) y sumar en la base es del censo `inmemory` (T318), que tiene su ratchet. `agregado` = 0. Quedan `visible` = 64 (decision de producto) y `lote` = 365. COSTE MEDIDO: cada lote que inserta lineas mueve las citas por numero de linea de CUATRO registros; en este lote se rompieron tres (progress.util 221 -> 223, pending-return 370 -> 371 y la cita en linea de ese mismo codigo). DECIMA BAJADA, 2026-10-27 (T336): 429 -> 365. El lote 4 declara los 66 `visible` acotados por la regla (lineas de un documento, `in:` del llamador o maestro del selector) y ARREGLA la cota condicional de `delivery-orders`, cuya rama de filtro en memoria traia la tabla entera; el `take` va como propiedad literal para que la cota se lea y no se deduzca. `visible` = 0 y el ratchet queda en 365, todo de la clase `lote`. UNDECIMA Y ULTIMA, 2026-10-27 (T337): 365 -> 0, LA CAMPANA CERRADA. Se partio la clase `lote` en `escribe` (158: la escritura esta en el CUERPO del bucle, no en la variable; su deuda es de `census:bulk`) y `serializa` (207), con lo que la particion pasa a seis sumandos y sigue cuadrando; la autoprueba sube a 16 casos de findMany. Los 365 declarados con su razon. El ratchet queda en 0: 182 acotados con take/skip/cursor (4 arreglos reales) y 684 declarados. Coste: 365 inserciones movieron tres motores citados por linea (progress 223->226, stock 471->474, pending-return 371->375)."
@@ -161,8 +253,15 @@
       "id": "security-headers-hallazgos",
       "fichero": "AGENTS.md",
       "patron": "audit:security-headers[^\\r\\n]*?(\\d+) hallazgos",
-      "comando": { "cmd": "npm run audit:security-headers", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "hallazgos=(\\d+)" },
+      "comando": {
+        "cmd": "npm run audit:security-headers",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "hallazgos=(\\d+)"
+      },
       "valorEsperado": 0,
       "muestra": "RESUMEN: ficheros=821 x_powered_by_desactivado=1 encendida=0 postura=4 sitios_fuera_del_arranque=18 hallazgos={v}",
       "nota": "HUECO CERRADO EL 2026-10-12, Y LA CIFRA ES EL VEREDICTO, NO UN RECUENTO. El gate `npm run audit:security-headers` (en `backend-erp`, el commit local `9bc91e74`) publica SEIS numeros en su linea `RESUMEN` y solo CUATRO no derivan. Medido el 2026-10-12 corriendo el instrumento (`VEREDICTO: VERDE`, exit 0, autoprueba 18/18 con el senuelo de la llamada COMENTADA en rojo): son ESTABLES, porque son invariantes mientras el gate este verde, `x_powered_by_desactivado=1` y `encendida=0` --la regla es «una sola vez y nada la reenciende»: 0 y 2 son ROJO--, `postura=4` (la declaracion del propio script) y `hallazgos=0` (el veredicto, que NO PUEDE moverse bajo ningun cambio legitimo: si no es 0, el gate esta rojo). DERIVAN, y por eso NO se congelan, `ficheros=821` (crece con cada fichero de `src/`) y `sitios_fuera_del_arranque=18` (crece con cada endpoint legitimo que devuelve un Excel o un PDF con `Content-Disposition`, o un `Cache-Control`): el instrumento lo declara en su PROPIA salida --«Sitios que ponen cabeceras (INFORMATIVO, no congelado: sube con cada endpoint legitimo de descarga)»-- y en su cabecera, «se vigila lo que no deriva» (la leccion del censo de `heights` y de los `schemas` del OpenAPI). Se vigila el VEREDICTO y no el recuento `x_powered_by_desactivado=1` por coherencia con las figuras hermanas de los otros gates de declaracion (`money-total` y `spec-clock-hallazgos`, que declaran su cuenta de hallazgos); el recuento queda escrito en el manual EN PALABRAS («desactivado una sola vez», «nada la vuelve a encender»), sin una cifra que este gate no vigilaria. ANCLA COMPROBADA ANTES DE USARLA, porque el manual tiene cifras parecidas y un ancla laxa casa de mas (una cita historica ya obligo a re-anclar `collection-caps-produccion`): el patron casa UNA SOLA VEZ en `AGENTS.md` --la linea nueva de la lista de comandos del backend, la unica que nombra `audit:security-headers`-- y el extractor saca UNA SOLA cifra de la salida real (`hallazgos=0`; la otra aparicion del asunto en esa salida, `Hallazgos: 0.`, NO lleva `=`, asi que no compite). El ancla NO es `(\\d+) hallazgos` a secas A PROPOSITO: casaria DOS veces, porque la linea de `audit:spec-clock:check` tambien termina en `0 hallazgos`. LIMITE DEL INSTRUMENTO, que este gate no puede cubrir y que el script imprime en cada corrida (`LIMITE DECLARADO`): prueba que EL CODIGO LO DICE, NO que la cabecera haya desaparecido --eso es de RUNTIME, el `curl -D -` de la verificacion de despliegue--. La `muestra` lleva el censo de ese dia (821 y 18) porque es una linea REAL de la salida y el campo solo lo usa la autoprueba: el gate que corre de verdad NUNCA lee `muestra`, lee la salida real."
@@ -171,8 +270,15 @@
       "id": "date-class-apariciones",
       "fichero": "AGENTS.md",
       "patron": "\\(hoy \\*\\*(\\d+)\\*\\*: el ratchet",
-      "comando": { "cmd": "npm run audit:date-class:check", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "regex", "patron": "Apariciones de columnas declaradas:\\s*(\\d+)" },
+      "comando": {
+        "cmd": "npm run audit:date-class:check",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "Apariciones de columnas declaradas:\\s*(\\d+)"
+      },
       "valorEsperado": 1382,
       "muestra": "Apariciones de columnas declaradas: {v}",
       "nota": "El manual lo declara como cifra que DERIVA («hoy 1364»): el ratchet del instrumento vigila los HALLAZGOS (0), no las apariciones. Este gate es justo lo que cierra ese hueco: si las apariciones se mueven, el manual lo dice o el gate lo dice. De 1360 a 1361 la movio la reversa de T280 (el `documentDate` del movimiento de anulacion, `purchase-receipts.service.ts`); de 1361 a 1364 la movio T287 (la cadena del flujo de documentos, `backend-erp/src/document-flow/document-flow-chain*.ts`, que nombra `date` en el contrato y en sus dos specs) y con ella subieron los ambiguos declarados de la linea base del instrumento (1101 -> 1104); de paso se congelo esa linea base, que iba un punto por detras (1360/1100 frente a 1361/1101 medidos). La cifra se mueve EN EL MISMO empujon que el codigo que la mueve."
@@ -181,8 +287,15 @@
       "id": "ng-deep-sin-marca",
       "fichero": "AGENTS.md",
       "patron": "`(\\d+)` `::ng-deep` sin marca",
-      "comando": { "cmd": "npm run audit:ng-deep", "cwd": "erp-frontend", "requiere": "erp-frontend" },
-      "extractor": { "tipo": "regex", "patron": "sin justificar\\s+(\\d+)" },
+      "comando": {
+        "cmd": "npm run audit:ng-deep",
+        "cwd": "erp-frontend",
+        "requiere": "erp-frontend"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "sin justificar\\s+(\\d+)"
+      },
       "valorEsperado": 0,
       "muestra": "::ng-deep: 0 usos en 0 archivos · justificados 0 · sin justificar {v}",
       "nota": "El manual dice «0 `::ng-deep` sin marca»; el instrumento dice «sin justificar», que es la misma condicion con su nombre (`::ng-deep-ok:`). La frase gemela de la misma linea -- «`0` `!important`» -- NO se vigila: medida hoy da 7 usos, 7 justificados y 0 sin justificar, asi que la regla real es «0 sin marca» y convertirla en figura exigiria reescribir una REGLA (ver `important-sin-marca` en `noVigiladas`)."
@@ -191,8 +304,15 @@
       "id": "important-sin-marca",
       "fichero": "AGENTS.md",
       "patron": "`(\\d+)` `!important` sin marca",
-      "comando": { "cmd": "npm run audit:important", "cwd": "erp-frontend", "requiere": "erp-frontend" },
-      "extractor": { "tipo": "regex", "patron": "sin justificar\\s+(\\d+)" },
+      "comando": {
+        "cmd": "npm run audit:important",
+        "cwd": "erp-frontend",
+        "requiere": "erp-frontend"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "sin justificar\\s+(\\d+)"
+      },
       "valorEsperado": 0,
       "muestra": "!important: 7 usos en 3 archivos · justificados 7 · sin justificar {v}",
       "nota": "HUECO CERRADO EL 2026-10-11, y SIN TOCAR LA REGLA. El manual prometia «`0` `!important`» sin el calificativo que si llevaba la frase gemela de `::ng-deep`; el instrumento mide 7 usos en 3 archivos, 7 justificados y 0 SIN JUSTIFICAR, asi que la regla real -- la que el gate aplica -- es «0 sin marca» y esa se cumple. Lo que se alineo fue la REDACCIÓN del manual: ya no promete 0 usos, promete 0 sin marca, que es lo que su instrumento mide y publica (los tres numeros van en su salida)."
@@ -201,8 +321,15 @@
       "id": "heights-px-crudos",
       "fichero": "AGENTS.md",
       "patron": "migrate:heights:check#\\s*(\\d+) px crudos",
-      "comando": { "cmd": "npm run migrate:heights:check", "cwd": "erp-frontend", "requiere": "erp-frontend" },
-      "extractor": { "tipo": "regex", "patron": "migrate-heights:\\s*(\\d+)" },
+      "comando": {
+        "cmd": "npm run migrate:heights:check",
+        "cwd": "erp-frontend",
+        "requiere": "erp-frontend"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "migrate-heights:\\s*(\\d+)"
+      },
       "valorEsperado": 0,
       "muestra": "autoprueba del detector de alturas: 13/13 casos\nmigrate-heights: {v} alturas en px crudos en 251 archivos y 23872 líneas de pages/+shared/ · sin shared/luna (canónico) · debe-ser-cero",
       "nota": "HUECO CERRADO EL 2026-10-11, y el motivo que la declaraba NO VIGILADA ya era falso: el instrumento SI publica su cifra. `npm run migrate:heights:check` (en `erp-frontend`) imprime «autoprueba del detector de alturas: 13/13 casos» y «migrate-heights: 0 alturas en px crudos ... · debe-ser-cero», y su `--check` sale 0 con el detector probado contra 13 casos. LO QUE SE VIGILA ES EL 0, NO EL UNIVERSO: «251 archivos / 23872 lineas» es el censo del dia y deriva con cada fichero o linea que se anada, asi que NO se congela en el manual -- el ancla del manual captura solo la cifra, y el censo vive unicamente en la salida del instrumento. El ancla es la linea de la lista de comandos del frontend, con la fecha de medicion que el manual declara desde `3027c4a`. Verificada ANTES de usarla: el patron casa UNA sola vez en `AGENTS.md`, el extractor saca UNA sola cifra de la salida real, y `0 = 0 = 0`."
@@ -211,8 +338,14 @@
       "id": "storefront-ficheros",
       "fichero": "AGENTS.md",
       "patron": "sus (\\d+)\\s+ficheros",
-      "comando": { "cmd": "git ls-files storefront", "cwd": ".", "requiere": "storefront" },
-      "extractor": { "tipo": "lineas" },
+      "comando": {
+        "cmd": "git ls-files storefront",
+        "cwd": ".",
+        "requiere": "storefront"
+      },
+      "extractor": {
+        "tipo": "lineas"
+      },
       "valorEsperado": 218,
       "muestra": "storefront/archivo-{i}.ts",
       "nota": "Cuenta los ficheros TRACKEADOS por la raiz (`storefront/` no tiene `.git` propio). En disco hay mas: la diferencia son artefactos de build. Si alguien anade o quita un fichero trackeado, el manual y esta declaracion se mueven juntos."
@@ -221,8 +354,15 @@
       "id": "historial-entradas",
       "fichero": "AGENTS.md",
       "patron": "(\\d+) entradas",
-      "comando": { "cmd": "git grep -c -E \"^## [0-9]{4}-[0-9]{2}-[0-9]{2}\" -- docs/plans/historial-sesiones.md", "cwd": "." },
-      "extractor": { "tipo": "suma", "patron": ":(\\d+)\\s*$", "flags": "m" },
+      "comando": {
+        "cmd": "git grep -c -E \"^## [0-9]{4}-[0-9]{2}-[0-9]{2}\" -- docs/plans/historial-sesiones.md",
+        "cwd": "."
+      },
+      "extractor": {
+        "tipo": "suma",
+        "patron": ":(\\d+)\\s*$",
+        "flags": "m"
+      },
       "valorEsperado": 134,
       "muestra": "docs/plans/historial-sesiones.md:{v}",
       "nota": "El manual lo dice DOS veces (el encabezado y la tabla del historico): las dos tienen que decir 134. El comando cuenta los encabezados `## fecha` del registro, que es lo que el manual llama «entradas fechadas»."
@@ -231,8 +371,16 @@
       "id": "eslint-disable-src-total",
       "fichero": "AGENTS.md",
       "patron": "\\*\\*(\\d+)\\*\\* directivas",
-      "comando": { "cmd": "git grep -c -E \"eslint-disable-(next-line|line)\" -- src", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "suma", "patron": ":(\\d+)\\s*$", "flags": "m" },
+      "comando": {
+        "cmd": "git grep -c -E \"eslint-disable-(next-line|line)\" -- src",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "suma",
+        "patron": ":(\\d+)\\s*$",
+        "flags": "m"
+      },
       "valorEsperado": 12,
       "muestra": "src/common/code-generator.ts:{v}",
       "nota": "Directivas ESCRITAS A MANO en `src/` (el generado de Prisma vive en `src/generated/`, esta gitignored y no lo ve `git grep`). La suma es obligatoria: el comando publica una linea por FICHERO (4 + 4 + 4), y un extractor de un solo valor daria 4. La prosa que MENCIONA la directiva (`src/common/request-correlation-test.util.ts`, dentro de un comentario) no casa: el patron exige `eslint-disable-next-line|line`."
@@ -241,8 +389,16 @@
       "id": "eslint-disable-src-tenant",
       "fichero": "AGENTS.md",
       "patron": "\\((\\d+) `local/no-raw-without-tenant`",
-      "comando": { "cmd": "git grep -c -E \"eslint-disable-next-line local/no-raw-without-tenant\" -- src", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "suma", "patron": ":(\\d+)\\s*$", "flags": "m" },
+      "comando": {
+        "cmd": "git grep -c -E \"eslint-disable-next-line local/no-raw-without-tenant\" -- src",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "suma",
+        "patron": ":(\\d+)\\s*$",
+        "flags": "m"
+      },
       "valorEsperado": 8,
       "muestra": "src/reports/reports.service.ts:{v}",
       "nota": "La mitad con regla nombrada del total: 8 (`code-generator.ts` x4 + `reports.service.ts` x4)."
@@ -251,8 +407,16 @@
       "id": "eslint-disable-src-require",
       "fichero": "AGENTS.md",
       "patron": "\\+ (\\d+) `@typescript-eslint/no-require-imports`",
-      "comando": { "cmd": "git grep -c -E \"eslint-disable-next-line @typescript-eslint/no-require-imports\" -- src", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "suma", "patron": ":(\\d+)\\s*$", "flags": "m" },
+      "comando": {
+        "cmd": "git grep -c -E \"eslint-disable-next-line @typescript-eslint/no-require-imports\" -- src",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "suma",
+        "patron": ":(\\d+)\\s*$",
+        "flags": "m"
+      },
       "valorEsperado": 4,
       "muestra": "src/common/pdf/pdf.service.ts:{v}",
       "nota": "La otra mitad: 4 (`pdf.service.ts` x4). 8 + 4 = 12, el total de arriba: las tres cifras tienen que cuadrar entre si Y con el instrumento."
@@ -261,8 +425,14 @@
       "id": "eslint-disable-generados",
       "fichero": "AGENTS.md",
       "patron": "las \\*\\*(\\d+)\\*\\* de\\s+`src/generated/`",
-      "comando": { "cmd": "git ls-files --others --ignored --exclude-standard -- src/generated", "cwd": "backend-erp", "requiere": "backend-erp/src/generated" },
-      "extractor": { "tipo": "lineas" },
+      "comando": {
+        "cmd": "git ls-files --others --ignored --exclude-standard -- src/generated",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp/src/generated"
+      },
+      "extractor": {
+        "tipo": "lineas"
+      },
       "valorEsperado": 207,
       "muestra": "src/generated/prisma/archivo-{i}.ts",
       "nota": "Una directiva `/* eslint-disable */` EN BLOQUE por fichero de Prisma: por eso el numero de ficheros es el numero de directivas. `src/generated/` es codigo GENERADO y esta gitignored, asi que el comando lo lista con `--others --ignored --exclude-standard` y `requiere` apunta al DIRECTORIO: sin `prisma generate` la cifra no es 0, es DESCONOCIDA, y el gate lo declara no medida en vez de mentir (un 0 ahi seria un falso rojo en un arbol limpio). El patron casa DOS veces en el manual (la lista de convenciones transversales y la vineta de reglas de proceso): las dos tienen que decir 207. El `\\s+` del patron cruza el salto de linea de la primera, que parte la frase entre «de» y «`src/generated/`»."
@@ -271,8 +441,16 @@
       "id": "comentario-generados-207",
       "fichero": "backend-erp/scripts/audit-explicit-any.mjs",
       "patron": "son (\\d+) ficheros de",
-      "comando": { "cmd": "node -e \"const fs=require('fs'),p=require('path');let n=0;const w=(d)=>{for(const e of fs.readdirSync(d,{withFileTypes:true})){const f=p.join(d,e.name);if(e.isDirectory())w(f);else if(e.isFile())n++;}};w('src/generated');console.log(n)\"", "cwd": "backend-erp", "requiere": "backend-erp/src/generated" },
-      "extractor": { "tipo": "regex", "patron": "^\\s*(\\d+)\\s*$", "flags": "m" },
+      "comando": {
+        "cmd": "node -e \"const fs=require('fs'),p=require('path');let n=0;const w=(d)=>{for(const e of fs.readdirSync(d,{withFileTypes:true})){const f=p.join(d,e.name);if(e.isDirectory())w(f);else if(e.isFile())n++;}};w('src/generated');console.log(n)\"",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp/src/generated"
+      },
+      "extractor": {
+        "tipo": "regex",
+        "patron": "^\\s*(\\d+)\\s*$",
+        "flags": "m"
+      },
       "valorEsperado": 207,
       "muestra": "{v}",
       "nota": "EL COMENTARIO DEL SCRIPT, VIGILADO (entrada `comentario-generados-205` de `noVigiladas`, borrada el 2026-10-11: su motivo llevaba DOS COMMITS siendo falso). El comentario dice «el generado de Prisma se salta a proposito (son 207 ficheros de maquina)» en `backend-erp/scripts/audit-explicit-any.mjs:27` DESDE `ed400dcb` («el comentario decia 205 ficheros de maquina; son 206», publicado en `origin/main` y `deploy/main`), y el disco tiene 207. NO HABIA NINGUN ROJO QUE EVITAR: el arreglo no exigia editar `backend-erp/` -- ya estaba corregido -- y lo unico que faltaba era que el gate supiera anclar fuera del manual (campos `manual`/`fichero`). QUE SE VIGILA: el comentario, NO la cifra del manual. La cifra del manual ya la vigilaba, y sigue vigilando, `eslint-disable-generados` (las DOS veces que el manual la dice: la vineta de convenciones transversales y la de reglas de proceso). Son DOS sitios con la MISMA cifra, y por eso hay DOS figuras: son dos anclas distintas con dos valores que pueden divergir por separado. POR QUE EL COMANDO NO ES EL MISMO `git ls-files` DE `eslint-disable-generados`, MEDIDO Y NO SUPUESTO: `ejecutarComandos` cachea por `cwd|cmd` y la autoprueba da UN doble por comando cuya salida es la concatenacion de las `muestra` de TODAS sus figuras; un extractor `lineas` (el de `eslint-disable-generados`) cuenta entonces las lineas de las DOS muestras y el gate se ponia ROJO en su propio caso `base-verde` (medido: `instrumento-divergente` en `base-verde` y en `senuelo-de-otra-familia-no-dispara`). Un extractor `regex` sobre un comando compartido tampoco sirve: las dos cifras distintas de la concatenacion dan `salida-ambigua`. Se usa por tanto una orden PROPIA que mide LO MISMO: el arbol `src/generated` recorrido a mano. EQUIVALENCIA MEDIDA (no supuesta): `git -C backend-erp ls-files --others --ignored --exclude-standard -- src/generated` -> 207, y el recorrido recursivo -> 207, y las 207 son `.ts` (199 en `prisma/models`, 3 en `prisma/internal`, 5 sueltos): coinciden fichero a fichero en la CUENTA. El ancla es «son N ficheros de»: la linea 27 parte la frase, asi que el ancla se queda en el trozo que no se parte."
@@ -281,8 +459,14 @@
       "id": "procedencia-repo-backend-erp",
       "fichero": "AGENTS.md",
       "patron": "`git cat-file -t 8c6d2f92`\\s+devuelve\\s+\\*\\*(\\d+)\\*\\*",
-      "comando": { "cmd": "git cat-file -t 8c6d2f92", "cwd": "backend-erp", "requiere": "backend-erp" },
-      "extractor": { "tipo": "lineas" },
+      "comando": {
+        "cmd": "git cat-file -t 8c6d2f92",
+        "cwd": "backend-erp",
+        "requiere": "backend-erp"
+      },
+      "extractor": {
+        "tipo": "lineas"
+      },
       "valorEsperado": 1,
       "muestra": "commit",
       "nota": "LA PROCEDENCIA, VIGILADA (hueco cerrado el 2026-10-11). El manual decia «(`backend-erp`, sobre `71110f0`)» y `71110f0` es un commit de la RAIZ que NO EXISTE en `backend-erp` (`fatal: Not a valid object name`): una procedencia que apuntaba a otro arbol. El texto ahora nombra REPO + FECHA y cita el SHA CON su repo (`8c6d2f92`, el HEAD de `backend-erp` al medir). Esta figura corre `git cat-file -t 8c6d2f92` DENTRO de `backend-erp` y exige 1 linea de salida: si el objeto desaparece del repo el comando sale distinto de cero y el gate se pone ROJO (`comando-fallido`), que es lo que un SHA que caduca tiene que provocar. Un `git cat-file -t` de un objeto ausente NO devuelve 1 linea: no hay falso verde. En el CI de la raiz `backend-erp/` no existe y la cifra sale NO MEDIDA, con su motivo, sin romper el arbol."
