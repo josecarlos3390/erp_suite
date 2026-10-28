@@ -102,10 +102,12 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   `backend-erp/src/common/progress.util.ts:61`) y **la sucursal del documento**
   (`resolveDocumentBranchId`). **Ninguna pantalla ni la tienda replican la regla: la consumen.** Gate:
   `npm run audit:single-engine:check` (medido el 2026-10-27 en `backend-erp`: **5** conceptos con su
-  motor citado, **0** segundas fórmulas en el progreso del pedido —el caso T316— y **5** hallazgos
-  declarados como deuda: **2** del `invoiceStatus` de la entrega y **3** copias de
-  `stockPhysical + stockOrdered - stockCommitted` —los **2 del fallback de la sucursal** en
-  los controllers de pedidos se pagaron el 2026-10-27 al pasar por el motor—). [Texto completo](docs/guides/reglas-medidas.md#un-solo-motor)
+  motor citado y **0** segundas fórmulas en TODO el repositorio el 2026-10-27: se pagaron **las 5**
+  —la fórmula del disponible se extrajo a `computeStockAvailable` (un motor, cuatro llamadores:
+  `assembly-orders`, `kit-expansion`, `items` y el propio `stock.util`) y el estado de facturación
+  de la entrega a `resolveDeliveryInvoiceStatus`, con el cuarto valor `NA` que el pedido no tiene y
+  **cinco casos que lo fijan**; los **2 del fallback de la sucursal** ya se habían pagado el mismo
+  día al pasar por el motor—). [Texto completo](docs/guides/reglas-medidas.md#un-solo-motor)
 - **Dinero al centavo** (`Decimal` / `Money` / `isZeroMoney`; `.toFixed()` solo para **serializar**) y
   **fechas con `tenantToday()`** en specs y seeds, nunca `toISOString()`.
 - **Cantidad derivada que se publique y se lea en pantalla** (pendiente, saldo, progreso, total,
@@ -175,7 +177,7 @@ npm run audit:detectors:check # el ALCANCE de cada detector: ejecuta el `--self-
 npm run audit:citations:reanchor # REPARADOR de las citas por `fichero:línea` de `single-engine` y
                              # `derived-invariants`: re-resuelve la línea por la `evidencia` ya declarada
                              # (informe; `--apply` reescribe registros y citas en línea; `--self-test` 4/4)
-npm run audit:single-engine:check # un solo motor por dominio: 5 conceptos con su motor citado (`fichero:línea` + evidencia) y la segunda fórmula prohibida en los ficheros ajenos; 0 en el progreso del pedido (T316) y 5 hallazgos de deuda (2 del `invoiceStatus` de la entrega y 3 copias del stock disponible), congelados (medido el 2026-10-27 en `backend-erp`; los 2 del fallback de la sucursal se pagaron ese día)
+npm run audit:single-engine:check # un solo motor por dominio: 5 conceptos con su motor citado (`fichero:línea` + evidencia) y la segunda fórmula prohibida en los ficheros ajenos; 0 segundas fórmulas en TODO el repositorio (T316 y las 5 de la entrega/stock, pagadas el 2026-10-27), congelado (medido el 2026-10-27 en `backend-erp`; los 2 del fallback de la sucursal se pagaron ese día)
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
 
