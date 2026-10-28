@@ -116,6 +116,7 @@
 
 ### Fixed
 
+- **T380 · endurecer el instrumento** (2026-10-28). udit:money:check **entra al pre-push** (el defecto de T374 pasó 3 815 tests); el **re-anclador no adivina** la declaracion (exige una sola marca que cite, si no la deja y lo declara); el **CONTROL de single-engine calcula su cita** (estaba hardcodeada y tumbó un push); el **pendientes del registro cuadra** con la deuda real, con A/B. Y **gate:rapido**: los gates de contenido sin la suite, **71 s**. De paso, un **BOM mío** en package.json que cazó udit:exit-codes.
 - **T379 · cierre de la investigación de `totalAmount`** (2026-10-28). **6 de 6** sitios son **passthrough o parámetro** (cuatro 	oNum(inv.total), un Number(r.totalAmount) de SQL y un parámetro): el nombre **nunca** contiene una fórmula. Declararlo sería citar algo que resuelve y **no mide**. sinDeclarar = 0 **no es alcanzable honestamente** sin cambiar el **criterio del censo**; queda con cifra y razón.
 - **T378 · `derived-invariants` 2 → 1: `pending`** (2026-10-28). El nombre descartado en T376 **sí tenía sitio**: 	otal − facturado con   si no queda. Motor pendingOrderAmount, caso que compara las dos fronteras. Queda 1: 	otalAmount.
 - **T377 · `derived-invariants` 3 → 2: `progress`** (2026-10-28). La celda publicaba un *fallback* {PENDING, PENDING} sin decirlo; motor publishedProgress, con caso que **compara** contra computeSalesOrderProgress sobre las mismas líneas. Quedan 2.
@@ -148,6 +149,7 @@
 
 ### Fixed
 
+- **T380 · endurecer el instrumento** (2026-10-28). udit:money:check **entra al pre-push** (el defecto de T374 pasó 3 815 tests); el **re-anclador no adivina** la declaracion (exige una sola marca que cite, si no la deja y lo declara); el **CONTROL de single-engine calcula su cita** (estaba hardcodeada y tumbó un push); el **pendientes del registro cuadra** con la deuda real, con A/B. Y **gate:rapido**: los gates de contenido sin la suite, **71 s**. De paso, un **BOM mío** en package.json que cazó udit:exit-codes.
 - **T379 · cierre de la investigación de `totalAmount`** (2026-10-28). **6 de 6** sitios son **passthrough o parámetro** (cuatro 	oNum(inv.total), un Number(r.totalAmount) de SQL y un parámetro): el nombre **nunca** contiene una fórmula. Declararlo sería citar algo que resuelve y **no mide**. sinDeclarar = 0 **no es alcanzable honestamente** sin cambiar el **criterio del censo**; queda con cifra y razón.
 - **T378 · `derived-invariants` 2 → 1: `pending`** (2026-10-28). El nombre descartado en T376 **sí tenía sitio**: 	otal − facturado con   si no queda. Motor pendingOrderAmount, caso que compara las dos fronteras. Queda 1: 	otalAmount.
 - **T377 · `derived-invariants` 3 → 2: `progress`** (2026-10-28). La celda publicaba un *fallback* {PENDING, PENDING} sin decirlo; motor publishedProgress, con caso que **compara** contra computeSalesOrderProgress sobre las mismas líneas. Quedan 2.
@@ -168,6 +170,7 @@
 
 ### Fixed
 
+- **T380 · endurecer el instrumento** (2026-10-28). udit:money:check **entra al pre-push** (el defecto de T374 pasó 3 815 tests); el **re-anclador no adivina** la declaracion (exige una sola marca que cite, si no la deja y lo declara); el **CONTROL de single-engine calcula su cita** (estaba hardcodeada y tumbó un push); el **pendientes del registro cuadra** con la deuda real, con A/B. Y **gate:rapido**: los gates de contenido sin la suite, **71 s**. De paso, un **BOM mío** en package.json que cazó udit:exit-codes.
 - **T379 · cierre de la investigación de `totalAmount`** (2026-10-28). **6 de 6** sitios son **passthrough o parámetro** (cuatro 	oNum(inv.total), un Number(r.totalAmount) de SQL y un parámetro): el nombre **nunca** contiene una fórmula. Declararlo sería citar algo que resuelve y **no mide**. sinDeclarar = 0 **no es alcanzable honestamente** sin cambiar el **criterio del censo**; queda con cifra y razón.
 - **T378 · `derived-invariants` 2 → 1: `pending`** (2026-10-28). El nombre descartado en T376 **sí tenía sitio**: 	otal − facturado con   si no queda. Motor pendingOrderAmount, caso que compara las dos fronteras. Queda 1: 	otalAmount.
 - **T377 · `derived-invariants` 3 → 2: `progress`** (2026-10-28). La celda publicaba un *fallback* {PENDING, PENDING} sin decirlo; motor publishedProgress, con caso que **compara** contra computeSalesOrderProgress sobre las mismas líneas. Quedan 2.
