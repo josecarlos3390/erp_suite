@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- **T348 · cierre de la campaña de riesgo de producto** (2026-10-28). **Cerrados tres de los cuatro frentes**: las `!` de riesgo **31 → 0**, `single-engine` **5 → 0**, `branch-required` `otro` **declarada con razón y con control de entrada**. **Abierto**: `derived-invariants`, **63** de 73, con **3 cerradas de verdad** y el método escrito para seguirlo (la lista sale del gate, no de un filtro propio; cada nombre exige cita, marca en línea y **un caso que compare**, no un literal).
+- **T347 · el crédito disponible, con un motor y dos llamadores** (2026-10-28). `availableCredit` se calculaba con dos reglas y el número dependía de qué pantalla lo pidiera. Ahora es `resolveAvailableCredit`, con la regla escrita en el motor (sin límite = `null`; pasarse = **cero, no negativo**) y **cinco casos** que la comparan.
 - **T346 · hallazgo: `availableCredit` con DOS reglas** (2026-10-28). La misma cantidad publicada en dos pantallas **no coincide**: el reporte responde `límite − usado` **sin recortar** (negativo cuando el socio se pasa) y el endpoint del socio `max(0, …)`. No se unifica a ciegas: hay que decidir cuál de las dos es la buena y escribirlo.
 - **T345 · `derived-invariants` 64 → 63: `pendingQty` con un caso que COMPARA** (2026-10-28). Cita canónica, marca en línea y un caso que recorre **los cuatro regímenes** contra una derivación independiente — y que destapó que los casos que ya había asertaban **literales**, no la invariante.
 - **T344 · el conjunto de trabajo de `derived-invariants` sale del gate** (2026-10-28). Declaré dos nombres sobre un censo propio (133) y la cifra no se movió: la diana del gate son **72**. Las declaraciones se retiraron; el caso se quedó. Las **64** reales quedan listadas en `AUDIT.md`.
