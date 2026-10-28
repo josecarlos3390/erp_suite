@@ -172,6 +172,9 @@ npm run census:bulk:check # ESCRITURAS POR FILA («BULK»): `create`/`update`/`u
 npm run audit:security-headers # postura de cabeceras en el código (gate estático de DECLARACIÓN): x-powered-by desactivado una sola vez en el arranque, nada la vuelve a encender y 0 hallazgos (medido el 2026-10-12 en `backend-erp`; los sitios que ponen cabeceras DERIVAN con cada endpoint legítimo y NO se congelan — prueba que el código lo dice, NO que la cabecera haya desaparecido)
 npm run audit:derived-invariants:check # la cantidad derivada publicada y leída en pantalla cita su invariante (`fichero:línea`) en su declaración y tiene un caso que la asevera; la diana (72) sale del MISMO censo que `census:derived`, la deuda está en 65 y el gate falla si sube (medido el 2026-10-27 en `backend-erp`: el lote 1 declaró `totalPending`, `totalDebit` y `totalCredit`)
 npm run audit:detectors:check # el ALCANCE de cada detector: ejecuta el `--self-test` de los 20 `audit-*.mjs`, exige un caso declarado de cada patrón que aplique (multilínea T126 / nombre distinto / sufijo) y lista los 2 sin `--self-test`; 12 sin caso difícil, deuda congelada (medido el 2026-10-25 en `backend-erp`; eran 19/17/5 el 2026-10-24 y el gate del exit code añadió el detector 20)
+npm run audit:citations:reanchor # REPARADOR de las citas por `fichero:línea` de `single-engine` y
+                             # `derived-invariants`: re-resuelve la línea por la `evidencia` ya declarada
+                             # (informe; `--apply` reescribe registros y citas en línea; `--self-test` 4/4)
 npm run audit:single-engine:check # un solo motor por dominio: 5 conceptos con su motor citado (`fichero:línea` + evidencia) y la segunda fórmula prohibida en los ficheros ajenos; 0 en el progreso del pedido (T316) y 5 hallazgos de deuda (2 del `invoiceStatus` de la entrega y 3 copias del stock disponible), congelados (medido el 2026-10-27 en `backend-erp`; los 2 del fallback de la sucursal se pagaron ese día)
 npm run perf:k6              # k6 perfil small (el large, programado)
 ```
@@ -574,6 +577,15 @@ npm run audit:contrast       # contraste WCAG de la paleta
   **su** delta y no el de la tanda: `git stash push -- <fichero>` → `--check` → `--update-baseline` →
   commit → `git stash pop` (`backend-erp`, lote 1 de los ayudantes de fecha: `7418d513`, `82e67568`,
   `e1bd8bab`, `acf265e0`).
+- **Una cita por número de línea caduca en cuanto algo se inserta por encima; el reparador existe**
+  (2026-10-27, `scripts/reanchor-citations.mjs`). Medido en la campaña de `collection-caps`: **tres**
+  empujones rechazados por motores que se habían movido (`progress.util` 221 → 223 → 226,
+  `stock.util` 470 → 471 → 474, `pending-return` 370 → 371 → 375). El reparador usa la `evidencia`
+  que cada concepto **ya declara** —un fragmento real de la línea— para volver a encontrarla: exige
+  **una sola aparición** (con dos, el ancla no identifica nada y **se niega a escribir**: son los
+  gemelos venta/compra), reescribe el número y la **cita en línea del código**. Su A/B está hecho:
+  insertar una línea pone el gate en ROJO, `--apply` lo devuelve a VERDE. **Un re-anclador que se
+  equivoca es peor que ninguno**, por eso se niega en vez de adivinar.
 - **`--check` y `--update-baseline` son DOS pasos, y el segundo es el que deja el commit
   reproducible.** `8f944748` (`sales-orders`) corrió `--check` y **se olvidó** `--update-baseline`: la
   base quedó en **1524** con la cuenta real en **1521**, el gate **no falló** (bajar da verde) y la
