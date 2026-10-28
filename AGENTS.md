@@ -82,7 +82,7 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   **0** controllers con la forma vieja y **48** `branchId: … ?? null` en servicios, **congelados por
   clase**: `parametro` **0** —pagada—, `cuerpo` **3** —serie global, asiento del tenant y borrador,
   **declarados con su razón**; el gate falla si aparece un `cuerpo` nuevo sin declarar—,
-  `copiaOrigen` **43**, `otro` **2**). Un `update` **no** puede reescribir la sucursal a `null`: se
+  `copiaOrigen` **43** y `otro` **2** —las **tres** clases declaradas con su razón: la de `otro` desde el 2026-10-27, con los dos sitios mirados (`journal-entries` hereda la del asiento, y la forma `(line['branchId'] as …)` esconde que es una copia; `withholding-reports` publica la columna prefiriendo la relación), y un `otro` nuevo sin declarar es ROJO—). Un `update` **no** puede reescribir la sucursal a `null`: se
   escribe solo si el payload la trae. Y un **usuario sin sucursal por defecto no puede crearla ni
   quedarse sin ella**: `PATCH /users` la rechaza. **El documento tiene que ser de la sucursal DEL
   USUARIO** (2026-10-27): el cuerpo solo manda si coincide con la del usuario —si pide otra, **403**—,
