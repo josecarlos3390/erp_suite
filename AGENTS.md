@@ -116,7 +116,7 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   nunca de una columna denormalizada (`openQty`, `receivedQty`, `invoicedQty`…): puede estar desviada y
   nadie la mira, pero **en cuanto alguien la lee, publica un número falso** (T265). Censo buscable:
   `npm run census:derived` (en `backend-erp`; medido el 2026-10-29: **231** nombres censados y **78** diana). Gate: `npm run audit:derived-invariants:check` —de las **73** diana, **72** están declaradas
-  (**72** con cita que resuelve y **68** que comparan de verdad) y **1** sigue sin declarar, con la
+  (**77** con cita que resuelve y **73** que comparan de verdad) y **1** sigue sin declarar, con la
   línea base en **1** y el gate rojo si sube; los lotes 1–26 cerraron fixed-assets (6), journal-entries
   (4), delivery-orders (4), common (10, con `totalPending` re-anclado y `totalQty`), reports (9, con
   motor y **caso E2E** de fixture propia), landed-costs (2), exchange-rate-adjustments (2), dashboard
