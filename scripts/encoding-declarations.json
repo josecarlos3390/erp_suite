@@ -20,6 +20,31 @@
       "fichero": "AGENTS.md",
       "fragmento": "cp1252: `Ã³`, `â€”`)",
       "motivo": "El bloque «Raíz (cd .)» del manual ENSEÑA la firma del defecto con dos ejemplos literales (`Ã³` por `ó`, `â€”` por `—`): son la lección, no daño vivo. Si se reparan, el manual deja de mostrar qué se está buscando."
+    },
+    {
+      "fichero": "scripts/audit-encoding.mjs",
+      "fragmento": "CotizaciÃ³n invÃ¡lida",
+      "motivo": "El propio gate ENSEÑA el mensaje que estaba roto («CotizaciÃ³n invÃ¡lida» por «Cotización inválida»): es la cabecera del defecto y el fixture de su autoprueba (R2 en CÓDIGO). El gate no se auto-exime: se escanea y declara como cualquier otro fichero."
+    },
+    {
+      "fichero": "scripts/audit-encoding.mjs",
+      "fragmento": "importaciÃ³n",
+      "motivo": "Fixture de la autoprueba del caso «una declaración cubre el hallazgo»: el `fragmento` declarado y el texto del fichero de prueba tienen que ser ese literal para probar la cobertura por contenido."
+    },
+    {
+      "fichero": "scripts/audit-encoding.mjs",
+      "fragmento": "`Ã³` por `ó`",
+      "motivo": "Cabecera del gate: escribe la firma del defecto con su resultado (`Ã³` por `ó`, `â€”` por `—`) para que el lector sepa qué busca. Sin el ejemplo, la regla R2 no se entiende."
+    },
+    {
+      "fichero": "AUDIT.md",
+      "fragmento": "`'CotizaciÃ³n invÃ¡lida'`",
+      "motivo": "La fila T399 CITA el mensaje que estaba roto para que el lector vea el defecto exacto (un 400 respondía «CotizaciÃ³n invÃ¡lida»). Es la evidencia del incremento, no daño vivo."
+    },
+    {
+      "fichero": "CHANGELOG.md",
+      "fragmento": "`'CotizaciÃ³n invÃ¡lida'`",
+      "motivo": "La viñeta de T399 del changelog de la raíz cita el mismo mensaje roto que la fila del ledger: es la prueba de lo que se reparó."
     }
   ]
 }
