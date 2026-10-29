@@ -116,6 +116,7 @@
 
 ### Fixed
 
+- **T391 · 	otalAmount sale de la diana por regla, deuda a CERO** (2026-10-29). El censo contaba una **conversión** como cálculo; regla nueva (conversor de función libre + lectura de campo), con A/B 6/6 en un --self-test nuevo del censo y la mitad conservadora medida (método e identificador suelto **sí** calculan). diana 77 · declaradas 77 · sin declarar 0.
 - **T390 · las cinco columnas del manual entran en la diana (73 → 78)** (2026-10-29). Lista declarada COLUMNAS_VIGILADAS (no aflojar la regla: habría metido 46 nombres de DTO), esDiana() en un solo sitio (estaba duplicada) y cinco declaraciones con su cita, su marca y su caso. diana 78 · declaradas 77 · sin declarar 1.
 - **T389 · la 4.6 con fixture propia en erp_test** (2026-10-29). E2E que mide **las consultas reales** (el groupBy con purchaseReceipt.status = CLOSED), en cuatro actos: verde, rojo, rojo al revés y **una recepción OPEN que no suma**. 4/4. Es lo que ningún unitario cubría: el SQL.
 - **T388 · la 4.6 validada contra el esquema real** (2026-10-28). Sonda de sólo lectura en erp_db: las dos consultas corren y el universo está **vacío** (1 tenant, 0 recepciones) ⇒ no se declara con un   que no distingue «cuadra» de «no hay nada». Elegido el **E2E con fixture propia en erp_test** (rojo→verde), descartado sembrar erp_db. Plan y hechos en el ledger.
@@ -159,6 +160,7 @@
 
 ### Fixed
 
+- **T391 · 	otalAmount sale de la diana por regla, deuda a CERO** (2026-10-29). El censo contaba una **conversión** como cálculo; regla nueva (conversor de función libre + lectura de campo), con A/B 6/6 en un --self-test nuevo del censo y la mitad conservadora medida (método e identificador suelto **sí** calculan). diana 77 · declaradas 77 · sin declarar 0.
 - **T390 · las cinco columnas del manual entran en la diana (73 → 78)** (2026-10-29). Lista declarada COLUMNAS_VIGILADAS (no aflojar la regla: habría metido 46 nombres de DTO), esDiana() en un solo sitio (estaba duplicada) y cinco declaraciones con su cita, su marca y su caso. diana 78 · declaradas 77 · sin declarar 1.
 - **T389 · la 4.6 con fixture propia en erp_test** (2026-10-29). E2E que mide **las consultas reales** (el groupBy con purchaseReceipt.status = CLOSED), en cuatro actos: verde, rojo, rojo al revés y **una recepción OPEN que no suma**. 4/4. Es lo que ningún unitario cubría: el SQL.
 - **T388 · la 4.6 validada contra el esquema real** (2026-10-28). Sonda de sólo lectura en erp_db: las dos consultas corren y el universo está **vacío** (1 tenant, 0 recepciones) ⇒ no se declara con un   que no distingue «cuadra» de «no hay nada». Elegido el **E2E con fixture propia en erp_test** (rojo→verde), descartado sembrar erp_db. Plan y hechos en el ledger.
@@ -190,6 +192,7 @@
 
 ### Fixed
 
+- **T391 · 	otalAmount sale de la diana por regla, deuda a CERO** (2026-10-29). El censo contaba una **conversión** como cálculo; regla nueva (conversor de función libre + lectura de campo), con A/B 6/6 en un --self-test nuevo del censo y la mitad conservadora medida (método e identificador suelto **sí** calculan). diana 77 · declaradas 77 · sin declarar 0.
 - **T390 · las cinco columnas del manual entran en la diana (73 → 78)** (2026-10-29). Lista declarada COLUMNAS_VIGILADAS (no aflojar la regla: habría metido 46 nombres de DTO), esDiana() en un solo sitio (estaba duplicada) y cinco declaraciones con su cita, su marca y su caso. diana 78 · declaradas 77 · sin declarar 1.
 - **T389 · la 4.6 con fixture propia en erp_test** (2026-10-29). E2E que mide **las consultas reales** (el groupBy con purchaseReceipt.status = CLOSED), en cuatro actos: verde, rojo, rojo al revés y **una recepción OPEN que no suma**. 4/4. Es lo que ningún unitario cubría: el SQL.
 - **T388 · la 4.6 validada contra el esquema real** (2026-10-28). Sonda de sólo lectura en erp_db: las dos consultas corren y el universo está **vacío** (1 tenant, 0 recepciones) ⇒ no se declara con un   que no distingue «cuadra» de «no hay nada». Elegido el **E2E con fixture propia en erp_test** (rojo→verde), descartado sembrar erp_db. Plan y hechos en el ledger.
