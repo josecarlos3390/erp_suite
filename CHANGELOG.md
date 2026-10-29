@@ -116,6 +116,7 @@
 
 ### Fixed
 
+- **T387 · inmemory-ok: y la invariante 4.6 publicada** (2026-10-28). El bloqueo del cableado era un **falso positivo** del censo (una consulta que se lee fila a fila para publicar desvíos por línea no es una suma movible): se arregla el **detector** con marca declarada y caso A/B (20/20), no subiendo la línea base. COBERTURA: 25 publicadas · 25 con caso; census:inmemory sigue en **70**.
 - **T386 · el motor de 4.6 recibe el mapa ya agregado** (2026-10-28). La suma se hace en la base (groupBy), no en el motor. El cableado en measure() sigue bloqueado por un **falso positivo** de census:inmemory (una consulta fila-a-fila necesaria para publicar los desvíos por línea se clasifica como «movible» con ggregate), y se declara con su razón en vez de subir la línea base.
 - **T385 · corrección de la semántica de eceivedQtyDrift** (2026-10-28). El tercer escritor **no** es una nota de crédito (PurchaseCreditNoteItem no tiene orderItemId): es createFromMultiOrder, el **mismo documento por otra puerta**; y la cabecera pasa a **CLOSED antes** de incrementar. Motor a dos parámetros, contrato = recepciones **CLOSED**. Sigue sin cablear, ya con la razón correcta.
 - **T384 · ecibido era un nombre de la diana** (2026-10-28). Un local nuevo del motor de T383 casó con la familia que vigila el censo ⇒ sinDeclarar 1→2 y ratchet ROJO; lo cazó el pre-push tras el --fix de lint-staged. Renombrado a ecepcionPorLinea. **Cuarta** vez de la misma trampa: el nombre de un local se elige también por lo que mira el **censo**.
@@ -155,6 +156,7 @@
 
 ### Fixed
 
+- **T387 · inmemory-ok: y la invariante 4.6 publicada** (2026-10-28). El bloqueo del cableado era un **falso positivo** del censo (una consulta que se lee fila a fila para publicar desvíos por línea no es una suma movible): se arregla el **detector** con marca declarada y caso A/B (20/20), no subiendo la línea base. COBERTURA: 25 publicadas · 25 con caso; census:inmemory sigue en **70**.
 - **T386 · el motor de 4.6 recibe el mapa ya agregado** (2026-10-28). La suma se hace en la base (groupBy), no en el motor. El cableado en measure() sigue bloqueado por un **falso positivo** de census:inmemory (una consulta fila-a-fila necesaria para publicar los desvíos por línea se clasifica como «movible» con ggregate), y se declara con su razón en vez de subir la línea base.
 - **T385 · corrección de la semántica de eceivedQtyDrift** (2026-10-28). El tercer escritor **no** es una nota de crédito (PurchaseCreditNoteItem no tiene orderItemId): es createFromMultiOrder, el **mismo documento por otra puerta**; y la cabecera pasa a **CLOSED antes** de incrementar. Motor a dos parámetros, contrato = recepciones **CLOSED**. Sigue sin cablear, ya con la razón correcta.
 - **T384 · ecibido era un nombre de la diana** (2026-10-28). Un local nuevo del motor de T383 casó con la familia que vigila el censo ⇒ sinDeclarar 1→2 y ratchet ROJO; lo cazó el pre-push tras el --fix de lint-staged. Renombrado a ecepcionPorLinea. **Cuarta** vez de la misma trampa: el nombre de un local se elige también por lo que mira el **censo**.
@@ -182,6 +184,7 @@
 
 ### Fixed
 
+- **T387 · inmemory-ok: y la invariante 4.6 publicada** (2026-10-28). El bloqueo del cableado era un **falso positivo** del censo (una consulta que se lee fila a fila para publicar desvíos por línea no es una suma movible): se arregla el **detector** con marca declarada y caso A/B (20/20), no subiendo la línea base. COBERTURA: 25 publicadas · 25 con caso; census:inmemory sigue en **70**.
 - **T386 · el motor de 4.6 recibe el mapa ya agregado** (2026-10-28). La suma se hace en la base (groupBy), no en el motor. El cableado en measure() sigue bloqueado por un **falso positivo** de census:inmemory (una consulta fila-a-fila necesaria para publicar los desvíos por línea se clasifica como «movible» con ggregate), y se declara con su razón en vez de subir la línea base.
 - **T385 · corrección de la semántica de eceivedQtyDrift** (2026-10-28). El tercer escritor **no** es una nota de crédito (PurchaseCreditNoteItem no tiene orderItemId): es createFromMultiOrder, el **mismo documento por otra puerta**; y la cabecera pasa a **CLOSED antes** de incrementar. Motor a dos parámetros, contrato = recepciones **CLOSED**. Sigue sin cablear, ya con la razón correcta.
 - **T384 · ecibido era un nombre de la diana** (2026-10-28). Un local nuevo del motor de T383 casó con la familia que vigila el censo ⇒ sinDeclarar 1→2 y ratchet ROJO; lo cazó el pre-push tras el --fix de lint-staged. Renombrado a ecepcionPorLinea. **Cuarta** vez de la misma trampa: el nombre de un local se elige también por lo que mira el **censo**.
