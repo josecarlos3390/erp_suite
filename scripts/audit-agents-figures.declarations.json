@@ -484,9 +484,9 @@
         "tipo": "regex",
         "patron": "base: movibles=(\\d+)"
       },
-      "valorEsperado": 70,
-      "muestra": "OK — sin regresiones (base: movibles={v}, soloNumero=0, sitios=99; hoy: movibles=70, soloNumero=0, sitios=99).",
-      "nota": "FIGURA NUEVA, 2026-10-25. El censo `census:inmemory-aggregates` (backend-erp) parte los sitios donde se traen filas y se produce un numero en JS en MOVIBLES (el mismo resultado con count/aggregate/groupBy) y NO movibles (condicion por fila, cantidad x precio, campo de otra tabla, redondeo por linea: la suma de los redondeos no es el redondeo de la suma). Lo que se congela es la DEUDA: los movibles no pueden subir. El `--check` imprime la cifra dos veces (la base y el valor de hoy) y por eso el extractor esta anclado a `base:`. Medido el 2026-10-25 tras el LOTE 2: 70 movibles de 99 sitios. El lote 1 dejo 75 de 104 y el lote 2 pago los cinco «solo para el numero» (los unicos donde mover el agregado ELIMINA el findMany), asi que ese contador queda en CERO: de 5 a 0. El contador `soloNumero` se congela en la linea base del instrumento y NO se declara aqui."
+      "valorEsperado": 0,
+      "muestra": "OK — sin regresiones (base: movibles={v}, soloNumero=0, sitios=100; hoy: movibles=0, soloNumero=0, sitios=100).",
+      "nota": "FIGURA NUEVA, 2026-10-25. El censo `census:inmemory-aggregates` (backend-erp) parte los sitios donde se traen filas y se produce un numero en JS en MOVIBLES (el mismo resultado con count/aggregate/groupBy) y NO movibles (condicion por fila, cantidad x precio, campo de otra tabla, redondeo por linea: la suma de los redondeos no es el redondeo de la suma). Lo que se congela es la DEUDA: los movibles no pueden subir. El `--check` imprime la cifra dos veces (la base y el valor de hoy) y por eso el extractor esta anclado a `base:`. Medido el 2026-10-25 tras el LOTE 2: 70 movibles de 99 sitios. El lote 1 dejo 75 de 104 y el lote 2 pago los cinco «solo para el numero» (los unicos donde mover el agregado ELIMINA el findMany), asi que ese contador queda en CERO: de 5 a 0. El contador `soloNumero` se congela en la linea base del instrumento y NO se declara aqui. CIERRE 2026-10-29: los 70 que quedaban eran todos `filas-usadas` (las filas se consumen además como filas: `for…of`, `.map` a DTO, un ayudante, un `.some`). Mover esa suma NO sustituye la consulta: AÑADE una, así que no ahorra nada y no es deuda — es lo contrario. La clase se separó con su razón y su caso en la autoprueba (que además cazo que `const otra = filas` contaba como «uso otro»: un alias no consume las filas). El universo pasó de 99 a 100 sitios por el propio cambio de clasificación."
     },
     {
       "id": "inmemory-aggregates-sitios",
@@ -501,9 +501,9 @@
         "tipo": "regex",
         "patron": "base: movibles=\\d+, soloNumero=\\d+, sitios=(\\d+)"
       },
-      "valorEsperado": 99,
-      "muestra": "OK — sin regresiones (base: movibles=70, soloNumero=0, sitios={v}; hoy: movibles=70, soloNumero=0, sitios=99).",
-      "nota": "El TAMANO del universo, declarado para que la cifra del manual no derive sin que nadie lo note. NO es un ratchet: baja cuando alguien paga deuda (mover un agregado a la base quita un sitio del censo: 116 -> 104 en el primer lote y 104 -> 99 en el segundo) y sube con codigo nuevo; el gate falla solo si SUBEN los movibles. La separacion importa: congelar el universo convertiria cada mejora en un rojo."
+      "valorEsperado": 100,
+      "muestra": "OK — sin regresiones (base: movibles=0, soloNumero=0, sitios={v}; hoy: movibles=0, soloNumero=0, sitios=100).",
+      "nota": "El TAMANO del universo, declarado para que la cifra del manual no derive sin que nadie lo note. NO es un ratchet: baja cuando alguien paga deuda (mover un agregado a la base quita un sitio del censo: 116 -> 104 en el primer lote y 104 -> 99 en el segundo) y sube con codigo nuevo; el gate falla solo si SUBEN los movibles. La separacion importa: congelar el universo convertiria cada mejora en un rojo. De 99 a 100 el 2026-10-29: lo movió el cambio de clasificación de `filas-usadas` (un sitio más entra en el universo al separarse de la clase movible)."
     },
     {
       "id": "bulk-sitios",
