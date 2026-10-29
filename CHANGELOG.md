@@ -116,6 +116,7 @@
 
 ### Fixed
 
+- **T386 · el motor de 4.6 recibe el mapa ya agregado** (2026-10-28). La suma se hace en la base (groupBy), no en el motor. El cableado en measure() sigue bloqueado por un **falso positivo** de census:inmemory (una consulta fila-a-fila necesaria para publicar los desvíos por línea se clasifica como «movible» con ggregate), y se declara con su razón en vez de subir la línea base.
 - **T385 · corrección de la semántica de eceivedQtyDrift** (2026-10-28). El tercer escritor **no** es una nota de crédito (PurchaseCreditNoteItem no tiene orderItemId): es createFromMultiOrder, el **mismo documento por otra puerta**; y la cabecera pasa a **CLOSED antes** de incrementar. Motor a dos parámetros, contrato = recepciones **CLOSED**. Sigue sin cablear, ya con la razón correcta.
 - **T384 · ecibido era un nombre de la diana** (2026-10-28). Un local nuevo del motor de T383 casó con la familia que vigila el censo ⇒ sinDeclarar 1→2 y ratchet ROJO; lo cazó el pre-push tras el --fix de lint-staged. Renombrado a ecepcionPorLinea. **Cuarta** vez de la misma trampa: el nombre de un local se elige también por lo que mira el **censo**.
 - **T383 · eceivedQtyDrift, el motor que faltaba** (2026-10-28). El quinto nombre que el manual nombra y el único sin motor; semántica leída del escritor (recepción suma, cancelación resta, nota de crédito suma), 5 casos que comparan. **No cableado todavía**: sin consulta ni measure(), hoy no lo corre ningún instrumento contra datos — se declara.
@@ -154,6 +155,7 @@
 
 ### Fixed
 
+- **T386 · el motor de 4.6 recibe el mapa ya agregado** (2026-10-28). La suma se hace en la base (groupBy), no en el motor. El cableado en measure() sigue bloqueado por un **falso positivo** de census:inmemory (una consulta fila-a-fila necesaria para publicar los desvíos por línea se clasifica como «movible» con ggregate), y se declara con su razón en vez de subir la línea base.
 - **T385 · corrección de la semántica de eceivedQtyDrift** (2026-10-28). El tercer escritor **no** es una nota de crédito (PurchaseCreditNoteItem no tiene orderItemId): es createFromMultiOrder, el **mismo documento por otra puerta**; y la cabecera pasa a **CLOSED antes** de incrementar. Motor a dos parámetros, contrato = recepciones **CLOSED**. Sigue sin cablear, ya con la razón correcta.
 - **T384 · ecibido era un nombre de la diana** (2026-10-28). Un local nuevo del motor de T383 casó con la familia que vigila el censo ⇒ sinDeclarar 1→2 y ratchet ROJO; lo cazó el pre-push tras el --fix de lint-staged. Renombrado a ecepcionPorLinea. **Cuarta** vez de la misma trampa: el nombre de un local se elige también por lo que mira el **censo**.
 - **T383 · eceivedQtyDrift, el motor que faltaba** (2026-10-28). El quinto nombre que el manual nombra y el único sin motor; semántica leída del escritor (recepción suma, cancelación resta, nota de crédito suma), 5 casos que comparan. **No cableado todavía**: sin consulta ni measure(), hoy no lo corre ningún instrumento contra datos — se declara.
@@ -180,6 +182,7 @@
 
 ### Fixed
 
+- **T386 · el motor de 4.6 recibe el mapa ya agregado** (2026-10-28). La suma se hace en la base (groupBy), no en el motor. El cableado en measure() sigue bloqueado por un **falso positivo** de census:inmemory (una consulta fila-a-fila necesaria para publicar los desvíos por línea se clasifica como «movible» con ggregate), y se declara con su razón en vez de subir la línea base.
 - **T385 · corrección de la semántica de eceivedQtyDrift** (2026-10-28). El tercer escritor **no** es una nota de crédito (PurchaseCreditNoteItem no tiene orderItemId): es createFromMultiOrder, el **mismo documento por otra puerta**; y la cabecera pasa a **CLOSED antes** de incrementar. Motor a dos parámetros, contrato = recepciones **CLOSED**. Sigue sin cablear, ya con la razón correcta.
 - **T384 · ecibido era un nombre de la diana** (2026-10-28). Un local nuevo del motor de T383 casó con la familia que vigila el censo ⇒ sinDeclarar 1→2 y ratchet ROJO; lo cazó el pre-push tras el --fix de lint-staged. Renombrado a ecepcionPorLinea. **Cuarta** vez de la misma trampa: el nombre de un local se elige también por lo que mira el **censo**.
 - **T383 · eceivedQtyDrift, el motor que faltaba** (2026-10-28). El quinto nombre que el manual nombra y el único sin motor; semántica leída del escritor (recepción suma, cancelación resta, nota de crédito suma), 5 casos que comparan. **No cableado todavía**: sin consulta ni measure(), hoy no lo corre ningún instrumento contra datos — se declara.
