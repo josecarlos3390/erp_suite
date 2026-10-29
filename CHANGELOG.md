@@ -116,6 +116,7 @@
 
 ### Fixed
 
+- **T388 · la 4.6 validada contra el esquema real** (2026-10-28). Sonda de sólo lectura en erp_db: las dos consultas corren y el universo está **vacío** (1 tenant, 0 recepciones) ⇒ no se declara con un   que no distingue «cuadra» de «no hay nada». Elegido el **E2E con fixture propia en erp_test** (rojo→verde), descartado sembrar erp_db. Plan y hechos en el ledger.
 - **T387 · inmemory-ok: y la invariante 4.6 publicada** (2026-10-28). El bloqueo del cableado era un **falso positivo** del censo (una consulta que se lee fila a fila para publicar desvíos por línea no es una suma movible): se arregla el **detector** con marca declarada y caso A/B (20/20), no subiendo la línea base. COBERTURA: 25 publicadas · 25 con caso; census:inmemory sigue en **70**.
 - **T386 · el motor de 4.6 recibe el mapa ya agregado** (2026-10-28). La suma se hace en la base (groupBy), no en el motor. El cableado en measure() sigue bloqueado por un **falso positivo** de census:inmemory (una consulta fila-a-fila necesaria para publicar los desvíos por línea se clasifica como «movible» con ggregate), y se declara con su razón en vez de subir la línea base.
 - **T385 · corrección de la semántica de eceivedQtyDrift** (2026-10-28). El tercer escritor **no** es una nota de crédito (PurchaseCreditNoteItem no tiene orderItemId): es createFromMultiOrder, el **mismo documento por otra puerta**; y la cabecera pasa a **CLOSED antes** de incrementar. Motor a dos parámetros, contrato = recepciones **CLOSED**. Sigue sin cablear, ya con la razón correcta.
@@ -156,6 +157,7 @@
 
 ### Fixed
 
+- **T388 · la 4.6 validada contra el esquema real** (2026-10-28). Sonda de sólo lectura en erp_db: las dos consultas corren y el universo está **vacío** (1 tenant, 0 recepciones) ⇒ no se declara con un   que no distingue «cuadra» de «no hay nada». Elegido el **E2E con fixture propia en erp_test** (rojo→verde), descartado sembrar erp_db. Plan y hechos en el ledger.
 - **T387 · inmemory-ok: y la invariante 4.6 publicada** (2026-10-28). El bloqueo del cableado era un **falso positivo** del censo (una consulta que se lee fila a fila para publicar desvíos por línea no es una suma movible): se arregla el **detector** con marca declarada y caso A/B (20/20), no subiendo la línea base. COBERTURA: 25 publicadas · 25 con caso; census:inmemory sigue en **70**.
 - **T386 · el motor de 4.6 recibe el mapa ya agregado** (2026-10-28). La suma se hace en la base (groupBy), no en el motor. El cableado en measure() sigue bloqueado por un **falso positivo** de census:inmemory (una consulta fila-a-fila necesaria para publicar los desvíos por línea se clasifica como «movible» con ggregate), y se declara con su razón en vez de subir la línea base.
 - **T385 · corrección de la semántica de eceivedQtyDrift** (2026-10-28). El tercer escritor **no** es una nota de crédito (PurchaseCreditNoteItem no tiene orderItemId): es createFromMultiOrder, el **mismo documento por otra puerta**; y la cabecera pasa a **CLOSED antes** de incrementar. Motor a dos parámetros, contrato = recepciones **CLOSED**. Sigue sin cablear, ya con la razón correcta.
@@ -184,6 +186,7 @@
 
 ### Fixed
 
+- **T388 · la 4.6 validada contra el esquema real** (2026-10-28). Sonda de sólo lectura en erp_db: las dos consultas corren y el universo está **vacío** (1 tenant, 0 recepciones) ⇒ no se declara con un   que no distingue «cuadra» de «no hay nada». Elegido el **E2E con fixture propia en erp_test** (rojo→verde), descartado sembrar erp_db. Plan y hechos en el ledger.
 - **T387 · inmemory-ok: y la invariante 4.6 publicada** (2026-10-28). El bloqueo del cableado era un **falso positivo** del censo (una consulta que se lee fila a fila para publicar desvíos por línea no es una suma movible): se arregla el **detector** con marca declarada y caso A/B (20/20), no subiendo la línea base. COBERTURA: 25 publicadas · 25 con caso; census:inmemory sigue en **70**.
 - **T386 · el motor de 4.6 recibe el mapa ya agregado** (2026-10-28). La suma se hace en la base (groupBy), no en el motor. El cableado en measure() sigue bloqueado por un **falso positivo** de census:inmemory (una consulta fila-a-fila necesaria para publicar los desvíos por línea se clasifica como «movible» con ggregate), y se declara con su razón en vez de subir la línea base.
 - **T385 · corrección de la semántica de eceivedQtyDrift** (2026-10-28). El tercer escritor **no** es una nota de crédito (PurchaseCreditNoteItem no tiene orderItemId): es createFromMultiOrder, el **mismo documento por otra puerta**; y la cabecera pasa a **CLOSED antes** de incrementar. Motor a dos parámetros, contrato = recepciones **CLOSED**. Sigue sin cablear, ya con la razón correcta.
