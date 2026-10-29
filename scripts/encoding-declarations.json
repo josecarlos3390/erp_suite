@@ -1,0 +1,20 @@
+{
+  "$comment": "Sitios que CITAN A PROPÓSITO el defecto de codificación (round-trip por PowerShell) y que por tanto NO se reparan: repararlos borraría la documentación de la clase de defecto. El índice es por CONTENIDO (`fragmento` = texto exacto que rodea la secuencia), no por `fichero:línea`: las líneas se mueven. Una declaración que deja de casar con ningún hallazgo es HUÉRFANA y el gate falla listándola — una exención que ya no cubre nada no se queda viva por olvido. Gate: `npm run audit:encoding:check` (scripts/audit-encoding.mjs).",
+  "permitidos": [
+    {
+      "fichero": "AUDIT.md",
+      "fragmento": "(`localizaciÃ³n`, `â€”`, `Ã—`)",
+      "motivo": "T97 los cita como EJEMPLO del defecto («nombres de tests» dañados por UTF-8 reescrito como Windows-1252). Son la prueba de la clase, no daño vivo."
+    },
+    {
+      "fichero": "AUDIT.md",
+      "fragmento": "`MercaderÃ­as`",
+      "motivo": "§9 cita el artefacto de visualización de PowerShell («el archivo está correcto en UTF-8»): es el ejemplo que enseña a no confundir el artefacto con daño real."
+    },
+    {
+      "fichero": "docs/plans/historial-sesiones.md",
+      "fragmento": "`importaciÃ³n`",
+      "motivo": "La entrada del histórico que documenta el daño de acentos usado como lección («`importación` → `importaciÃ³n`»). Repararlo borraría la lección."
+    }
+  ]
+}

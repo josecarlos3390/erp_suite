@@ -147,6 +147,13 @@ jobs:
         working-directory: .
         run: node scripts/audit-agents-figures.mjs --check
 
+      # Gate de CODIFICACIÓN (2026-10-29): un documento escrito por PowerShell deja caracteres
+      # mudos —su backtick es escape: `t => TAB, `f => form-feed, `0 => NUL— y secuencias
+      # doble-codificadas, y ninguna otra puerta las veía. Nació de reparar 61 caracteres de
+      # control y 115 secuencias en AUDIT.md y en el histórico. Solo necesita este árbol.
+      - name: Codificación de la documentación (control + doble codificación)
+        working-directory: .
+        run: node scripts/audit-encoding.mjs --check
       - name: Typecheck
         run: npm run typecheck
 

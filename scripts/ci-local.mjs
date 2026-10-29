@@ -23,7 +23,7 @@
  * la salida, no un README)— porque el CI de la raíz **no corre ninguna suite de la tienda** más allá
  * de `typecheck`/`lint`/`build`, y porque clona **solo la raíz**.
  *
- * QUÉ CORRE, Y EN QUÉ ORDEN. Los **6** pasos del job `typecheck-lint-build` del CI, **en su orden
+ * QUÉ CORRE, Y EN QUÉ ORDEN. Los **7** pasos del job `typecheck-lint-build` del CI, **en su orden
  * exacto**, y **después seis más que el CI no tiene** (declarados como tales, ver abajo):
  *
  *   1. autoprueba del gate de workflows  (`npm run audit:workflow-inputs:self-test`)
@@ -51,7 +51,7 @@
  * gate sale con **2** (ruidoso) y nunca en falso verde. Aquí se respeta ese orden.
  *
  * EL PASO 7 ES UNA VENTAJA LOCAL DECLARADA, NO UN PASO DEL CI. **Por qué no estaba**: el CI de la
- * raíz **no corre** las suites de la tienda —su job tiene esos 6 pasos— y este script se definió como
+ * raíz **no corre** las suites de la tienda —su job ya tenía esos pasos, y hoy son 7— y este script se definió como
  * «el job del CI, en su orden», así que no las inventariaba. **Por qué entra** (medido, 2026-10-11):
  * sin él, `storefront/src/styles/tokens.css` se quedó **17 días** desincronizado de la capa de tokens
  * del ERP (`cfb6160`, 2026-09-24 → hoy) porque el ERP ganó `--z-mobile-overlay`/`--z-mobile-drawer`
@@ -206,6 +206,12 @@ const STEPS = [
   },
   {
     provenance: 'CI typecheck-lint-build',
+    label: 'codificación de la documentación',
+    cmd: 'npm run audit:encoding:check',
+    why: 'las dos reglas que ninguna otra puerta ve: 0 caracteres de control (el TAB incluido: el backtick de PowerShell lo convierte en TAB y el árbol tenía 0 en 121 ficheros .md) y 0 secuencias doble-codificadas fuera de las declaradas como CITA del defecto. Nació de reparar 61 caracteres de control y 115 secuencias en AUDIT.md y docs/plans/historial-sesiones.md. Solo necesita la raíz, por eso también está en ci.yml',
+  },
+  {
+    provenance: 'CI typecheck-lint-build',
     label: 'typecheck (storefront)',
     cmd: 'npm run typecheck',
     cwd: STOREFRONT,
@@ -256,6 +262,17 @@ const STEPS = [
   },
 ];
 
+// Los números del banner se CALCULAN del array. Estaban escritos a mano («6 pasos», «[7]…[12]»)
+// y este script ya se quedó viejo una vez: el 2026-10-19 sus dos líneas de `echo` decían «7 pasos»
+// cuando ya eran 8. Un banner que cuenta mal es un diagnóstico falso.
+const idx = (etiqueta) => {
+  const i = STEPS.findIndex((s) => s.label.includes(etiqueta));
+  if (i < 0) throw new Error('banner: ningún paso se llama «' + etiqueta + '» (¿cambió la etiqueta?)');
+  return i + 1;
+};
+const nCI = STEPS.filter((s) => s.provenance.startsWith('CI')).length;
+const nLOCAL = STEPS.filter((s) => s.provenance.startsWith('LOCAL')).length;
+
 // ---------------------------------------------------------------------------------------------
 // Salida
 // ---------------------------------------------------------------------------------------------
@@ -267,8 +284,8 @@ function banner() {
   console.log(' ci:local — gate agregado LOCAL de la raíz / tienda (no es el CI)');
   console.log(line());
   console.log(` node ${process.version} · plataforma ${process.platform}/${process.arch} · TZ del proceso ${process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone}`);
-  console.log(' CI de referencia: .github/workflows/ci.yml (job typecheck-lint-build, 6 pasos)');
-  console.log(` pasos aqui: ${STEPS.length} (los 6 del CI + 6 LOCAL: sync:tokens:check, cobertura de invariantes, supresiones, fixtures medidos de backend y frontend, y la autoprueba del reparador del ancla)`);
+  console.log(` CI de referencia: .github/workflows/ci.yml (job typecheck-lint-build, ${nCI} pasos)`);
+  console.log(` pasos aqui: ${STEPS.length} (los ${nCI} del CI + ${nLOCAL} LOCAL: sync:tokens:check, cobertura de invariantes, supresiones, fixtures medidos de backend y frontend, y la autoprueba del reparador del ancla)`);
   console.log(` cwd de los pasos de la tienda: ${STOREFRONT}`);
   console.log('');
   console.log(' LO QUE ESTE COMANDO **NO** CUBRE — un VERDE AQUÍ NO ES UN VERDE DEL CI:');
@@ -289,23 +306,23 @@ function banner() {
   console.log(' VENTAJAS LOCALES DECLARADAS (siete): (a) el gate de workflows aquí audita los CINCO');
   console.log(' workflows del monorepo (el CI de la raíz clona solo la raíz y ve uno), y el de las cifras de');
   console.log(' AGENTS.md corre los instrumentos de los TRES proyectos (allí solo los de la raíz): en esos dos');
-  console.log(' pasos, verde local es MÁS estricto; (b) el paso 7, que el CI no corre en absoluto; (c) el');
-  console.log(' paso 8, el gate de cobertura de invariantes del backend, que el CI de la raíz tampoco corre; y');
-  console.log(' (d) el paso 9, el gate de supresiones del backend (la regla «Nunca --no-verify»);');
-  console.log(' (e) el paso 10, el gate de fixtures medidos del backend (el vínculo marca ↔ AUDIT.md);');
-  console.log(' (f) el paso 11, el gemelo del frontend (su alcance src + e2e, su AUDIT.md y su mapa); y');
-  console.log(' (g) el paso 12, la autoprueba del reparador de la declaración del ancla (backend), que');
+  console.log(` pasos, verde local es MÁS estricto; (b) el paso ${idx('sync:tokens:check')}, que el CI no corre en absoluto; (c) el`);
+  console.log(` paso ${idx('cobertura de invariantes')}, el gate de cobertura de invariantes del backend, que el CI de la raíz tampoco corre; y`);
+  console.log(` (d) el paso ${idx('supresiones')}, el gate de supresiones del backend (la regla «Nunca --no-verify»);`);
+  console.log(` (e) el paso ${idx('fixtures medidos (backend)')}, el gate de fixtures medidos del backend (el vínculo marca ↔ AUDIT.md);`);
+  console.log(` (f) el paso ${idx('fixtures medidos (frontend)')}, el gemelo del frontend (su alcance src + e2e, su AUDIT.md y su mapa); y`);
+  console.log(` (g) el paso ${idx('autoprueba del reparador del ancla')}, la autoprueba del reparador de la declaración del ancla (backend), que`);
   console.log(' nació «a mano» y ahora tiene puerta.');
   console.log('');
-  console.log(' Y SEIS PASOS QUE EL CI NO TIENE: [7] sync:tokens:check (storefront), [8] cobertura de');
-  console.log(' invariantes (backend), [9] supresiones (backend), [10] fixtures medidos (backend), [11]');
-  console.log(' fixtures medidos (frontend) y [12] la autoprueba del reparador del ancla (backend), con');
-  console.log(' provenance «LOCAL (no en el CI)». El [7]');
+  console.log(` Y SEIS PASOS QUE EL CI NO TIENE: [${idx('sync:tokens:check')}] sync:tokens:check (storefront), [${idx('cobertura de invariantes')}] cobertura de`);
+  console.log(` invariantes (backend), [${idx('supresiones')}] supresiones (backend), [${idx('fixtures medidos (backend)')}] fixtures medidos (backend), [${idx('fixtures medidos (frontend)')}]`);
+  console.log(` fixtures medidos (frontend) y [${idx('autoprueba del reparador del ancla')}] la autoprueba del reparador del ancla (backend), con`);
+  console.log(` provenance «LOCAL (no en el CI)». El [${idx('sync:tokens:check')}]`);
   console.log(' entra porque tokens.css se quedó 17 días desincronizado del ERP sin que ninguna puerta lo');
-  console.log(' dijera; el [8], el [9], el [10] y el [11] porque el CI de la raíz no clona `backend-erp` ni');
+  console.log(` dijera; el [${idx('cobertura de invariantes')}], el [${idx('supresiones')}], el [${idx('fixtures medidos (backend)')}] y el [${idx('fixtures medidos (frontend)')}] porque el CI de la raíz no clona backend-erp ni`);
   console.log(' `erp-frontend` y su puerta obligatoria es el `pre-push` de cada repo: aquí se corren además');
   console.log(' para que un push local no deje una invariante sin caso, una supresión sin gate ni un fixture');
-  console.log(' medido sin su diagnóstico (en los dos repos); y el [12] porque su `--self-test` se declaró');
+  console.log(` medido sin su diagnóstico (en los dos repos); y el [${idx('autoprueba del reparador del ancla')}] porque su --self-test se declaró`);
   console.log(' «se ejecuta a mano» y una autoprueba que no corre en ninguna puerta es una que nadie ejecuta.');
   console.log(' Ninguno de los seis es un paso del CI: no los lea como "lo del CI".');
   console.log('');

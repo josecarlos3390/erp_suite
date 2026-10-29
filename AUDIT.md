@@ -18,7 +18,9 @@
      2026-10-29 (61 → 0 caracteres de control, 115 → 4 secuencias).
      Las CUATRO secuencias que quedan son CITAS DELIBERADAS del propio defecto —T97 las
      usa como ejemplo y §9 cita el artefacto de visualización de PowerShell— y NO se
-     reparan: repararlas borraría la documentación de la clase de defecto. -->
+     reparan: repararlas borraría la documentación de la clase de defecto.
+     Puerta: `npm run audit:encoding:check` — paso 4 de `ci:local` y paso del job
+     `typecheck-lint-build` de `ci.yml`. Declaraciones en `scripts/encoding-declarations.json`. -->
 
 ---
 
