@@ -116,6 +116,7 @@
 
 ### Fixed
 
+- **T392 · barrido final de los tres repos: dos pendientes reales** (2026-10-29). De 67 marcadores, 65 eran la palabra española; los dos reales: el **alta de activo fijo sin contraAccountId lanza Asiento desbalanceado** (el DTO lo hace opcional, la UI no lo manda y ningún test lo cubre) y la **tarea de producto** de unificar la convención del día en cuatro pantallas. Los dos se declaran; ninguno se arregla sin decisión de producto. Verdes: gate:rapido 5/5, audit:ci 15/15, tienda 0 en typecheck/lint/tokens/fonts/contrast/build.
 - **T391 · 	otalAmount sale de la diana por regla, deuda a CERO** (2026-10-29). El censo contaba una **conversión** como cálculo; regla nueva (conversor de función libre + lectura de campo), con A/B 6/6 en un --self-test nuevo del censo y la mitad conservadora medida (método e identificador suelto **sí** calculan). diana 77 · declaradas 77 · sin declarar 0.
 - **T390 · las cinco columnas del manual entran en la diana (73 → 78)** (2026-10-29). Lista declarada COLUMNAS_VIGILADAS (no aflojar la regla: habría metido 46 nombres de DTO), esDiana() en un solo sitio (estaba duplicada) y cinco declaraciones con su cita, su marca y su caso. diana 78 · declaradas 77 · sin declarar 1.
 - **T389 · la 4.6 con fixture propia en erp_test** (2026-10-29). E2E que mide **las consultas reales** (el groupBy con purchaseReceipt.status = CLOSED), en cuatro actos: verde, rojo, rojo al revés y **una recepción OPEN que no suma**. 4/4. Es lo que ningún unitario cubría: el SQL.
@@ -160,6 +161,7 @@
 
 ### Fixed
 
+- **T392 · barrido final de los tres repos: dos pendientes reales** (2026-10-29). De 67 marcadores, 65 eran la palabra española; los dos reales: el **alta de activo fijo sin contraAccountId lanza Asiento desbalanceado** (el DTO lo hace opcional, la UI no lo manda y ningún test lo cubre) y la **tarea de producto** de unificar la convención del día en cuatro pantallas. Los dos se declaran; ninguno se arregla sin decisión de producto. Verdes: gate:rapido 5/5, audit:ci 15/15, tienda 0 en typecheck/lint/tokens/fonts/contrast/build.
 - **T391 · 	otalAmount sale de la diana por regla, deuda a CERO** (2026-10-29). El censo contaba una **conversión** como cálculo; regla nueva (conversor de función libre + lectura de campo), con A/B 6/6 en un --self-test nuevo del censo y la mitad conservadora medida (método e identificador suelto **sí** calculan). diana 77 · declaradas 77 · sin declarar 0.
 - **T390 · las cinco columnas del manual entran en la diana (73 → 78)** (2026-10-29). Lista declarada COLUMNAS_VIGILADAS (no aflojar la regla: habría metido 46 nombres de DTO), esDiana() en un solo sitio (estaba duplicada) y cinco declaraciones con su cita, su marca y su caso. diana 78 · declaradas 77 · sin declarar 1.
 - **T389 · la 4.6 con fixture propia en erp_test** (2026-10-29). E2E que mide **las consultas reales** (el groupBy con purchaseReceipt.status = CLOSED), en cuatro actos: verde, rojo, rojo al revés y **una recepción OPEN que no suma**. 4/4. Es lo que ningún unitario cubría: el SQL.
@@ -192,6 +194,7 @@
 
 ### Fixed
 
+- **T392 · barrido final de los tres repos: dos pendientes reales** (2026-10-29). De 67 marcadores, 65 eran la palabra española; los dos reales: el **alta de activo fijo sin contraAccountId lanza Asiento desbalanceado** (el DTO lo hace opcional, la UI no lo manda y ningún test lo cubre) y la **tarea de producto** de unificar la convención del día en cuatro pantallas. Los dos se declaran; ninguno se arregla sin decisión de producto. Verdes: gate:rapido 5/5, audit:ci 15/15, tienda 0 en typecheck/lint/tokens/fonts/contrast/build.
 - **T391 · 	otalAmount sale de la diana por regla, deuda a CERO** (2026-10-29). El censo contaba una **conversión** como cálculo; regla nueva (conversor de función libre + lectura de campo), con A/B 6/6 en un --self-test nuevo del censo y la mitad conservadora medida (método e identificador suelto **sí** calculan). diana 77 · declaradas 77 · sin declarar 0.
 - **T390 · las cinco columnas del manual entran en la diana (73 → 78)** (2026-10-29). Lista declarada COLUMNAS_VIGILADAS (no aflojar la regla: habría metido 46 nombres de DTO), esDiana() en un solo sitio (estaba duplicada) y cinco declaraciones con su cita, su marca y su caso. diana 78 · declaradas 77 · sin declarar 1.
 - **T389 · la 4.6 con fixture propia en erp_test** (2026-10-29). E2E que mide **las consultas reales** (el groupBy con purchaseReceipt.status = CLOSED), en cuatro actos: verde, rojo, rojo al revés y **una recepción OPEN que no suma**. 4/4. Es lo que ningún unitario cubría: el SQL.
