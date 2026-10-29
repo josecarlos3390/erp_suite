@@ -15,6 +15,11 @@
       "fichero": "docs/plans/historial-sesiones.md",
       "fragmento": "`importaciÃ³n`",
       "motivo": "La entrada del histórico que documenta el daño de acentos usado como lección («`importación` → `importaciÃ³n`»). Repararlo borraría la lección."
+    },
+    {
+      "fichero": "AGENTS.md",
+      "fragmento": "cp1252: `Ã³`, `â€”`)",
+      "motivo": "El bloque «Raíz (cd .)» del manual ENSEÑA la firma del defecto con dos ejemplos literales (`Ã³` por `ó`, `â€”` por `—`): son la lección, no daño vivo. Si se reparan, el manual deja de mostrar qué se está buscando."
     }
   ]
 }

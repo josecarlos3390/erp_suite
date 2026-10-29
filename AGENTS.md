@@ -219,6 +219,25 @@ Auditorías individuales del `audit:ci`: `audit:density:ci`, `audit:important`, 
 > **Pre-push del frontend:** `audit:ci` **antes** de Karma + build de producción, para que una regla
 > nueva no bloquee todos los pushes durante ~10 min. Lección escrita: **una regla sin gate es un deseo.**
 
+### Raíz (`cd .`)
+
+```bash
+npm run audit:workflow-inputs      # los 5 workflows: valor de `node-version`, zona horaria y disparadores
+npm run audit:agents-figures       # las cifras de ESTE manual contra los instrumentos que las miden
+npm run audit:encoding:check       # 0 caracteres de control y 0 secuencias doble-codificadas en los .md
+npm run ci:local                   # el gate agregado de la raíz (lo que corre su pre-push)
+```
+
+> **`audit:encoding` (2026-10-29).** Un documento escrito por **PowerShell** queda con caracteres
+> mudos que ninguna otra puerta ve —su backtick es **escape**: `` `t `` → TAB, `` `f `` → form-feed,
+> `` `0 `` → NUL, y ante un carácter no escapable **se pierde**— y con secuencias
+> doble-codificadas (UTF-8 leído como cp1252: `Ã³`, `â€”`). Nació de reparar el ledger: **115**
+> secuencias y **61** caracteres de control en `AUDIT.md` y en el histórico. Lo que **cita** el
+> defecto se declara en `scripts/encoding-declarations.json` con su **fragmento** (índice por
+> contenido, no por línea) y su motivo; una declaración que deja de casar **es huérfana y el gate
+> falla listándola**. Alcance: los `.md` del repo de la **raíz** (los repos anidados no se ven).
+> Autoprueba: `npm run audit:encoding:self-test`.
+
 ### Tienda (`cd storefront`)
 
 ```bash
