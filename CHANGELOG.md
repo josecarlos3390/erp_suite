@@ -116,6 +116,7 @@
 
 ### Fixed
 
+- **T396 · fuera el predicado permisivo de fecha** (2026-10-29). Tras estrechar el borde al día (T395), isTenantDayOrInstant, isTenantInstant, INSTANT_SHAPE y su decorador quedaron **sin uso** — código muerto que ningún gate ve. Se borran; **la medición se conserva** como caso de la frontera vigente (Date.parse(''2026-02-30'') desborda a marzo en silencio). 	imezone.predicates.spec 9/9.
 - **T395 · el asiento preliminar exige el DÍA** (2026-10-29). Último pendiente del barrido: la premisa del aplazamiento había caducado —las cuatro pantallas ya mandan el día (	enantDay(raw.date))—, así que el único DTO que toleraba el instante pasa a @IsTenantDay(), y su spec se convierte en el A/B (el instante pasa a ROJO exigido, conservando la lección de T238). 26/26.
 - **T394 · E2E del alta de activo fijo** (2026-10-29). El alta no tenía ningún test: ahora uno por HTTP que exige **201 sin contraAccountId**, asiento de **dos líneas**, cuadre 1200=1200 y contrapartida de **pasivo**. Cazó dos defectos propios en el camino: faltaba ranchId y usé 	oISOString() (lo paró udit:spec-clock).
 - **T393 · el alta de activo fijo vuelve a contabilizarse** (2026-10-29). contraAccountId opcional + frontend que nunca lo manda + asiento de una línea ⇒ Asiento desbalanceado y alta fallida. Contrapartida **CxP** (2.1.1.01.001, la de toda compra) por **determinación**: fila nueva FIXED_ASSET / ACCOUNTS_PAYABLE y el servicio la resuelve cuando no viene. El inventario congelado del spec de cobertura pasa a **52 pares / 12 documentos**.
@@ -164,6 +165,7 @@
 
 ### Fixed
 
+- **T396 · fuera el predicado permisivo de fecha** (2026-10-29). Tras estrechar el borde al día (T395), isTenantDayOrInstant, isTenantInstant, INSTANT_SHAPE y su decorador quedaron **sin uso** — código muerto que ningún gate ve. Se borran; **la medición se conserva** como caso de la frontera vigente (Date.parse(''2026-02-30'') desborda a marzo en silencio). 	imezone.predicates.spec 9/9.
 - **T395 · el asiento preliminar exige el DÍA** (2026-10-29). Último pendiente del barrido: la premisa del aplazamiento había caducado —las cuatro pantallas ya mandan el día (	enantDay(raw.date))—, así que el único DTO que toleraba el instante pasa a @IsTenantDay(), y su spec se convierte en el A/B (el instante pasa a ROJO exigido, conservando la lección de T238). 26/26.
 - **T394 · E2E del alta de activo fijo** (2026-10-29). El alta no tenía ningún test: ahora uno por HTTP que exige **201 sin contraAccountId**, asiento de **dos líneas**, cuadre 1200=1200 y contrapartida de **pasivo**. Cazó dos defectos propios en el camino: faltaba ranchId y usé 	oISOString() (lo paró udit:spec-clock).
 - **T393 · el alta de activo fijo vuelve a contabilizarse** (2026-10-29). contraAccountId opcional + frontend que nunca lo manda + asiento de una línea ⇒ Asiento desbalanceado y alta fallida. Contrapartida **CxP** (2.1.1.01.001, la de toda compra) por **determinación**: fila nueva FIXED_ASSET / ACCOUNTS_PAYABLE y el servicio la resuelve cuando no viene. El inventario congelado del spec de cobertura pasa a **52 pares / 12 documentos**.
@@ -200,6 +202,7 @@
 
 ### Fixed
 
+- **T396 · fuera el predicado permisivo de fecha** (2026-10-29). Tras estrechar el borde al día (T395), isTenantDayOrInstant, isTenantInstant, INSTANT_SHAPE y su decorador quedaron **sin uso** — código muerto que ningún gate ve. Se borran; **la medición se conserva** como caso de la frontera vigente (Date.parse(''2026-02-30'') desborda a marzo en silencio). 	imezone.predicates.spec 9/9.
 - **T395 · el asiento preliminar exige el DÍA** (2026-10-29). Último pendiente del barrido: la premisa del aplazamiento había caducado —las cuatro pantallas ya mandan el día (	enantDay(raw.date))—, así que el único DTO que toleraba el instante pasa a @IsTenantDay(), y su spec se convierte en el A/B (el instante pasa a ROJO exigido, conservando la lección de T238). 26/26.
 - **T394 · E2E del alta de activo fijo** (2026-10-29). El alta no tenía ningún test: ahora uno por HTTP que exige **201 sin contraAccountId**, asiento de **dos líneas**, cuadre 1200=1200 y contrapartida de **pasivo**. Cazó dos defectos propios en el camino: faltaba ranchId y usé 	oISOString() (lo paró udit:spec-clock).
 - **T393 · el alta de activo fijo vuelve a contabilizarse** (2026-10-29). contraAccountId opcional + frontend que nunca lo manda + asiento de una línea ⇒ Asiento desbalanceado y alta fallida. Contrapartida **CxP** (2.1.1.01.001, la de toda compra) por **determinación**: fila nueva FIXED_ASSET / ACCOUNTS_PAYABLE y el servicio la resuelve cuando no viene. El inventario congelado del spec de cobertura pasa a **52 pares / 12 documentos**.
