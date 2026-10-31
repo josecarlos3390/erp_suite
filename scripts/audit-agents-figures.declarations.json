@@ -279,7 +279,7 @@
         "tipo": "regex",
         "patron": "Apariciones de columnas declaradas:\\s*(\\d+)"
       },
-      "valorEsperado": 1387,
+      "valorEsperado": 1391,
       "muestra": "Apariciones de columnas declaradas: {v}",
       "nota": "El manual lo declara como cifra que DERIVA («hoy 1364»): el ratchet del instrumento vigila los HALLAZGOS (0), no las apariciones. Este gate es justo lo que cierra ese hueco: si las apariciones se mueven, el manual lo dice o el gate lo dice. De 1360 a 1361 la movio la reversa de T280 (el `documentDate` del movimiento de anulacion, `purchase-receipts.service.ts`); de 1361 a 1364 la movio T287 (la cadena del flujo de documentos, `backend-erp/src/document-flow/document-flow-chain*.ts`, que nombra `date` en el contrato y en sus dos specs) y con ella subieron los ambiguos declarados de la linea base del instrumento (1101 -> 1104); de paso se congelo esa linea base, que iba un punto por detras (1360/1100 frente a 1361/1101 medidos). La cifra se mueve EN EL MISMO empujon que el codigo que la mueve."
     },
@@ -433,7 +433,7 @@
       "extractor": {
         "tipo": "lineas"
       },
-      "valorEsperado": 207,
+      "valorEsperado": 208,
       "muestra": "src/generated/prisma/archivo-{i}.ts",
       "nota": "Una directiva `/* eslint-disable */` EN BLOQUE por fichero de Prisma: por eso el numero de ficheros es el numero de directivas. `src/generated/` es codigo GENERADO y esta gitignored, asi que el comando lo lista con `--others --ignored --exclude-standard` y `requiere` apunta al DIRECTORIO: sin `prisma generate` la cifra no es 0, es DESCONOCIDA, y el gate lo declara no medida en vez de mentir (un 0 ahi seria un falso rojo en un arbol limpio). El patron casa DOS veces en el manual (la lista de convenciones transversales y la vineta de reglas de proceso): las dos tienen que decir 207. El `\\s+` del patron cruza el salto de linea de la primera, que parte la frase entre «de» y «`src/generated/`»."
     },
@@ -451,7 +451,7 @@
         "patron": "^\\s*(\\d+)\\s*$",
         "flags": "m"
       },
-      "valorEsperado": 207,
+      "valorEsperado": 208,
       "muestra": "{v}",
       "nota": "EL COMENTARIO DEL SCRIPT, VIGILADO (entrada `comentario-generados-205` de `noVigiladas`, borrada el 2026-10-11: su motivo llevaba DOS COMMITS siendo falso). El comentario dice «el generado de Prisma se salta a proposito (son 207 ficheros de maquina)» en `backend-erp/scripts/audit-explicit-any.mjs:27` DESDE `ed400dcb` («el comentario decia 205 ficheros de maquina; son 206», publicado en `origin/main` y `deploy/main`), y el disco tiene 207. NO HABIA NINGUN ROJO QUE EVITAR: el arreglo no exigia editar `backend-erp/` -- ya estaba corregido -- y lo unico que faltaba era que el gate supiera anclar fuera del manual (campos `manual`/`fichero`). QUE SE VIGILA: el comentario, NO la cifra del manual. La cifra del manual ya la vigilaba, y sigue vigilando, `eslint-disable-generados` (las DOS veces que el manual la dice: la vineta de convenciones transversales y la de reglas de proceso). Son DOS sitios con la MISMA cifra, y por eso hay DOS figuras: son dos anclas distintas con dos valores que pueden divergir por separado. POR QUE EL COMANDO NO ES EL MISMO `git ls-files` DE `eslint-disable-generados`, MEDIDO Y NO SUPUESTO: `ejecutarComandos` cachea por `cwd|cmd` y la autoprueba da UN doble por comando cuya salida es la concatenacion de las `muestra` de TODAS sus figuras; un extractor `lineas` (el de `eslint-disable-generados`) cuenta entonces las lineas de las DOS muestras y el gate se ponia ROJO en su propio caso `base-verde` (medido: `instrumento-divergente` en `base-verde` y en `senuelo-de-otra-familia-no-dispara`). Un extractor `regex` sobre un comando compartido tampoco sirve: las dos cifras distintas de la concatenacion dan `salida-ambigua`. Se usa por tanto una orden PROPIA que mide LO MISMO: el arbol `src/generated` recorrido a mano. EQUIVALENCIA MEDIDA (no supuesta): `git -C backend-erp ls-files --others --ignored --exclude-standard -- src/generated` -> 207, y el recorrido recursivo -> 207, y las 207 son `.ts` (199 en `prisma/models`, 3 en `prisma/internal`, 5 sueltos): coinciden fichero a fichero en la CUENTA. El ancla es «son N ficheros de»: la linea 27 parte la frase, asi que el ancla se queda en el trozo que no se parte."
     },
