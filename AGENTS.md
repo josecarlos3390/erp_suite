@@ -647,7 +647,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
 - **Una herramienta puede hacer BIEN su tarea sobre el CONJUNTO EQUIVOCADO, y ningún gate lo verá:
   compruebe el ALCANCE antes de dejarla correr.** `audit:date-class` daba **0 hallazgos** mientras tres
   sitios leían mal `Batch.expiryDate`/`manufactureDate`, porque **no estaban en el registro
-  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** (hoy **1382**: el ratchet
+  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** (hoy **1384**: el ratchet
   vigila los hallazgos, no las apariciones, y `audit:agents-figures` es el que cierra ese hueco — por
   eso la cifra se mueve EN EL MISMO empujón que el código que la mueve). **De dónde viene cada
   movimiento de esa cifra** (para que no vuelva a moverse sin saber por qué): de **1360 a 1361** la
