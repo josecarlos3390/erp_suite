@@ -20,6 +20,37 @@
 > `2f3cc7f`, el de la raíz desde `cf00645`, el de supresiones desde `6c28770` y el de fixtures desde `d8bbc24`. No se reescribió ni se
 > borró una línea: son los mismos bytes, con el mismo CRLF.
 
+## Un lector de asientos NO filtra por `status`: la anulación es un PAR
+
+**Medido el 2026-11-03 (AUDIT T512).** Cuando se anula un documento con asiento, el
+sistema deja **dos** filas: el original con `status = CANCELLED` y un **espejo**
+`POSTED` con `sourceDocumentType = REVERSAL`, **con la misma fecha** (decisión T255:
+el par cae en el mismo período y el mayor neta a cero).
+
+**El par solo neta a cero si el lector cuenta los dos.** Un lector que filtre
+`status != 'CANCELLED'` —el reflejo natural— se queda con **el espejo solo** y
+publica un neto **desplazado por el importe del documento anulado**, sin avisar.
+Medido en el cierre de noviembre: sumar el IVA débito así daba **2 368,60** cuando el
+valor real era **2 433,60** — una diferencia de **65,00**, exactamente el IVA de la
+única factura anulada del período.
+
+**Las dos lecturas correctas:**
+
+| Lector | Qué debe hacer |
+|---|---|
+| Suma de asientos para **saldos** | contar **todas** las filas (incluye CANCELLED y REVERSAL: netan) |
+| Reporte por documento | filtrar `CANCELLED` en los **documentos**, no en los asientos |
+
+**Y el corolario de presentación**: un reporte puede publicar el par **colapsado**
+(neto) o **desglosado** (bruto); las dos cosas son correctas, pero **el bruto del
+reporte no tiene por qué coincidir con el bruto del mayor** cuando hay anulaciones.
+Comparar brutos entre reporte y mayor **finge una diferencia que no existe**; lo que
+se compara son los **netos**.
+
+**Cómo no volver a caer**: al escribir un lector de asientos, la pregunta no es «¿qué
+estados me interesan?» sino **«¿este documento tiene espejo?»**. Si la respuesta puede
+ser sí, se cuentan las dos filas o ninguna.
+
 ## Índice
 
 | Regla | Gate que la vigila | Ancla |
