@@ -312,6 +312,7 @@ Los tenants creados **antes** de cada convención necesitan scripts de alineaci�
 | k6 (volumen) | job programado `load-tests-large` (`.github/workflows/load-tests-large.yml`, domingos + a demanda) | perfil `large` (25 VUs) en **modo medición** (`K6_LATENCY_MODE=report`): verde si no hay errores funcionales; la latencia queda en el artefacto `k6-large-summary` (T89) |
 | Backups | `npm run backup:db` | OK + validación de restore en `erp_test` |
 | **Gate de configuración por tenant** | Login en cada tenant → Administración → **Centro de configuración** (`GET /setup/checklist`) | `requiredPending = 0` y prueba E2E por familia aprobada (guía de implementación, Anexo D) |
+| **Tipo de cambio del día** (T510) | Login → **Configuración → Tipos de Cambio** → alta de la tasa USD→BOB **con la fecha de hoy** | Un tenant con moneda secundaria **no registra ninguna transacción** sin la tasa del día: el guard es global y responde **400 «No existe el tipo de cambio del día…»**. Es un **ingreso manual diario por diseño** (el seed no lo siembra a propósito, ver `prisma/seed.ts` §15): el día del corte hay que cargarlo **antes** de abrir, y dejarlo en la rutina de cada mañana. Los **tests** no dependen de este paso: `test/test-utils.ts` siembra la tasa del día del tenant y una ventana adelante |
 
 ---
 
