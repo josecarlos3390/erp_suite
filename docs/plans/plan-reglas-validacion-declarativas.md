@@ -311,7 +311,7 @@ para administradores. Se declara como excepción: si en seis meses nadie la enci
 | Tabla `ValidationRule` | ✅ migración `20261105120000_p5_validation_rules` (a mano, por el drift de `WebStore`) |
 | API + `preview` | ✅ CRUD + baja lógica + `POST /validation-rules/preview` (mismo compilador) |
 | Cableado CONFIRM | ✅ FV, FC, entrega, recepción (A/B: sin el motor, la confirmación pasa) |
-| Cableado SAVE | ✅ FV venta, FV compra, entrega, recepción y **cotización de venta**; pedidos, reservas y NC: registro listo, exigencia pendiente (una línea por puerta) |
+| Cableado SAVE | ✅ **once puertas manuales** (T560/T561): FV venta y compra, entrega, recepción, cotización de venta y compra, pedido de venta y compra, reserva de venta y las dos NC. Queda fuera la **reserva de compra** (su alta delega) |
 | Permisos de `BLOCK_UNLESS_PERMISSION` | ⚠️ el motor lo soporta; el cableado **no** pasa todavía los permisos del usuario (bloquea) |
 | Funciones de contexto (saldo/stok) | ⬜ P5C |
 | **Motor de RELLENAR** (P5B1) | ✅ **T554**: lista blanca de fuentes (`Partner`, `Item`, `Warehouse`, `PaymentTerm`, con `custom:<ALIAS>`), lista blanca del destino (el registro de T552), compilador, motor con `ONLY_IF_EMPTY`/`OVERWRITE`/`CLEAR`, `onMissing`, tabla `FieldAutomation` y `POST /field-automations/resolve` |
