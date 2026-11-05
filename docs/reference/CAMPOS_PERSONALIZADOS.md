@@ -91,8 +91,12 @@ comportamiento queda a suertes.
 - **El paso de línea DENTRO del mismo documento** (`oi.customFields`, `incoming.customFields`)
   es legítimo y **no** pasa por el motor: no hay cambio de tabla, así que no hay nada que
   filtrar. El motor se aplica a la copia **entre documentos**, y eso está en las seis rutas.
-  **Límite declarado**: no hay caso *por ruta* para el paso de línea; el motor tiene el suyo
-  («tres líneas con una sola lectura» y «un campo de cabecera no viaja a la línea»).
+  **Gate**: `audit:copiar-a:check` cubre **cabecera y línea** —una copia de línea que llega a
+  una escritura sin `prepareCustomFieldsCopy` es ROJO— y lee el valor **hasta la coma a
+  profundidad 0**, así que también ve la forma multilínea. **Límite declarado**: reconoce las
+  convenciones de nombre del repo (el payload es `line`/`l`/`incoming`/`dto`/`payload`; la fila
+  persistida, `existing`/`current`); una copia cruda con otro nombre no la ve, y los borradores
+  y mapeos de respuesta quedan fuera a propósito porque **no escriben**.
 - **No hay renombrado al copiar**. Si `TIPO_VENTA` tiene que llegar como `TIPO_DOC`, hoy no
   se puede. La tabla de mapeo explícita se añadiría **encima** del alias, no en su lugar.
 - **El valor viaja como foto**: el destino guarda lo que el origen tenía al copiar. Si el
