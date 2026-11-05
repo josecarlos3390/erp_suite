@@ -106,6 +106,24 @@ const TIMEOUT_MS = 300000;
 /** Los cuatro extractores. Cada uno con su regla de «no sé» (que es ROJO, nunca un verde callado). */
 const TIPOS_EXTRACTOR = ['regex', 'suma', 'lineas', 'familia'];
 
+/**
+ * La cifra DECLARADA de la figura anclada fuera del manual. La autoprueba la deriva
+ * en vez de repetirla: la cifra deriva con cada modelo de Prisma que se genera y un
+ * literal en la prueba rompía el gate cada vez (209 → 210 dos veces).
+ */
+function valorDeclaradoDelAncla() {
+  const declaraciones = JSON.parse(fs.readFileSync(DECLARATIONS_PATH, 'utf8'));
+  const figura = declaraciones.figuras.find(
+    (f) => f.id === 'comentario-generados-207',
+  );
+  if (!figura || typeof figura.valorEsperado !== 'number') {
+    throw new Error(
+      'la figura comentario-generados-207 no declara valorEsperado numérico',
+    );
+  }
+  return figura.valorEsperado;
+}
+
 const RULES = {
   'ancla-ausente-en-el-manual':
     'el patrón declarado no casa ninguna vez en el manual: la declaración vigila una cifra que el manual no menciona',
@@ -1132,7 +1150,12 @@ function runSelfTest() {
       r.problems.length === 0 &&
       r.findings.length === 0 &&
       r.red === false &&
-      r.figures.some((f) => f.fig.id === 'comentario-generados-207' && f.ancla && f.ancla.valores[0] === 209),
+      r.figures.some(
+        (f) =>
+          f.fig.id === 'comentario-generados-207' &&
+          f.ancla &&
+          f.ancla.valores[0] === valorDeclaradoDelAncla(),
+      ),
     correr({}),
     'la figura anclada fuera del manual no encontró su cifra en el árbol de pruebas',
     ANCLA_BACKEND,
@@ -1143,7 +1166,7 @@ function runSelfTest() {
   //      la MISMA cifra 207) tiene que seguir VERDE: son DOS anclas distintas de la misma cifra, y
   //      pueden divergir por separado -- que es justo lo que la figura del comentario viene a cubrir.
   check(
-    'ancla-fuera-del-manual-cambiada (el comentario del script: 209 -> 210)',
+    'ancla-fuera-del-manual-cambiada (el comentario del script: declarada -> declarada + 1)',
     (tipos, r) =>
       tipos.includes('manual-divergente') &&
       r.findings.some((f) => f.fig.id === 'comentario-generados-207') &&
@@ -1151,7 +1174,9 @@ function runSelfTest() {
       r.red === true,
     correr({
       mutarAncla: (txt, fichero) =>
-        fichero === ANCLA_BACKEND ? mutar(txt, 'son (\\d+) ficheros de', 210) : txt,
+        fichero === ANCLA_BACKEND
+          ? mutar(txt, 'son (\\d+) ficheros de', valorDeclaradoDelAncla() + 1)
+          : txt,
     }),
     '',
     ANCLA_BACKEND,
