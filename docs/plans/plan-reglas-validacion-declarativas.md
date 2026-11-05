@@ -1,7 +1,11 @@
-# Plan: reglas de validación declarativas (P5A)
+# Plan: personalización declarativa por el usuario — validaciones y relleno automático (P5)
 
 > **Estado: propuesta, pendiente de aprobación.** No se escribe código del motor hasta que
 > se elija lo de §7. Lo que sigue es el diseño completo, con lo que **no** entra y por qué.
+>
+> **Son DOS motores, no uno**: **validar** (bloquear o avisar; §1–§11) y **rellenar** (auto-
+> completar un campo a partir de una acción del usuario; §12). Comparten el registro de campos,
+> el catálogo y la previsualización, pero **no la regla**: una bloquea, la otra escribe.
 >
 > Nace de la pregunta del usuario: *«cuando se entregue el ERP, el cliente va a querer poner
 > una validación en un campo nativo, o impedir un guardado si un campo tiene cierto prefijo…
@@ -138,8 +142,11 @@ con un texto), regex demasiado larga y AST demasiado profundo (tope de nodos).
 
 | Incremento | Contenido | Criterio de aceptación |
 |---|---|---|
-| **P5A1 — motor + API + previsualización** | modelo, registro, compilador, evaluador, `RulesService.assert` cableado en SAVE/CONFIRM de los documentos comerciales, `CRUD /validation-rules`, `POST /validation-rules/preview`, auditoría | (a) una regla creada por API **bloquea** un documento real con el mensaje; (b) desactivada, pasa; (c) el preview evalúa **sin** guardar; (d) 0 consultas por línea (un caso lo pinza); (e) un campo fuera del registro **no compila** |
-| **P5A2 — pantalla** | listado + formulario constructor de condiciones + preview contra un documento real | crear/editar/desactivar desde la UI; el preview muestra el mismo resultado que el guardado |
+| **P5A1 — motor de VALIDAR + API + previsualización** | modelo, registro, compilador, evaluador, `RulesService.assert` cableado en SAVE/CONFIRM de los documentos comerciales, `CRUD /validation-rules`, `POST /validation-rules/preview`, auditoría | (a) una regla creada por API **bloquea** un documento real con el mensaje; (b) desactivada, pasa; (c) el preview evalúa **sin** guardar; (d) 0 consultas por línea (un caso lo pinza); (e) un campo fuera del registro **no compila** |
+| **P5A2 — pantalla de validaciones** | listado + formulario constructor de condiciones + preview contra un documento real | crear/editar/desactivar desde la UI; el preview muestra el mismo resultado que el guardado |
+| **P5B1 — motor de RELLENAR** | modelo `FieldAutomation`, resolutor declarativo, disparadores, `GET /automation-rules` (metadatos compilados), reproducción en el servidor al guardar, lote por documento | los criterios de §12.5, con el caso «componente sin pantalla» (API) |
+| **P5B2 — pantalla de relleno** | pestaña «Relleno automático»: disparador + condición + destino + política, con preview | mismo veredicto en pantalla y en el guardado; el usuario edita un campo derivado y deja de pisarse |
+| **P5C — búsquedas de nivel 2 (escape SQL)** | solo si un cliente lo exige: vista de solo lectura, `tenantId` inyectado, `statement_timeout`, tope de filas, auditoría | se enciende por tenant y admin; sin él, P5A/P5B siguen completos |
 
 ## 9. Criterios de aceptación del frente (cuando esté)
 
@@ -172,3 +179,119 @@ con un texto), regex demasiado larga y AST demasiado profundo (tope de nodos).
   **no** duplica esas reglas, las consume.
 - **P5C** (búsquedas formateadas) se diseña después, con el mismo registro de campos y la
   misma filosofía: **nivel declarativo primero**, SQL solo como escape auditado.
+
+## 12. Segundo motor: relleno automático de campos (P5B) — nuestra «búsqueda formateada»
+
+**Qué es.** Cuando el usuario hace algo con un campo —selecciona un proveedor, cambia un
+importe, borra el valor, sale del campo—, **otro** campo (nativo o personalizado, de cabecera
+o de línea) se **rellena** con un valor resuelto por una regla. No bloquea: **escribe**. Es la
+otra mitad de la personalización sin código, y comparte con las validaciones el **registro de
+campos** y la **previsualización**, pero no la regla.
+
+### 12.1 Modelo (`FieldAutomation`)
+
+```
+FieldAutomation
+  id, tenantId, name, description
+  tableName       String    (el mismo registro cerrado que las validaciones)
+  appliesTo       HEADER | LINE
+  trigger         ON_SELECT | ON_CHANGE | ON_CLEAR | ON_BLUR | ON_LINE_ADD | ON_OPEN
+  sourceField     String    (el campo que dispara; ej. partnerId, itemId, currency)
+  targetField     String    (nativo o UDF; ej. NRO_LICITACION, paymentTermsId, LOTE)
+  resolver        Json      (el «de dónde sale el valor»; §12.2)
+  policy          ONLY_IF_EMPTY | OVERWRITE | CLEAR
+  priority        Int       (si dos reglas escriben el mismo destino, gana una y se declara)
+  isActive, createdById, updatedById, createdAt, updatedAt
+  @@index([tenantId, tableName, appliesTo, isActive])
+```
+
+**Disparadores** (son **datos**; el formulario los traduce a sus eventos):
+
+| Disparador | Cuándo | Caso típico |
+|---|---|---|
+| `ON_SELECT` | al elegir en un selector | proveedor → su condición de pago / límite de crédito |
+| `ON_CHANGE` | al cambiar el valor | moneda → tipo de cambio por defecto |
+| `ON_CLEAR` | al borrar el valor | quitar el proveedor → limpiar sus campos derivados |
+| `ON_BLUR` | al salir del campo | código postal → ciudad (o validar al salir) |
+| `ON_LINE_ADD` | al añadir una línea | artículo → UDF de línea desde el maestro |
+| `ON_OPEN` | al abrir el formulario | un valor por defecto del tenant |
+
+### 12.2 El resolutor, en dos niveles
+
+**Nivel 1 — declarativo (el 80 % de los casos reales, sin SQL):**
+
+```json
+{ "from": "Partner", "column": "creditLimit",
+  "match": [ { "source": "id", "equals": { "field": "partnerId" } } ],
+  "orderBy": [ { "column": "validFrom", "dir": "desc" } ],
+  "first": true,
+  "onMissing": "LEAVE_EMPTY" }
+```
+
+- `from`/`column`: una **lista blanca** de tablas y columnas de **solo lectura** (socios,
+  artículos, almacenes, listas de precios, configuración del tenant, líneas de un documento
+  origen). No es «cualquier tabla»: es la misma idea que el registro de campos.
+- `match`: filtra por **campos del formulario** (o por constantes del tenant).
+- `orderBy` + `first`: elige una fila cuando hay varias (precio vigente, tarifa aplicable).
+- `onMissing`: qué hacer si no hay fila (`LEAVE_EMPTY` por defecto, `ERROR` o `DEFAULT`
+  con un valor fijo).
+
+**Nivel 2 — escape SQL (P5C, opcional):** una **vista de solo lectura**, con el `tenantId`
+inyectado por el servidor, `statement_timeout` y tope de filas, habilitada por tenant y solo
+para administradores. Se declara como excepción: si en seis meses nadie la enciende, sobraba.
+
+### 12.3 Dónde se ejecuta, y por qué en los DOS lados
+
+- **Frontend**: al dispararse el evento, para que el valor aparezca **al instante**. El
+  formulario pide los metadatos compilados de su tabla y los traduce a eventos de Angular
+  (`selectionChange`, `valueChanges`, `blur`). **No reimplementa la regla**: consume el
+  compilado.
+- **Backend**: al guardar, **reproduce** la derivación aunque el cliente no la haya hecho
+  (una integración por API, el POS, la tienda). Si el cliente ya la calculó, el servidor
+  recalcula y compara: **no se confía** en el cliente.
+- **Líneas**: se resuelven **en lote** — una consulta por documento para todas las líneas,
+  el mismo patrón que el motor de copia (T540). Nunca una consulta por línea.
+
+### 12.4 Precedencia y procedencia (la decisión que evita el defecto clásico)
+
+- **`ONLY_IF_EMPTY`** (por defecto): no pisa lo que el usuario escribió.
+- **`OVERWRITE`** (explícito): pisa, y el campo queda **marcado como derivado**.
+- **Procedencia por campo**: si el usuario edita un campo derivado, se marca como **manual** y
+  la regla **deja de pisarlo** en ese documento. El servidor recibe qué campos tocó el usuario.
+- **`CLEAR`**: al borrar el disparador, el destino se **vacía** (o vuelve a su valor por
+  defecto) — es lo que el usuario espera al quitar el proveedor.
+- **Un salto**: un destino **no** dispara otra regla (sin cadenas ni ciclos). Se declara; si
+  algún día hace falta encadenar, se diseña con grafo y tope de profundidad.
+
+### 12.5 Criterios de aceptación (P5B)
+
+- [ ] Al **seleccionar un proveedor** se rellena un **UDF de cabecera** (y otro nativo), y se
+      ve **sin guardar**.
+- [ ] Guardado **por API** sin pasar por la pantalla: el servidor produce **el mismo** valor.
+- [ ] El valor **manual no se pisa** (`ONLY_IF_EMPTY`); con `OVERWRITE` queda marcado.
+- [ ] Al **borrar** el proveedor el destino se **limpia** (`CLEAR`).
+- [ ] En **líneas**: cambiar el artículo rellena el UDF de línea con **UNA** consulta para todo
+      el documento (un caso lo pinza).
+- [ ] Sin fila de origen: se aplica la **política** declarada y el usuario ve el motivo.
+- [ ] **Sin cadenas**: una derivación no dispara otra; y dos reglas sobre el mismo destino
+      resuelven por `priority`, declarado.
+
+### 12.6 Riesgos y cómo se pagan
+
+| Riesgo | Mitigación |
+|---|---|
+| Pisar el dato que escribió el usuario | `ONLY_IF_EMPTY` por defecto + procedencia por campo |
+| Coste por línea | resolución en lote (una consulta por documento) |
+| Dos reglas sobre el mismo destino | `priority` y una sola gana, declarado en la regla |
+| Cliente y servidor divergen | **un** compilador; el frontend consume el compilado, no reimplementa |
+| El usuario no entiende por qué cambió un valor | el campo derivado se marca y el preview muestra el «de dónde salió» |
+
+### 12.7 Relación con lo ya construido
+
+- El **motor de copia** (T538–T541, T548, T551) resuelve *documento → documento* al crear.
+  Esto resuelve *campo → campo* **mientras se captura**: no lo sustituye, lo complementa (la
+  copia llena el documento nuevo; el relleno llena un campo que el usuario acaba de tocar).
+- El **registro de campos** es el mismo: si un campo no está en el registro, no se puede ni
+  validar ni rellenar.
+- La **previsualización** es la misma idea: probar la regla contra un documento real antes de
+  activarla.
