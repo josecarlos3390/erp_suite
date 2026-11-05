@@ -1,7 +1,12 @@
 # Plan: personalización declarativa por el usuario — validaciones y relleno automático (P5)
 
-> **Estado: propuesta, pendiente de aprobación.** No se escribe código del motor hasta que
-> se elija lo de §7. Lo que sigue es el diseño completo, con lo que **no** entra y por qué.
+> **Estado: P5A1 IMPLEMENTADO el 2026-11-05 (T552).** El motor de **validar** está en
+> `backend-erp/src/common/validation/` (registro cerrado de campos, DSL, motor) y en
+> `src/validation-rules/` (CRUD + **previsualización**), con la tabla `ValidationRule`
+> migrada. Las reglas se exigen **al confirmar** en facturas de venta y compra, entregas y
+> recepciones, y **al guardar** en las dos altas manuales de factura. Pendiente: **P5A2**
+> (pantalla), el resto de tablas y el motor de **rellenar** (**P5B**). Lo de §1–§11 es el
+> diseño; lo implementado y sus límites están en §12.8.
 >
 > **Son DOS motores, no uno**: **validar** (bloquear o avisar; §1–§11) y **rellenar** (auto-
 > completar un campo a partir de una acción del usuario; §12). Comparten el registro de campos,
@@ -295,3 +300,18 @@ para administradores. Se declara como excepción: si en seis meses nadie la enci
   validar ni rellenar.
 - La **previsualización** es la misma idea: probar la regla contra un documento real antes de
   activarla.
+
+### 12.8 Estado real de P5A1 (T552)
+
+| Pieza | Estado |
+|---|---|
+| Registro cerrado de campos | ✅ v1: FV, FC, entrega y recepción (+ sus líneas); los UDF por alias |
+| DSL (compilación + evaluación pura) | ✅ 20 casos; tope de nodos/profundidad y regex acotada |
+| Motor `assertReglas` | ✅ 10 casos; una lectura de reglas y una de definiciones por documento y fase |
+| Tabla `ValidationRule` | ✅ migración `20261105120000_p5_validation_rules` (a mano, por el drift de `WebStore`) |
+| API + `preview` | ✅ CRUD + baja lógica + `POST /validation-rules/preview` (mismo compilador) |
+| Cableado CONFIRM | ✅ FV, FC, entrega, recepción (A/B: sin el motor, la confirmación pasa) |
+| Cableado SAVE | ✅ las dos altas manuales de factura; el resto, mecánico y pendiente |
+| Permisos de `BLOCK_UNLESS_PERMISSION` | ⚠️ el motor lo soporta; el cableado **no** pasa todavía los permisos del usuario (bloquea) |
+| Funciones de contexto (saldo/stok) | ⬜ P5C |
+| Pantalla | ⬜ P5A2 |
