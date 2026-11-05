@@ -1,8 +1,16 @@
 # Plan: validaciones personalizadas de campos (P4)
 
-> **Estado: propuesta. NO implementado.** Este documento existe porque P4 es
-> **funcionalidad nueva**, no deuda, y la decisión de **dónde engancha** cambia lo que el
-> usuario puede hacer. No se escribe código hasta que el usuario elija la modalidad.
+> **Estado: IMPLEMENTADO el 2026-11-05 (T550) con la modalidad B, `al CONFIRMAR`.**
+> El motor vive en `backend-erp/src/common/custom-fields-validation.util.ts`
+> (`assertCustomFieldsCompletos`, con el núcleo puro `validarConDefiniciones`) y está
+> cableado en las **seis** confirmaciones de documentos con campos personalizados:
+> facturas de venta y de compra, entregas, recepciones y las dos notas de crédito. Los
+> documentos **sin `confirm`** (cotizaciones y pedidos) no validan, y eso es una
+> consecuencia de la modalidad elegida, no un olvido.
+>
+> Lo que sigue de este documento se conserva porque es el **porqué** de la decisión y
+> el alcance de lo que **no** se hizo (fórmulas, dependencias, tienda).
+
 
 ## 1. Qué se pide, y qué NO
 
@@ -32,6 +40,11 @@ incompatibles al copiar entre documentos, pero **no valida al guardar**: son dos
 responsabilidades distintas y no deben mezclarse.
 
 ## 3. La decisión que hay que tomar: ¿al guardar o al confirmar?
+
+> **DECIDIDO (2026-11-05): modalidad B, al CONFIRMAR**, para los campos `isRequired`
+> declarados **activos**. La implementación es T550 y el cableado está en las seis
+> confirmaciones de documentos con campos personalizados. El resto de esta sección se
+> conserva como el registro de la decisión.
 
 Es una decisión de **producto**, con consecuencias medibles en lo que el usuario puede
 hacer. Las tres modalidades, con su efecto:
