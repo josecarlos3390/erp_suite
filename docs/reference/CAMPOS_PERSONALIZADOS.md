@@ -77,21 +77,50 @@ funcionalidad pretende evitar.
 | Pedido de compra | Recepción | ✅ |
 | Recepción | Factura de compra | ✅ |
 
+Las seis rutas copian **cabecera y línea** por el mismo motor: el filtro de cabecera
+(`copyCustomFields`) y el de línea (`prepareCustomFieldsCopy(tx, tenantId, '<TablaItem>', 'LINE')`,
+preparado **una vez por documento** y aplicado por línea). En la línea manda lo que el usuario
+escribió en el destino: `line.customFields ?? filtro(origen.customFields).valores`.
+
 **Gate**: `npm run audit:copiar-a:check` falla si una ruta vuelve a copiar el saco crudo
 (`customFields: quotation.customFields`). Sin gate, el motor nuevo convive con el viejo y el
 comportamiento queda a suertes.
 
 ## 6. Límites, declarados
 
-- **Las líneas no se filtran todavía** con el motor: el paso de línea dentro del mismo
-  documento (`oi.customFields`, `incoming.customFields`) es legítimo y no pasa por él. La
-  copia **entre documentos a nivel de línea** sí debería, y es el siguiente lote.
+- **El paso de línea DENTRO del mismo documento** (`oi.customFields`, `incoming.customFields`)
+  es legítimo y **no** pasa por el motor: no hay cambio de tabla, así que no hay nada que
+  filtrar. El motor se aplica a la copia **entre documentos**, y eso está en las seis rutas.
+  **Límite declarado**: no hay caso *por ruta* para el paso de línea; el motor tiene el suyo
+  («tres líneas con una sola lectura» y «un campo de cabecera no viaja a la línea»).
 - **No hay renombrado al copiar**. Si `TIPO_VENTA` tiene que llegar como `TIPO_DOC`, hoy no
   se puede. La tabla de mapeo explícita se añadiría **encima** del alias, no en su lugar.
 - **El valor viaja como foto**: el destino guarda lo que el origen tenía al copiar. Si el
   origen cambia después, el destino **no**.
-- **El índice** (`CustomFieldValue`) se reescribe en las rutas cableadas; en las demás sigue
-  pendiente. Un campo puede existir en el documento y **no aparecer en los filtros**.
+- **El índice** (`CustomFieldValue`) se mantiene en **todas** las escrituras de documento:
+  `census:udf-index` está en **0** y su línea base congelada en 0 (un `create`/`update` que
+  escriba `customFields` sin sincronizar rompe el gate del pre-push). Se sincroniza **después**
+  de las líneas —antes indexaba una cabecera con cero líneas— y en los `update` parciales la
+  cabecera se **relee**, porque indexar con el payload borraría el índice de los campos que ese
+  PATCH no toca. **Límite declarado del instrumento**: compara cuentas, no empareja escritura
+  con llamada.
 - **La auditoría de campos estándar** (`scripts/audit-copiar-a.mjs`) marca **candidatos**,
   no pérdidas: el «Copiar a» real es el frontend precargando el formulario, y
   `buildBaseDocumentData` toma `date`/`notes`/`referenceNo` del payload.
+
+## 7. Validaciones de los campos (T550)
+
+El `isRequired` de la definición **se hace cumplir al CONFIRMAR** (modalidad B del plan de P4),
+con dos reglas y un solo motor (`assertCustomFieldsCompletos`):
+
+1. **Obligatorio = no vacío.** `null`, `undefined` y la cadena vacía son «falta»; **`0` y
+   `false` no lo son** (son valores).
+2. **Tipo = la MISMA conversión del motor de copia** (`convertir`, exportada): un `SELECT` fuera
+   de sus opciones o un `NUMBER` que no es número son **400**.
+
+Un campo **inactivo no bloquea** (desactivar es la salida) y el 400 **nombra el campo y la
+línea**. Se evalúa **antes de cualquier efecto**: si falta un campo, no hay kardex ni asiento.
+
+**Límites declarados**: los documentos **sin `confirm`** (cotizaciones y pedidos) no validan;
+no hay fórmulas, campos calculados, dependencias entre campos ni **búsquedas formateadas**
+(eso es la fase P5, en `docs/plans/plan-validaciones-campos-personalizados.md`).

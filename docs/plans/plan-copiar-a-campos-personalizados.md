@@ -1,8 +1,9 @@
 # Plan: «Copiar a» y campos personalizados
 
-> Estado al cerrar la sesión del 2026-11-05. **Nada está a medias**: cada incremento está
-> commiteado con la suite completa en verde (3 977/3 977) y los gates de contenido 6/6.
-> Lo que falta es **alcance**, no **estado**.
+> **Estado: CERRADO el 2026-11-05.** Los cuatro frentes están implementados, medidos y en
+> `main` (backend `ca76f5ff`, raíz `044aaa1`): suite **3 997/3 997**, `gate:rapido` **6/6**,
+> `census:udf-index` **0** y los dos espejos del backend al mismo SHA. Lo que queda de este
+> documento son los **límites declarados** (abajo), no trabajo pendiente de los frentes.
 
 ## Dónde estamos
 
@@ -10,21 +11,21 @@
 |---|---|---|
 | Campos personalizados de **cabecera** en «Copiar a» | ✅ 6 rutas, filtradas por el destino | `audit:copiar-a:check` (gate, 0 rutas crudas) |
 | **Contrato del alias** (mismo `fieldName` ⇒ mismo tipo) | ✅ 409 al definir | — (regla en `udf.service`) |
-| Campos personalizados de **línea** | ⚠️ motor listo, **1 de 6** rutas | — |
-| **Número de línea del origen** (`baseLineNum`) | ⚠️ resolutor listo, **1 de 5** sitios | — |
-| **Índice de búsqueda** (`CustomFieldValue`) | ⚠️ **135 de déficit** en 24 ficheros | `census:udf-index` (congelado, en pre-push) |
-| **Validaciones personalizadas** | ⬜ no empezado | — |
+| Campos personalizados de **línea** | ✅ **6 de 6** rutas (T548) | motor con sus 8 casos |
+| **Número de línea del origen** (`baseLineNum`) | ✅ **5 de 5** sitios (T545), con caso de líneas salteadas 2, 5 y 9 | spec de cada ruta + A/B |
+| **Índice de búsqueda** (`CustomFieldValue`) | ✅ **déficit 0** (T546, T547, T549) | `census:udf-index` (línea base **0**, en pre-push) |
+| **Validaciones personalizadas** | ✅ **implementadas** (T550), modalidad **B: al confirmar** | motor con 12 casos + A/B de cableado |
 
-## Riesgo real de lo pendiente, medido
+## Riesgo que tenían, medido (histórico)
 
 Ninguno corrompe dinero ni stock. Lo que falla es **degradación**, no cálculo:
 
-| Frente | Qué pasa hoy | Quién lo nota |
+| Frente | Qué pasaba (medido antes) | Estado |
 |---|---|---|
-| Índice (135) | El campo existe en el documento y **no se puede filtrar por él** | El usuario que busca, y **no encuentra** |
-| `baseLineNum` (4) | Al copiar un **subconjunto**, la devolución apunta al número de línea del documento **inmediato**, no al original | El que lee una devolución y no cuadra la línea |
-| Campos de línea (5) | El campo **no viaja**; hay que reescribirlo | El que copia y ve el campo vacío |
-| Validaciones | No existen | Nadie (nunca se prometieron) |
+| Índice (135) | El campo existía en el documento y **no se podía filtrar por él** | ✅ 0 |
+| `baseLineNum` (4) | Al copiar un **subconjunto**, la devolución apuntaba al número de línea del documento **inmediato** | ✅ 5/5 |
+| Campos de línea (5) | El campo **no viajaba**; había que reescribirlo | ✅ 6/6 |
+| Validaciones | No existían | ✅ obligatorio + tipo, al confirmar |
 
 **La relación técnica no se pierde en ningún caso**: la FK viaja (`quotationItemId`,
 `orderItemId`) y los pendientes por línea se calculan bien. Lo que se pierde es la
