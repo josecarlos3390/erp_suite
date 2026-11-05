@@ -314,4 +314,7 @@ para administradores. Se declara como excepción: si en seis meses nadie la enci
 | Cableado SAVE | ✅ las dos altas manuales de factura; el resto, mecánico y pendiente |
 | Permisos de `BLOCK_UNLESS_PERMISSION` | ⚠️ el motor lo soporta; el cableado **no** pasa todavía los permisos del usuario (bloquea) |
 | Funciones de contexto (saldo/stok) | ⬜ P5C |
+| **Motor de RELLENAR** (P5B1) | ✅ **T554**: lista blanca de fuentes (`Partner`, `Item`, `Warehouse`, `PaymentTerm`, con `custom:<ALIAS>`), lista blanca del destino (el registro de T552), compilador, motor con `ONLY_IF_EMPTY`/`OVERWRITE`/`CLEAR`, `onMissing`, tabla `FieldAutomation` y `POST /field-automations/resolve` |
+| Relleno en el **guardado** (P5B1b) | ⬜ el servidor reproduce la derivación al guardar; hoy `resolve` está probado y el alta no lo aplica |
+| Relleno en el **formulario** (P5B2) | ⬜ eventos de la UI (`ON_SELECT`…), marca de «derivado» y precedencia por campo |
 | Pantalla | ✅ **P5A2 (T553)**: listado + constructor de condición (fila a fila, «no» por fila, Y/O) + **Probar** contra un documento en JSON; los campos salen de `GET /validation-rules/registry` |
