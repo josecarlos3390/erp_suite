@@ -1132,7 +1132,7 @@ function runSelfTest() {
       r.problems.length === 0 &&
       r.findings.length === 0 &&
       r.red === false &&
-      r.figures.some((f) => f.fig.id === 'comentario-generados-207' && f.ancla && f.ancla.valores[0] === 208),
+      r.figures.some((f) => f.fig.id === 'comentario-generados-207' && f.ancla && f.ancla.valores[0] === 209),
     correr({}),
     'la figura anclada fuera del manual no encontró su cifra en el árbol de pruebas',
     ANCLA_BACKEND,
@@ -1143,7 +1143,7 @@ function runSelfTest() {
   //      la MISMA cifra 207) tiene que seguir VERDE: son DOS anclas distintas de la misma cifra, y
   //      pueden divergir por separado -- que es justo lo que la figura del comentario viene a cubrir.
   check(
-    'ancla-fuera-del-manual-cambiada (el comentario del script: 208 -> 209)',
+    'ancla-fuera-del-manual-cambiada (el comentario del script: 209 -> 210)',
     (tipos, r) =>
       tipos.includes('manual-divergente') &&
       r.findings.some((f) => f.fig.id === 'comentario-generados-207') &&
@@ -1151,7 +1151,7 @@ function runSelfTest() {
       r.red === true,
     correr({
       mutarAncla: (txt, fichero) =>
-        fichero === ANCLA_BACKEND ? mutar(txt, 'son (\\d+) ficheros de', 209) : txt,
+        fichero === ANCLA_BACKEND ? mutar(txt, 'son (\\d+) ficheros de', 210) : txt,
     }),
     '',
     ANCLA_BACKEND,
