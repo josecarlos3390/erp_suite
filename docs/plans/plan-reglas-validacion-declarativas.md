@@ -314,4 +314,4 @@ para administradores. Se declara como excepción: si en seis meses nadie la enci
 | Cableado SAVE | ✅ las dos altas manuales de factura; el resto, mecánico y pendiente |
 | Permisos de `BLOCK_UNLESS_PERMISSION` | ⚠️ el motor lo soporta; el cableado **no** pasa todavía los permisos del usuario (bloquea) |
 | Funciones de contexto (saldo/stok) | ⬜ P5C |
-| Pantalla | ⬜ P5A2 |
+| Pantalla | ✅ **P5A2 (T553)**: listado + constructor de condición (fila a fila, «no» por fila, Y/O) + **Probar** contra un documento en JSON; los campos salen de `GET /validation-rules/registry` |
