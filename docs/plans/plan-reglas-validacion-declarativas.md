@@ -1,12 +1,22 @@
 # Plan: personalización declarativa por el usuario — validaciones y relleno automático (P5)
 
-> **Estado: P5A1 IMPLEMENTADO el 2026-11-05 (T552).** El motor de **validar** está en
-> `backend-erp/src/common/validation/` (registro cerrado de campos, DSL, motor) y en
-> `src/validation-rules/` (CRUD + **previsualización**), con la tabla `ValidationRule`
-> migrada. Las reglas se exigen **al confirmar** en facturas de venta y compra, entregas y
-> recepciones, y **al guardar** en las dos altas manuales de factura. Pendiente: **P5A2**
-> (pantalla), el resto de tablas y el motor de **rellenar** (**P5B**). Lo de §1–§11 es el
-> diseño; lo implementado y sus límites están en §12.8.
+> **Estado: CERRADO el 2026-11-05 (T552 → T567).** Los **dos motores** están implementados,
+> probados y en `main`, y las **dos pantallas** permiten al cliente crear, probar y
+> desactivar sus reglas **sin desarrollo**:
+>
+> | | Validar | Rellenar |
+> |---|---|---|
+> | Motor | ✅ DSL + registro cerrado + **2 funciones de contexto** (`stock.available`, `partner.balance`) | ✅ fuentes con lista blanca, 6 disparadores, 3 políticas |
+> | Pantalla | ✅ constructor + **preview** + funciones | ✅ formulario |
+> | Al **guardar** | ✅ **11 puertas** manuales | ✅ 2 documentos por API (la compra también en líneas, en lote) |
+> | Al **confirmar** | ✅ 4 documentos | — |
+> | En el **formulario** | — | ✅ **11 pantallas** (medido) |
+> | Documentos | **12** | **12** |
+>
+> La **guía de usuario** (lo que se entrega al cliente) está en
+> [`docs/reference/REGLAS_Y_RELLENO.md`](../reference/REGLAS_Y_RELLENO.md); lo pendiente,
+> con su coste, está en §13. Lo de §1–§11 es el diseño; lo implementado y sus límites, en
+> §12.8.
 >
 > **Son DOS motores, no uno**: **validar** (bloquear o avisar; §1–§11) y **rellenar** (auto-
 > completar un campo a partir de una acción del usuario; §12). Comparten el registro de campos,
@@ -320,3 +330,28 @@ para administradores. Se declara como excepción: si en seis meses nadie la enci
 | Pantalla de **relleno** (P5B3) | ✅ **T559**: listado + formulario (destino, acción, disparador, destino, fuente de la lista blanca, filtros, política y `onMissing`), campos desde `GET /field-automations/registry`. Sin previsualización | ✅ directiva con `linesArray` + `lineTriggerFields`: firma por línea (solo el disparador) y aplicación al grupo de la línea. Guardado por API: ⬜ pide resolutor por lote |
 | Relleno en el **formulario** (P5B2) | ✅ **T555**: directiva `appAutoFill` (un atributo sobre el `<form>`), cliente que pide el valor al servidor, `aplicarValoresRellenados` (sin `emitEvent`, sin tocar deshabilitados) y aviso con los campos rellenados. Cableada en la **factura de compra**, cabecera |
 | Pantalla | ✅ **P5A2 (T553)**: listado + constructor de condición (fila a fila, «no» por fila, Y/O) + **Probar** contra un documento en JSON; los campos salen de `GET /validation-rules/registry` |
+
+## 13. Cierre (2026-11-05)
+
+**Lo que hay**, medido: suite del backend **4089/4089**; Karma **3033/3033**;
+`gate:rapido` 6/6; `audit:ci` exit 0; `ci:local` 13/13; los tres repos al mismo SHA en sus
+espejos y con el árbol limpio. El detalle de cada incremento (T552 → T567) está en
+`AUDIT.md`, una fila por incremento, con lo medido y lo declarado.
+
+**Lo que queda**, con su coste — **ninguno es un cimiento**:
+
+| Pendiente | Coste | Nota |
+|---|---|---|
+| Preview del **relleno** | corto | la validación ya lo tiene; aquí falta el mismo «probar contra un documento» |
+| Relleno **por API** en el resto de documentos | corto | el ayudante y el lote existen; es repetirlo en cada alta |
+| Puerta de **reserva de compra** al guardar | medio | su alta **delega** en otro servicio y no abre transacción propia: hay que rehacer ese camino |
+| Más **funciones de contexto** | corto por función | el patrón está probado con dos; cada una pide su lectura y su entrada |
+| El **número** que devolvió la función, en el preview | corto | hoy da el veredicto, no el valor |
+
+**Lo que este frente deliberadamente NO hace** (y no es deuda, es diseño): SQL libre,
+fórmulas y campos calculados, dependencias entre campos, y cadenas de relleno (un campo
+rellenado no dispara otra regla). Las razones están en §1 y §12.6.
+
+**Cómo se cierra**: cualquier incremento de la tabla de arriba se hace con el mismo
+protocolo —caso que falla primero, gate que lo pinza, cifra medida y límite declarado—;
+el frente no necesita rediseño.
