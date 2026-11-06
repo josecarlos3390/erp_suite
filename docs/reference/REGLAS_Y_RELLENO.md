@@ -209,7 +209,7 @@ guardar.
 - **No reescribe documentos ya guardados**: una regla nueva actúa en los próximos.
 - Las reglas con **varios filtros** se aplican en la pantalla pero **no** en el guardado
   por API (resolverlas pediría una consulta por línea).
-- El relleno está cableado **en las nueve pantallas** de documento (facturas, pedidos,
+- El relleno está cableado **en las once pantallas** de documento (facturas, pedidos,
   entregas, recepciones, cotizaciones, notas de crédito y reserva de venta). En el
   **guardado por API**, en las dos facturas. Los documentos que no estén en esa lista
   pueden tener la regla creada pero todavía no la disparan.
