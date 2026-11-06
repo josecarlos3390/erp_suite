@@ -29,8 +29,15 @@
 | **Documento** | Sobre qué documento actúa (factura de venta, pedido de compra, nota de crédito…) |
 | **Aplica a** | **Cabecera** (el documento) o **Línea** (cada renglón) |
 | **Cuándo se evalúa** | **Al guardar** o **Al confirmar** |
-| **Qué hace** | **Bloquea** (400, no se guarda) · **Avisa** (se guarda y queda el aviso) · **Bloquea salvo permiso** |
+| **Qué hace** | **Bloquea** (400, no se guarda) · **Avisa** (se guarda y queda el aviso) |
 | **Mensaje** | Lo que ve el usuario. Admite `{campo}` y `{linea}` |
+
+
+> **Sobre «bloquea salvo permiso».** Existió como tercera opción y **se retiró de la
+> pantalla** (T576): el motor la entiende, pero hoy **nadie le pasa los permisos del
+> usuario**, así que **bloqueaba siempre** — prometía una cosa y hacía otra. Una regla
+> creada por API con esa severidad **se aplica como bloquea**, y la pantalla lo avisa.
+> Volverá cuando el cableado lleve los permisos.
 
 ### 1.2 La condición dice **cuándo SALTA**
 
