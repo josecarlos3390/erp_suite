@@ -104,6 +104,10 @@ Ejemplo, en una regla de **línea** del documento:
   "referencia": { "fn": "stock.available", "args": ["itemId", "warehouseId"] } }
 ```
 
+En la **pantalla** no se escribe JSON: en la fila de la condición se elige
+**«Contra» → la función** y sus argumentos se escogen de los campos del documento (vienen
+prefijados con el campo que suele corresponder).
+
 Se lee: «si la cantidad pedida es mayor que el disponible, salta». El servidor lo lee
 **una vez por documento**, no una vez por línea. Si el artículo no tiene fila de stock, el
 disponible es **0**.
