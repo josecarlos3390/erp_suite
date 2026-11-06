@@ -125,10 +125,13 @@ si el socio no tiene fila en esa moneda, el saldo es **0**.
 | Factura de venta, factura de compra | ✅ | ✅ |
 | Entrega, recepción de compra | ✅ | ✅ |
 | Cotización de venta, cotización de compra | ✅ | — |
-| Pedido de venta, pedido de compra | ✅ | — |
+| Pedido de venta (alta manual **y** copiado de una cotización), pedido de compra | ✅ | — |
 | Factura de reserva de venta | ✅ | — |
 | Nota de crédito de venta y de compra | ✅ | ✅ |
 | Factura de reserva de compra | — (su alta viene de otro documento) | — |
+
+Son **trece** puertas de guardado: las once de alta manual (T561) más las dos de copia
+(pedido desde una cotización y desde varias) que se sumaron al probar «Copiar a» (T568).
 
 En los documentos que no tienen confirmación (cotizaciones, pedidos) no hay fase de
 confirmar: la regla de esa fase no se evalúa nunca.

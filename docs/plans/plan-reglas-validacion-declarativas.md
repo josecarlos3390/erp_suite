@@ -352,6 +352,29 @@ espejos y con el árbol limpio. El detalle de cada incremento (T552 → T567) es
 fórmulas y campos calculados, dependencias entre campos, y cadenas de relleno (un campo
 rellenado no dispara otra regla). Las razones están en §1 y §12.6.
 
+### La prueba de punta a punta del 2026-11-06 (T568–T570)
+
+Con el **Centro de Configuración** y las pantallas reales, contra una base **reseteada y
+sembrada** (`npm run db:recreate`, que además validó la cadena de migraciones **desde cero**):
+
+| Paso | Resultado |
+|---|---|
+| Parametrizar (`/setup/base-masters`) | ✅ sucursal, lista de precios, grupo y condiciones de pago |
+| Campos personalizados de cabecera y línea | ✅ |
+| «Copiar a»: 9 líneas → pedido con las **2, 5 y 9** | ✅ `baseLineNum` = 1, 4, 8 (el origen) y el campo de línea viaja |
+| Validación: referencia debe empezar por F- | ✅ bloquea con **su** mensaje; desactivada, deja pasar |
+| Acción: cliente → condición de pago | ✅ la rellena **el servidor**, sin pasar por la pantalla |
+
+**Encontró tres defectos que ningún test unitario veía**, y los tres están arreglados con su
+caso: **T568** (la puerta de «Copiar a» **no exigía** las reglas: hoy son trece puertas),
+**T569** (crear un campo repetido daba 500 con el mensaje crudo de Prisma: hoy 409) y
+**T570** (el detalle del pedido devolvía las líneas **sin orden**: hoy `lineNum` ascendente).
+
+El arnés queda en `backend-erp/scripts/smoke-p5.mjs` (**manual**: pide base sembrada y API
+en :3000, y consume stock). **Lo que no se hizo, y se declara**: el smoke **no corre en CI**
+—necesita un servidor vivo y una base—, así que la prueba de punta a punta se repite a mano
+cuando cambia una de las tres piezas.
+
 **Cómo se cierra**: cualquier incremento de la tabla de arriba se hace con el mismo
 protocolo —caso que falla primero, gate que lo pinza, cifra medida y límite declarado—;
 el frente no necesita rediseño.
