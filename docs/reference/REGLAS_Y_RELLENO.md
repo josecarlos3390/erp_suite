@@ -95,6 +95,7 @@ escriben con una **función de contexto**, que es una lista blanca cerrada:
 | Función | Devuelve | Argumentos (campos del documento) |
 |---|---|---|
 | `stock.available` | disponible en almacén (físico + pedido − comprometido) | `itemId`, `warehouseId` |
+| `partner.balance` | saldo neto del socio en esa moneda (lo mantiene el motor de saldos) | `partnerId`, `currency` |
 
 Ejemplo, en una regla de **línea** del documento:
 
@@ -106,6 +107,12 @@ Ejemplo, en una regla de **línea** del documento:
 Se lee: «si la cantidad pedida es mayor que el disponible, salta». El servidor lo lee
 **una vez por documento**, no una vez por línea. Si el artículo no tiene fila de stock, el
 disponible es **0**.
+
+Para el saldo del socio, el mismo mecanismo: `{ "op": "gt", "field": "exchangeRate",
+"referencia": { "fn": "partner.balance", "args": ["partnerId", "currency"] } }` compara un
+campo numérico del documento con **el saldo neto** del socio en esa moneda. Sale del
+registro que mantiene el motor de saldos (no de una columna que pueda estar desviada) y,
+si el socio no tiene fila en esa moneda, el saldo es **0**.
 
 ### 1.7 Dónde se exige hoy
 
