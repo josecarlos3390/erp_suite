@@ -38,6 +38,38 @@ opcional, cada sitio que hoy hace `linea.item.algo` deja de compilar.
 Se revirtió la migración **las dos veces**: 642 y 318 errores no se arreglan a la carrera, y el
 árbol no se deja en rojo.
 
+## 2b. MEDIDO: el servicio ya se vende hoy, como ARTÍCULO no inventariable
+
+Antes de seguir con la línea de cuenta se probó la **otra** vía, la que el código ya tiene:
+un artículo con **`canBeInventoried: false`**. Recorrido completo por API contra `erp_db`,
+el 2026-11-07:
+
+| Paso | Resultado |
+|---|---|
+| Artículo de servicio (`canBeInventoried: false`) con precio y lista | **201** |
+| Cotización con ese artículo | **201** (COT-4) |
+| Pedido desde la cotización | **201** (PED-6) |
+| Entrega desde el pedido | **201** (DEL-1) · la línea viaja con **`warehouseId: null`** |
+| Filas de `Stock` del servicio | **0** |
+| `StockMovement` del servicio | **0** |
+
+Es decir: **el producto ya vende y entrega servicios sin mover inventario**, con la cuenta
+saliendo del **maestro del artículo** (`salesRevenueAccountId` y su matriz). Lo que la línea
+de cuenta añade es una **cuenta por línea** sin crear un maestro por servicio.
+
+**Consecuencia para el plan**: hay **dos representaciones** de «servicio»:
+
+| | Artículo no inventariable | Línea de cuenta (`itemId` nulo) |
+|---|---|---|
+| Dónde funciona hoy | **todos** los documentos (cotización, pedido, entrega, factura) | factura y notas de crédito |
+| La cuenta sale de | el **maestro** del artículo | la **línea** |
+| Coste de extenderla | **cero** | ~300 sitios (medido: 642 / 318) |
+
+**Decisión pendiente del usuario**: si el servicio se puede identificar en el maestro, la vía
+del artículo no inventariable **no necesita código**. La línea de cuenta se justifica solo si
+hace falta **una cuenta distinta por línea del mismo documento** sin crear un artículo por
+cuenta.
+
 ## 3. Las dos decisiones (y por eso hay ayudantes)
 
 Los 318 errores **no son 318 decisiones**: son dos, y viven en
