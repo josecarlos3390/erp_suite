@@ -94,6 +94,14 @@ Consejo: crear la regla como **Avisa**, dejarla unos días y mirar a quién mole
 esté claro, cambiarla a **Bloquea**. Una regla que bloquea de más cuesta más que no
 tenerla.
 
+### 1.5b Bloquea **salvo permiso**
+
+El motor soporta una tercera severidad: **bloquea salvo que el usuario tenga un permiso**
+(`BLOCK_UNLESS_PERMISSION` con su código). La pantalla **no la ofrece** —solo Bloquea y
+Avisa—, pero una regla creada por API con esa severidad **sí se respeta**: el guardado
+compara el permiso con los del usuario de la petición y, si lo tiene, **no bloquea**; si
+no lo tiene, bloquea como cualquier otro bloqueo.
+
 ### 1.6 Criterios que necesitan otra tabla
 
 Hay criterios que no están en el documento: «no despachar más de lo que hay». Se
@@ -212,22 +220,28 @@ guardar.
 
 ### 2.5 Dónde se ejecuta
 
-- **En la pantalla**, en el momento: el usuario ve el campo llenarse.
+- **En la pantalla**, en el momento: el usuario ve el campo llenarse. Once pantallas de
+  documento tienen el disparador de **línea**, y las de cabecera lo tienen todas.
 - **Al guardar**, por API: el servidor vuelve a resolverlo, así que una integración
-  obtiene **el mismo documento** que la pantalla. Esto vale hoy para las **dos facturas**
-  (cabecera y, en la de compra, también las líneas).
+  obtiene **el mismo documento** que la pantalla. Vale para **todas** las puertas de
+  guardado: las **doce altas manuales** y las **dos de copia** (pedido desde una
+  cotización y desde varias), en **cabecera y línea**.
+- **Con «Probar»**: en el formulario de la regla se pega un documento de muestra y se ve
+  qué campos se rellenarían, con qué valor y por qué regla. Prueba las reglas **activas y
+  guardadas** —no el borrador— y **no escribe nada**.
 
 ### 2.6 Límites, dichos sin adornos
 
 - **Un salto**: un campo rellenado **no** dispara otra regla (no hay cadenas ni ciclos).
 - **No reescribe documentos ya guardados**: una regla nueva actúa en los próximos.
-- Las reglas con **varios filtros** se aplican en la pantalla pero **no** en el guardado
-  por API (resolverlas pediría una consulta por línea).
-- El relleno está cableado **en las once pantallas** de documento (facturas, pedidos,
-  entregas, recepciones, cotizaciones, notas de crédito y reserva de venta). En el
-  **guardado por API**, en las dos facturas. Los documentos que no estén en esa lista
-  pueden tener la regla creada pero todavía no la disparan.
-- **Sin previsualización** todavía: para probar, se usa el propio formulario.
+- Las reglas con **varios filtros** se resuelven también en el guardado por API: se leen
+  con **una** consulta por regla (un `OR` de las combinaciones distintas del documento),
+  no una por línea.
+- El relleno acepta **campos personalizados** como destino y como disparador: el valor
+  entra en el campo con **su tipo** (texto, número, fecha o sí/no), no como texto suelto.
+- Los documentos que **no** tengan el disparador de línea cableado —hoy ninguno de los
+  once— pueden tener la regla creada sin que la línea se llene; un gate del repositorio
+  impide que vuelva a pasar.
 
 ---
 

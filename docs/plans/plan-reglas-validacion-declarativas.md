@@ -1,17 +1,24 @@
 # Plan: personalización declarativa por el usuario — validaciones y relleno automático (P5)
 
-> **Estado: CERRADO el 2026-11-05 (T552 → T567).** Los **dos motores** están implementados,
-> probados y en `main`, y las **dos pantallas** permiten al cliente crear, probar y
-> desactivar sus reglas **sin desarrollo**:
+> **Estado: CERRADO el 2026-11-05 (T552 → T567); ampliado y cerrado del todo el 2026-11-06
+> (T568 → T591).** Los **dos motores** están implementados, probados y en `main`, y las **dos
+> pantallas** permiten al cliente crear, probar y desactivar sus reglas **sin desarrollo**:
 >
 > | | Validar | Rellenar |
 > |---|---|---|
 > | Motor | ✅ DSL + registro cerrado + **2 funciones de contexto** (`stock.available`, `partner.balance`) | ✅ fuentes con lista blanca, 6 disparadores, 3 políticas |
-> | Pantalla | ✅ constructor + **preview** + funciones | ✅ formulario |
-> | Al **guardar** | ✅ **11 puertas** manuales | ✅ 2 documentos por API (la compra también en líneas, en lote) |
+> | Pantalla | ✅ constructor + **preview** + funciones | ✅ formulario + **preview** (T584) |
+> | Al **guardar** | ✅ **13 puertas** (11 altas manuales + 2 de copia) | ✅ **14 puertas**: 12 altas manuales + 2 de copia, **cabecera y línea** (T582, T583, T586) |
 > | Al **confirmar** | ✅ 4 documentos | — |
-> | En el **formulario** | — | ✅ **11 pantallas** (medido) |
+> | En el **formulario** | — | ✅ **11 pantallas**, con disparador de línea (gate en `audit:ci`, T590) |
+> | Campos personalizados | ✅ como campo y como origen | ✅ **como destino y como disparador**, con **su tipo** (T587, T589) |
 > | Documentos | **12** | **12** |
+>
+> **Lo que cambió después del cierre inicial** (cada uno con su medición en `AUDIT.md`): el
+> relleno por API llegó a todas las puertas y perdió su límite de «un filtro» (T582, T586,
+> T588); los UDF dejaron de ser una promesa sin motor (T587, T589); el relleno tiene preview
+> (T584); la cotización y la factura de venta cablearon su disparador de línea (T585, T590); y
+> el bloqueo **salvo permiso** dejó de bloquear a todo el mundo (T591).
 >
 > La **guía de usuario** (lo que se entrega al cliente) está en
 > [`docs/reference/REGLAS_Y_RELLENO.md`](../reference/REGLAS_Y_RELLENO.md); lo pendiente,
