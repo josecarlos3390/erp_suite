@@ -70,6 +70,43 @@ del artículo no inventariable **no necesita código**. La línea de cuenta se j
 hace falta **una cuenta distinta por línea del mismo documento** sin crear un artículo por
 cuenta.
 
+## 2c. MEDIDO (2026-11-07): hacer `itemId` opcional en las cuatro tablas cuesta 644 sitios
+
+Aplicada la migración de las **cuatro** tablas (cotización y pedido, venta y compra) y
+regenerado el cliente, `tsc` devuelve **644 errores en 11 ficheros**:
+
+| Fichero | Errores |
+|---|---|
+| sales-orders | 135 |
+| delivery-orders | 133 |
+| sale-reserve-invoices | 93 |
+| sale-invoices | 73 |
+| purchase-orders | 71 |
+| purchase-receipts | 67 |
+| purchase-invoices | 43 |
+| sales-quotations | 12 |
+| purchase-quotations | 8 |
+| document-flow | 2 |
+| storefront | 1 |
+
+Son dos decisiones (saltar la línea o exigir artículo) repetidas en once servicios, no 644
+problemas distintos: los ayudantes de §3 las escriben una vez. Aun así, es un **proyecto de
+varios commits**, no un incremento de una tarde, y por eso la migración se revirtió (el árbol
+queda en **0** errores).
+
+### Las dos vías para tener el documento de servicio en cotizaciones y pedidos
+
+| | **(A) Modelo correcto** | **(B) Artículo centinela** |
+|---|---|---|
+| Qué se guarda | `itemId` nulo + `acctCode` | un artículo centinela (no inventariable) + `acctCode` |
+| Coste | **644 sitios** en 11 ficheros, varios commits | **~10 sitios**: validadores, guardas de flujo y UI |
+| Verdad del dato | el documento dice «no hay artículo» | el dato dice que hay un artículo que **no** es el del usuario |
+| Riesgo | alto mientras dura el refactor | bajo, pero hay un maestro oculto que mantener |
+| Migración futura | — | se puede pasar a (A) cuando se haga el refactor |
+
+**Decisión pendiente del usuario.** (A) si el modelo de datos tiene que decir la verdad; (B)
+si hace falta el documento de servicio esta semana sin tocar once servicios.
+
 ## 3. Las dos decisiones (y por eso hay ayudantes)
 
 Los 318 errores **no son 318 decisiones**: son dos, y viven en
