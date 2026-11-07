@@ -107,6 +107,50 @@ queda en **0** errores).
 **Decisión pendiente del usuario.** (A) si el modelo de datos tiene que decir la verdad; (B)
 si hace falta el documento de servicio esta semana sin tocar once servicios.
 
+## 6. Receta para replicar el documento de servicio (medida en la cotización de venta)
+
+La cotización de venta quedó **probada por API**: `POST /sales-quotations` con
+`{acctCode, description, quantity, price}` y sin `itemId` devuelve **201** con `itemId: null`.
+Estos son los **siete** sitios que hubo que abrir, en el orden en que se descubrieron; los cuatro
+primeros son de backend y los tres últimos de pantalla.
+
+### 6.1 Backend (por documento)
+
+| # | Sitio | Qué se hace |
+|---|---|---|
+| 1 | `dto/create-<doc>.dto.ts` | `itemId` opcional con `@ValidateIf(acctCode == null)`, `@RequireOneOf(['itemId','acctCode'])`, y campos `acctCode` + `description` |
+| 2 | `dto/update-<doc>.dto.ts` | lo mismo que el alta |
+| 3 | el **guard** del servicio | si prohibía la línea sin artículo, se cambia a «prohibir solo la línea **vacía**» (sin artículo **y** sin cuenta) |
+| 4 | el **cálculo por línea** | `items.find` solo si `itemId != null`; el precio sale del payload; sin `getAvgCost`, sin peso, sin lote/serie; `itemId` nulo en el retorno |
+| 5 | Prisma `in:` | `catalogItemIds` y las combinaciones artículo-almacén se filtran con `lineasDeArticuloConId` (un `null` en `in:` es un **500**) |
+
+### 6.2 Pantalla (por formulario)
+
+| # | Sitio | Qué se hace |
+|---|---|---|
+| 6 | el `.ts` | `lineMode` + `setLineMode` **con la regla de T597** (se niega a mezclar), `AccountsService`, controles `acctCode`/`isAccountLine` en la línea, y el payload con `acctCode` + `itemId: null` |
+| 7 | el `.html` | el selector **Artículos / Cuentas de servicio** encima de las líneas y la celda `app-account-selector` en el `@case ('item')` |
+| 8 | el `.scss` | los bloques `.line-mode-switch` / `.line-mode-option` (copiados de la factura) |
+
+### 6.3 Lo que falta, con su estado
+
+| Documento | Backend | Pantalla |
+|---|---|---|
+| Cotización de venta | **hecho y probado** | **hecha** |
+| Pedido de venta | falta (DTO + cálculo + guard de la copia) | falta |
+| Cotización de compra | falta | falta |
+| Pedido de compra | falta | falta |
+| Factura de compra · nota de crédito | **ya admitía cuentas** | **ya tiene el selector** (T597) |
+| Entrega · recepción | **saltan** la línea de cuenta (T598, rebanadas 3 y 9) | — |
+
+### 6.4 La trampa medida, para no repetirla
+
+Aplicar los ayudantes con un reemplazo **global** funciona en los documentos que **no** admiten
+cuentas (cotizaciones, pedidos, entregas, recepciones: cerraron nueve ficheros), y **rompe** los que
+**sí** las admiten: en `purchase-invoices` el reemplazo tocó `line` —la línea **propia**, que es la
+que puede ser de cuenta— y tumbó cuatro specs. En esos documentos se va **bloque a bloque**, y solo
+sobre las líneas de **origen** (`qi`, `oi`, `qItem`, `quotationItem`).
+
 ## 3. Las dos decisiones (y por eso hay ayudantes)
 
 Los 318 errores **no son 318 decisiones**: son dos, y viven en
