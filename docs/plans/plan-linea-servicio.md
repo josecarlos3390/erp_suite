@@ -134,14 +134,26 @@ primeros son de backend y los tres últimos de pantalla.
 
 ### 6.3 Lo que falta, con su estado
 
+**Actualizado el 2026-11-08**: las tres «falta» se pagaron (T599, T600, T601) y después se cerró la
+facturación desde el origen (T605), que era el último eslabón roto.
+
 | Documento | Backend | Pantalla |
 |---|---|---|
-| Cotización de venta | **hecho y probado** | **hecha** |
-| Pedido de venta | falta (DTO + cálculo + guard de la copia) | falta |
-| Cotización de compra | falta | falta |
-| Pedido de compra | falta | falta |
+| Cotización de venta | **hecho y probado** (T598) | **hecha** (T599: el modo cuenta llega a la pestaña Detalle y el precio se habilita) |
+| Pedido de venta | **hecho y probado** (T599) | **hecha** (T599) |
+| Cotización de compra | **hecho y probado** (T600) | **hecha** (T600) |
+| Pedido de compra | **hecho y probado** (T601) | **hecha** (T601) |
 | Factura de compra · nota de crédito | **ya admitía cuentas** | **ya tiene el selector** (T597) |
-| Entrega · recepción | **saltan** la línea de cuenta (T598, rebanadas 3 y 9) | — |
+| Entrega · recepción | **saltan** la línea de cuenta (T598, rebanadas 3 y 9) | **ya no se ofrecen** cuando el documento es de puro servicio (T605) |
+| **Facturar desde el origen** (pedido y cotización, venta y compra) | **hecho y probado** (T605) | la pantalla ya armaba el payload con `acctCode` |
+| **Cuenta imputable** (no agrupadora) | **exigida en las cuatro puertas y al editar** (T603) | el selector solo ofrece imputables (`filtrarImputables`, T603) |
+
+**Lo que sigue abierto, declarado**: las puertas **consolidadas** (`from-multi-order`,
+`from-multi-quotation`, `from-multi-delivery`, `from-multi-receipt`) siguen exigiendo artículo —su
+borrador declara `itemId: number`—; la **reserva de compra** desde el pedido es otro módulo y no se
+tocó; y la factura de compra desde cotización nace como **FRC** y no generó asiento (pregunta abierta,
+ver `AUDIT.md` T605).
+
 
 ### 6.4 La trampa medida, para no repetirla
 

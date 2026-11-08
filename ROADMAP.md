@@ -518,3 +518,29 @@ referencia `docs/reference/PRODUCCION_ERP_COMPARATIVA.md`); **G4 quedó cerrado 
 | **Mocks `any` en specs backend** (producción ya en 0, T40) | BACKEND_GUIDE §2 | ✅ Resuelto (2026-09-09, T47): 0 `any` en `src/**/*.spec.ts` (50 specs / 234 tokens migrados a mocks tipados) con gate eslint `no-explicit-any: 'error'` activo; suite 161/1719 en verde. Ver AUDIT T47 |
 | **Budget POS** (35.35 kB) | plan-gaps D5 | ✅ Resuelto (2026-09-09, T42): `anyComponentStyle` `maximumWarning` 35→36 kB; recorte de CSS opcional a futuro |
 | **Devoluciones `min(1)`** | plan-builder NC/retornos | ✅ Resuelto (2026-09-09, T42): `quantityMin` parametrizado y unificado a 0.001 |
+
+## Documento de servicio (línea de cuenta contable) ✅ (2026-11-08)
+
+El «documento de servicios» de SAP B1 —la línea **sin artículo** que se imputa a una cuenta
+contable— funciona hoy en los tres documentos que faltaban y en la facturación desde el origen.
+
+| Pieza | Estado | Medición |
+|---|---|---|
+| Cotización de venta, pedido de venta, cotización de compra, pedido de compra | ✅ T599 / T600 / T601 | alta con `acctCode` + `itemId: null`, relectura, y copia cotización → pedido **201** con la cuenta conservada |
+| Pantalla: selector «Artículos / Cuentas de servicio» | ✅ T599–T601, T603 | el modo cuenta llega a la pestaña **Detalle**, habilita el precio y el selector **solo ofrece cuentas imputables** (`filtrarImputables`) |
+| Cuenta **imputable** (no agrupadora) | ✅ T603 | agrupadora ⇒ **400** en las cuatro puertas y al editar; imputable ⇒ **201** (8/8) |
+| **Facturar desde el origen** (pedido y cotización, venta y compra) | ✅ T605 | factura de venta desde cotización **201** + asiento con la cuenta; factura de compra desde pedido **201** + asiento con la cuenta (6/6) |
+| Entrega / recepción de un documento de puro servicio | ✅ por diseño | el motor las rechaza («no tiene artículos pendientes» / «al menos un artículo») y la pantalla **ya no las ofrece** (T605) |
+| Edición de un documento de servicio | ✅ T603 | `sales-quotations.update` rechazaba toda edición de servicio; ahora **200** con el total recalculado |
+| `openQty` / `orderedQty` y saldo publicado | ✅ verificado T606 | pedido parcial 2 de 5 ⇒ `availableQty=3` coherente |
+
+**Abierto y declarado** (no cerrado):
+
+- Las puertas **consolidadas** (`from-multi-order`, `from-multi-quotation`, `from-multi-delivery`,
+  `from-multi-receipt`) siguen exigiendo artículo: su borrador declara `itemId: number`.
+- La **reserva de compra** desde el pedido (`purchase-reserve-invoices`) es otro módulo y no se adaptó.
+- La factura de compra **desde cotización** nace como **FRC** y **no generó asiento**, mientras la de
+  venta (también F. Reserva) sí: es una **pregunta abierta**, no un defecto cerrado.
+
+Detalle completo, con cada medición y sus límites: `AUDIT.md` T598–T606 y
+`docs/plans/plan-linea-servicio.md` §6.3.
