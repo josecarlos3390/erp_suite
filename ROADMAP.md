@@ -539,8 +539,7 @@ contable— funciona hoy en los tres documentos que faltaban y en la facturació
 - Las puertas **consolidadas** (`from-multi-order`, `from-multi-quotation`, `from-multi-delivery`,
   `from-multi-receipt`) siguen exigiendo artículo: su borrador declara `itemId: number`.
 - La **reserva de compra** desde el pedido (`purchase-reserve-invoices`) es otro módulo y no se adaptó.
-- La factura de compra **desde cotización** nace como **FRC** y **no generó asiento**, mientras la de
-  venta (también F. Reserva) sí: es una **pregunta abierta**, no un defecto cerrado.
+- La factura de compra **desde cotización** nace como **FRC** y **sí asienta**: el asiento se registra con tipo PURCHASE_RESERVE_INVOICE (medido con artículo, con servicio en FPI y con servicio en FRC: los tres asientan).
 
 Detalle completo, con cada medición y sus límites: `AUDIT.md` T598–T606 y
 `docs/plans/plan-linea-servicio.md` §6.3.

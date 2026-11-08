@@ -150,9 +150,14 @@ facturación desde el origen (T605), que era el último eslabón roto.
 
 **Lo que sigue abierto, declarado**: las puertas **consolidadas** (`from-multi-order`,
 `from-multi-quotation`, `from-multi-delivery`, `from-multi-receipt`) siguen exigiendo artículo —su
-borrador declara `itemId: number`—; la **reserva de compra** desde el pedido es otro módulo y no se
-tocó; y la factura de compra desde cotización nace como **FRC** y no generó asiento (pregunta abierta,
-ver `AUDIT.md` T605).
+borrador declara `itemId: number`—, y la **reserva de compra** desde el pedido
+(`purchase-reserve-invoices`) es otro módulo y no se tocó.
+
+**Y una pregunta que quedó cerrada**: la factura de compra desde cotización nace como **FRC** y **sí
+asienta**; el asiento se registra con `sourceDocumentType = PURCHASE_RESERVE_INVOICE`, no
+`PURCHASE_INVOICE`. Medido con artículo (FRC-3), con servicio en FPI (FCP-2) y con servicio en FRC
+(FRC-4): **los tres asientan**. El diagnóstico anterior (que no asentaba) era del instrumento, y queda
+escrito al lado en `AUDIT.md` T605.
 
 
 ### 6.4 La trampa medida, para no repetirla
