@@ -381,7 +381,7 @@
         "patron": ":(\\d+)\\s*$",
         "flags": "m"
       },
-      "valorEsperado": 12,
+      "valorEsperado": 15,
       "muestra": "src/common/code-generator.ts:{v}",
       "nota": "Directivas ESCRITAS A MANO en `src/` (el generado de Prisma vive en `src/generated/`, esta gitignored y no lo ve `git grep`). La suma es obligatoria: el comando publica una linea por FICHERO (4 + 4 + 4), y un extractor de un solo valor daria 4. La prosa que MENCIONA la directiva (`src/common/request-correlation-test.util.ts`, dentro de un comentario) no casa: el patron exige `eslint-disable-next-line|line`."
     },
@@ -399,7 +399,7 @@
         "patron": ":(\\d+)\\s*$",
         "flags": "m"
       },
-      "valorEsperado": 8,
+      "valorEsperado": 11,
       "muestra": "src/reports/reports.service.ts:{v}",
       "nota": "La mitad con regla nombrada del total: 8 (`code-generator.ts` x4 + `reports.service.ts` x4)."
     },

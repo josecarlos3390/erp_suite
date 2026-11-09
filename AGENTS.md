@@ -1,4 +1,4 @@
-﻿# AGENTS.md — erp_suite
+# AGENTS.md — erp_suite
 
 > **Instrucciones VIVAS del monorepo.** Aquí está solo lo que un agente necesita para trabajar:
 > protocolo de lectura, convenciones, **gates y cómo se corren**, reglas de proceso y despliegue.
@@ -131,7 +131,7 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   (ShortName) se denormaliza (Anexo B).
 - **E2E:** los maestros se resuelven **por código, nunca por posición**.
 - **`0`** `@ts-ignore` / **`--no-verify`**; `eslint-disable` **sólo con la regla nombrada** —y ese
-  calificativo alcanza a las **12** escritas a mano **en `src/`**, **no** a las **210** de
+  calificativo alcanza a las **15** escritas a mano **en `src/`**, **no** a las **210** de
   `src/generated/`, que son `/* eslint-disable */` en bloque, sin regla nombrada, y viven **fuera del
   lint**— y `--force` **sólo** en `prisma migrate reset --force` (ver *Reglas de proceso*).
 
@@ -451,7 +451,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
 
 ### Trabajo y commits
 
-- **Nunca `--no-verify`** (ni `--force`, `@ts-ignore`, `eslint-disable`, `xit`): **el hook se arregla, no se salta**; `--no-verify` y `--force` son **comandos** y **no se gatean** (esa mitad es prosa). Gate del resto: `npm run audit:suppressions:check` —0 `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck`, 0 `eslint-disable` sin regla, 0 `xit`, y **12** directivas con regla en `src/` (8 `local/no-raw-without-tenant` + 4 `@typescript-eslint/no-require-imports`) más las de `scripts/`/`perf/`, congeladas con su mapa—. [Texto completo](docs/guides/reglas-medidas.md#nunca-no-verify).
+- **Nunca `--no-verify`** (ni `--force`, `@ts-ignore`, `eslint-disable`, `xit`): **el hook se arregla, no se salta**; `--no-verify` y `--force` son **comandos** y **no se gatean** (esa mitad es prosa). Gate del resto: `npm run audit:suppressions:check` —0 `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck`, 0 `eslint-disable` sin regla, 0 `xit`, y **15** directivas con regla en `src/` (11 `local/no-raw-without-tenant` + 4 `@typescript-eslint/no-require-imports`) más las de `scripts/`/`perf/`, congeladas con su mapa—. [Texto completo](docs/guides/reglas-medidas.md#nunca-no-verify).
 - **Cero `!` nuevos** (gate: `npm run audit:non-null:check` en las **tres** puertas —CI, `pre-push` y `ci-local.mjs`—; cifra **congelada en 1106**: `expresión!` 459 + `x!: T` 647; 753 en producción, 353 en specs): la deuda está **CONGELADA en su suelo MEDIDO** (los **11** de riesgo de T307 se pagaron el 2026-10-22) y el ratchet falla si sube. [Texto completo](docs/guides/reglas-medidas.md#cero-no-nulos).
 - **Nunca reescribir un commit ya empujado**: sin `push --force`/`--force-with-lease` sobre ramas
   compartidas y sin `amend`/`rebase` de historia publicada. Si algo salió mal, se **añade** un commit
