@@ -19,17 +19,33 @@
 
 ## 2. Lo que **no** se pudo, y es lo que hay que arreglar
 
-### P1 · El documento de un usuario de una sucursal nueva nace en la sucursal **1** (bloqueante)
+### P1 · El documento de un usuario de una sucursal nueva nace en la sucursal 1 — **CORREGIDO: no era del producto**
 
-**Medido**: el usuario se crea con `defaultBranchId = 41` (comprobado por API) y, al facturar por
-pantalla con **ese** usuario, la factura sale con `branchId = 1`. El formulario siembra el control
-con `auth.user.defaultBranchId` (`document-form.base.ts:1534`), así que lo que está mal es **la
-sesión**: el chip de la cabecera muestra `SUC-01` para un usuario de otra sucursal.
+**Diagnóstico inicial (T620, conservado por regla)**: el usuario se crea con `defaultBranchId = 41`
+y, al facturar, la factura salía con `branchId = 1`; se atribuyó al formulario.
 
-**Qué propongo**: que la sesión resuelva la sucursal **del usuario** (y que el chip la muestre), y
-que el formulario **no** pueda sembrar una sucursal distinta de la del usuario sin un cambio
-explícito. Criterio de aceptación: un usuario de la sucursal X factura por pantalla y la factura
-nace en X; el caso de Playwright (paso 4) en verde.
+**Corrección medida (T621)**: el `sessionStorage` del navegador tenía el usuario **admin** aunque
+el `POST /auth/login` devolvía el usuario nuevo: el `newContext()` del arnés **hereda las cookies**
+de la sesión de administración que deja `test.use({ storageState })`, y el refresco del arranque
+volvía a autenticar como admin. Con un contexto **limpio** (`storageState: { cookies: [], origins: [] }`)
+el formulario muestra la sucursal del usuario. El parche que se había escrito en la factura se
+**revirtió**: el A/B sin él da el mismo resultado.
+
+**Lo que sí queda (P2-bis, nuevo)**: ver P2-bis.
+
+### P2-bis · El alta de un almacén **no habilita los artículos** en su matriz (bloqueante real)
+
+**Medido**: al facturar en el almacén de la sucursal nueva, `POST /stock-entries/manual` responde
+**400** «El artículo "Aceite Sintético 5W-30 4L" no está habilitado para operar en el almacén …
+Active la asignación en la matriz de almacenes del artículo», aunque el servicio de almacenes
+**intenta** sembrar la matriz (`createMany` de `itemWarehouseAccount`). Sin esa fila el almacén
+recién creado no puede moverse: la sucursal queda dada de alta y **no opera**.
+
+**Qué propongo**: que el alta del almacén deje la matriz completa para los artículos
+inventariables activos (y un caso E2E que lo pruebe con una entrada de stock), o que la pantalla de
+almacenes lo avise y enlace a la matriz del artículo. Criterio: crear sucursal + almacén y poder
+facturar en él **sin tocar nada más**.
+
 
 ### P2 · `batch-upsert` de la matriz de almacenes **no es idempotente** (defecto)
 
@@ -71,8 +87,8 @@ el aviso lleva a la acción, no solo la explica.
 
 ## 3. Orden propuesto
 
-1. **P1** — sin esto, el modelo «varias sucursales» no funciona para quien factura, y es lo que
-   deja el caso de Playwright en rojo.
+1. **P2-bis** — sin la matriz del almacén, la sucursal se crea y no opera: es lo que deja el caso
+   de Playwright en rojo.
 2. **P2** — un 500 en un alta es un defecto de contrato.
 3. **P3** y **P4** — baratos y de alto valor percibido (el cupo y la lectura contable por sucursal).
 4. **P5** — el asistente, cuando 1–4 estén en verde: es el que convierte cuatro pantallas en un
