@@ -51,6 +51,8 @@ erp-frontend/playwright/.cache/
 *.bak
 *.pdf
 *.png
+# T618 — las capturas que cita el comparativo SI se versionan (acotadas a su carpeta).
+!docs/reference/img/*.png
 *.zip
 *.dump
 *.html

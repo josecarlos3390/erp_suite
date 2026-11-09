@@ -176,7 +176,48 @@ Resultado medido, **cruzando los dos tenants**:
 punto que son de almacén y con una contabilidad que depende de la captura; con **tres**
 sucursales se compra **separación real** y se paga con **una persona y un setup por sucursal**.
 
-## 6. Qué se arregló para poder medir esto
+## 6. Verificado **por pantalla**, como lo haría el usuario
+
+Los dos circuitos se recorren también con **Playwright** (`erp-frontend/e2e/circuito-sucursales-ui.spec.ts`,
+**2 casos, 8-12 min**), y lo que se afirma son los **números que muestra el informe**, no la respuesta del API.
+
+**Circuito A** — las tres facturas se cargan **por el formulario** (`/sale-invoices/new?manual=1`), una por
+almacén, con su **centro de costo en la línea**; después se abre *Reportes → Ventas*, se elige
+**Agrupar por: Almacén (tienda)** y se genera:
+
+![Informe de ventas por almacén (tienda)](img/circuito-a-informe-por-almacen.png)
+
+Las tres filas son las tres tiendas, cada una con **su** neto (303,63 · 607,26 · 910,89), una factura
+por fila, la fila «Totales» con 1.821,78 y el gráfico con las tres barras. Nada se mezcla.
+
+**Circuito B** — una factura la emite el **usuario de otra sucursal** y el mismo informe se agrupa por
+**Sucursal**: la sucursal nueva aparece con su importe y **SUC-01 acumula exactamente las tres ventas del
+Circuito A** (1.821,78), que es el `groupBy=branch` leído en pantalla:
+
+![Informe de ventas por sucursal](img/circuito-b-informe-por-sucursal.png)
+
+### Lo que el circuito por pantalla destapó (y se corrigió)
+
+| Hallazgo | Medido |
+|---|---|
+| La columna del **centro de costo nacía oculta** en la factura (`hidden: true`) | se podía facturar sin ver el campo → ahora se muestra cuando la empresa tiene el eje con centros |
+| El **almacén de la línea** no se hereda del selector de cabecera | el informe agrupa por la **línea**: el caso lo fija en la fila y lo verifica contra la factura creada |
+| El pie **«Totales» es un `tr` más** dentro del `tbody` del informe | contarlo daba una fila de más (4 en vez de 3) |
+| La celda de la primera columna **no pintaba la etiqueta** calculada | `luna-data-table` pinta `row[label]`: se dejó la etiqueta **en la fila** (`SalesReportRow.label`) |
+
+### Límites del arnés (medidos, no esquivados)
+
+- **5 almacenes activos** por plan (`SHARED`): con los 4 del seed + el del tenant comercial del
+  `globalSetup`, crear el almacén de una sucursal nueva responde **403** con el texto del cupo, y
+  `PATCH /warehouses/:id` **no** acepta `isActive` (400), así que no se puede liberar cupo por API. El
+  circuito B se hace entonces con las **dos sucursales que ya tienen almacén**; el modelo de **tres
+  sucursales con su almacén** está probado en `backend-erp/test/sucursales-circuito-b.e2e-spec.ts`.
+- **5 intentos de login/min por IP**: la corrida gasta dos (`auth.setup` + cliente de API) y admite **un
+  usuario nuevo**; con dos, el tercer login da **429**.
+- **El precio del seed es con IVA incluido** (2 × 100 → total 200, subtotal 174): el caso afirma el
+  **total** y compara el informe con el `subtotal` de la factura.
+
+## 7. Qué se arregló para poder medir esto
 
 - **T614** — los informes no filtraban por sucursal ni por almacén: se añadieron
   `branchId`/`warehouseId` y los agrupadores `branch`/`warehouse` al informe de ventas, y
