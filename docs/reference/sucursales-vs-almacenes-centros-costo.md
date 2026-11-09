@@ -38,6 +38,35 @@
 | Punto 3 | ALM-S · CC-SUR · 1 × 100 = **100** | SUC-03 · 1 × 250 = **250** |
 | **Total** | **600** | **950** |
 
+## 1-bis. **Los dos modelos son equivalentes** (la prueba que importa)
+
+La pregunta de fondo no es cuál informa mejor, sino si **el resultado contable es el mismo** por
+cualquiera de los dos caminos. Se probó con los **mismos hechos** en dos tenants distintos
+(`test/sucursales-equivalencia.e2e-spec.ts`, **4 casos**):
+
+| Hecho idéntico en los dos modelos | Valor |
+|---|---|
+| Ventas | (2 × 100) + (3 × 100) + (1 × 250) = **750** neto |
+| Costo unitario | **10** (entradas de 50 unidades por almacén) |
+| IVA | **13 %** → CxC de **847,50** |
+| Artículo, cliente y cuentas | los mismos |
+
+Resultado medido, **cruzando los dos tenants**:
+
+| Comparación | Resultado |
+|---|---|
+| **Balance de comprobación cuenta por cuenta** (mapa completo `código → debe/haber`) | **idéntico** |
+| **Ingresos** (cuenta de ingreso del artículo) | **750 en los dos** |
+| **Costo de venta** (cuenta de costo del artículo) | **60 en los dos** |
+| **Cuenta por cobrar** (saldo del cliente) | **847,50 en los dos** |
+| **Inventario final** (unidades y valor) | **idéntico**: entran 150 a 10 y salen 6 → 144 unidades y 1.440 de valor |
+| **Estado de resultados** (informe) | **el mismo** en los dos |
+
+> **Conclusión de la equivalencia**: el modelo **no cambia el resultado**; cambia **dónde se
+> lee**. Con B la separación es estructural (`branchId`); con A es analítica (`dimension1`). Lo
+> que sí cambia es **cuánto hay que configurar y capturar** para poder leerlo, y eso es lo que
+> comparan las secciones siguientes.
+
 ## 2. Lo que cada circuito **puede** informar (medido)
 
 | Informe | Circuito A | Circuito B |
