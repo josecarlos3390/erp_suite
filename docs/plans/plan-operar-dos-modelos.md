@@ -96,12 +96,15 @@ el usuario puede dejar la mitad hecha. **Qué propongo**: un flujo en el Centro 
 resueltas, y que al final ofrezca «entrar como este usuario» para probar. Criterio: una sucursal
 operativa (puede facturar) en un solo recorrido.
 
-### P6 · El 403 de «otra sucursal» en documentos necesita una salida en la UI
+### P6 · El 403 de «otra sucursal» en documentos necesita una salida en la UI — **CERRADO (T625)**
 
-**Medido**: el mensaje ya es claro («pide la operación a un usuario de esa sucursal») y el
-interceptor lo muestra tal cual. Pero no ofrece **cambiar de sucursal**. **Qué propongo**: en el
-403, un botón que cambie la sucursal activa (el chip) cuando el usuario tenga más de una. Criterio:
-el aviso lleva a la acción, no solo la explica.
+**Medido**: el mensaje ya era claro («pide la operación a un usuario de esa sucursal») y el
+interceptor lo mostraba tal cual, pero no ofrecía salida.
+
+**Hecho (T625)**: ante **ese** 403, el formulario devuelve la sucursal a la del usuario (y el
+almacén dentro de ella) con un aviso que dice lo que pasó; cualquier otro error sigue igual y sin
+sucursal (SUPERADMIN) no se inventa nada. La regla no se relajó: el documento sigue siendo de la
+sucursal del usuario. Tres casos de Karma lo fijan.
 
 ## 3. Orden propuesto
 
