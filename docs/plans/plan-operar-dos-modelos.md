@@ -68,13 +68,15 @@ se puede quedar por encima del cupo sin una decisión explícita.
 actualice la fila existente (o que el endpoint se llame `batch-create` y no prometa lo que no
 hace). Criterio: dos llamadas seguidas con el mismo payload ⇒ 200/201 la segunda, sin 500.
 
-### P3 · El cupo del plan no se ve hasta que falla
+### P3 · El cupo del plan no se ve hasta que falla — **CERRADO (T624)**
 
 **Medido**: `SHARED` permite **5 almacenes activos**; al quinto ocupado, `POST /warehouses`
 responde **403** con el texto del cupo. La pantalla de almacenes **no muestra** «5/5» ni sugiere
-desactivar uno. **Qué propongo**: mostrar el consumo (`/billing/usage` ya existe) en la cabecera de
-la lista y, en el 403, un aviso con la acción de desactivar. Criterio: el usuario ve el cupo antes
-de intentar el alta.
+desactivar uno.
+
+**Hecho (T624)**: la lista publica «**Almacenes activos: 5 / 5**» desde `GET /billing/limits` y,
+con el cupo completo, dice qué hacer («Desactiva uno de la lista para poder crear otro»); sin
+límite no inventa una cifra. Tres casos de Karma y una aserción del caso por pantalla lo fijan.
 
 ### P4 · Los informes contables por sucursal no se ofrecen en la pantalla — **CERRADO (T623)**
 
