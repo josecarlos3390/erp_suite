@@ -79,9 +79,12 @@ de intentar el alta.
 ### P4 · Los informes contables por sucursal no se ofrecen en la pantalla — **CERRADO (T623)**
 
 **Medido**: el API filtra `trial-balance`, `income-statement`, `journal`, `general-ledger` y
-`cost-centers` por `branchId` (T614), pero sus pantallas **no tienen el selector**. **Qué
-propongo**: el mismo selector de sucursal de la cabecera en esas cinco pantallas, con «todas» por
-defecto. Criterio: el balance de una sucursal se lee en pantalla y coincide con el del API.
+`cost-centers` por `branchId` (T614), pero sus pantallas **no tenían el selector**.
+
+**Hecho (T623)**: el selector **Sucursal** (con «Todas las sucursales» por defecto) está en las
+**cinco** pantallas, y un caso de Karma comprueba que el `branchId` elegido llega al API.
+**Pendiente P4-bis**: el **balance general** (`/reports/balance-sheet`) no filtra en el API —su DTO
+no tiene `branchId`—, así que su pantalla tampoco lo ofrece.
 
 ### P5 · No hay un «asistente de sucursal»
 
