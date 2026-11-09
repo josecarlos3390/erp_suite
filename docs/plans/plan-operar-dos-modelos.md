@@ -76,7 +76,7 @@ desactivar uno. **Qué propongo**: mostrar el consumo (`/billing/usage` ya exist
 la lista y, en el 403, un aviso con la acción de desactivar. Criterio: el usuario ve el cupo antes
 de intentar el alta.
 
-### P4 · Los informes contables por sucursal no se ofrecen en la pantalla
+### P4 · Los informes contables por sucursal no se ofrecen en la pantalla — **CERRADO (T623)**
 
 **Medido**: el API filtra `trial-balance`, `income-statement`, `journal`, `general-ledger` y
 `cost-centers` por `branchId` (T614), pero sus pantallas **no tienen el selector**. **Qué
