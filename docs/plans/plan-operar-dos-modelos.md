@@ -16,6 +16,7 @@
 | **Crear su almacén** eligiendo esa sucursal | ✅ T619 (era **403**; ahora 201) |
 | **Crear su usuario** con sucursal y almacén por defecto | ✅ T619 (leído después por API: quedó guardado) |
 | Renombrar/desactivar un almacén (`status: INACTIVE`) | ✅ la lista ya lo tiene (y el backend lo impide sobre el predeterminado) |
+| **Facturar con ese usuario en su sucursal** (almacén ya sembrado) y **leer el informe por sucursal** | ✅ T622 — el caso por pantalla va **6/6** |
 
 ## 2. Lo que **no** se pudo, y es lo que hay que arreglar
 
@@ -33,18 +34,30 @@ el formulario muestra la sucursal del usuario. El parche que se había escrito e
 
 **Lo que sí queda (P2-bis, nuevo)**: ver P2-bis.
 
-### P2-bis · El alta de un almacén **no habilita los artículos** en su matriz (bloqueante real)
+### P2-bis · El alta de un almacén **no habilitaba los artículos** en su matriz — **CERRADO (T622)**
 
-**Medido**: al facturar en el almacén de la sucursal nueva, `POST /stock-entries/manual` responde
-**400** «El artículo "Aceite Sintético 5W-30 4L" no está habilitado para operar en el almacén …
-Active la asignación en la matriz de almacenes del artículo», aunque el servicio de almacenes
-**intenta** sembrar la matriz (`createMany` de `itemWarehouseAccount`). Sin esa fila el almacén
-recién creado no puede moverse: la sucursal queda dada de alta y **no opera**.
+**Medido**: al facturar en el almacén de la sucursal nueva, `POST /stock-entries/manual` respondía
+**400** «El artículo "Aceite Sintético 5W-30 4L" no está habilitado para operar en el almacén …».
+Dos sondas lo fijaron: `POST /warehouses` **sí** sembraba (existencia + matriz), pero
+`POST /branches` —que crea el almacén de la sucursal nueva (T501)— **no**: el artículo tenía filas
+para 4 de 5 almacenes y la del almacén nuevo **no**.
 
-**Qué propongo**: que el alta del almacén deje la matriz completa para los artículos
-inventariables activos (y un caso E2E que lo pruebe con una entrada de stock), o que la pantalla de
-almacenes lo avise y enlace a la matriz del artículo. Criterio: crear sucursal + almacén y poder
-facturar en él **sin tocar nada más**.
+**Arreglo**: un solo motor, `provisionWarehouseForItems` (`src/common/warehouse-provisioning.util.ts`),
+usado por los **dos** caminos; las cuentas de la matriz nacen vacías (T245).
+
+**Verificado**: `test/branch-default-warehouse.e2e-spec.ts` **3/3** — fila **ACTIVA** en la matriz y
+**entrada de stock 201** con un usuario de esa sucursal; y el caso por pantalla **6/6**, con la
+factura creada en `branchId: 13` / `warehouseId: 16` (la sucursal y el almacén del usuario) y el
+informe por sucursal mostrando su importe.
+
+### P3-bis · Crear una sucursal **se salta el cupo del plan** (nuevo, medido)
+
+**Medido**: con la cuota en **5/5**, `POST /branches` creó su almacén y la dejó en **6/5**: el
+chequeo del plan vive en `warehouses.service.create` y el alta de la sucursal crea el suyo por otra
+vía. **Qué propongo**: decidir si la sucursal **cuenta** para el cupo (y entonces validarlo antes de
+crearla, con un mensaje que diga qué hacer) o si no cuenta (y entonces documentarlo). Criterio: no
+se puede quedar por encima del cupo sin una decisión explícita.
+
 
 
 ### P2 · `batch-upsert` de la matriz de almacenes **no es idempotente** (defecto)
@@ -97,6 +110,12 @@ el aviso lleva a la acción, no solo la explica.
 
 ## 4. Lo que queda en rojo hoy
 
-`erp-frontend/e2e/alta-sucursal-ui.spec.ts`: **3 de 5 pasos en verde** (sucursal, almacén y usuario
-creados por pantalla). Los pasos 4 y 5 (facturar con el usuario nuevo y leer el informe) quedan
-**pendientes de P1**; el paso 2 fue el que destapó el 403 que T619 cerró.
+**Nada del alta por pantalla.** `erp-frontend/e2e/alta-sucursal-ui.spec.ts` va **6/6 en 5,5 min**:
+sucursal, almacén y usuario creados por pantalla; el usuario nuevo entra, factura **en su** sucursal
+y almacén (`branchId`/`warehouseId` verificados contra la factura creada) y el informe agrupado por
+sucursal muestra su importe.
+
+![Alta de sucursal por pantalla: informe por sucursal con la sucursal nueva](img/alta-sucursal-informe-por-sucursal.png)
+
+Lo que sigue son los puntos **P3-bis a P6** de arriba (cupo del plan, informes contables por
+sucursal en pantalla, asistente de sucursal y la salida del 403), ninguno bloqueante para operar.
