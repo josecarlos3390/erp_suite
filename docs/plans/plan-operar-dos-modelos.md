@@ -162,7 +162,7 @@ backend que cree el artículo y compruebe (matriz en **cada** almacén + entrada
 cada uno); si falla, sembrar desde el mismo motor de T622. **Prioridad: alta** — significa que un
 artículo nuevo podría no venderse desde otra tienda.
 
-**P15 · T641 — el diálogo «Facturar sin precio» no es alcanzable desde la UI — CERRADO (T646, documentado).** `POST /items` y
+**P15 · T641 — el diálogo «Facturar sin precio» no es alcanzable desde la UI — CERRADO (T646 documentado y, sobre todo, T648: el control ahora hace el trabajo).** `POST /items` y
 `PATCH /items` rechazan el precio 0 de un artículo de venta con inventario, y T638 resuelve el precio:
 el 400 solo llega con datos **importados** (lista de precios a 0). **Propuesta (decisión de
 producto)**: o se permite el 0 en la ficha con una marca «sin precio autorizado», o el diálogo queda
@@ -230,3 +230,28 @@ artículo creado desde la ficha).
 
 Los tres últimos son huecos de **cobertura**, no de producto: se cierran añadiendo sus pasos cuando se
 toque esa pantalla.
+
+### 4.5 · Nuevos pendientes (del 2026-11-10, tras revisar qué se cerró con arreglo y qué solo con cobertura)
+
+**P20 · «Facturar sin precio» era un control INERTE — CERRADO (T648).** El precio de la línea es de
+solo lectura y viene de la lista, así que marcar la casilla no cambiaba ningún importe: viajaba el
+flag y la factura seguía saliendo con su precio. Ahora la marca **pone las líneas a 0** (guardando
+los precios previos) y el desmarcado los devuelve; el paso 7 del caso por pantalla comprueba
+`freeOfCharge`, `price = 0` **y** `total = 0` de la factura guardada. **12/12 en 7,9 min**, Karma
+**3074**. Es el caso que demuestra la regla: **una prueba de que el flag viaja no es una prueba de
+que el usuario pueda hacerlo.**
+
+**P21 · Falta el caso por pantalla de «facturar desde cotización» con línea a 0.** El control es del
+mismo componente (lo comparten manual y desde-documento), así que **está** en esa pantalla; lo que no
+hay es el caso. La ruta del API está cubierta por e2e (T643), así que el hueco es de **cobertura de
+pantalla**, no de producto. **Prioridad: media.**
+
+**P22 · El diálogo del 400 sigue sin circuito desde la UI.** Con P20 el usuario ya no lo necesita (la
+casilla hace el trabajo), pero el diálogo seguirá apareciendo si un documento llega con una línea a 0
+desde una **importación**. Probarlo por pantalla exige datos importados en el arnés (una lista de
+precios a 0), que es lo que ya hace el e2e del backend. **Declarado; prioridad baja.**
+
+**P19 · T647 — el artículo creado por el FORMULARIO no se habilita en el almacén (solo en el arnés).**
+Sigue **abierto**: el alta por API deja la matriz completa (T644, 2/2) y la del formulario no; la
+causa no está aislada. **Prioridad media-alta** (podría afectar a cualquier artículo creado desde la
+ficha y a la venta desde otra tienda).
