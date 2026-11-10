@@ -1164,13 +1164,25 @@ mira guardas de test.
 ### Gate
 
 ```
-npm run audit:checkbox-binding            # rojo si una casilla mezcla CVA y (checkedChange)
-npm run audit:checkbox-binding:self-test  # 5 casos: falla cuando debe y calla cuando debe
+npm run audit:checkbox-binding            # R1 (dos canales) + R2 ([checked] de una vía evitable)
+npm run audit:checkbox-binding:self-test  # 8 casos: falla cuando debe y calla cuando debe
 ```
 
-**Límite declarado**: el patrón `[checked]` + `(checkedChange)` (una vía, el padre es la única fuente)
-**no** se marca todavía —hay **22** sitios medidos el 2026-11-10— y su barrido va por lotes, un commit
-por pantalla; mientras tanto, la forma preferida es `[(checked)]`.
+**Las dos reglas del gate, y qué NO marca**
+
+| Regla | Rojo cuando | Verde cuando |
+|---|---|---|
+| **R1** | una casilla lleva `formControlName`/`[formControl]`/`ngModel` **y** `(checkedChange)` | hay un solo canal, o está justificada |
+| **R2** | `[checked]` de una vía sobre un **campo asignable** (`[checked]="soloActivos"`) | es un **valor calculado** (`@let`, `x.has(id)`, `isAllowed(...)`, una comparación) o está justificada |
+
+**Por qué R2 no marca los calculados**: una casilla cuyo estado sale de una función o de un `Set` **no
+puede** ser un banana —no hay propiedad que asignar— y su manejador es el que actualiza el modelo. Hoy
+son **16** sitios, todos legítimos.
+
+**Barrido hecho el 2026-11-10** (T653): de los **22** sitios con `[checked]` de una vía, **4** pasaron a
+`[(checked)]` (conciliación bancaria, informes de producción, factura —el control de «facturar sin
+precio»— y el alta de cobros) y **2** quedaron **justificados** con `checkbox-ok:` (`assigned` es un
+`@let` calculado con `isInvoiceAssigned`). El resto son calculados.
 
 ---
 
