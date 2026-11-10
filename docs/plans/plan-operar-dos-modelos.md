@@ -266,3 +266,5 @@ de precios a 0 en el arnés, que es exactamente lo que hace el e2e del backend.
 Sigue **abierto**: el alta por API deja la matriz completa (T644, 2/2) y la del formulario no; la
 causa no está aislada. **Prioridad media-alta** (podría afectar a cualquier artículo creado desde la
 ficha y a la venta desde otra tienda).
+
+**T649/T652 — la casilla de LUNA perdia un clic — CERRADO (T652).** El componente tenia dos fuentes de verdad (el @Input() checked y el CVA) y la ficha del articulo añadia un tercer escrito con orm.patchValue en el (checkedChange). Ahora _checked es la unica fuente, el input solo se aplica cuando cambia, los tres tipos de la ficha van por alueChanges y hay **gate** (udit:checkbox-binding, 5/5 de autoprueba) dentro de udit:ci; la unica excepcion (el «por defecto» del proveedor) esta justificada con checkbox-ok:. Karma **3079/3079**, caso por pantalla **12/12 en 7,3 min**, udit:ci verde, guia §8-bis.
