@@ -152,7 +152,7 @@ y el formulario la exige); crearla por pantalla cerraría el «sin seed» del to
 
 ### 4.2 · Abierto (con propuesta y criterio)
 
-**P14 · T642 — un artículo creado por pantalla no opera en el almacén del administrador.** Medido: la
+**P14 · T642 — un artículo creado por pantalla no opera en el almacén del administrador — CERRADO (T644, no reproducible).** Medido: la
 entrada de stock del artículo nuevo en «Almacén Principal» respondió **400** «no está habilitado para
 operar en el almacén…», aunque `_autoEnrollItemWarehouses` escribe la fila en todos los almacenes
 ACTIVE al crear el artículo. **La causa no está confirmada** (el arnés restaura `erp_test` y la sonda
@@ -162,7 +162,7 @@ backend que cree el artículo y compruebe (matriz en **cada** almacén + entrada
 cada uno); si falla, sembrar desde el mismo motor de T622. **Prioridad: alta** — significa que un
 artículo nuevo podría no venderse desde otra tienda.
 
-**P15 · T641 — el diálogo «Facturar sin precio» no es alcanzable desde la UI.** `POST /items` y
+**P15 · T641 — el diálogo «Facturar sin precio» no es alcanzable desde la UI — CERRADO (T646, documentado).** `POST /items` y
 `PATCH /items` rechazan el precio 0 de un artículo de venta con inventario, y T638 resuelve el precio:
 el 400 solo llega con datos **importados** (lista de precios a 0). **Propuesta (decisión de
 producto)**: o se permite el 0 en la ficha con una marca «sin precio autorizado», o el diálogo queda
@@ -170,7 +170,7 @@ como red para integraciones y se explica en la ayuda. Mientras tanto la pantalla
 explícito (T639) y el contrato está cubierto por e2e (T641). **Prioridad: media** (es decisión, no
 defecto).
 
-**P16 · La migración T626 solo se ha ejercido en `erp_db`.** Se aplicó con `prisma migrate deploy`
+**P16 · La migración T626 solo se ha ejercido en `erp_db` — CERRADO (T645).** Se aplicó con `prisma migrate deploy`
 (registrada en `_prisma_migrations`, `migrate status` al día), pero **`erp_test` se sincroniza con
 `db push`** en el arnés, así que la migración no se ha ejecutado en la base de test. **Propuesta**:
 que el arnés aplique `migrate deploy` (o un caso que verifique `_prisma_migrations`) y que el CI lo
@@ -181,7 +181,7 @@ haga en un entorno limpio. **Prioridad: media** (riesgo de despliegue, no de pro
 administrador). Se cierra solo cuando se cierre P14; entonces el paso 7 podrá usar el artículo creado
 en 0-b.
 
-**P18 · La regla de precio 0 vive en UNA ruta, no en el motor** — **declarado por inspección,
+**P18 · La regla de precio 0 vive en UNA ruta — CERRADO (T643).** **Antes:** declarado por inspección
 por medir**. `assertSinPrecioCero` y `resolverPreciosFaltantes` se llaman **solo** en
 `createManual`; las seis rutas «desde cotización/pedido/entrega» (y las tres múltiples) **no** las
 ejecutan, y la **factura de reserva** (`sale-reserve-invoices`) tampoco (0 coincidencias medidas con
