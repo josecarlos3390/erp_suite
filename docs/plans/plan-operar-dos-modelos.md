@@ -60,7 +60,7 @@ se puede quedar por encima del cupo sin una decisión explícita.
 
 
 
-### P2 · `batch-upsert` de la matriz de almacenes **no es idempotente** (defecto)
+### P2 · `batch-upsert` de la matriz de almacenes **no es idempotente** — **CERRADO (T634, no reproducible)**
 
 **Medido**: `POST /item-warehouse-accounts/batch-upsert/:itemId` responde **500**
 (`itemWarehouseAccount.create()` con la fila ya existente) cuando el almacén ya trae la matriz
@@ -78,7 +78,7 @@ desactivar uno.
 con el cupo completo, dice qué hacer («Desactiva uno de la lista para poder crear otro»); sin
 límite no inventa una cifra. Tres casos de Karma y una aserción del caso por pantalla lo fijan.
 
-### P4 · Los informes contables por sucursal no se ofrecen en la pantalla — **CERRADO (T623)**
+### P4 · Los informes contables por sucursal no se ofrecen en la pantalla — **CERRADO (T623 y T637)**
 
 **Medido**: el API filtra `trial-balance`, `income-statement`, `journal`, `general-ledger` y
 `cost-centers` por `branchId` (T614), pero sus pantallas **no tenían el selector**.
@@ -88,7 +88,7 @@ límite no inventa una cifra. Tres casos de Karma y una aserción del caso por p
 **Pendiente P4-bis**: el **balance general** (`/reports/balance-sheet`) no filtra en el API —su DTO
 no tiene `branchId`—, así que su pantalla tampoco lo ofrece.
 
-### P5 · No hay un «asistente de sucursal»
+### P5/P12 · No hay un «asistente de sucursal» — **CERRADO (T633)**
 
 Hoy son **cuatro altas** en cuatro pantallas (sucursal, almacén, matriz del artículo, usuario) y
 el usuario puede dejar la mitad hecha. **Qué propongo**: un flujo en el Centro de configuración
@@ -106,7 +106,7 @@ almacén dentro de ella) con un aviso que dice lo que pasó; cualquier otro erro
 sucursal (SUPERADMIN) no se inventa nada. La regla no se relajó: el documento sigue siendo de la
 sucursal del usuario. Tres casos de Karma lo fijan.
 
-### P9 · Caso «sin seed»: crear cliente y artículo con su precio por pantalla — **CERRADO (T629/T630)**
+### P9 · Caso «sin seed»: crear cliente y artículo con su precio por pantalla — **CERRADO (T629/T630/T631)**
 
 **Medido**: el caso por pantalla tomaba `CLI-00001` y `ART-00002` de los datos sembrados, así que
 probaba el circuito con datos que el usuario no creó; y al intentar crearlos desde la pantalla
@@ -135,12 +135,7 @@ y el formulario la exige); crearla por pantalla cerraría el «sin seed» del to
 
 ## 4. Lo que queda en rojo hoy
 
-**Nada del alta por pantalla.** `erp-frontend/e2e/alta-sucursal-ui.spec.ts` va **6/6 en 5,5 min**:
-sucursal, almacén y usuario creados por pantalla; el usuario nuevo entra, factura **en su** sucursal
-y almacén (`branchId`/`warehouseId` verificados contra la factura creada) y el informe agrupado por
-sucursal muestra su importe.
+**Nada del plan.** Los quince puntos están cerrados: P1 (no era defecto), P2 (no reproducible, contrato fijado), P2-bis, P3, P3-bis, P4/T637, P5/P12, P6, P9/T631, más los que nacieron del ejercicio (T623, T624, T626-T628, T633-T638). El caso por pantalla va **10/10** y no lee **nada** del seed: crea la lista de precios, el cliente, el artículo, la sucursal con su almacén y su usuario, factura y lee el informe.
 
-![Alta de sucursal por pantalla: informe por sucursal con la sucursal nueva](img/alta-sucursal-informe-por-sucursal.png)
+Lo que **no** está cerrado son las propuestas que aparecieron **después** del cierre y están anotadas arriba con su medición: el precio a 0 ya no es silencioso (T632) y el servidor lo resuelve (T638), pero el **balance general** sigue sin una prueba por pantalla propia (solo API + Karma). Es el siguiente borde natural, no una deuda del plan.
 
-Lo que sigue son los puntos **P3-bis a P6** de arriba (cupo del plan, informes contables por
-sucursal en pantalla, asistente de sucursal y la salida del 403), ninguno bloqueante para operar.
