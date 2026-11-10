@@ -176,7 +176,7 @@ defecto).
 que el arnés aplique `migrate deploy` (o un caso que verifique `_prisma_migrations`) y que el CI lo
 haga en un entorno limpio. **Prioridad: media** (riesgo de despliegue, no de producto).
 
-**P17 · El caso por pantalla usa un artículo del seed con existencia para el control de precio 0**
+**P17 · El caso por pantalla usa un artículo del seed con existencia — CERRADO por diseño (T647 lo deja declarado).**
 (consecuencia de P14: el artículo creado por pantalla no llega a facturarse en el almacén del
 administrador). Se cierra solo cuando se cierre P14; entonces el paso 7 podrá usar el artículo creado
 en 0-b.
@@ -190,6 +190,15 @@ el grep del repo). Consecuencia: una factura creada **desde** un documento de or
 **Propuesta**: extraer las dos llamadas a un ayudante compartido por **todas** las rutas de venta
 (un solo motor, como el resto del repo) y añadir un caso por familia —al menos «desde cotización»
 con la línea a 0— antes de cerrarlo. **Prioridad: alta** (es el mismo defecto con otra puerta).
+
+**P19 · T647 — el artículo creado por el FORMULARIO no se habilita en el almacén del administrador (solo en el arnés).**
+Medido en dos corridas: el alta por **API** deja la matriz completa (T644, 2/2), pero la del **formulario**
+no, y el artículo es vendible e inventariable (lo afirma el propio caso). **La causa no está aislada**:
+la diferencia está entre los dos payloads y el arnés restaura la base antes de poder sondearla.
+**Propuesta**: una sonda dentro de la corrida que compare `itemWarehouseAccount` antes y después del
+POST del formulario; si el `defaultWarehouseId` del payload dispara un `updateMany`/`deleteMany` de la
+matriz, corregirlo desde el motor de T622. **Prioridad: media-alta** (podría afectar a cualquier
+artículo creado desde la ficha).
 
 ### 4.3 · Declarado (límites del arnés o de la medición, no defectos)
 
