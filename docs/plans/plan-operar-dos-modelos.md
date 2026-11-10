@@ -241,17 +241,28 @@ los precios previos) y el desmarcado los devuelve; el paso 7 del caso por pantal
 **3074**. Es el caso que demuestra la regla: **una prueba de que el flag viaja no es una prueba de
 que el usuario pueda hacerlo.**
 
-**P21 · Falta el caso por pantalla de «facturar desde cotización» con línea a 0.** El control es del
+**P21 · Falta el caso por pantalla de «facturar desde cotización» con línea a 0 — CERRADO (T651).** El control es del
 mismo componente (lo comparten manual y desde-documento), así que **está** en esa pantalla; lo que no
 hay es el caso. La ruta del API está cubierta por e2e (T643), así que el hueco es de **cobertura de
 pantalla**, no de producto. **Prioridad: media.**
 
-**P22 · El diálogo del 400 sigue sin circuito desde la UI.** Con P20 el usuario ya no lo necesita (la
+**P22 · El diálogo del 400 sigue sin circuito desde la UI — CERRADO como límite declarado (T651).** Con P20 el usuario ya no lo necesita (la
 casilla hace el trabajo), pero el diálogo seguirá apareciendo si un documento llega con una línea a 0
 desde una **importación**. Probarlo por pantalla exige datos importados en el arnés (una lista de
 precios a 0), que es lo que ya hace el e2e del backend. **Declarado; prioridad baja.**
 
-**P19 · T647 — el artículo creado por el FORMULARIO no se habilita en el almacén (solo en el arnés).**
+**P21 (T651) — el control está en las cinco puertas.** Medido en la plantilla compartida: el
+bloque de la línea 1118 queda **fuera** de los dos `@if` que podrían esconderlo (cierran en 1116), así
+que aparece igual en el alta manual, desde cotización, desde pedido, desde entrega y desde reserva. El
+**caso por pantalla con una línea a 0** en esa ruta **no se puede escribir**: el precio lo pone la
+lista y la ficha prohíbe el 0 — el 0 solo llega de **datos importados**, y ese camino lo cubre el e2e
+del backend (T641/T643). Se declara.
+
+**P22 (T651) — el diálogo del 400, declarado.** Con T648 el usuario ya no lo necesita; aparecerá si un
+documento llega con una línea a 0 desde una importación. Probarlo por pantalla exige sembrar una lista
+de precios a 0 en el arnés, que es exactamente lo que hace el e2e del backend.
+
+**P19 · T647 — el artículo creado por el FORMULARIO no se habilita en el almacén — CERRADO (T650).**
 Sigue **abierto**: el alta por API deja la matriz completa (T644, 2/2) y la del formulario no; la
 causa no está aislada. **Prioridad media-alta** (podría afectar a cualquier artículo creado desde la
 ficha y a la venta desde otra tienda).
