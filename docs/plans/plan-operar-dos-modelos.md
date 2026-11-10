@@ -106,6 +106,23 @@ almacén dentro de ella) con un aviso que dice lo que pasó; cualquier otro erro
 sucursal (SUPERADMIN) no se inventa nada. La regla no se relajó: el documento sigue siendo de la
 sucursal del usuario. Tres casos de Karma lo fijan.
 
+### P9 · Caso «sin seed»: crear cliente y artículo con su precio por pantalla — **CERRADO (T629/T630)**
+
+**Medido**: el caso por pantalla tomaba `CLI-00001` y `ART-00002` de los datos sembrados, así que
+probaba el circuito con datos que el usuario no creó; y al intentar crearlos desde la pantalla
+aparecieron **dos** defectos: el formulario **no preselecciona** las tres unidades de medida, y el
+alta de artículo respondía **400** porque el formulario manda `iceBasis`/`iceRate`/
+`iceAmountPerUnit` y **ni `CreateItemDto` ni `UpdateItemDto` los declaraban** (las columnas sí
+existen en el modelo) — con `forbidNonWhitelisted`, crear un artículo por pantalla era imposible.
+
+**Hecho**: las tres columnas del ICE entraron en los dos DTO con su validación (T630) y el caso 0-b
+da de alta **cliente** y **artículo** por pantalla (nombre, Venta + Inventario, las tres UoM, lista
+de precios y precio 100) y factura con ellos. **Medido**: `alta-sucursal-ui.spec.ts` **8/8 en
+5,3 min**; backend **4157/4157**, `gate:rapido` **7/7**.
+
+**Pendiente P13**: la **lista de precios** sigue viniendo del tenant (es prerrequisito del artículo
+y el formulario la exige); crearla por pantalla cerraría el «sin seed» del todo.
+
 ## 3. Orden propuesto
 
 1. **P2-bis** — sin la matriz del almacén, la sucursal se crea y no opera: es lo que deja el caso
