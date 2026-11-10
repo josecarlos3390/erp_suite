@@ -50,7 +50,7 @@ usado por los **dos** caminos; las cuentas de la matriz nacen vacías (T245).
 factura creada en `branchId: 13` / `warehouseId: 16` (la sucursal y el almacén del usuario) y el
 informe por sucursal mostrando su importe.
 
-### P3-bis · Crear una sucursal **se salta el cupo del plan** (nuevo, medido)
+### P3-bis · Crear una sucursal **se salta el cupo del plan** — **CERRADO (T626)**
 
 **Medido**: con la cuota en **5/5**, `POST /branches` creó su almacén y la dejó en **6/5**: el
 chequeo del plan vive en `warehouses.service.create` y el alta de la sucursal crea el suyo por otra
