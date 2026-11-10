@@ -268,3 +268,23 @@ causa no está aislada. **Prioridad media-alta** (podría afectar a cualquier ar
 ficha y a la venta desde otra tienda).
 
 **T649/T652 · la casilla de LUNA perdia un clic — CERRADO (T652).** El componente tenia dos fuentes de verdad (`@Input() checked` y el CVA) y la ficha del articulo anadia un tercer escrito con `form.patchValue` dentro del `(checkedChange)`. Ahora `_checked` es la unica fuente, el input solo se aplica cuando cambia, los tres tipos de la ficha van por `valueChanges` y hay **gate** (`audit:checkbox-binding`, autoprueba 5/5) dentro de `audit:ci`; la unica excepcion —el «por defecto» del proveedor preferido, que debe dispararse solo con el usuario— esta justificada con `checkbox-ok:`. Karma **3079/3079**, caso por pantalla **12/12 en 7,3 min**, `audit:ci` verde y guia 8-bis.
+
+### 4.6 · Cierre del 2026-11-10 (segunda tanda)
+
+**P16 · las migraciones se ejercen desde CERO — CERRADO (T655).** `npm run audit:migrations:check`
+crea una base desechable, corre **96 migraciones** desde cero y exige que `migrate diff` contra el
+esquema devuelva **0 sentencias**; su `--self-test` demuestra que el detector **se pone rojo** (y que
+los flags son los de Prisma 7: con los viejos el diff fallaba **en silencio** y el gate publicaba verde
+sin comparar). Límite: necesita Postgres y permiso de crear/borrar bases, así que no está en el
+`pre-push`.
+
+**Informe «entregas sin cargo» — CERRADO (T656).** `GET /reports/free-of-charge` y la pantalla
+`/reports/free-of-charge`: cada línea con documento, cliente, artículo, cantidad, **importe** que se
+dejó de facturar, **costo** de lo entregado, motivo y quién lo autorizó, más totales por motivo y del
+período (con `marginResigned`). El **caso por pantalla sube a 13/13**: la factura sin precio del paso 7
+aparece en el informe con su motivo y su costo. Límite declarado: el filtro por **usuario** está en el
+API y no en la pantalla.
+
+Con esto **no queda nada abierto del plan**: lo único pendiente es la lista de mejoras que no son
+deuda (el filtro por usuario en la pantalla del informe y el barrido de los 16 `[checked]` calculados,
+que son legítimos por diseño).
