@@ -1121,6 +1121,59 @@ Los toggles usan el componente visual definido en `styles/_forms.scss`. **No** i
 
 ---
 
+## 8-bis. `luna-checkbox`: un solo canal por casilla (medido, con gate)
+
+**El defecto que lo motivó** (2026-11-10, T649/T652): la casilla «Venta» de la ficha de artículo se
+«perdía» un clic **una de cada seis corridas** («Clicking the checkbox did not change its state»). La
+casilla tenía **dos canales**: el `ControlValueAccessor` del `formControlName` y el
+`(checkedChange)` del manejador; el manejador volvía a escribir el formulario
+(`form.patchValue({ canBePurchased: true })`), y la segunda pasada de detección de cambios pintaba el
+valor viejo. No lo veía ningún gate: `audit:ui-fields` mira campos imitados y `audit:e2e-conditional`
+mira guardas de test.
+
+### Los dos modos permitidos
+
+| Modo | Cómo se escribe | Efectos secundarios |
+|---|---|---|
+| **Con formulario reactivo** | `formControlName="..."` (el CVA ya informa al `FormGroup`) | en `control.valueChanges`, suscrito con `takeUntilDestroyed` |
+| **Sin formulario** | `[(checked)]="estado"` (banana-in-box) | en el listener `(checkedChange)="f()"`, que **no** reescribe el modelo |
+
+```html
+<!-- ✅ con formulario: un canal -->
+<luna-checkbox formControlName="canBeSold" label="Venta"></luna-checkbox>
+
+<!-- ✅ sin formulario: banana + listener -->
+<luna-checkbox [(checked)]="soloActivos" (checkedChange)="cargar()" label="Solo activos"></luna-checkbox>
+
+<!-- ❌ dos canales: el CVA y el manejador escriben el mismo modelo -->
+<luna-checkbox formControlName="canBeSold" (checkedChange)="onSoldChange($event)"></luna-checkbox>
+
+<!-- ✅ excepción justificada: el efecto debe dispararse SOLO con el usuario -->
+<!-- checkbox-ok: marcar «por defecto» no debe re-dispararse con la normalización programática -->
+<luna-checkbox formControlName="isDefault" (checkedChange)="setDefaultPreferredRow($index)"></luna-checkbox>
+```
+
+### Las dos mitades del arreglo, y por qué las dos
+
+1. **El componente tiene UNA fuente de verdad** (`_checked`): el `@Input() checked` se aplica **solo
+   cuando cambia**, y el DOM se pinta desde `_checked`. Así una escritura tardía del padre **no
+   revierte** el clic. Casos: `luna-checkbox.component.spec.ts` («T652: el clic no se pierde»).
+2. **El uso tiene UN solo canal**: es lo que este gate vigila
+   (`npm run audit:checkbox-binding`, dentro de `audit:ci`).
+
+### Gate
+
+```
+npm run audit:checkbox-binding            # rojo si una casilla mezcla CVA y (checkedChange)
+npm run audit:checkbox-binding:self-test  # 5 casos: falla cuando debe y calla cuando debe
+```
+
+**Límite declarado**: el patrón `[checked]` + `(checkedChange)` (una vía, el padre es la única fuente)
+**no** se marca todavía —hay **22** sitios medidos el 2026-11-10— y su barrido va por lotes, un commit
+por pantalla; mientras tanto, la forma preferida es `[(checked)]`.
+
+---
+
 ## 9. Estándares de tipado
 
 ### Política de `any`
