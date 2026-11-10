@@ -125,17 +125,99 @@ y el formulario la exige); crearla por pantalla cerraría el «sin seed» del to
 
 ## 3. Orden propuesto
 
-1. **P2-bis** — sin la matriz del almacén, la sucursal se crea y no opera: es lo que deja el caso
-   de Playwright en rojo.
-2. **P2** — un 500 en un alta es un defecto de contrato.
-3. **P3** y **P4** — baratos y de alto valor percibido (el cupo y la lectura contable por sucursal).
-4. **P5** — el asistente, cuando 1–4 estén en verde: es el que convierte cuatro pantallas en un
-   producto.
-5. **P6** — el remate de UX.
+1. **P2-bis** — sin la matriz del almacén, la sucursal se crea y no opera. **Cerrado (T622).**
+2. **P2** — un 500 en un alta es un defecto de contrato. **No reproducible (T634)**, contrato fijado con e2e.
+3. **P3** y **P4** — baratos y de alto valor percibido. **Cerrados** (T624/T626 y T623/T637/T640).
+4. **P5** — el asistente. **Cerrado (T633).**
+5. **P6** — el remate de UX. **Cerrado (T625).**
 
-## 4. Lo que queda en rojo hoy
+## 4. Estado consolidado: qué está cerrado, qué queda abierto y qué está declarado
 
-**Nada del plan.** Los quince puntos están cerrados: P1 (no era defecto), P2 (no reproducible, contrato fijado), P2-bis, P3, P3-bis, P4/T637, P5/P12, P6, P9/T631, más los que nacieron del ejercicio (T623, T624, T626-T628, T633-T638). El caso por pantalla va **10/10** y no lee **nada** del seed: crea la lista de precios, el cliente, el artículo, la sucursal con su almacén y su usuario, factura y lee el informe.
+### 4.1 · Cerrado, con su medición en el ledger
 
-Lo que **no** está cerrado son las propuestas que aparecieron **después** del cierre y están anotadas arriba con su medición: el precio a 0 ya no es silencioso (T632) y el servidor lo resuelve (T638), pero el **balance general** sigue sin una prueba por pantalla propia (solo API + Karma). Es el siguiente borde natural, no una deuda del plan.
+| Punto | LEDGER | Qué se cerró |
+|---|---|---|
+| P1 (documento en otra sucursal) | T621 | **no era defecto**: el contexto de prueba heredaba la sesión del administrador |
+| P2 (`batch-upsert` 500) | T634 | **no reproducible**; contrato de idempotencia fijado con e2e (doble envío ⇒ mismo `id`, una fila) |
+| P2-bis (almacén sin sembrar) | T622 | un solo motor (`provisionWarehouseForItems`); la sucursal nueva opera (stock 201) |
+| P3 (cupo invisible) | T624 | «Almacenes activos: N / M» en la pantalla |
+| P3-bis (sucursal se saltaba el cupo) | T626 | el alta de sucursal cuenta y valida el cupo |
+| P4 / P4-bis (contabilidad por sucursal) | T623, T637, T640 | selector en las **seis** pantallas; balance general en API **y en pantalla** |
+| P5/P12 (asistente) | T633 | sucursal + su almacén + su usuario en un flujo |
+| P6 (403 sin salida) | T625 | el formulario vuelve a la sucursal del usuario y lo dice |
+| P9 (caso «sin seed») | T629, T630, T631 | cliente, artículo y **lista de precios** creados por pantalla |
+| P13 (lista de precios) | T631 | cerrado con el caso 0-a |
+| Cupo parametrizable | T626, T636 | pacto por empresa, origen `PLAN`/`OVERRIDE`, aviso al 80 % (T635) |
+| Facturar a precio 0 | T632, T638, T639, T641 | guard con `code`, precio resuelto en el servidor, control en la pantalla y contrato e2e |
 
+### 4.2 · Abierto (con propuesta y criterio)
+
+**P14 · T642 — un artículo creado por pantalla no opera en el almacén del administrador.** Medido: la
+entrada de stock del artículo nuevo en «Almacén Principal» respondió **400** «no está habilitado para
+operar en el almacén…», aunque `_autoEnrollItemWarehouses` escribe la fila en todos los almacenes
+ACTIVE al crear el artículo. **La causa no está confirmada** (el arnés restaura `erp_test` y la sonda
+posterior no pudo inspeccionar la matriz). Hipótesis: (a) el almacén no estaba ACTIVE en el instante
+del alta; (b) el movimiento no mira la misma fila que siembra el alta. **Propuesta**: un e2e del
+backend que cree el artículo y compruebe (matriz en **cada** almacén + entrada de stock **201** en
+cada uno); si falla, sembrar desde el mismo motor de T622. **Prioridad: alta** — significa que un
+artículo nuevo podría no venderse desde otra tienda.
+
+**P15 · T641 — el diálogo «Facturar sin precio» no es alcanzable desde la UI.** `POST /items` y
+`PATCH /items` rechazan el precio 0 de un artículo de venta con inventario, y T638 resuelve el precio:
+el 400 solo llega con datos **importados** (lista de precios a 0). **Propuesta (decisión de
+producto)**: o se permite el 0 en la ficha con una marca «sin precio autorizado», o el diálogo queda
+como red para integraciones y se explica en la ayuda. Mientras tanto la pantalla ofrece el control
+explícito (T639) y el contrato está cubierto por e2e (T641). **Prioridad: media** (es decisión, no
+defecto).
+
+**P16 · La migración T626 solo se ha ejercido en `erp_db`.** Se aplicó con `prisma migrate deploy`
+(registrada en `_prisma_migrations`, `migrate status` al día), pero **`erp_test` se sincroniza con
+`db push`** en el arnés, así que la migración no se ha ejecutado en la base de test. **Propuesta**:
+que el arnés aplique `migrate deploy` (o un caso que verifique `_prisma_migrations`) y que el CI lo
+haga en un entorno limpio. **Prioridad: media** (riesgo de despliegue, no de producto).
+
+**P17 · El caso por pantalla usa un artículo del seed con existencia para el control de precio 0**
+(consecuencia de P14: el artículo creado por pantalla no llega a facturarse en el almacén del
+administrador). Se cierra solo cuando se cierre P14; entonces el paso 7 podrá usar el artículo creado
+en 0-b.
+
+**P18 · La regla de precio 0 vive en UNA ruta, no en el motor** — **declarado por inspección,
+por medir**. `assertSinPrecioCero` y `resolverPreciosFaltantes` se llaman **solo** en
+`createManual`; las seis rutas «desde cotización/pedido/entrega» (y las tres múltiples) **no** las
+ejecutan, y la **factura de reserva** (`sale-reserve-invoices`) tampoco (0 coincidencias medidas con
+el grep del repo). Consecuencia: una factura creada **desde** un documento de origen con una línea a
+0 se emitiría en cero **sin decirlo**, que es el defecto que T632 cerró solo para el camino manual.
+**Propuesta**: extraer las dos llamadas a un ayudante compartido por **todas** las rutas de venta
+(un solo motor, como el resto del repo) y añadir un caso por familia —al menos «desde cotización»
+con la línea a 0— antes de cerrarlo. **Prioridad: alta** (es el mismo defecto con otra puerta).
+
+### 4.3 · Declarado (límites del arnés o de la medición, no defectos)
+
+- **El arnés restaura `erp_test` al terminar**: una sonda posterior no puede inspeccionar el estado;
+  la verificación tiene que ser **durante** la corrida (fue lo que impidió confirmar P14).
+- **Login 5/min por IP**: el caso gasta **dos** logins (auth.setup + el usuario de la sucursal); un
+  tercero dio **429** al medir, por eso el paso 7 reutiliza la sesión del administrador.
+- **El `batch-upsert` no dio 500 en ninguna corrida de esta campaña** (T634): el defecto del ledger
+  viejo no se reprodujo; la causa original no se conoce.
+- **La pantalla de Plan deduce el pacto comparando números** (si coincide con el del plan, el campo
+  queda vacío). Con `source` (T636) ya se puede hacer bien: **mejora anotada, no defecto**.
+- **`PATCH /billing/limits` no valida el nuevo cupo contra el consumo actual** (se puede pactar un cupo
+  menor que lo ya usado; la doctrina «no se degrada» lo permite, pero conviene avisar). Mejora anotada.
+
+### 4.4 · Cobertura: qué camino tiene prueba y cuál no
+
+| Camino | Cobertura |
+|---|---|
+| Alta por pantalla (sucursal, almacén, usuario, asistente) | **e2e** (pasos 1–3 y 0-c) + Karma |
+| Cupo: ver, subir, aviso 80 %, origen | e2e (pasos 0) + Karma + unitarios backend |
+| Facturación con el usuario nuevo y su sucursal | **e2e** (paso 4) |
+| Informe por sucursal y balance general por sucursal | **e2e** (pasos 5 y 6) |
+| Facturar sin precio: contrato 400/201 | **e2e backend** (T641) + unitarios |
+| Control «facturar sin precio» | **e2e** (paso 7) |
+| Diálogo tras el 400 | **no alcanzable por la UI** (P15) |
+| `PATCH /billing/limits` | Karma + e2e del paso 0 (no hay Karma del componente con el PATCH) |
+| Asistente con el cupo lleno | solo Karma (no hay e2e del error) |
+| `source` del cupo | Karma + unitarios (no hay aserción por pantalla) |
+
+Los tres últimos son huecos de **cobertura**, no de producto: se cierran añadiendo sus pasos cuando se
+toque esa pantalla.
