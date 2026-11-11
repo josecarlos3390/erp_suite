@@ -69,9 +69,13 @@ Cada línea se marca **solo** si hay una corrida por navegador que la demuestre,
 - [x] **Compra manual**: factura de compra con el **precio del proveedor tecleado** → **asiento
       cuadrado** (Inventario 104,40 + IVA crédito 15,60 = CxP 120,00).
 - [x] **Pedido de compra** con precio (150,00), confirmando en el modal «Sí, registrar».
-- [ ] **Recepción desde el pedido** ⛔ **bloqueada** (T681): el botón está habilitado y no dispara.
-- [ ] **Factura desde la recepción** (hereda el precio del pedido).
-- [ ] **Cobro** de una venta (tercero + documentos a cancelar).
+- [x] **Recepción desde el pedido**: **sí se registra** (T682 — T681 fue un **falso negativo**:
+      la barra de acciones **está dentro** del formulario y el botón envía; lo que faltaba era pulsar
+      la confirmación).
+- [x] **Factura desde la recepción**: proveedor y montos se heredan del origen (T683); su asiento
+      **ASI-000010** cuadra (CxP 150,00 / IVA crédito 19,50 / GRIR 130,50).
+- [x] **Cobro** de una venta: exigía la **serie del tipo «Pago recibido»**, que no existía (T684) — el
+      propio formulario lo advierte en el borde del campo.
 
 ### C · Auditar
 
@@ -85,6 +89,8 @@ Cada línea se marca **solo** si hay una corrida por navegador que la demuestre,
 
 - [x] **Un solo motor de líneas** en las **8 familias** (`audit:document-lines-grid`: **8/8**, baseline
       **vacío**), con autoprueba.
+- [x] **Sin celdas propias en la compra**: las once que se proyectaban pasaron a la rejilla canónica
+      (**T685**), con un gate nuevo (**R3**) que impide volver a proyectar.
 - [x] **Migraciones desde cero** = esquema (`audit:migrations:check`: 97 / **0 sentencias**), con
       autoprueba que incluye «un comando roto sale rojo».
 - [x] Los gates de la casa en verde: `audit:ci`, `gate:rapido`, Karma, `build`, `lint`, `format`,
@@ -97,14 +103,17 @@ Cada línea se marca **solo** si hay una corrida por navegador que la demuestre,
 | Bloque | Estado |
 |---|---|
 | **A · Poner en marcha** | ✅ **completo** y medido por pantalla (260 líneas del traspaso lo detallan) |
-| **B · Operar** | 🟡 venta ✅ · compra manual ✅ · pedido ✅ · **recepción ⛔** · factura y cobro pendientes |
-| **C · Auditar** | 🟡 balance ✅ · entregas sin cargo ✅ · cuadre ✅ · estados financieros pendientes |
+| **B · Operar** | ✅ **completo**: venta · compra manual · pedido · **recepción** (T682) · **factura desde la recepción** (T683) · **cobro** (T684) |
+| **C · Auditar** | 🟡 balance ✅ · entregas sin cargo ✅ · cuadre ✅ · **estados financieros del ejercicio: pendientes** |
 | **D · Sostenibilidad** | ✅ gate de líneas 8/8 · migraciones 97/0 · todas las suites verdes |
 
-**El bloqueo actual está acotado a una prueba de un minuto**: pulsar **Enter** en un campo de la
-recepción que nace de un pedido. Si sale el modal, el defecto es la **barra de acciones**; si no, el
-`(ngSubmit)` del formulario. Todo el detalle, con lo ya descartado midiendo, está en
-`docs/plans/traspaso-proxima-sesion.md` §2.
+**Lo que queda del objetivo** es el bloque **C**: los **estados financieros** con los datos del
+ejercicio (estado de resultados y balance general). El resto está **medido por pantalla** y con su
+asiento cuadrado.
+
+**Y una lección que esta sesión dejó escrita dos veces**: un «no funciona» puede ser un **falso
+negativo del arnés**. T681 lo fue —la barra de acciones **sí** está dentro del formulario y el botón
+**sí** envía— y lo resolvió **medir el DOM antes de concluir**, no más intentos a ciegas.
 
 ---
 
