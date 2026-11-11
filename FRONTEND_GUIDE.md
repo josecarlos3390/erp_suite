@@ -1291,6 +1291,15 @@ Reglas rápidas (detalle en el doc enlazado):
 
 - Todo documento comercial usa `<luna-document-lines>` (shell) + `<luna-document-lines-detail>` con `lineDetailColumns` declarativo para la tab Detalle.
 - **Ninguna columna puede quedar fuera** al migrar: las que no tengan celda canónica se proyectan con `<ng-template lunaDocumentLineDetailCell="key">`.
+- **Una celda proyectada que la rejilla YA pinta es deuda, no una variante** (T685). Antes de
+  proyectar una clave, mira los `@case` de `luna-document-lines-detail`: si está, la familia la
+  enciende con sus inputs —el de compra usa `[purchaseCells]="true"`— y **borra su `ng-template` en
+  el mismo cambio**. Si la celda canónica se enciende sin borrar la proyección, la plantilla queda
+  **muerta en silencio**; el gate `audit:document-lines-grid` (R3) es el que lo impide, y lee las
+  claves canónicas del propio componente. Los datos que salen del **documento** (no de la fila) se
+  pasan como función, igual que `getStockAvailable` (`getReferenceQty`, `getPendingReceiveQty`,
+  `getAlreadyReceivedQty`, `getAccountManual`); el formato del total de la línea se elige con
+  `lineTotalFrom` (`'subtotal'` por defecto, `'priceNet'` en la recepción).
 - En tabs Descuentos/Costos (`<luna-data-table>` propia): `[formArray]="itemsArray"`, slots `#cell`/`#actions`. Si hay varias tablas en el mismo componente, usar `#cell2`/`#actions2` (o `#cell3`/`#actions3`); `luna-data-table` las reconoce.
 - **Botón eliminar estandarizado**: columna `actions` siempre presente; el botón se envuelve con `@if (canEdit)` dentro del template de acciones. Aplica a detail, discounts, costs y taxes. Aplicado en todos los formularios de ventas y compras migrados (2026-07-25).
 - Prohibido `[formControl]` + `[disabled]` en el mismo control: usar `@if (canEdit) { input } @if (!canEdit) { span }`.

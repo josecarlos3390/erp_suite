@@ -17,7 +17,7 @@
 | **1 · Recepción desde el pedido** | ✅ **hecho** — T681 era un falso negativo: el botón **sí** registra (`REC-1` desde `PC-1`, y `REC-2` desde `PC-2` en una segunda vuelta) | T682 |
 | **2 · Factura desde la recepción** | ✅ **hecho** — `FVC-4` (150,00) y `FVC-5` (100,00), con asiento cuadrado; y **corregido** el borrador que enseñaba otro total (T683) | T683 |
 | **3 · Cobro de las ventas** | ✅ **hecho** — `COB-1` por 200,00 cobra `FVE-1`+`FVE-2` (las deja en cero), con asiento cuadrado; antes **faltaba la serie** del tipo «Pago recibido» | T684 |
-| **4 · P3 (celdas proyectadas)** | ⏳ **pendiente** — sin tocar | — |
+| **4 · P3 (celdas proyectadas)** | ✅ **hecho en la COMPRA** (T685): las once celdas del tipo, del pedido y de la recepción pasan a la rejilla, con gate nuevo `R3` | T685 |
 
 `npm run audit:reconcile` al cierre: **0 errores · 12 asientos que cuentan**. Repos: ver §1 (los SHA
 de la cabecera son los de la sesión anterior; esta sesión añadió commits en `erp-frontend` y raíz).
@@ -71,17 +71,21 @@ Los tres están medidos y cerrados en el ledger; el detalle de lo que se corrigi
   —y de paso se corrigió la nota de T662: `luna-select` **sí** es un `<select>` nativo; hay que
   localizarlo como `luna-select[formcontrolname="…"] select`.
 
-### Paso 4 · P3 (deuda declarada del frontend) — lo único que queda de esta lista
+### Paso 4 · P3 (deuda declarada del frontend) — ✅ hecho en la compra (T685)
 
-Subir a la rejilla canónica las celdas que hoy se **proyectan** (el `type` de la factura, el
-`receivedQty` del pedido y las diez de la recepción), para que las cuatro familias de compra no
-tengan **ninguna** celda propia. Mecanismo: añadir el `@case` a `luna-document-lines-detail`, borrar
-la proyección, y el gate + los specs lo confirman.
+Las **once** celdas que la compra proyectaba (el `type` de la factura, el `receivedQty` del pedido y
+las diez de la recepción) ya son celdas canónicas de la rejilla. Lo que queda **no** es de la compra:
 
-**Antes de empezar por ahí**, dos cosas que la base de desarrollo tiene pendientes de decisión del
-usuario (medidas, no inventadas): el **informe** del circuito (T656 ya tiene su pantalla) y la
-pregunta de si las **facturas de venta** de la demo deben quedar como están (`FVE-1`/`FVE-2` ya están
-cobradas; `FVE-3` sigue abierta).
+- **Migrar las familias que proyectan claves ya canónicas.** El gate nuevo
+  `audit:document-lines-grid` (R3) las cuenta: hoy **8** declaradas en el baseline y con su razón
+  —`sale-invoices` 2 (`manualAccount`, `distributionRule`) y `delivery-orders` 6—. Fuera del censo del
+  gate quedan reservas, devoluciones y los tres de stock, que también proyectan: están declaradas en
+  AUDIT.md T685.
+- **La frontera que no hay que romper**: una familia enciende la celda canónica con
+  `[purchaseCells]="true"`; apagada, la rejilla **sigue pintando la plantilla proyectada**. Si migras
+  una familia, borra su `ng-template` en el mismo cambio o la celda canónica quedará **muerta en
+  silencio** (el gate R3 es justo el que lo impide).
+
 
 
 ---
@@ -99,7 +103,7 @@ cobradas; `FVE-3` sigue abierta).
 | **Factura desde recepción** | ✅ `FVC-4` y `FVC-5`, con asiento (T683) |
 | **Cobro** | ✅ `COB-1` 200,00, CxC en cero (T684) |
 | Informe «entregas sin cargo» | ✅ (T656) con filtro por usuario (T657) |
-| **P3 del frontend** (celdas proyectadas) | ⏳ lo único que queda de esta lista → Paso 4 |
+| **P3 del frontend** (celdas proyectadas) | ✅ en la compra (T685); el resto, declarado en el gate R3 |
 
 ---
 
