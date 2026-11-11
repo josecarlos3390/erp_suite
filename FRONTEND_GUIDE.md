@@ -165,13 +165,26 @@ su componente hermano no declara la columna; los casos legítimos (la columna la
 aporta el llamador, como en `luna-document-lines-detail`) se marcan con
 `list-actions-ok: <razón>`.
 
-**Los botones de la barra de acciones de un formulario NO son `type="submit"`.**
-`luna-form-page` proyecta `[lunaFormActions]` en `.luna-form-page__actions`, **fuera
-del `<form>`**, así que un `type="submit"` no tiene formulario asociado
-(`HTMLButtonElement.form === null`) y **el clic no envía nada** (ni el envío
-implícito con Enter, con varios campos de texto). El patrón canónico es
-`(lunaClick)="save()"` (ver `landed-costs-form`). Fue el defecto G2-UI-1 de T152: la
-Revalorización no se podía crear por la pantalla.
+**Los botones de la barra de acciones de un formulario NO son `type="submit"` cuando la
+barra es HIJA DIRECTA de `luna-form-page`.** `luna-form-page` proyecta
+`[lunaFormActions]` en `.luna-form-page__actions`, **fuera del `<form>`**; la
+proyección de `ng-content` alcanza **solo a los hijos directos**, así que una
+barra escrita **dentro** del `<form>` (layout de §5) **no se proyecta**, se queda
+donde está y su `type="submit"` **sí** envía el formulario. En el primer caso, un
+`type="submit"` no tiene formulario asociado (`HTMLButtonElement.form === null`) y
+**el clic no envía nada** (ni el envío implícito con Enter, con varios campos de
+texto); el patrón canónico es entonces `(lunaClick)="save()"` (ver
+`landed-costs-form`). Fue el defecto G2-UI-1 de T152: la Revalorización no se podía
+crear por la pantalla.
+
+> **Medido el 2026-11-11 (T682).** Las dos formas conviven en el repo y la nota
+> anterior —sin la condición— indujo un diagnóstico falso: la «Recepción desde el
+> pedido» decía que su `type="submit"` no enviaba nada, y **el DOM mostró lo
+> contrario** (`form.contains(app-document-action-bar) === true`, botón
+> `type="submit"` con `HTMLButtonElement.form` apuntando al formulario, modal de
+> confirmación y `201 POST /purchase-receipts/from-order/1`). Antes de tocar un
+> submit, **mídelo**: `document.querySelector('form')?.contains($0)` sobre la barra.
+
 
 ### 1.2.1. Barra de filtros
 
