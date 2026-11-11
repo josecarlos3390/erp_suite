@@ -47,8 +47,16 @@ de la cabecera son los de la sesión anterior; esta sesión añadió commits en 
 | Mayor | **12 asientos, todos cuadrados** | `audit:reconcile` (0 errores) |
 
 **Repos**: `backend-erp` = `12ff3f19` (origin = deploy; esta sesión **no** tocó el backend) ·
-`erp-frontend` = `d4c3ad2c` · raíz = `a298f4e` + el commit de este traspaso. Árboles limpios salvo los
-instrumentos de sondeo (`erp-frontend/scripts/probe-*.mjs`, sin versionar y borrados al cerrar).
+`erp-frontend` = `ec85d4d2` (T683 + T685) · raíz = `3552936` + el commit de este cierre. Árboles
+limpios; los instrumentos de sondeo (`erp-frontend/scripts/probe-*.mjs`) se borraron al cerrar.
+
+**Aviso de concurrencia (medido).** Durante esta sesión **otro actor commiteó en el repo raíz**
+(`0a340c1` con `docs/plans/objetivo-todo-por-ui.md` y `3552936`, que se llevó mis tres documentos con
+un mensaje distinto al que escribí). El contenido quedó correcto y el árbol limpio, pero **comprueba el
+actor antes de empujar**: el `pre-commit` del frontend falló al arrancar en `ec85d4d2`
+(`env.exe … fatal error - add_item`, errno 1) y **no corrió `lint-staged`** —la verificación se hizo a
+mano: `ng lint` 0/0, `prettier --check`, Karma 3 095/3 095 y `audit:ci`—. Los dos commits están
+**sin empujar**.
 
 ---
 
