@@ -2,14 +2,30 @@
 
 > **Qué es esto.** El estado medido al cerrar la sesión del 2026-11-10/11 y el plan para continuar
 > **sin repetir los tropiezos**. Todo lo que aquí se afirma está medido y su fila del ledger
-> (`AUDIT.md`, T668–T681) lleva el comando o la captura que lo produjo.
+> (`AUDIT.md`, T668–T684) lleva el comando o la captura que lo produjo.
 >
 > **La regla de la casa sigue siendo la misma**: si algo no se mide, no se adopta; y si un diagnóstico
-> se corrige, **se escribe** (aquí hay tres correcciones a diagnósticos míos: T669, T677 y T681).
+> se corrige, **se escribe** (aquí hay cuatro correcciones a diagnósticos míos: T669, T677, T681→T682
+> y T662→T684).
+
+---
+
+## 0 · Lo que quedó hecho en la sesión siguiente (2026-11-11)
+
+| Paso | Estado | Evidencia |
+|---|---|---|
+| **1 · Recepción desde el pedido** | ✅ **hecho** — T681 era un falso negativo: el botón **sí** registra (`REC-1` desde `PC-1`, y `REC-2` desde `PC-2` en una segunda vuelta) | T682 |
+| **2 · Factura desde la recepción** | ✅ **hecho** — `FVC-4` (150,00) y `FVC-5` (100,00), con asiento cuadrado; y **corregido** el borrador que enseñaba otro total (T683) | T683 |
+| **3 · Cobro de las ventas** | ✅ **hecho** — `COB-1` por 200,00 cobra `FVE-1`+`FVE-2` (las deja en cero), con asiento cuadrado; antes **faltaba la serie** del tipo «Pago recibido» | T684 |
+| **4 · P3 (celdas proyectadas)** | ⏳ **pendiente** — sin tocar | — |
+
+`npm run audit:reconcile` al cierre: **0 errores · 12 asientos que cuentan**. Repos: ver §1 (los SHA
+de la cabecera son los de la sesión anterior; esta sesión añadió commits en `erp-frontend` y raíz).
 
 ---
 
 ## 1 · Estado de la base `erp_db` (todo configurado **por pantalla**)
+
 
 | Elemento | Valor | Cómo se creó |
 |---|---|---|
@@ -19,62 +35,54 @@
 | **Plan de cuentas** | **316 cuentas** | `/settings` → «Generar Plan de Cuentas» |
 | **Mapeos** | **77** | `/account-mappings` → «Restaurar Defaults» |
 | Gestión · períodos | 2026 · **12** | `/fiscal-years` → detalle → «Generar Períodos» |
-| **Series** | **7** (`FVE-01`, `PV-01`, `ENT-01`, `ING-01`, `PC-01`, `REC-01`, `FVC-01`) | `/document-series` |
+| **Series** | **8** (`FVE-01`, `PV-01`, `ENT-01`, `ING-01`, `PC-01`, `REC-01`, `FVC-01`, **`COB-01`**) | `/document-series` (la del cobro, T684) |
 | Terceros | `Cliente Demo S.A.` · `Proveedor Demo Ltda.` | `/partners/new` |
 | Artículos | `ART-00001` (venta+compra+inventario), `ART-00002` (venta), `ART-00003` (compra) | `/items/new` |
-| **Ventas** | `FVE-1`, `FVE-2`, `FVE-3` (100 c/u) con **asientos cuadrados** | `/sale-invoices/new?manual=1` |
+| **Ventas** | `FVE-1`, `FVE-2` (100 c/u, **cobradas por `COB-1`**) · `FVE-3` (100) | `/sale-invoices/new?manual=1` |
 | **Compra manual** | `FVC-3` (**120,00**) con asiento 104,40 + 15,60 = 120,00 | `/purchase-invoices/new?manual=1` |
-| **Pedido** | `PC-1` (**150,00**) | `/purchase-orders/new?manual=1` |
-| Mayor | **7 asientos, todos cuadrados** (200=200, 143=143, 200=200, 143=143, 120=120) | `audit:reconcile` |
+| **Pedidos** | `PC-1` (**150,00**, recibido) · `PC-2` (**100,00**, recibido) | `/purchase-orders/new?manual=1` / API |
+| **Recepciones** | `REC-1` (**150,00**, desde `PC-1`) · `REC-2` (**100,00**, desde `PC-2`) | «Copiar a» del pedido (T682) |
+| **Facturas de compra desde recepción** | `FVC-4` (**150,00**, desde `REC-1`) · `FVC-5` (**100,00**, desde `REC-2`) | «Copiar a» de la recepción (T683) |
+| **Cobro** | `COB-1` (**200,00**, efectivo, `FVE-1`+`FVE-2`) | `/incoming-payments/new` (T684) |
+| Mayor | **12 asientos, todos cuadrados** | `audit:reconcile` (0 errores) |
 
-**Repos** (sesión cerrada): `backend-erp` = `12ff3f19` (origin = deploy) · `erp-frontend` = `2d65e665` ·
-raíz = `18b54c7`. Árboles limpios.
+**Repos**: `backend-erp` = `12ff3f19` (origin = deploy; esta sesión **no** tocó el backend) ·
+`erp-frontend` = `d4c3ad2c` · raíz = `a298f4e` + el commit de este traspaso. Árboles limpios salvo los
+instrumentos de sondeo (`erp-frontend/scripts/probe-*.mjs`, sin versionar y borrados al cerrar).
 
 ---
 
 ## 2 · Lo que queda, en el orden que recomiendo
 
-### Paso 1 · Recepción desde el pedido (BLOQUEADO — empezar por aquí)
+### Pasos 1–3 · hechos el 2026-11-11 (no repetirlos)
 
-**Síntoma medido (T681)**: `/purchase-orders/1` → «Copiar a» → «Crear recepción de compra desde esta
-orden» abre «Nueva Recepción desde Orden» con la **cantidad precargada (3)**, el botón «Crear
-Recepción» está **habilitado**… y al pulsarlo **no pasa nada**: cero peticiones, cero errores, cero
-avisos.
+Los tres están medidos y cerrados en el ledger; el detalle de lo que se corrigió va en **T682**
+(recepción), **T683** (factura desde la recepción) y **T684** (cobro). Resumen de lo aprendido:
 
-**Lo ya descartado midiendo** (no repetir): el artículo es `trackingType: NONE`; la serie no era (se
-eligió `REC-01`); no hay `.ng-invalid` ni `.luna-field__error`; la rama de código **existe**
-(`createReceipt()` tiene el fallback «¿Crear recepción? … recepción parcial del pedido»).
+- **La recepción registra.** El «no pasa nada» de T681 no se reproduce con el build actual: la barra
+  de acciones **está dentro del `<form>`** (se mide con
+  `document.querySelector('form')?.contains($0)`), el botón es `type="submit"` con `form` asociado y el
+  clic abre «¿Crear recepción?» → `201 POST /purchase-receipts/from-order/{id}`.
+- **La factura desde la recepción hereda el origen**: proveedor (id, no nombre), tasa y **montos**
+  (neto + IVA del documento origen, proporcionales si se factura menos). Antes el borrador publicaba
+  147,47 para un documento de 150,00.
+- **El cobro necesitaba su serie**: `INCOMING_PAYMENT` no tenía ninguna y el formulario lo decía
+  («No hay series de numeración definidas para este tipo»). Se creó `COB-01` por `/document-series`
+  —y de paso se corrigió la nota de T662: `luna-select` **sí** es un `<select>` nativo; hay que
+  localizarlo como `luna-select[formcontrolname="…"] select`.
 
-**Dónde se corta**: `save()` **no se ejecuta** (instrumentado con `console.warn`, el clic no dejó
-rastro) ⇒ el `submit` no llega a `(ngSubmit)`.
-
-**La prueba decisiva (1 minuto)**: pulsar **Enter** dentro de un campo del formulario.
-- Si aparece el modal «¿Crear recepción?» ⇒ el defecto es de la **barra de acciones**
-  (`app-document-action-bar` + `lunaFormActions` proyecta fuera del `<form>`): hay que darle
-  `(lunaClick)="save()"` al botón (como hace el pedido) o dejar de proyectar.
-- Si **no** aparece ⇒ el defecto está en el `(ngSubmit)` del `<form>` (o en `luna-button` no
-  propagando `type`), y el arreglo va por ahí.
-
-**Archivos**: `pages/purchase-receipts/purchase-receipts-form.component.html` (botón, línea ~937;
-`<form>` en 149) y `.ts` (`save()` ~2550, `createReceipt()` ~2165, `loadDraft()` ~1632).
-
-### Paso 2 · Factura desde la recepción
-
-Con la recepción registrada, `REC-01` → «Copiar a» → «Factura de compra» (`FVC-01`). Ahí nace el
-asiento de la compra **heredando el precio del pedido**. Verificar: total > 0 y asiento cuadrado
-(CxP / IVA crédito / inventario).
-
-### Paso 3 · Cobro de las ventas
-
-`/incoming-payments/new`: tercero + documentos a cancelar (+ «Agregar método»). Comprobar el asiento
-de cobro y que la CxC quede en cero.
-
-### Paso 4 · P3 (deuda declarada del frontend)
+### Paso 4 · P3 (deuda declarada del frontend) — lo único que queda de esta lista
 
 Subir a la rejilla canónica las celdas que hoy se **proyectan** (el `type` de la factura, el
 `receivedQty` del pedido y las diez de la recepción), para que las cuatro familias de compra no
 tengan **ninguna** celda propia. Mecanismo: añadir el `@case` a `luna-document-lines-detail`, borrar
 la proyección, y el gate + los specs lo confirman.
+
+**Antes de empezar por ahí**, dos cosas que la base de desarrollo tiene pendientes de decisión del
+usuario (medidas, no inventadas): el **informe** del circuito (T656 ya tiene su pantalla) y la
+pregunta de si las **facturas de venta** de la demo deben quedar como están (`FVE-1`/`FVE-2` ya están
+cobradas; `FVE-3` sigue abierta).
+
 
 ---
 
@@ -87,9 +95,11 @@ la proyección, y el gate + los specs lo confirman.
 | **Un solo motor de líneas** (8 familias) | ✅ **cerrado** (T668–T673: 8/8, baseline vacío, −1 362 líneas) |
 | Compra **manual** con asiento | ✅ (T678) |
 | Pedido con precio | ✅ (T679) |
-| **Recepción desde pedido** | ⏳ **bloqueada** (T681) → Paso 1 |
-| Factura desde recepción · cobro · informes | pendiente |
+| **Recepción desde pedido** | ✅ `REC-1` y `REC-2` (T681 era falso negativo → T682) |
+| **Factura desde recepción** | ✅ `FVC-4` y `FVC-5`, con asiento (T683) |
+| **Cobro** | ✅ `COB-1` 200,00, CxC en cero (T684) |
 | Informe «entregas sin cargo» | ✅ (T656) con filtro por usuario (T657) |
+| **P3 del frontend** (celdas proyectadas) | ⏳ lo único que queda de esta lista → Paso 4 |
 
 ---
 
@@ -99,8 +109,11 @@ la proyección, y el gate + los specs lo confirman.
    server** antes de concluir (pasó dos veces: T660 y T675).
 2. **El botón que registra abre un modal de confirmación** («¿Registrar…?» → «Sí, registrar»): el
    pedido lo hace; si no se pulsa, **no hay POST** y la pantalla no dice nada.
-3. **`type="submit"` en la barra de acciones** puede no llegar al `<form>` (T681, pendiente de la
-   prueba del Enter).
+3. **`type="submit"` en la barra de acciones** solo falla si la barra es **hija directa** de
+   `luna-form-page` (entonces se proyecta fuera del `<form>`). Escrita **dentro** del `<form>` (el
+   layout de §5) se queda donde está y el submit funciona: **medirlo con
+   `document.querySelector('form')?.contains($0)`** antes de tocar nada (T682; la nota de la guía ya
+   lleva la condición).
 4. **La acción «Crear recepción» vive en un menú** («Copiar a»): sin abrirlo, el localizador la
    encuentra pero **no es visible**.
 5. **La URL no precarga la orden**: `?purchaseOrderId=1` abre la **Manual**; el camino es el menú.
@@ -116,6 +129,15 @@ la proyección, y el gate + los specs lo confirman.
     nada; ahora usa `--from-migrations` y **falla si el comando falla**.
 12. **PowerShell no es un buen escritor de SQL/JSON**: `>` redirigido saca UTF-16 y Postgres lo
     rechaza (T664). Escribir con Node y `encoding: 'utf8'`.
+13. **PowerShell tampoco es un buen EDITOR de scripts**: `(Get-Content -Raw) -replace … | Set-Content`
+    leyó el `.mjs` como cp1252 y lo devolvió doble-codificado (cada acento pasa a dos caracteres), y
+    una regex con acentos en el localizador dejó de casar **en silencio** (el «Agregar método» contaba
+    0). Editar con la herramienta del agente, no por round-trip (pasó tres veces en esta sesión).
+14. **`luna-select` ES un `<select>` nativo, pero el `formControlName` vive en el host**: el localizador
+    es `luna-select[formcontrolname="docType"] select`, no `select[formcontrolname=…]` (T684). La nota
+    de T662 que decía lo contrario era falsa.
+15. **La primera fila de una tabla larga puede quedar bajo la barra de acciones**: un `click()` normal
+    lo intercepta la barra; en la sonda se usó `elemento.click()` nativo (T684).
 
 ---
 
