@@ -131,7 +131,7 @@ Antes de realizar **cualquier acción** de código, diseño, planificación, ref
   (ShortName) se denormaliza (Anexo B).
 - **E2E:** los maestros se resuelven **por código, nunca por posición**.
 - **`0`** `@ts-ignore` / **`--no-verify`**; `eslint-disable` **sólo con la regla nombrada** —y ese
-  calificativo alcanza a las **15** escritas a mano **en `src/`**, **no** a las **210** de
+  calificativo alcanza a las **15** escritas a mano **en `src/`**, **no** a las **211** de
   `src/generated/`, que son `/* eslint-disable */` en bloque, sin regla nombrada, y viven **fuera del
   lint**— y `--force` **sólo** en `prisma migrate reset --force` (ver *Reglas de proceso*).
 
@@ -647,7 +647,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
 - **Una herramienta puede hacer BIEN su tarea sobre el CONJUNTO EQUIVOCADO, y ningún gate lo verá:
   compruebe el ALCANCE antes de dejarla correr.** `audit:date-class` daba **0 hallazgos** mientras tres
   sitios leían mal `Batch.expiryDate`/`manufactureDate`, porque **no estaban en el registro
-  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** (hoy **1424**: el ratchet
+  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** (hoy **1434**: el ratchet
   vigila los hallazgos, no las apariciones, y `audit:agents-figures` es el que cierra ese hueco — por
   eso la cifra se mueve EN EL MISMO empujón que el código que la mueve). **De dónde viene cada
   movimiento de esa cifra** (para que no vuelva a moverse sin saber por qué): de **1360 a 1361** la
