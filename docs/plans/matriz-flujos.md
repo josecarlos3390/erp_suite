@@ -185,14 +185,15 @@ su consolidación **descuenta de las entregas** lo ya facturado.
 | **Cadena canónica `PED → FRV → ENT`** | `PED-2` → `FVR-3` (OPEN) → `ENT-1` (CLOSED, `orderId 2`, `FVR-3.deliveryOrderId = 1`) |
 | **Anular una reserva SIN pago CON entrega (caso 2)** | **400** «tiene 1 entrega(s) viva(s) (ENT-1)… Devuelva la entrega o corrija con una nota de crédito» — y el aviso se ve en pantalla |
 | **Anular una reserva SIN pago y SIN entrega** | `FVR-1` → **CANCELLED** (201): se anula, como debe |
+| **Anular una reserva CON pago (caso 3)** | **400** «El documento FVR-4 tiene 1 cobro(s) aplicado(s) por 1695 Bs (REC-2): no se anula un documento con dinero aplicado. Anule primero el cobro… o corrija con una nota de crédito» — y **el aviso se ve** (toast a los 500 ms, medido) |
 
 **Verificado en el CÓDIGO (no ejecutado en pantalla)**: la tabla de aristas de §1 y los «Copiar a» de
 §2 — es lectura exhaustiva de controladores y plantillas.
 
-**Abierto y declarado**: el **caso 3** de la matriz (reserva **con pago** → anular) **no está medido**.
-El menú de acciones de la lista resultó ser **uno compartido** (`aria-controls` genérico en todas las
-filas, contenido de otra fila) y el del detalle no se abrió en el intento. **No se declara ni
-soportado ni defectuoso: no medido.**
+**Los tres casos de anulación de la matriz están MEDIDOS** (factura con pago, reserva con entrega,
+reserva con pago) y los tres **bloquean explicando el motivo**, con el aviso **visible en pantalla**.
+
+**Abierto**: las **cuatro devoluciones** (casos 4–7), que son las que faltan para cerrar la matriz.
 
 ---
 
@@ -206,4 +207,5 @@ soportado ni defectuoso: no medido.**
 | D | **Tras generar la entrega desde la FRV, hay que volver a la FRV para cobrar**; la pantalla deja al usuario en la entrega. | **fricción medida**, sin arreglar |
 | E | **El selector de entrega llegaba vacío** `copyToDelivery` → `deliveryPickerModal`) | **RESUELTO (T767)**: la FRV desde pedido nacía `CLOSED` y no aparecía en su propia lista |
 | F | **FRV creada desde un pedido nace `CLOSED`** con saldo entero pendiente y líneas `OPEN` | **RESUELTO (T767)** |
-| G | **El menú «Más acciones» de los listados es compartido**: todas las filas apuntan al mismo `aria-controls` y su contenido puede ser de otra fila | **medido en la automatización**, **a verificar visualmente**: si se confirma, es un riesgo real (actuar sobre otro documento) |
+| G | **El menú de fila de los listados es UNO compartido** (`aria-controls` genérico; `row-item` en el DOM = 2, no 4×n) y se re-vincula **al abrirlo** | **NO es defecto del producto**: el fallo era de la automatización, que pulsaba el ítem **viejo** que quedaba en el DOM tras un menú no abierto. **Regla para los recorridos**: abrir el menú, **comprobar que hay ítems visibles** y **verificar el documento que nombra el diálogo** antes de confirmar |
+| H | **El diálogo de anulación del DETALLE no nombra el documento** («¿Cancelar Factura de Reserva?»), mientras el de la **lista** sí («¿Cancelar factura FVR-1?») | **medido**; mejora pendiente: una acción destructiva debe nombrar su objeto |
