@@ -185,6 +185,8 @@ su consolidación **descuenta de las entregas** lo ya facturado.
 | **Cadena canónica `PED → FRV → ENT`** | `PED-2` → `FVR-3` (OPEN) → `ENT-1` (CLOSED, `orderId 2`, `FVR-3.deliveryOrderId = 1`) |
 | **Anular una reserva SIN pago CON entrega (caso 2)** | **400** «tiene 1 entrega(s) viva(s) (ENT-1)… Devuelva la entrega o corrija con una nota de crédito» — y el aviso se ve en pantalla |
 | **Anular una reserva SIN pago y SIN entrega** | `FVR-1` → **CANCELLED** (201): se anula, como debe |
+| **COMPRAS · anular una factura sin efectos** | `FCP-1` (factura de compra, sin pago ni recepción) → «Anular factura» → **201 → CANCELLED** |
+| **COMPRAS · un pago aplicado bloquea** | cubierto por la suite compartida (`annulment-guard.util.spec.ts`, caso «en COMPRAS el PAGO bloquea y lo dice con su palabra») — la guarda es el **mismo motor** para venta y compra |
 | **Anular una reserva CON pago (caso 3)** | **400** «El documento FVR-4 tiene 1 cobro(s) aplicado(s) por 1695 Bs (REC-2): no se anula un documento con dinero aplicado. Anule primero el cobro… o corrija con una nota de crédito» — y **el aviso se ve** (toast a los 500 ms, medido) |
 | **Devolución por ENTREGA, reserva SIN pago** | `ENT-1` → «Copiar a → Devolución» → **`DEV-1`**: `returnAnchor: DELIVERY`, `deliveryOrderId: 1`, 1.695,00, `CLOSED` |
 | **Devolución por ENTREGA, reserva CON pago** | `ENT-2` (de `FVR-4`, pagada con `REC-2`) → **`DEV-2`**: `returnAnchor: DELIVERY`, `deliveryOrderId: 2`, 1.695,00, `CLOSED` |
@@ -216,5 +218,7 @@ se plantearon mal y se retiran.
 | F | **FRV creada desde un pedido nace `CLOSED`** con saldo entero pendiente y líneas `OPEN` | **RESUELTO (T767)** |
 | G | **El menú de fila de los listados es UNO compartido** (`aria-controls` genérico; `row-item` en el DOM = 2, no 4×n) y se re-vincula **al abrirlo** | **NO es defecto del producto**: el fallo era de la automatización, que pulsaba el ítem **viejo** que quedaba en el DOM tras un menú no abierto. **Regla para los recorridos**: abrir el menú, **comprobar que hay ítems visibles** y **verificar el documento que nombra el diálogo** antes de confirmar |
 | I | **La devolución se aplica únicamente a las ENTREGAS** (el formulario solo lee `deliveryOrderId`; la factura no ofrece «Devolución») | **NO es un hueco: es diseño** (corregido en T768 el 2026-11-14). La rama `INVOICE` del backend existe pero **no es un flujo del producto** |
+| J-1 | **El selector de artículos de COMPRAS no distingue «no hay artículos comprables» de «no encontré nada»**: con `canBePurchased=false` en el único artículo, el panel queda **vacío sin decir por qué** | **medido**; es configuración del dato, pero la pantalla debería decirlo |
+| J-2 | **La línea de una factura de compra nace a 0 si el artículo no tiene `cost`**, y el formulario **no avisa**: `FCP-1` se guardó con `total: 0` | **medido**; el dato manda, pero una factura de compra por 0 debería advertirse |
 | J | **El formulario manual de devolución no guarda y no explica** (diálogo «¿Registrar devolución?» → confirmar → **sin POST, sin toast, sin error de campo**) | **medido**; callejón sin salida mudo, misma clase que T766 |
 | H | **El diálogo de anulación del DETALLE no nombra el documento** («¿Cancelar Factura de Reserva?»), mientras el de la **lista** sí («¿Cancelar factura FVR-1?») | **medido**; mejora pendiente: una acción destructiva debe nombrar su objeto |
