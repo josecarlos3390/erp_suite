@@ -186,6 +186,7 @@ su consolidación **descuenta de las entregas** lo ya facturado.
 | **Anular una reserva SIN pago CON entrega (caso 2)** | **400** «tiene 1 entrega(s) viva(s) (ENT-1)… Devuelva la entrega o corrija con una nota de crédito» — y el aviso se ve en pantalla |
 | **Anular una reserva SIN pago y SIN entrega** | `FVR-1` → **CANCELLED** (201): se anula, como debe |
 | **Anular una reserva CON pago (caso 3)** | **400** «El documento FVR-4 tiene 1 cobro(s) aplicado(s) por 1695 Bs (REC-2): no se anula un documento con dinero aplicado. Anule primero el cobro… o corrija con una nota de crédito» — y **el aviso se ve** (toast a los 500 ms, medido) |
+| **Devolución a una reserva por su ENTREGA (caso 6)** | `ENT-1` → «Copiar a → Devolución» → `/sales-returns/new?deliveryOrderId=1` → **`DEV-1`**: `returnAnchor: DELIVERY`, `deliveryOrderId: 1`, `anchorInvoiceId: null`, 1.695,00, `CLOSED` |
 
 **Verificado en el CÓDIGO (no ejecutado en pantalla)**: la tabla de aristas de §1 y los «Copiar a» de
 §2 — es lectura exhaustiva de controladores y plantillas.
@@ -193,7 +194,11 @@ su consolidación **descuenta de las entregas** lo ya facturado.
 **Los tres casos de anulación de la matriz están MEDIDOS** (factura con pago, reserva con entrega,
 reserva con pago) y los tres **bloquean explicando el motivo**, con el aviso **visible en pantalla**.
 
-**Abierto**: las **cuatro devoluciones** (casos 4–7), que son las que faltan para cerrar la matriz.
+**Abierto (hueco funcional, T768)**: la devolución **anclada a una FACTURA** (`returnAnchor: 'INVOICE'`
+con `anchorInvoiceId`) **no tiene entrada en la UI**: el formulario solo lee `deliveryOrderId`, la factura
+no ofrece «Devolución» y `anchorInvoiceId`/`returnAnchor` tienen **0 apariciones** en todo el frontend.
+⇒ los casos **4 y 5** (devolución a una factura de venta, con y sin pago) **no se pueden ejecutar por
+pantalla**; el backend sí los acepta. **Pendiente**: implementar el ancla de factura en la pantalla.
 
 ---
 
@@ -208,4 +213,6 @@ reserva con pago) y los tres **bloquean explicando el motivo**, con el aviso **v
 | E | **El selector de entrega llegaba vacío** `copyToDelivery` → `deliveryPickerModal`) | **RESUELTO (T767)**: la FRV desde pedido nacía `CLOSED` y no aparecía en su propia lista |
 | F | **FRV creada desde un pedido nace `CLOSED`** con saldo entero pendiente y líneas `OPEN` | **RESUELTO (T767)** |
 | G | **El menú de fila de los listados es UNO compartido** (`aria-controls` genérico; `row-item` en el DOM = 2, no 4×n) y se re-vincula **al abrirlo** | **NO es defecto del producto**: el fallo era de la automatización, que pulsaba el ítem **viejo** que quedaba en el DOM tras un menú no abierto. **Regla para los recorridos**: abrir el menú, **comprobar que hay ítems visibles** y **verificar el documento que nombra el diálogo** antes de confirmar |
+| I | **La devolución anclada a una FACTURA no existe en la UI** (0 usos de `anchorInvoiceId`; la factura no ofrece «Devolución»; el formulario solo lee `deliveryOrderId`) | **T768**, abierto: los flujos 4 y 5 no se pueden ejecutar por pantalla |
+| J | **El formulario manual de devolución no guarda y no explica** (diálogo «¿Registrar devolución?» → confirmar → **sin POST, sin toast, sin error de campo**) | **medido**; callejón sin salida mudo, misma clase que T766 |
 | H | **El diálogo de anulación del DETALLE no nombra el documento** («¿Cancelar Factura de Reserva?»), mientras el de la **lista** sí («¿Cancelar factura FVR-1?») | **medido**; mejora pendiente: una acción destructiva debe nombrar su objeto |
