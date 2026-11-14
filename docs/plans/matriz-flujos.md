@@ -131,7 +131,7 @@ inventar ninguna: están en el controlador.
 | 8 | COT → ENT → FRV → PAGO | **sí** | COT→Entrega · ENT→Fact. Reserva · FRV→Pago |
 | 9 | PED → FRV → ENT → PAGO | **sí** | PED→Fact. Reserva · FRV→Entrega · FRV→Pago |
 | 10 | PED → ENT → FRV → PAGO | **sí** | PED→Entrega · ENT→Fact. Reserva · FRV→Pago |
-| 11 | **FRV → ENT → PAGO** | **⚠ a verificar** | la arista existe; **con FRV manual el selector de entrega salió vacío** |
+| 11 | **FRV → ENT → PAGO** | **sí** (desde T767) | el selector de entrega **se llena**; el vacío era consecuencia de la FRV que nacía `CLOSED` |
 | 12 | ENT → FRV → PAGO | **sí** | ENT manual → Fact. Reserva · FRV→Pago |
 
 ## 4. Los flujos de compra (espejo)
@@ -182,13 +182,17 @@ su consolidación **descuenta de las entregas** lo ya facturado.
 | **FVE manual → pago aplicado → factura `CLOSED`** | `FVE-2`, pago `REC-1` por 1.695,00, saldo 0 |
 | **Anulación de una factura con pago**: la acción se mantiene y **explica** (T766) | diálogo «No se puede anular… anulá el cobro o corregí con una nota de crédito» |
 | **La UI ofrece la NC como camino** | menú «Anular con nota de crédito» |
+| **Cadena canónica `PED → FRV → ENT`** | `PED-2` → `FVR-3` (OPEN) → `ENT-1` (CLOSED, `orderId 2`, `FVR-3.deliveryOrderId = 1`) |
+| **Anular una reserva SIN pago CON entrega (caso 2)** | **400** «tiene 1 entrega(s) viva(s) (ENT-1)… Devuelva la entrega o corrija con una nota de crédito» — y el aviso se ve en pantalla |
+| **Anular una reserva SIN pago y SIN entrega** | `FVR-1` → **CANCELLED** (201): se anula, como debe |
 
 **Verificado en el CÓDIGO (no ejecutado en pantalla)**: la tabla de aristas de §1 y los «Copiar a» de
 §2 — es lectura exhaustiva de controladores y plantillas.
 
-**Abierto y declarado**: el flujo **#11** (`FRV → ENT`) con **FRV manual**: el selector de entrega
-apareció **vacío**. Sigue **sin probar** con la cadena completa (pedido → FRV → entrega). **No se
-declara soportado hasta probarlo.**
+**Abierto y declarado**: el **caso 3** de la matriz (reserva **con pago** → anular) **no está medido**.
+El menú de acciones de la lista resultó ser **uno compartido** (`aria-controls` genérico en todas las
+filas, contenido de otra fila) y el del detalle no se abrió en el intento. **No se declara ni
+soportado ni defectuoso: no medido.**
 
 ---
 
@@ -200,4 +204,6 @@ declara soportado hasta probarlo.**
 | B | **La serie `FVE-2026` se puede crear con rango 1** y nace agotada; el error aparece al emitir la **segunda** factura. | **medido**; ampliada. **Pendiente**: validar el rango al crear |
 | C | **El pago va siempre contra la factura** (FVE o FRV), nunca contra la entrega. | **diseño correcto**, confirmado |
 | D | **Tras generar la entrega desde la FRV, hay que volver a la FRV para cobrar**; la pantalla deja al usuario en la entrega. | **fricción medida**, sin arreglar |
-| E | **El selector de entrega de una FRV manual llega vacío** (`copyToDelivery` → `deliveryPickerModal`). | **abierto**, a verificar con la cadena |
+| E | **El selector de entrega llegaba vacío** `copyToDelivery` → `deliveryPickerModal`) | **RESUELTO (T767)**: la FRV desde pedido nacía `CLOSED` y no aparecía en su propia lista |
+| F | **FRV creada desde un pedido nace `CLOSED`** con saldo entero pendiente y líneas `OPEN` | **RESUELTO (T767)** |
+| G | **El menú «Más acciones» de los listados es compartido**: todas las filas apuntan al mismo `aria-controls` y su contenido puede ser de otra fila | **medido en la automatización**, **a verificar visualmente**: si se confirma, es un riesgo real (actuar sobre otro documento) |
