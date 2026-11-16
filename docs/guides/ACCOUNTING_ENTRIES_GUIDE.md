@@ -17,6 +17,10 @@
 
 ---
 
+> **¿Dónde se carga cada cuenta?** Esta guía dice **cómo** se arma el asiento. Para
+> **qué cuenta va en cada campo** (artículo, socio o mapeo) use
+> [`guia-parametrizacion-cuentas.md`](guia-parametrizacion-cuentas.md).
+
 ## 🎯 Principios Fundamentales
 
 ### **Regla de Oro:**

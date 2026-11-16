@@ -148,6 +148,10 @@ Orden sugerido (coincide con `seedTenantData`):
    `npm run audit:flows` avisa si un builder nuevo deja de transportar la norma al asiento.
 
 ### Paso A.5 — Parametrización fina y usuarios
+
+> **Cuentas**: qué cuenta va en cada campo, los tres orígenes y «Fijar Cuenta de Mayor según» están
+> en [`guia-parametrizacion-cuentas.md`](guia-parametrizacion-cuentas.md). Cárguelas con esa guía
+> delante: un mapeo en el sitio equivocado **cuadra y miente**.
 | # | Paso | Dónde |
 |---|------|-------|
 | A.5.1 | Nivel de determinación de cuentas (Artículo / Grupo / Almacén) y cuentas de diferencia de cambio (+ opcional: **diferencia de cambio automática en asientos manuales**, default OFF) | Parametrización → Contabilidad |
