@@ -543,3 +543,27 @@ contable— funciona hoy en los tres documentos que faltaban y en la facturació
 
 Detalle completo, con cada medición y sus límites: `AUDIT.md` T598–T606 y
 `docs/plans/plan-linea-servicio.md` §6.3.
+
+## Aprobaciones por documento con listas de solicitantes y aprobadores (pendiente · pedido el 2026-11-18)
+
+**Qué hay hoy.** El control de aprobación se configura **por tipo de documento y monto**
+(`ApprovalRule.minAmount`), **quién puede aprobar es un rol** (`requiredRole`: `ADMIN` o `USER`) y
+**quien crea no puede aprobar** (T896). Funciona y está **verificado con dos usuarios reales**
+(T897), pero **el rol es grueso**: no se puede decir «esta persona aprueba facturas de compra».
+
+**Qué se pidió.** Que **cada documento tenga su propia lista de solicitantes y de aprobadores**,
+para que la asignación sea **explícita y organizada** en vez de deducida de un rol global.
+
+**Diseño propuesto (NO implementado).**
+
+- Modelo **`DocumentApprovalParticipant`** (`tenantId`, `documentType`, `userId`,
+  `kind: REQUESTER | APPROVER`, `isActive`) con `@@unique([tenantId, documentType, userId, kind])`.
+- **`assertApproved`**: el aprobador tiene que estar en la lista **APPROVER** de ese tipo —hoy solo
+  se mira el rol—; y el solicitante, en la de **REQUESTER** (o ser el creador).
+- **Pantalla**: dos listas por tipo en `/approval-rules`, o una pestaña «Participantes».
+- **Compatibilidad**: si un tipo **no declara participantes**, se cae al comportamiento actual
+  (`requiredRole` + creador ≠ aprobador), **para no romper lo que ya funciona**.
+
+**Por qué no ahora.** Con dos usuarios y dos roles el control **funciona y está medido**; esto
+**añade valor cuando haya varias personas por documento**, y **sustituye al RBAC** para este caso
+concreto —que era la alternativa— **sin arrastrar todo el modelo de permisos**.
