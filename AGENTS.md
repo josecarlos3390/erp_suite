@@ -647,7 +647,7 @@ npm run audit:contrast       # contraste WCAG de la paleta
 - **Una herramienta puede hacer BIEN su tarea sobre el CONJUNTO EQUIVOCADO, y ningún gate lo verá:
   compruebe el ALCANCE antes de dejarla correr.** `audit:date-class` daba **0 hallazgos** mientras tres
   sitios leían mal `Batch.expiryDate`/`manufactureDate`, porque **no estaban en el registro
-  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** (hoy **1453**: el ratchet
+  `COLUMNS`**; declararlas subió las apariciones vigiladas **1345 → 1366** (hoy **1458**: el ratchet
   vigila los hallazgos, no las apariciones, y `audit:agents-figures` es el que cierra ese hueco — por
   eso la cifra se mueve EN EL MISMO empujón que el código que la mueve). **De dónde viene cada
   movimiento de esa cifra** (para que no vuelva a moverse sin saber por qué): de **1360 a 1361** la
@@ -655,7 +655,10 @@ npm run audit:contrast       # contraste WCAG de la paleta
   al movimiento de stock; y de **1361 a 1364** la movió **T287**, la cadena del flujo de documentos
   (`backend-erp/src/document-flow/document-flow-chain*.ts`), que nombra `date` en el contrato y en sus
   dos specs — con la misma cifra se movieron los **ambiguos** declarados (**1101 → 1104**), porque el
-  nombre `date` es ambiguo por diseño. Y el **desfase que había quedado anotado** entre el manual
+  nombre `date` es ambiguo por diseño. Y de **1453 a 1458** la movió **T928**, la reclasificación de un
+  pago a anticipo (`ADVANCE_RECLASSIFICATION`): el asiento de las dos direcciones nombra `date` y
+  `postingDate` en su contrato, y la cifra se movió **en el mismo empujón** que el código que la mueve.
+  Y el **desfase que había quedado anotado** entre el manual
   (1361) y la línea base del instrumento (**1360**) era exactamente eso, un número **viejo** en la
   línea base que el ratchet **no compara** (los dos contadores son de CENSO, no de deuda): se congeló
   en su cifra medida (**1364 / 1104**) en el mismo empujón, y por eso `audit:agents-figures` cierra en
