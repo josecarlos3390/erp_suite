@@ -88,3 +88,19 @@ Los cinco pasos se completaron en el orden escrito, y el paso 2 fue el que falta
 dos documentos (el 409 es la frontera); el cobro «a cuenta» no llega (sin socio ⇒ muere antes); y el
 artefacto del enum en la base de desarrollo se declara en la propia migración.
 
+### Flecos cerrados después del push (2026-11-19)
+
+- **Espejo `deploy`**: la rama quedó en los **dos** remotos del backend (`origin` y `deploy`,
+  `4b4b0edd`), con el sello por contenido saltándose la segunda pasada de la suite.
+- **Recorrido por UI de compras**: `flujo-t928-dejar-a-favor-ui.mjs` cubre ahora **las dos
+  direcciones** (cobro y pago a proveedor) y pasa de 19 a **37/37** comprobaciones.
+- **Los dos gates de UI que el pre-push no corre, medidos**: `e2e:functional` **563/37/40** (55 min) y
+  `e2e:mobile` **54/14/18** (23 min). **Rojo de arnés y datos, no de T928**: la mitad son specs que
+  piden una FV normal desde entrega/recepción cuando la guarda de **T865** exige la FRV (ficheros que
+  T928 no toca), el resto son conteos y acciones que dependen del estado acumulado de `erp_test`
+  («137 resultados» contra 138 reales) y tres casos de layout/a11y en `/partners`. **Ningún spec del
+  suite maneja el diálogo «dejar a favor»** y el recorrido propio da 37/37. El arnés restauró
+  `erp_test` con huella idéntica (`e048abb9d58d`, 204 tablas) en las dos corridas. El desglose
+  completo, con la prueba de cada familia, está en `AUDIT.md` T928.
+
+
