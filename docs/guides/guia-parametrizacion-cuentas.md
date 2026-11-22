@@ -88,7 +88,7 @@ contable no interviene en esta decisión.
 
 | Valor | Qué lee el motor | Qué debe cargar usted |
 |---|---|---|
-| **Artículo (cuentas por almacén)** | la **matriz artículo-almacén** (las tarjetas de abajo) y, si la matriz no tiene la fila, el **maestro del artículo** | las cuentas en cada tarjeta de almacén del artículo |
+| **Artículo (cuentas por almacén)** | **solo** la **matriz artículo-almacén** (las tarjetas de abajo); sin fila o sin cuenta, **no contabiliza** (T959) | las cuentas en cada tarjeta de almacén del artículo |
 | **Grupo de artículos** | las cuentas del **grupo** al que pertenece el artículo | las cuentas en la ficha del **grupo** |
 | **Almacén** | las cuentas del **almacén de la línea del documento** | las cuentas en la ficha del **almacén** |
 
@@ -96,8 +96,9 @@ contable no interviene en esta decisión.
 
 1. **Un solo lugar manda.** Si el artículo dice «Grupo», las cuentas cargadas en su maestro **no se
    leen** para esos roles. Si dice «Almacén», manda el almacén de la línea.
-2. **La matriz gana al maestro** en el nivel «Artículo»: si la matriz del par artículo-almacén tiene
-   la cuenta, se usa esa; si no tiene fila, se usa el maestro.
+2. **La matriz ES la fuente** en el nivel «Artículo» (T959): la cuenta sale del par artículo-almacén y
+   **no** hay respaldo al maestro del artículo. Si la fila no existe o sus cuentas están vacías, el
+   documento **no se contabiliza**.
 3. **No hay respaldo silencioso.** Si el nivel elegido no tiene la cuenta, el motor **falla y dice
    qué campo configurar** (política de «sin cuentas de respaldo»). Es a propósito: un asiento con una
    cuenta de relleno **cuadra y miente**.
@@ -147,7 +148,8 @@ cambia el nivel después).
 1. Elija **«Fijar Cuenta de Mayor según»** en cada artículo (o en el grupo, si el artículo hereda).
 2. Cargue las cuentas en el nivel elegido.
 3. Para el nivel **Artículo**, cargue la **matriz por almacén** en las tarjetas del formulario: es
-   la fuente principal; el maestro es el respaldo.
+   la fuente **única** desde T959; el maestro del artículo ya **no** respalda a la matriz (un artículo
+   nuevo nace con la matriz vacía y no contabiliza hasta configurarla).
 
 > **Verificar**: por cada artículo y almacén que vaya a operar, que las cuentas de `INVENTORY`,
 > `COGS`, `SALES_REVENUE`, `INVENTORY_OFFSET` e `INVENTORY_OFFSET_EXIT` estén cargadas **en el nivel
