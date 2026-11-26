@@ -13,7 +13,8 @@
     "audit:encoding": "node scripts/audit-encoding.mjs",
     "audit:encoding:check": "node scripts/audit-encoding.mjs --check",
     "audit:encoding:self-test": "node scripts/audit-encoding.mjs --self-test",
-    "ci:local": "node scripts/ci-local.mjs"
+    "ci:local": "node scripts/ci-local.mjs",
+    "preflight": "node scripts/preflight.mjs"
   },
   "devDependencies": {
     "husky": "^9.1.7",
