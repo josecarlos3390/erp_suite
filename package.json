@@ -11,6 +11,7 @@
     "audit:agents-figures": "node scripts/audit-agents-figures.mjs --check",
     "audit:agents-figures:self-test": "node scripts/audit-agents-figures.mjs --self-test",
     "audit:encoding": "node scripts/audit-encoding.mjs",
+    "smoke:produccion": "node scripts/smoke-produccion.mjs",
     "audit:encoding:check": "node scripts/audit-encoding.mjs --check",
     "audit:encoding:self-test": "node scripts/audit-encoding.mjs --self-test",
     "ci:local": "node scripts/ci-local.mjs",

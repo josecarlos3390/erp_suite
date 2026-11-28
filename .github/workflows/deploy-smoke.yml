@@ -1,0 +1,39 @@
+name: Deploy smoke
+
+# **T1014 — LA SONDA DEL DESPLIEGUE, AUTOMATIZADA.**
+#
+# **Por qué existe**: el 2026-11-28, midiendo lo que el manual exige, el backend de producción
+# respondía **404 «Application not found»** y la tienda **500**, y **nadie lo había medido** — la
+# verificación era manual, y una verificación que se hace a mano **deja de hacerse**. Este job la
+# convierte en un rojo visible: `/health` 200 con `prisma: up`, el contrato de error, el `/login` del
+# frontend y que la tienda no responda 5xx.
+#
+# **Diario y a mano**: el `schedule` caza una caída que nadie provocó (un servicio borrado, un
+# dominio vencido); el `workflow_dispatch` permite correrlo justo después de un despliegue.
+#
+# **No bloquea el push**: mide **producción**, no el árbol; su rojo no debe frenar un commit, sino
+# avisar de que el despliegue no está sirviendo.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 12:00 UTC (08:00 en Bolivia) — antes de la jornada.
+    - cron: '0 12 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Sonda de producción
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # La raíz no tiene `.nvmrc` a propósito (Vercel elegiría otro Node).
+          node-version: '24'
+
+      - name: Medir el despliegue
+        run: node scripts/smoke-produccion.mjs
